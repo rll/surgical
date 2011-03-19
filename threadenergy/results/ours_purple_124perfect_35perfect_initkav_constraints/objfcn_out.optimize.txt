@@ -1,0 +1,69 @@
+Creating SCHEME file: /home/pabbeel/rll/code/trunk/surgical/threadenergy/SCHEME
+pdsopt: factor  =            8
+        beta    =           2
+
+		 PDS Iteration Summary
+
+  Iter    F(x)       ||edge||    step   fevals    jbest
+
+    0        11.89            1              6       0
+    1        11.75         0.25    1        26       2
+    2        11.74        0.125    1        46       3
+    3        11.61        0.125    1        66       0
+    4        11.58        0.125    1        86       2
+    5        11.56         0.25    1       106       2
+    6        11.56       0.0625    0       126       2
+    7        11.56      0.01562    0       146       2
+    8        11.48     0.007812    1       166       0
+    9        11.43     0.007812    1       186       2
+   10        11.42     0.003906    1       206       0
+   11        11.42    0.0009766    0       226       0
+   12        11.39    0.0009766    1       246       2
+   13        11.39    0.0002441    0       266       2
+   14        11.39    6.104e-05    0       286       2
+   15        11.39    1.526e-05    0       306       2
+pdsdone: Step tolerance passed
+
+
+
+=========  Solution:   ===========
+
+Optimization method       = PDS
+Dimension of the problem  = 5
+Search Scheme Size        = 20
+Simplex type              = 2
+Return code               = 0 (pdsdone: Step tolerance passed)
+No. iterations taken      = 15
+No. function evaluations  = 306
+
+
+=========  Solution:   ===========
+
+
+    i	   x  	      grad   		 fcn_accrcy 
+
+    1	      0.5713		    2.22e-16
+    2	       2.193		    2.22e-16
+    3	       0.181		    2.22e-16
+    4	    0.004204		    2.22e-16
+    5	    0.004204		    2.22e-16
+Function Value     =        11.39
+
+
+===================================================
+
+
+
+==========  Tolerances  ===========
+
+Machine Epsilon      = 2.22045e-16
+Maximum Step         = 1000
+Minimum Step         = 1.49012e-08
+Maximum Iter         = 500
+Maximum Backtracks   = 5
+Maximum Fcn Eval     = 2000
+Step Tolerance       = 1e-05
+Function Tolerance   = 1e-06
+Constraint Tolerance = 1.49012e-08
+Gradient Tolerance   = 6.05545e-06
+LineSearch Tolerance = 0.0001

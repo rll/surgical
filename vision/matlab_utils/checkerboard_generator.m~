@@ -1,0 +1,19 @@
+function checkerboard_generator(rows, cols, pix_per_row, pix_per_col)
+
+im = zeros(rows*pix_per_row, cols*pix_per_col);
+
+color = 0;
+last_row_color = 1;
+
+for r=1:rows
+    for c=1:cols
+        
+        for r_pix=:pix_per_row
+        
+    end
+end
+     
+
+
+
+end

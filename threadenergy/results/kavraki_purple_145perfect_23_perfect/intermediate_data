@@ -1,0 +1,5 @@
+iter: 2  val: 23.042  params: 1  1  
+iter: 4  val: 22.7268  params: 1.96593  1.25882  
+iter: 8  val: 22.524  params: 2.93185  1.51764  
+iter: 10  val: 21.534  params: 2.67303  0.551712  
+took 417.00 seconds

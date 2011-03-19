@@ -1,0 +1,80 @@
+debug mode
+cannythresh: 13 26
+218 lines found
+angle =45, angleDiff=83
+rho=962.75, rhoDiff=1062
+angle =44.8, angleDiff=82
+rho=955.75, rhoDiff=1055
+angle =141.6, angleDiff=1
+rho=-138.25, rhoDiff=38
+angle =141.5, angleDiff=1
+rho=-144.25, rhoDiff=44
+angle =44.6, angleDiff=82
+rho=1023.75, rhoDiff=1123
+angle =70.6, angleDiff=72
+rho=755.75, rhoDiff=855
+angle =141.2, angleDiff=1
+rho=-72.75, rhoDiff=27
+angle =45.1, angleDiff=83
+rho=1018.25, rhoDiff=1118
+angle =90, angleDiff=52
+rho=167.75, rhoDiff=267
+angle =45, angleDiff=83
+rho=1004.75, rhoDiff=1104
+angle =45, angleDiff=83
+rho=947.25, rhoDiff=1047
+angle =91.9, angleDiff=51
+rho=147.75, rhoDiff=247
+angle =44.3, angleDiff=82
+rho=967.75, rhoDiff=1067
+angle =70.4, angleDiff=72
+rho=760.75, rhoDiff=860
+angle =91.5, angleDiff=51
+rho=153.25, rhoDiff=253
+angle =90, angleDiff=52
+rho=173.75, rhoDiff=273
+angle =45.4, angleDiff=83
+rho=999.75, rhoDiff=1099
+angle =89, angleDiff=53
+rho=179.75, rhoDiff=279
+angle =91.1, angleDiff=51
+rho=159.25, rhoDiff=259
+angle =43.4, angleDiff=81
+rho=973.25, rhoDiff=1073
+angle =141.8, angleDiff=1
+rho=-153.25, rhoDiff=53
+angle =141.8, angleDiff=1
+rho=-77.75, rhoDiff=22
+angle =89.3, angleDiff=53
+rho=938.75, rhoDiff=1038
+angle =90, angleDiff=52
+rho=861.75, rhoDiff=961
+angle =87.6, angleDiff=55
+rho=184.75, rhoDiff=284
+angle =140.7, angleDiff=2
+rho=-67.25, rhoDiff=32
+4 lines chosen
+num pairs: 3
+cos=-0.779338, sin=0.626604
+rho=-105.5
+stepx=0.804021, stepy=1
+dx=0.626604, dy=0.779338
+icept_y -168.368
+icept_x 135.371
+nsteps=960
+cos=-0.779338, sin=0.626604
+rho=-108.5
+stepx=0.804021, stepy=1
+dx=0.626604, dy=0.779338
+icept_y -173.156
+icept_x 139.221
+nsteps=960
+cos=-0.785857, sin=0.618408
+rho=-111
+stepx=0.786922, stepy=1
+dx=0.618408, dy=0.785857
+icept_y -179.493
+icept_x 141.247
+nsteps=960
+numCands 17
+MIDPOINT EQUALS (499.924, 455.797)

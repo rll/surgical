@@ -1,0 +1,48 @@
+LIBS = -L/usr/lib/ -lglut -lgle -L/usr/local/lib/x86_64
+VISION_LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lPvAPI -lrt
+UTILS_DIR = ../../utils/
+COMPILEFLAG=-DMAC
+VISION_INCLUDES = -I/usr/local/include/opencv/
+INCLUDES = -I/usr/local/include/ -I/usr/include -I $(UTILS_DIR)
+TOADD = -L"/System/Library/Frameworks/OpenGL.framework/Libraries" -L"/System/Library/Frameworks/GLUT.framework" -framework GLUT -framework OpenGL -lGL -lGLU -L/usr/X11R6/lib -L/opt/local/lib/gcc45/gcc/x86_64-apple-darwin10/4.5.1/
+OPT_COMP = -DEIGEN_NO_DEBUG -O3
+FOPENMP = -fopenmp
+CC = g++ $(OPT_COMP) $(COMPILEFLAG)
+LD = g++ $(OPT_COMP) $(COMPILEFLAG) $(TOADD)
+DEBUG = -ggdb
+PROFILER =
+
+target: testThreadDiscrete saveThreadTrajectory
+
+testThreadDiscrete: testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o
+	$(LD) $(INCLUDES) $(DEBUG) -o testThreadDiscrete testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o $(LIBS) $(PROFILER)
+
+recordThreadVideo: recordThreadVideo.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_reader.o
+	$(LD) $(INCLUDES) $(VISION_INCLUDES) $(DEBUG) -o recordThreadVideo recordThreadVideo.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o $(LIBS) $(VISION_LIBS)
+
+saveThreadTrajectory: saveThreadTrajectory.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o clock.o
+	$(LD) $(INCLUDES) $(DEBUG) -o saveThreadTrajectory saveThreadTrajectory.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_recorder.o clock.o $(LIBS)
+
+################################################
+#    Object files                              #
+################################################
+thread_discrete.o: thread_discrete.cpp thread_discrete.h
+	$(CC) $(INCLUDES) $(DEBUG) -c thread_discrete.cpp $(PROFILER)
+
+threadpiece_discrete.o: threadpiece_discrete.cpp threadpiece_discrete.h
+	$(CC) $(INCLUDES) $(DEBUG) -c threadpiece_discrete.cpp $(PROFILER)
+
+threadutils_discrete.o: threadutils_discrete.cpp threadutils_discrete.h
+	$(CC) $(INCLUDES) $(DEBUG) -c threadutils_discrete.cpp $(PROFILER)
+
+trajectory_recorder.o: trajectory_recorder.cpp
+	$(CC) $(INCLUDES) $(DEBUG) -c trajectory_recorder.cpp $(PROFILER)
+
+trajectory_reader.o: trajectory_reader.cpp
+	$(CC) $(INCLUDES) $(DEBUG) -c trajectory_reader.cpp $(PROFILER)
+
+clock.o : $(UTILS_DIR)/clock.cpp
+	$(CC) $(INCLUDES) $(DEBUG) -c $(UTILS_DIR)/clock.cpp
+
+clean:
+	rm *.o *.gch testThreadDiscrete saveThreadTrajectory recordThreadVideo

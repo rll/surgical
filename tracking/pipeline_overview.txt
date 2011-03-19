@@ -1,0 +1,73 @@
+PIPELINE OVERVIEW: 
+
+Terminology, or let's get some things straight:
+
+Shaft = The long black tube.
+Band = The circular silver piece at the end of the shaft. It's attached rigidly to the shaft.
+Pitch-piece = The part that comes after the band. I have no idea what to call it. 
+Jaws = The two gripper pieces.
+Hand = The pitch-piece and jaws together.
+Sleeve = The outer pipe. The one the base motors move. It's metal.
+Arm = All of the above
+
+Model origin = If you sliced off the band, and looked at the end of the shaft, you'd be looking at a circle. The middle of that circle is what I'll call the "model origin." 
+World origin = Some point on the table.
+
+Roll = Roll of the shaft. Although it can go around a few times, let's just consider it to be an angle from 0 to 360.
+Pitch = Angle of the pitch-piece to the shaft. Straight (the starting position) should be pitch zero. 
+
+IF everything goes as expected, you should get out the position of the model origin in the world frame and the gross roll. You might be able to get the pitch by copying the technique used to get the roll, but that's not a given. 
+
+I'll also assume that all images are undistorted. 
+1) Grab images from camera. 
+
+*********************************** ALL 2-D WORK *************************************
+All these steps should be followed for every camera. 
+
+2) Obtain a foreground mask. It should show the silhouettes of the arm. Look in matlab/grayscaleIm.m
+
+3) Find long straight lines in the image
+ (optional) The wrinkles in the green cloth were really messing me up, so I used the mask to make the whole background the same color in the grayscaled image
+ a) Grayscale the image and run a Canny edge detector.
+ b) On the Canny-processed image, use a Hough transform to find lines.
+ c) You could also run a Sobel edge detector on the mask. The lines turned out sharp and clear, but I already had this in place, and didn't bother changing it. It also depends on the quality of your mask. 
+
+4) Filter lines to find pairs of parallel lines that are roughly the expected angle and at the expected location. 
+ a) You have to provide an expected angle and expected rho (which is the perpendicular distance between the line and the image frame origin. Better explained on the Wikipedia article on Hough transforms). 
+   i) See matlab/locateMid.m
+   ii) I found the seed angle and seed rho by viewing the candidate values in Matlab, and picking the ones that seemed the best.
+   iii) cpp/locateMid.cpp is a C++ implementation of locateMid. All the variables should shadow Matlab's pretty closely, bu t I haven't done extensive testing.
+ b) You also have to provide an expected width of the parallel lines. Again, see locateMid.m
+
+5) For each pair of parallel lines, walk along the midlines to try to find the place where the shaft turns into the band.
+ a) Even though the lines it finds now are sleeve-lines and not shaft-lines (the sleeve-lines are just stronger and more reliable), the midline still lands somewhere near the middle of the shaft.
+ b) It finds points along the midline where the gradient is firstly very strong, secondly whose gradient goes in about the same direction as the line, and thirdly whose color is right -- i.e., it changes from the expected grayscale value of the shaft to a lighter color. 
+ c) For each midline, it takes the first five points that meet those criteria and puts them in a candidate pool. 
+ d) In the end, it scores all the points in the pool by gradient strength and distance to expected.
+ e) You have to provide the expected grayscale value of the shaft. 
+ f) Still in locateMid.m . 
+
+6) [ There is no implementation for this. I did it by clicking. ] You know the bottom edge of the band? Now find the top and bottom junctions between the shaft and band. Average these to get the projection of the model origin.
+
+****************************** A brief 3-D interlude *********************************
+
+Use stereo constraints to get the 3-D location of the model origin
+
+****************************** Back to 2-D *******************************************
+
+7) Get the subimage that shows the band only. This will probably not be rectangular.
+  a) To do this, you need to know what direction the shaft is pointing in, in 3-D. I solve for this in reconstructPoints.m, but I rely on hand-clicks. All you need, however, is four points: two on the top edge of the shaft silhouette and two on the bottom. See reconstructPoints.m
+  b) See saveIms.m; this is the file that actually calculates the magic trapezoid.
+
+8) Warp the band into a rectangle.
+  a) See cpp/rectifyIm.cpp and cpp/harness.py . 
+
+9)  Calculate the SP-HOG descriptor. Do a match on pre-calculated training descriptors. Interpolate between the two nearest neighbors. 
+ a) See matlab/3rdparty/cs194/compute_sp_hog.m, compute_ori_gradients2.m, and compute_sp_descriptor2.m for the code that calculates the SP-HOG descriptor. 
+ b) And there's a C++ implementation, cpp/calcHOGdescriptor.cpp
+ c) Also see matlab/findGrossRolls.m for the regression.
+
+***************************************************************************************
+This will give you an estimate for the roll for all three images separately. I imagine then you want to combine the estimates somehow. 
+
+
