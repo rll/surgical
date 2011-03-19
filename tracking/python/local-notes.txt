@@ -1,9 +1,0 @@
-Need: 
-
-data about polygons: not only their vertices, but unit normals 
-file poly_norms
-file barycenters
-
-edges: vertices (+ adjacent polys)
-
-try first without BSP: just process by z-value
