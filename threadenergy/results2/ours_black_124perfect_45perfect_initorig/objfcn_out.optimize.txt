@@ -1,0 +1,77 @@
+Creating SCHEME file: /home/pabbeel/rll/code/trunk/surgical/threadenergy/SCHEME
+pdsopt: factor  =            8
+        beta    =           2
+
+		 PDS Iteration Summary
+
+  Iter    F(x)       ||edge||    step   fevals    jbest
+
+    0        9.466            1              6       0
+    1        9.086          0.5    1        31       3
+    2        8.817          0.5    1        56       4
+    3        8.632          0.5    1        81       3
+    4        5.641          0.5    1       106       1
+    5        5.641        0.125    0       131       1
+    6        3.724       0.0625    1       156       1
+    7        2.625      0.03125    1       181       0
+    8        2.561      0.03125    1       206       1
+    9        1.908      0.01562    1       231       0
+   10         1.84      0.03125    1       256       5
+   11        1.723       0.0625    1       281       5
+   12        1.506        0.125    1       306       3
+   13        1.163         0.25    1       331       3
+   14       0.9905         0.25    1       356       5
+   15       0.9532          0.5    1       381       5
+   16       0.9511          0.5    1       406       4
+   17       0.9511        0.125    0       431       4
+   18        0.951       0.0625    1       456       4
+   19       0.9503      0.03125    1       481       0
+   20       0.9503     0.007812    0       506       0
+   21       0.9502     0.007812    1       531       5
+   22       0.9494      0.01562    1       556       5
+   23       0.9494     0.003906    0       581       5
+pdsdone: Step tolerance passed
+
+
+
+=========  Solution:   ===========
+
+Optimization method       = PDS
+Dimension of the problem  = 5
+Search Scheme Size        = 25
+Simplex type              = 2
+Return code               = 0 (pdsdone: Step tolerance passed)
+No. iterations taken      = 23
+No. function evaluations  = 581
+
+
+=========  Solution:   ===========
+
+
+    i	   x  	      grad   		 fcn_accrcy 
+
+    1	     0.00864		    2.22e-16
+    2	     0.04179		    2.22e-16
+    3	      0.1246		    2.22e-16
+    4	      0.5942		    2.22e-16
+    5	       401.3		    2.22e-16
+Function Value     =       0.9494
+
+
+===================================================
+
+
+
+==========  Tolerances  ===========
+
+Machine Epsilon      = 2.22045e-16
+Maximum Step         = 1000
+Minimum Step         = 1.49012e-08
+Maximum Iter         = 500
+Maximum Backtracks   = 5
+Maximum Fcn Eval     = 2000
+Step Tolerance       = 1e-05
+Function Tolerance   = 1e-06
+Constraint Tolerance = 1.49012e-08
+Gradient Tolerance   = 6.05545e-06
+LineSearch Tolerance = 0.0001

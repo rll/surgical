@@ -1,0 +1,22 @@
+stringBase = 'suture1_';
+stringExt = '.png';
+baseLength = length(stringBase);
+extLength = length(stringExt);
+
+for camNum=1:3
+    files = dir ([stringBase num2str(camNum) '*']);
+
+    renameNum = 1;
+    %first, get ims with 1 di
+    for file = 1:length(files)
+        currName = files(file).name;
+        if (length(currName) <= baseLength+2+4 +1)
+            indDash = findstr(currName, '-');
+            reName = [currName(1:indDash) num2str(renameNum) '.
+
+        end
+        
+        renameNum = renameNum+1;
+    end
+    
+end

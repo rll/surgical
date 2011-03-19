@@ -1,0 +1,29 @@
+Creating SCHEME file: /home/pabbeel/rll/code/trunk/surgical/threadenergy/SCHEME
+pdsopt: factor  =            8
+        beta    =           2
+
+		 PDS Iteration Summary
+
+  Iter    F(x)       ||edge||    step   fevals    jbest
+
+    0        28.15            1              6       1
+    1        27.01            2    1        36       1
+    2        26.28            4    1        66       4
+    3        26.08            4    1        96       3
+    4        26.02            2    1       126       3
+    5        26.02            1    0       156       3
+    6        25.94            1    1       186       2
+    7        25.94          0.5    0       216       2
+    8        25.94         0.25    1       246       0
+    9        25.91          0.5    1       276       3
+   10        25.86            1    1       306       4
+   11        25.86          0.5    0       336       4
+   12        25.86         0.25    0       366       4
+   13        25.85        0.125    1       396       0
+   14        25.85       0.0625    1       426       1
+   15        25.85      0.03125    0       456       1
+   16        25.85      0.01562    0       486       1
+   17        25.85     0.007812    1       516       0
+   18        25.85     0.003906    0       546       0
+pdsdone: Step tolerance passed
+

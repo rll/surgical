@@ -1,0 +1,5 @@
+iter: 1  val: 9.28242  params: 1  1  
+iter: 3  val: 8.6475  params: 1.25882  1.96593  
+iter: 5  val: 8.40652  params: 1.51764  2.93185  
+iter: 11  val: 8.33289  params: 0.905266  2.31948  
+total time: 1

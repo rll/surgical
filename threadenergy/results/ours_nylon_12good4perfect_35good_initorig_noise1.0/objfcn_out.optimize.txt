@@ -1,0 +1,66 @@
+Creating SCHEME file: /home/pabbeel/rll/code/trunk/surgical/threadenergy/SCHEME
+pdsopt: factor  =            8
+        beta    =           2
+
+		 PDS Iteration Summary
+
+  Iter    F(x)       ||edge||    step   fevals    jbest
+
+    0        41.03            1              6       4
+    1         40.6            2    1        26       3
+    2        39.91            2    1        46       4
+    3        39.91            1    0        66       4
+    4        39.87          0.5    1        86       5
+    5        39.87         0.25    0       106       5
+    6        39.87        0.125    0       126       5
+    7        39.87       0.0625    0       146       5
+    8        39.85        0.125    1       166       0
+    9        39.85       0.0625    0       186       0
+   10        39.85      0.03125    0       206       0
+   11        38.76      0.01562    1       226       1
+   12        38.76     0.007812    0       246       1
+pdsdone: Step tolerance passed
+
+
+
+=========  Solution:   ===========
+
+Optimization method       = PDS
+Dimension of the problem  = 5
+Search Scheme Size        = 20
+Simplex type              = 2
+Return code               = 0 (pdsdone: Step tolerance passed)
+No. iterations taken      = 12
+No. function evaluations  = 242
+
+
+=========  Solution:   ===========
+
+
+    i	   x  	      grad   		 fcn_accrcy 
+
+    1	       1.163		    2.22e-16
+    2	      0.5084		    2.22e-16
+    3	       1.929		    2.22e-16
+    4	       8.462		    2.22e-16
+    5	       781.6		    2.22e-16
+Function Value     =        38.76
+
+
+===================================================
+
+
+
+==========  Tolerances  ===========
+
+Machine Epsilon      = 2.22045e-16
+Maximum Step         = 1000
+Minimum Step         = 1.49012e-08
+Maximum Iter         = 500
+Maximum Backtracks   = 5
+Maximum Fcn Eval     = 2000
+Step Tolerance       = 1e-05
+Function Tolerance   = 1e-06
+Constraint Tolerance = 1.49012e-08
+Gradient Tolerance   = 6.05545e-06
+LineSearch Tolerance = 0.0001

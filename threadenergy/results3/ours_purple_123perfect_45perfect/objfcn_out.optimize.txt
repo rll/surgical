@@ -1,0 +1,65 @@
+Creating SCHEME file: /home/pabbeel/rll/code/trunk/surgical/threadenergy/SCHEME
+pdsopt: factor  =            8
+        beta    =           2
+
+		 PDS Iteration Summary
+
+  Iter    F(x)       ||edge||    step   fevals    jbest
+
+    0        2.852            1              6       4
+    1        2.825          0.5    1        31       2
+    2        2.765            1    1        56       1
+    3        2.684          0.5    1        81       0
+    4        2.542          0.5    1       106       2
+    5        2.442         0.25    1       131       0
+    6        1.248         0.25    1       156       1
+    7        1.248       0.0625    0       181       1
+    8        1.248      0.01562    0       206       1
+    9        1.147      0.01562    1       231       2
+   10        1.141     0.007812    1       256       0
+   11        1.136     0.003906    1       281       0
+pdsdone: Step tolerance passed
+
+
+
+=========  Solution:   ===========
+
+Optimization method       = PDS
+Dimension of the problem  = 5
+Search Scheme Size        = 25
+Simplex type              = 2
+Return code               = 0 (pdsdone: Step tolerance passed)
+No. iterations taken      = 11
+No. function evaluations  = 281
+
+
+=========  Solution:   ===========
+
+
+    i	   x  	      grad   		 fcn_accrcy 
+
+    1	   0.0001714		    2.22e-16
+    2	    0.002934		    2.22e-16
+    3	      0.8841		    2.22e-16
+    4	       2.331		    2.22e-16
+    5	       399.9		    2.22e-16
+Function Value     =        1.136
+
+
+===================================================
+
+
+
+==========  Tolerances  ===========
+
+Machine Epsilon      = 2.22045e-16
+Maximum Step         = 1000
+Minimum Step         = 1.49012e-08
+Maximum Iter         = 500
+Maximum Backtracks   = 5
+Maximum Fcn Eval     = 2000
+Step Tolerance       = 1e-05
+Function Tolerance   = 1e-06
+Constraint Tolerance = 1.49012e-08
+Gradient Tolerance   = 6.05545e-06
+LineSearch Tolerance = 0.0001
