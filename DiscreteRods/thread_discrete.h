@@ -8,7 +8,6 @@
 #include "float.h"
 #include <Eigen/Cholesky>
 #include <Eigen/LU>
-#include <Eigen/SVD>
 
 
 #ifdef ISOTROPIC 

@@ -489,6 +489,8 @@ void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, do
 {
   double step_in_grad_dir_vertices = 1.0;
 
+
+
   double max_movement_vertices = max_move_vert;
   project_length_constraint();
   bool recalc_vertex_grad = true;
@@ -498,7 +500,6 @@ void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, do
 
   int opt_iter;
   MatrixXd Inv_Hessian(3*(int)_thread_pieces.size(), 3*(int)_thread_pieces.size());
-  Inv_Hessian.setZero();
   VectorXd Gradients(3*(int)_thread_pieces.size());
   vector<Vector3d> offsets(_thread_pieces.size());
   Gradients.setZero();
@@ -1000,62 +1001,39 @@ void Thread::calculate_gradient_vertices(vector<Vector3d>& vertex_gradients)
 
 void Thread::calculate_inv_hessian_vertices(MatrixXd& inv_hessian)
 {
-  //ignore first and last 2 pieces
-  MatrixXd hessian(inv_hessian.rows()-12, inv_hessian.cols()-12);
+  MatrixXd hessian(inv_hessian.rows(), inv_hessian.cols());
   hessian.setZero();
-  double eps = 1e-6;
+  double eps = 1e-3;
   Vector3d grad_offets[3];
   grad_offsets[0] = Vector3d(eps, 0, 0);
   grad_offsets[1] = Vector3d(0, eps, 0);
   grad_offsets[2] = Vector3d(0, 0, eps);
 
 
-  Vector3d gradient;
   for (int r=2; r < _thread_pieces.size()-2; r++)
   {
-    int r_ind = r-2;
     for (int c=2; c < _thread_pieces.size()-2; c++)
     {
-      int c_ind = c-2;
       for (int grad_ind = 0; grad_ind < 3; grad_ind++)
       {
-        save_thread_pieces();
+        Vector3d gradient;
         _thread_pieces[r]->offset_and_update(grad_offsets[grad_ind]);
         _thread_pieces[c]->gradient_vertex(gradient);
-        hessian.block(3*r_ind+grad_ind ,3*c_ind,1,3) = gradient.transpose();
+        hessian.block(3*r+grad_ind ,3*c,1,3) = gradient.transpose();
         _thread_pieces[r]->offset_and_update(-2.0*grad_offsets[grad_ind]);
         _thread_pieces[c]->gradient_vertex(gradient);
-        hessian.block(3*r_ind+grad_ind, 3*c_ind,1,3) -= gradient.transpose();
-        hessian.block(3*r_ind+grad_ind, 3*c_ind,1,3) /= 2.0*eps;
+        hessian.block(3*r+grad_ind, 3*c,1,3) -= gradient.transpose();
+        hessian.block(3*r+grad_ind, 3*c,1,3) /= 2.0*eps;
 
         _thread_pieces[r]->offset_and_update(grad_offsets[grad_ind]);
-        restore_thread_pieces();
       }
     } 
   }
 
-
 //  std::cout << "hessian: " << hessian << std::endl;
 
-  Eigen::SVD<Eigen::MatrixXd> hessian_svd;
-  hessian_svd.compute(hessian);
-
-
-  MatrixXd sing_vals_mat(hessian_svd.singularValues().rows(), hessian_svd.singularValues().rows());
-  sing_vals_mat.setZero();
-  for (int i=0; i < hessian_svd.singularValues().rows(); i++)
-  {
-    if (abs(hessian_svd.singularValues()(i)) > 1e-10)
-      sing_vals_mat(i,i) = 1.0/(hessian_svd.singularValues()(i));
-  }
-
-  //skip first 2 pieces
-  inv_hessian.block(6,6,hessian.cols(), hessian.rows()) = hessian_svd.matrixV().transpose()*sing_vals_mat*hessian_svd.matrixU().transpose();
-  std::cout << hessian << "\n\n\n";
-  std::cout << inv_hessian << "\n\n\n";
-  std::cout << hessian*inv_hessian.block(6,6,hessian.cols(),hessian.rows()) << "\n\n\n";
-  std::cout << inv_hessian.block(6,6,hessian.cols(),hessian.rows())*hessian << "\n\n\n";
-  exit(0);
+  inv_hessian = hessian.inverse();
+//  std::cout << inv_hessian*hessian << std::endl;
 
 }
 

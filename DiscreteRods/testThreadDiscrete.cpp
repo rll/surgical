@@ -892,7 +892,7 @@ void initThread()
 	B(1,1) = 1.0;
 	thread->set_coeffs_normalized(B, 3.0, 1e-4);
 #else
-  thread->set_coeffs_normalized(1.0, 1.0, 1e-4);
+  thread->set_coeffs_normalized(1.0, 3.0, 1e-4);
 #endif
 }
 
