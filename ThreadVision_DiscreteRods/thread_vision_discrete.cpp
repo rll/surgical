@@ -375,7 +375,7 @@ bool Thread_Vision::optimizeThread(bool visualOnly)
         
         _thread_hypoths.resize(_thread_hypoths.size() + 1);
         //Check if this doesn't duplicate
-        vector<Thread_Hypoth*> current_thread_hypoths = _thread_hypoths.back();
+        vector<Thread_Hypoth*>& current_thread_hypoths = _thread_hypoths.back();
         int ij = start_tangents.size();
         current_thread_hypoths.resize(start_tangents.size());
 
@@ -384,7 +384,6 @@ bool Thread_Vision::optimizeThread(bool visualOnly)
           current_thread_hypoths[hypoth_ind] = new Thread_Hypoth(this);
           current_thread_hypoths[hypoth_ind]->add_first_threadpieces(start_pts[0], start_tangents[hypoth_ind]);
         }
-        std::cout << *(current_thread_hypoths[0][0]) << std::endl;
         //processHypothesesFromInit(start_pts[0], start_tangents, visualOnly);
       }
     }
