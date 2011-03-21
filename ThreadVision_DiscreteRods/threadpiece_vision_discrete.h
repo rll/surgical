@@ -15,8 +15,8 @@ class Thread_Vision;
 
 class ThreadPiece_Vision : public ThreadPiece 
 {
-	public:
-		ThreadPiece_Vision();
+public:
+    ThreadPiece_Vision();
     ~ThreadPiece_Vision();
 
     ThreadPiece_Vision(const Vector3d& vertex, const double angle_twist);
@@ -29,7 +29,7 @@ class ThreadPiece_Vision : public ThreadPiece
 
     void gradient_vertex_vis(Vector3d& grad);
     void gradient_vertex_vis_numeric(Vector3d& grad);
- 
+
 
 
 

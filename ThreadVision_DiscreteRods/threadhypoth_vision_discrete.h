@@ -22,7 +22,7 @@ class Thread_Vision;
 
 class Thread_Hypoth : public Thread
 {
-  public:
+public:
     Thread_Hypoth(Thread_Vision* thread_vision);
     Thread_Hypoth(const Thread_Hypoth& rhs);
     ~Thread_Hypoth();
@@ -43,7 +43,7 @@ class Thread_Hypoth : public Thread
     void calculate_score();
     void calculate_visual_gradient_vertices(vector<Vector3d>& vertex_gradients);
     void project_length_constraint();
- 
+
     const double score(void) const {return _score;};
 
     void initializeFrames(){_thread_pieces.front()->initializeFrames();};
