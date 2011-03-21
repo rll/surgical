@@ -261,79 +261,44 @@ void Thread_Hypoth::project_length_constraint()
 
 void Thread_Hypoth::add_possible_next_hypoths(vector<Thread_Hypoth*>& extra_next_hypoths)
 {
-  /*
-  vector<Scalar> debugColors(6);
-  debugColors[0] = Scalar(0,0,200);
-  debugColors[1] = Scalar(0,200,0);
-  debugColors[2] = Scalar(200,0,0);
-  debugColors[3] = Scalar(0,200,200);
-  debugColors[4] = Scalar(200,200,0);
-  debugColors[5] = Scalar(200,0,200);
-  */
+    Vector3d new_vertex_init;
+    new_vertex_init = _thread_pieces[_thread_pieces.size()-2]->edge() + _thread_pieces.back()->vertex();
+    double new_angle = (_thread_pieces.size() <= 2 ? 0 : _thread_pieces[_thread_pieces.size()-2]->angle_twist() + _thread_pieces[_thread_pieces.size()-2]->angle_twist()/((double)_thread_pieces.size()-2) );
+    _thread_pieces.push_back(new ThreadPiece_Vision(new_vertex_init, new_angle, (ThreadPiece_Vision*)_thread_pieces.back(), NULL, _thread_vision));
+    _thread_pieces[_thread_pieces.size()-2]->set_next((ThreadPiece_Vision*)_thread_pieces.back());
+    _thread_pieces[_thread_pieces.size()-2]->set_angle_twist(new_angle);
 
-  Vector3d new_vertex_init;
-  new_vertex_init = _thread_pieces[_thread_pieces.size()-2]->edge() + _thread_pieces.back()->vertex();
-      //This code adds next hypoth by following last curvature 
-      /*
-      int ind = _thread_pieces.size()-2;
-      Vector3d toRotAround = _thread_pieces[ind]->curvature_binormal().normalized();
-
-//this is last material frame rotated with curvature
-if (isnan(toRotAround(0)))
-{
-new_vertex_init = _thread_pieces[ind]->edge() + _thread_pieces.back()->vertex();
-} else {
-double for_ang = _thread_pieces[ind-1]->edge().dot(_thread_pieces[ind]->edge()) / (_thread_pieces[ind-1]->edge_norm()*_thread_pieces[ind]->edge_norm());
-for_ang = max( min ( for_ang, 1.0), -1.0);
-double ang_to_rot = acos(for_ang);
-
-Matrix3d rotation;
-rotation = Eigen::AngleAxisd(ang_to_rot, toRotAround);
-new_vertex_init= (rotation*_thread_pieces[ind]->edge()) + _thread_pieces.back()->vertex();
-
-} 
-*/
+    //this could be sped up - only need to update last piece
+    _thread_pieces.front()->initializeFrames();
 
 
+    //alter location of tangent based on visual information (and possibly dot product)
+    vector<tangent_and_score> tan_and_scores;
+    if (!find_next_tan_visual(tan_and_scores))
+        std::cout << "error! no tans" << std::endl;
 
-double new_angle = (_thread_pieces.size() <= 2 ? 0 : _thread_pieces[_thread_pieces.size()-2]->angle_twist() + _thread_pieces[_thread_pieces.size()-2]->angle_twist()/((double)_thread_pieces.size()-2) );
-_thread_pieces.push_back(new ThreadPiece_Vision(new_vertex_init, new_angle, (ThreadPiece_Vision*)_thread_pieces.back(), NULL, _thread_vision));
-_thread_pieces[_thread_pieces.size()-2]->set_next((ThreadPiece_Vision*)_thread_pieces.back());
-_thread_pieces[_thread_pieces.size()-2]->set_angle_twist(new_angle);
-
-  //this could be sped up - only need to update last piece
-_thread_pieces.front()->initializeFrames();
-
-
-  //alter location of tangent based on visual information (and possibly dot product)
-vector<tangent_and_score> tan_and_scores;
-if (!find_next_tan_visual(tan_and_scores))
-    std::cout << "error! no tans" << std::endl;
-
-_thread_pieces.back()->set_vertex(tan_and_scores.front().tan*_rest_length + _thread_pieces[_thread_pieces.size()-2]->vertex());
-_thread_pieces.front()->initializeFrames();
-calculate_score();
+    _thread_pieces.back()->set_vertex(tan_and_scores.front().tan*_rest_length + _thread_pieces[_thread_pieces.size()-2]->vertex());
+    _thread_pieces.front()->initializeFrames();
+    calculate_score();
 
 
-_thread_pieces_backup.push_back(new ThreadPiece_Vision(*(ThreadPiece_Vision*)_thread_pieces.back()) );
-_thread_pieces_backup[_thread_pieces_backup.size()-2]->set_next((ThreadPiece_Vision*)_thread_pieces_backup.back());
-_thread_pieces_backup.back()->set_prev((ThreadPiece_Vision*)_thread_pieces_backup[_thread_pieces_backup.size()-2]);
+    _thread_pieces_backup.push_back(new ThreadPiece_Vision(*(ThreadPiece_Vision*)_thread_pieces.back()) );
+    _thread_pieces_backup[_thread_pieces_backup.size()-2]->set_next((ThreadPiece_Vision*)_thread_pieces_backup.back());
+    _thread_pieces_backup.back()->set_prev((ThreadPiece_Vision*)_thread_pieces_backup[_thread_pieces_backup.size()-2]);
 
 
-  //add the new hypoths
-extra_next_hypoths.resize(tan_and_scores.size()-1);
-for (int tan_ind =1; tan_ind < tan_and_scores.size(); tan_ind++)
-{
-    Thread_Hypoth* to_add_extra = new Thread_Hypoth(*this);
-    to_add_extra->_thread_pieces.back()->set_vertex(tan_and_scores[tan_ind].tan*_rest_length + _thread_pieces[_thread_pieces.size()-2]->vertex());
-    to_add_extra->_thread_pieces.front()->initializeFrames(); 
-    to_add_extra->calculate_score();
+    //add the new hypoths
+    extra_next_hypoths.resize(tan_and_scores.size()-1);
+    for (int tan_ind =1; tan_ind < tan_and_scores.size(); tan_ind++)
+    {
+        Thread_Hypoth* to_add_extra = new Thread_Hypoth(*this);
+        to_add_extra->_thread_pieces.back()->set_vertex(tan_and_scores[tan_ind].tan*_rest_length + _thread_pieces[_thread_pieces.size()-2]->vertex());
+        to_add_extra->_thread_pieces.front()->initializeFrames(); 
+        to_add_extra->calculate_score();
 
 
-    extra_next_hypoths[tan_ind-1] = to_add_extra;
-}
-
-
+        extra_next_hypoths[tan_ind-1] = to_add_extra;
+    }
 }
 
 

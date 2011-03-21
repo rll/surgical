@@ -437,8 +437,16 @@ bool Thread_Vision::processHypothesesFromInit()
                 }
             }
         }
+
+        //Detect close Segments
+        vector<thread_hypoth_pair> *allPairs = nearbyPairsOfThreadHypoths();
+        if (allPairs->size() > 0){
+            std::cout << "Threads close\n";
+        }
+
+
     }
-    best_thread_hypoths = _thread_hypoths[0];
+    best_thread_hypoths = _thread_hypoths[1];
     //Algorithm should grow all threads independently and not join,
     //so I just take the first one
     if (best_thread_hypoths.size() == 0)
@@ -453,6 +461,50 @@ bool Thread_Vision::processHypothesesFromInit()
     return true;
 }
 
+vector<thread_hypoth_pair>* Thread_Vision::nearbyPairsOfThreadHypoths()
+{
+    vector<thread_hypoth_pair>* allPairs = new vector<thread_hypoth_pair>();
+    for (int i = 0; i < _thread_hypoths.size(); i++) {
+        vector<Thread_Hypoth*> current_thread_hypoths = _thread_hypoths[i];
+        for (int j = 0; j < current_thread_hypoths.size(); j++) {
+            Thread_Hypoth *current_thread = current_thread_hypoths[j];
+            //Now compare to every other thread
+
+            for (int k = 0; k < _thread_hypoths.size(); k++) {
+                for (int l = 0; l < _thread_hypoths[k].size(); l++) {
+                    Thread_Hypoth *other_thread = _thread_hypoths[k][l];
+                    if (current_thread != other_thread) {
+                        //Check end points
+                        bool isCollision = false;
+                        double distance_threshhold = _rest_length * CLOSE_DISTANCE_MULT;
+                        if (distance_between_points(current_thread->start_pos(), other_thread->start_pos()) < distance_threshhold)
+                        {
+                            isCollision = true;
+                        }
+                        else if (distance_between_points(current_thread->start_pos(), other_thread->end_pos()) < distance_threshhold) 
+                        {
+                            isCollision = true;
+                        }
+                        else if (distance_between_points(current_thread->end_pos(), other_thread->start_pos()) < distance_threshhold) 
+                        {
+                            isCollision = true;
+                        }
+                        else if (distance_between_points(current_thread->end_pos(), other_thread->end_pos()) < distance_threshhold) 
+                        {
+                            isCollision = true;
+                        }
+                        if (isCollision) {
+                            thread_hypoth_pair pair = {current_thread, other_thread};
+                            allPairs->push_back(pair);
+                        }
+                        //std::cout << distance_between_points(current_thread->start_pos(), current_thread->end_pos()) << "\n";
+                    }
+                }
+            }
+        }
+    }
+    return allPairs;
+}
 
 //adds new hypoths based on tangents
 void Thread_Vision::add_possible_next_hypoths(vector<Thread_Hypoth*> current_thread_hypoths)
