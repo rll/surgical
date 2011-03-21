@@ -392,25 +392,23 @@ bool Thread_Vision::optimizeThread(bool visualOnly)
     //Run Algorithm
     processHypothesesFromInit();
 
-    std::cout << "DONNNNNNNNNE" << std::endl;
-
     return (_thread_hypoths.size() > 0);
 }
 
 
 void Thread_Vision::get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles)
 {
-    //_thread_hypoths[curr_hypoth_ind]->get_thread_data(points, twist_angles);
+    best_thread_hypoths[curr_hypoth_ind]->get_thread_data(points, twist_angles);
 }
 
 void Thread_Vision::get_thread_data(vector<Vector3d>& points, vector<Matrix3d>& material_frames)
 {
-    //_thread_hypoths[curr_hypoth_ind]->get_thread_data(points, material_frames);
+    best_thread_hypoths[curr_hypoth_ind]->get_thread_data(points, material_frames);
 }
 
 void Thread_Vision::get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<Matrix3d>& material_frames)
 {
-    //_thread_hypoths[curr_hypoth_ind]->get_thread_data(points, twist_angles, material_frames);
+    best_thread_hypoths[curr_hypoth_ind]->get_thread_data(points, twist_angles, material_frames);
 }
 
 
