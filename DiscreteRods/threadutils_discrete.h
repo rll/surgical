@@ -29,6 +29,7 @@ void skew_symmetric_for_cross_fast(const Vector3d& vec, Matrix3d& skew_mat);
 double calculate_magnitude_squared(vector<Vector3d>& to_mag); 
 double calculate_vector_diff_norm(vector<Vector3d>& pts1, vector<Vector3d>& pts2);
 double calculate_vector_norm_avg(vector<Vector3d>& pts1, vector<Vector3d>& pts2);
+double distance_between_points(Vector3d point1, Vector3d point2);
 double angle_between(const Vector3d& tan1, const Vector3d& tan2);
 void rotation_from_euler_angles(Matrix3d& rotation, double angZ, double angY, double angX);
 

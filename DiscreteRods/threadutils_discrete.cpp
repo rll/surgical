@@ -87,6 +87,10 @@ void skew_symmetric_for_cross_fast(const Vector3d& vec, Matrix3d& skew_mat)
 }
 
 
+double distance_between_points(Vector3d point1, Vector3d point2){
+	return (point1 - point2).squaredNorm();
+}
+
 double calculate_magnitude_squared(vector<Vector3d>& to_mag)
 {
 	double mag = 0.0;
