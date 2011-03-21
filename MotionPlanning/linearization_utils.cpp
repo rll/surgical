@@ -41,6 +41,13 @@ void applyControl(Thread* start, const VectorXd& u) {
   start->minimize_energy();
 }
 
+void applyControl(Thread* start, const VectorXd& u, VectorXd* res) { 
+  int N = start->num_pieces();
+  res->setZero(3*N);
+  applyControl(start, u); 
+  start->toVector(res); 
+}
+
   
 void computeDifference(Thread* start, Thread* goal, VectorXd& res) {
   for (int piece_ind=0; piece_ind < goal->num_pieces(); piece_ind++)

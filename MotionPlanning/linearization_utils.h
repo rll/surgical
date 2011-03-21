@@ -9,6 +9,7 @@
 #include "../DiscreteRods/trajectory_reader.h"
 
 void applyControl(Thread* start, const VectorXd& u);
+void applyControl(Thread* start, const VectorXd& u, VectorXd* res);
 void computeDifference(Thread* start, Thread* goal, VectorXd& res);
 void computeDifference_maxMag(Thread* start, Thread* goal, VectorXd& res, double maxMag);
 void solveLinearizedControl(Thread* start, Thread* goal);
