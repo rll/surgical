@@ -48,4 +48,8 @@ bool operator <(const tangent_and_score& a, const tangent_and_score& b)
     return a.score < b.score;
 }
 
+bool isEqualUnordered(thread_hypoth_pair pair1, thread_hypoth_pair pair2)
+{
+    return (pair1.thread1 == pair2.thread1 && pair1.thread2 == pair2.thread2) || (pair1.thread1 == pair2.thread2 && pair1.thread2 == pair2.thread1);
+};
 

@@ -438,13 +438,11 @@ bool Thread_Vision::processHypothesesFromInit()
             }
         }
 
-        //Detect close Segments
+        //Detect close segments
         vector<thread_hypoth_pair> *allPairs = nearbyPairsOfThreadHypoths();
         if (allPairs->size() > 0){
-            std::cout << "Threads close\n";
+            std::cout << "Threads close: " << allPairs->size() << std::endl;
         }
-
-
     }
     best_thread_hypoths = _thread_hypoths[1];
     //Algorithm should grow all threads independently and not join,
@@ -495,7 +493,15 @@ vector<thread_hypoth_pair>* Thread_Vision::nearbyPairsOfThreadHypoths()
                         }
                         if (isCollision) {
                             thread_hypoth_pair pair = {current_thread, other_thread};
-                            allPairs->push_back(pair);
+                            bool exists = false;
+                            for (int a = 0; a < allPairs->size(); a++) {
+                                if (isEqualUnordered(pair, pair)) {
+                                    exists = true;
+                                }
+                            }
+                            if (!exists) {
+                                allPairs->push_back(pair);
+                            }
                         }
                         //std::cout << distance_between_points(current_thread->start_pos(), current_thread->end_pos()) << "\n";
                     }

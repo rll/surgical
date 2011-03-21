@@ -37,6 +37,7 @@
 USING_PART_OF_NAMESPACE_EIGEN
 
 
+class Thread_Hypoth;
 
 struct polyline_draw_params {
     Point* pts;
@@ -102,13 +103,6 @@ struct start_data {
     Vector3d tangent;
 };
 
-
-class Thread_Hypoth;
-
-struct thread_hypoth_pair {
-    Thread_Hypoth *thread1;
-    Thread_Hypoth *thread2;
-};
 
 class Thread_Vision
 {
