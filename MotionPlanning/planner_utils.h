@@ -3,6 +3,7 @@
 
 #include "../DiscreteRods/thread_discrete.h"
 #include "../DiscreteRods/threadutils_discrete.h"
+#include "linearization_utils.h"
 #include <Eigen/Geometry>
 #include <vector>
 
@@ -64,6 +65,7 @@ class Thread_RRT
   double TOLERANCE;
   VectorXd next;
   Matrix3d next_rot;
+  Thread* next_thread;
 };
 
 #endif

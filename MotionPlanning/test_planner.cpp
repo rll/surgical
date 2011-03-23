@@ -97,6 +97,7 @@ void generateRandomThread() {
   
   // minimize the energy on it
   glThreads[endThread]->minimize_energy();
+  
   glThreads[endThread]->updateThreadPoints();
   glutPostRedisplay();
 }

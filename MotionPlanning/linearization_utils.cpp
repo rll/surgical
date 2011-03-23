@@ -1,7 +1,14 @@
 #include "linearization_utils.h"
 
 
-void applyControl(Thread* start, const VectorXd& u) {
+
+void applyControl(Thread* start, const VectorXd& u) { 
+  vector<Frame_Motion*> tmp;
+  applyControl(start, u, tmp);
+
+}
+
+void applyControl(Thread* start, const VectorXd& u, vector<Frame_Motion*>& motions) {
  // if (u.squaredNorm() < 1e-5)
   //  return;
   double max_ang = max( max(abs(u(3)), abs(u(4))), abs(u(5)));
@@ -27,25 +34,19 @@ void applyControl(Thread* start, const VectorXd& u) {
 
 
   // apply the control u to thread start, and return the new config in res
-  Frame_Motion toMove(translation, rotation);
+  Frame_Motion* toMove = new Frame_Motion(translation, rotation);
 
 
   for (int i=0; i < number_steps; i++)
   {
     Vector3d end_pos = start->end_pos();
     Matrix3d end_rot = start->end_rot();
-    toMove.applyMotion(end_pos, end_rot);
+    motions.push_back(toMove);
+    toMove->applyMotion(end_pos, end_rot);
     start->set_end_constraint(end_pos, end_rot);
   }
 
   start->minimize_energy();
-}
-
-void applyControl(Thread* start, const VectorXd& u, VectorXd* res) { 
-  int N = start->num_pieces();
-  res->setZero(3*N);
-  applyControl(start, u); 
-  start->toVector(res); 
 }
 
   
@@ -68,7 +69,7 @@ void computeDifference_maxMag(Thread* start, Thread* goal, VectorXd& res, double
 
 }
 
-void solveLinearizedControl(Thread* start, Thread* goal) {
+void solveLinearizedControl(Thread* start, Thread* goal, vector<Frame_Motion*>& motions) {
   //const double MAX_STEP = 2.0;
   const double DAMPING_CONST = 0.2;
   const double MAX_MAG = 7.0;
@@ -97,8 +98,14 @@ void solveLinearizedControl(Thread* start, Thread* goal) {
   //std::cout << u.transpose() << std::endl;
 
   // apply the given control
-  applyControl(start, u);
+  applyControl(start, u, motions);
 }
+
+void solveLinearizedControl(Thread* start, Thread* goal) {
+  vector<Frame_Motion*> tmp;
+  solveLinearizedControl(start, goal, tmp);
+}
+
 
 
 void estimate_transition_matrix(Thread* thread, MatrixXd& A)

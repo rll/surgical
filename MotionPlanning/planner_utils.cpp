@@ -58,7 +58,7 @@ void Thread_RRT::planStep(VectorXd* vertices, VectorXd* prev, VectorXd* next_thr
   getNextGoal(&next, &next_rot);
   *vertices = next;
   cout << "extending to target" << endl;
-  if (drand48() < 0.7) {
+  if (drand48() < 1.0) {
     distToGoal = extendToward(next, next_rot);
   } else {
     distToGoal = largeRotation(next);
@@ -99,11 +99,10 @@ void Thread_RRT::planPath(const Thread* start, const Thread* goal, vector<Frame_
 }
 
 
-
-
 Thread* Thread_RRT::generateSample(const Thread* start) { 
 
-  // randomly stick out in a direction
+  // links are sampled within a 45 degree sample with each other
+
   vector<Vector3d> vertices;
   vector<double> angles;
   int N = start->num_pieces();
@@ -116,24 +115,62 @@ Thread* Thread_RRT::generateSample(const Thread* start) {
 
   double angle;
   Vector3d inc;
-  Vector3d goal = start->end_pos() - start->start_pos();
-  Vector3d noise;
-  goal += (noise << Normal(0,1),Normal(0,1),Normal(0,1)).finished()*5.0;
+  
+  // sample the goal by taking the current goal and adding noise
+  //Vector3d goal = start->end_pos() - start->start_pos();
+  //Vector3d noise;
+  //goal += (noise << Normal(0,1),Normal(0,1),Normal(0,1)).finished()*9.0;
+
+  // sample the goal by sampling the in the sphere of the norm
+  Vector3d goal; 
+  Vector3d noise; 
+  double max_thread_length = (N-2)*_rest_length; 
+
+  do {
+    goal = (noise <<  Normal(0,1)*max_thread_length,
+                      Normal(0,1)*max_thread_length,
+                      Normal(0,1)*max_thread_length).finished();
+
+  } while (goal.norm() > max_thread_length); 
+
+
   do {
     inc << Normal(0,1), Normal(0,1), Normal(0,1);
     //inc = goal;
+    inc.normalize();
+    inc *= _rest_length;
     angle = acos(inc.dot(goal)/(goal.norm()*inc.norm()));
-  } while(abs(angle) > M_PI/4.0);
+  } while(abs(angle) > M_PI/2.0);
 
-  inc.normalize();
-  inc *= _rest_length;
 
   for(int i = 0; i < N-2; i++) {
+    Vector3d prevInc = inc; 
     vertices.push_back(vertices[vertices.size()-1] + inc);
     angles.push_back(0.0);
     // time to move toward the goal
     if ((vertices[vertices.size()-1] - goal).squaredNorm() > (N-2-i-1)*(N-2-i-1)*_rest_length*_rest_length) {
       inc = (goal - vertices[vertices.size()-1]).normalized()*_rest_length;
+    } else {
+      if (drand48() < 0.25) {
+        if (drand48() < 0.3) {
+         do {
+            inc << Normal(0,1), Normal(0,1), Normal(0,1);
+            //inc = goal;
+            inc.normalize();
+            inc *= _rest_length;
+            angle = acos(inc.dot(goal) / (goal.norm()*inc.norm()));     
+          } while(abs(angle) > M_PI/8.0);
+        } else {
+         do {
+            inc << Normal(0,1), Normal(0,1), Normal(0,1);
+            //inc = goal;
+            inc.normalize();
+            inc *= _rest_length;
+            angle = acos(inc.dot(prevInc) / (prevInc.norm()*inc.norm()));     
+          } while(abs(angle) > M_PI/8.0);
+        }
+          cout << angle << endl;
+      }
     }
   }
 
@@ -146,17 +183,21 @@ Thread* Thread_RRT::generateSample(const Thread* start) {
 
 
 void Thread_RRT::getNextGoal(VectorXd* next, Matrix3d* next_rot) {
-  if (drand48() < 0.3) {
+  if (drand48() < 0.30) {
     cout << "actual goal" << endl;
     next->resize(_goal.size());
     *next = _goal;
     *next_rot = _goal_rot;
+    next_thread = (Thread*)_goal_thread;
   } else {
     cout << "random gen" << endl;
-    Thread* randSample = generateSample(_goal_thread);    
-    randSample->toVector(next);
-    *next_rot = randSample->end_rot();
-    delete randSample;
+    if (next_thread != _goal_thread) {
+      delete next_thread;
+    }
+    next_thread = generateSample(_goal_thread);
+    next_thread->minimize_energy();
+    next_thread->toVector(next);
+    *next_rot = next_thread->end_rot();
   }
 }
 
@@ -265,12 +306,17 @@ double Thread_RRT::extendToward(const VectorXd& next, const Matrix3d& next_rot) 
   Vector3d translation;
   Matrix3d rotation;
   vector<Frame_Motion*> tmpMotions;
+  
   simpleInterpolation(end_pos, end_rot, next_pos, next_rot, &translation, &rotation);
   //cout << " before motion: " << endl << end_pos << endl << end_rot << endl;
   // apply the motion
   Frame_Motion* toMove = new Frame_Motion(translation, rotation);
   tmpMotions.push_back(toMove);
-  toMove->applyMotion(end_pos, end_rot);
+  toMove->applyMotion(end_pos, end_rot); 
+  
+  
+  //solveLinearizedControl(start, next_thread, tmpMotions); 
+ 
   //cout << " after motion: " << endl << end_pos << endl << end_rot << endl;
   start->set_end_constraint(end_pos, end_rot);
   start->minimize_energy();
