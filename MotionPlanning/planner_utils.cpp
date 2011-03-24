@@ -99,13 +99,12 @@ void Thread_RRT::planPath(const Thread* start, const Thread* goal, vector<Frame_
 }
 
 
-Thread* Thread_RRT::generateSample(const Thread* start) { 
-
+Thread* Thread_RRT::generateSample(const Thread* goal_thread) { 
   // links are sampled within a 45 degree sample with each other
 
   vector<Vector3d> vertices;
   vector<double> angles;
-  int N = start->num_pieces();
+  int N = goal_thread->num_pieces();
   
   vertices.push_back(Vector3d::Zero());
   angles.push_back(0.0);
@@ -116,23 +115,29 @@ Thread* Thread_RRT::generateSample(const Thread* start) {
   double angle;
   Vector3d inc;
   
-  // sample the goal by taking the current goal and adding noise
-  //Vector3d goal = start->end_pos() - start->start_pos();
-  //Vector3d noise;
-  //goal += (noise << Normal(0,1),Normal(0,1),Normal(0,1)).finished()*9.0;
-
-  // sample the goal by sampling the in the sphere of the norm
   Vector3d goal; 
   Vector3d noise; 
-  double max_thread_length = (N-2)*_rest_length; 
+  if (drand48() < 0.3) { 
+  
+  // sample the goal by taking the current goal and adding noise
+  // these samples are very similar to the goal 
+  goal = goal_thread->end_pos() - goal_thread->start_pos();
+  goal += (noise << Normal(0,1)*_rest_length,
+      Normal(0,1)*_rest_length,
+      Normal(0,1)*_rest_length).finished();
 
-  do {
-    goal = (noise <<  Normal(0,1)*max_thread_length,
-                      Normal(0,1)*max_thread_length,
-                      Normal(0,1)*max_thread_length).finished();
+  } else { 
+    // sample the goal by sampling the in the sphere of the norm
+    // these samples tend to increase the branching of the tree
+    double max_thread_length = (N-2)*_rest_length; 
 
-  } while (goal.norm() > max_thread_length); 
+    do {
+      goal = (noise <<  Normal(0,1)*max_thread_length,
+          Normal(0,1)*max_thread_length,
+          Normal(0,1)*max_thread_length).finished();
 
+    } while (goal.norm() > max_thread_length); 
+  }
 
   do {
     inc << Normal(0,1), Normal(0,1), Normal(0,1);
@@ -154,7 +159,8 @@ Thread* Thread_RRT::generateSample(const Thread* start) {
       if (drand48() < 0.25) {
         if (drand48() < 0.3) {
          do {
-            inc << Normal(0,1), Normal(0,1), Normal(0,1);
+            inc 
+<< Normal(0,1), Normal(0,1), Normal(0,1);
             //inc = goal;
             inc.normalize();
             inc *= _rest_length;
@@ -307,18 +313,21 @@ double Thread_RRT::extendToward(const VectorXd& next, const Matrix3d& next_rot) 
   Matrix3d rotation;
   vector<Frame_Motion*> tmpMotions;
   
-  simpleInterpolation(end_pos, end_rot, next_pos, next_rot, &translation, &rotation);
+  /*simpleInterpolation(end_pos, end_rot, next_pos, next_rot, &translation, &rotation);
   //cout << " before motion: " << endl << end_pos << endl << end_rot << endl;
   // apply the motion
   Frame_Motion* toMove = new Frame_Motion(translation, rotation);
   tmpMotions.push_back(toMove);
   toMove->applyMotion(end_pos, end_rot); 
-  
-  
-  //solveLinearizedControl(start, next_thread, tmpMotions); 
+
  
   //cout << " after motion: " << endl << end_pos << endl << end_rot << endl;
   start->set_end_constraint(end_pos, end_rot);
+  */
+
+
+  solveLinearizedControl(start, next_thread, tmpMotions); 
+
   start->minimize_energy();
 
 
@@ -334,60 +343,6 @@ double Thread_RRT::extendToward(const VectorXd& next, const Matrix3d& next_rot) 
   delete start;
   return (toadd->x - _goal).squaredNorm();
 
-  // add to tree
-  // return distance to goal
-
-  // extend that closest node toward next
-  // Thread* start = new Thread(closest->x, closest->twists, Matrix3d::Identity());
-
-  // if (!closest->linearized) {
-  //   cout << "linearizing" << endl;
-  //   // compute linearization
-  //   closest->B.setZero();
-  //   VectorXd du(6);
-  //   double eps = 0.01;
-
-  //   start->save_thread_pieces();
-  //   VectorXd plus(next.size());
-  //   VectorXd minus(next.size());
-  //   Frame_Motion dummy;
-  //   for(int i = 0; i < 6; i++) {
-  //     du.setZero();
-  //     du(i) = eps;
-  //     start->restore_thread_pieces();
-  //     applyControl(start, du, &plus, &dummy);
-
-  //     du(i) = -eps;
-  //     start->restore_thread_pieces();
-  //     applyControl(start, du, &minus, &dummy);
-
-  //     closest->B.col(i) = (plus - minus) / (2*eps);
-  //   }
-  //   start->restore_thread_pieces();
-  //   closest->linearized = true;
-  //   cout << "lin
-  // }
-
-  // // calculate frame motions, set prev ptr
-  // VectorXd dx;
-  // dx = next - closest->x;
-  // double C = 2.0;
-  // VectorXd u = closest->B.transpose()*dx;
-  // (closest->B.transpose()*closest->B).llt().solveInPlace(u);
-  // u *= C/(closest->B*u).squaredNorm();
-
-
-  // VectorXd x;
-  // Frame_Motion* motion = new Frame_Motion;
-  // applyControl(start, u, &x, motion);
-
-  // RRTNode* toadd = new RRTNode(start);
-  // toadd->prev = closest;
-  // toadd->motion = motion;
-  // _tree.push_back(toadd);
-  // // return the distance of the new point to goal
-  // delete start;
-  // return (toadd->x - _goal).squaredNorm();
 }
 
 RRTNode* Thread_RRT::findClosestNode(const VectorXd& next) {
@@ -405,216 +360,6 @@ RRTNode* Thread_RRT::findClosestNode(const VectorXd& next) {
   cout << "best dist: " << bestDist << endl;
   return ptr;
 }
-
-// void Thread_RRT::planPath(const Thread* start, const Thread* goal, vector<Thread_Motion>& movements, vector<Thread*>& intermediateThread)
-// {
-//   while (!goalReached && currNodes.size() < MAX_NUM_NODES)
-//   {
-//     //find the nearest neighbor
-//     int indClosest;
-//     findClosestNode(currGoal, indClosest);
-
-//     //find motion
-//     Thread_Motion* nextMotion = new Thread_Motion();
-//     findThreadMotion(currNodes[indClosest]->this_node, currGoal, *nextMotion);
-
-//     //add new node
-//     currNodes.push_back(new RRT_Node_And_Edge(currNodes[indClosest], nextMotion));
-//     currNodes[indClosest]->this_node.applyMotion(currNodes.back()->this_node, *nextMotion);
-
-//     double thisDistToGoal = goalNode.distanceToNode(currNodes.back()->this_node);
-//     if (thisDistToGoal < bestDistToGoal)
-//     {
-//       bestDistToGoal = thisDistToGoal;
-//       std::cout << "new best dist: " << bestDistToGoal << std::endl;
-//     }
-
-//     if (goalNode.distanceToNode(currNodes.back()->this_node) < GOAL_DISTANCE_THRESH)
-//     {
-//       goalReached = true;
-//     }
-
-//   }
-
-
-
-
-
-
-// void Thread_RRT::getNextGoal(RRT_Node& goal, RRT_Node& goalThisIter)
-// {
-//   //first, see if we are sampling randomly, or around goal
-//   double randNum = ((double)rand()) / ((double)RAND_MAX);
-//   if (randNum < RANDOM_SAMPLE_THRESH)
-//   {
-//     setThisGoalNearGoal(goal, goalThisIter);
-//     return;
-//   }
-
-//   //sample random goal
-//   Matrix4d startTrans;
-//   goal.thread->getStartTransform(startTrans);
-
-//   Vector3d startPos = startTrans.corner(Eigen::TopRight,3,1);
-//   Vector3d startTan = startTrans.corner(Eigen::TopLeft,3,1);
-//   goalThisIter.thread = new Thread(goal.thread->length(), startPos, startTan);
-
-//   goalThisIter.thread->minimize_energy();
-//   goalThisIter.setPoints();
-// }
-
-// void Thread_RRT::setThisGoalNearGoal(RRT_Node& goal, RRT_Node& goalThisIter)
-// {
-//   //sample something in sphere between current point and goal
-//   //first, set the things we know
-//   Matrix4d startTrans;
-//   goal.thread->getStartTransform(startTrans);
-//   Vector3d posNewThread[2];
-//   Vector3d tanNewThread[2];
-//   double lengthNewThread[2];
-//   double length_thread = goal.thread->length();
-//   lengthNewThread[0] = lengthNewThread[1] = length_thread/2.0;
-//   posNewThread[0] = startTrans.corner(Eigen::TopRight,3,1);
-//   tanNewThread[0] = startTrans.corner(Eigen::TopLeft,3,1);
-//   Vector3d endPos;
-//   goal.thread->getWantedEndPosition(endPos);
-//   Vector3d endTan;
-//   goal.thread->getWantedEndTangent(endTan);
-
-
-//   //random params for initializing
-//   double curvatureNewThread[2] = {randomNumUnit()*RANDOM_THREAD_MAX_CURVATURE_INIT, randomNumUnit()*RANDOM_THREAD_MAX_CURVATURE_INIT};
-//   double torsionNewThread[2] = {randomNumUnit()*RANDOM_THREAD_MAX_TORSION_INIT, randomNumUnit()*RANDOM_THREAD_MAX_TORSION_INIT};
-
-//   //find closest thread to goal
-//   int indClosest;
-//   findClosestNode(goal, indClosest);
-
-//   Vector3d endPosClosestToGoal;
-//   currNodes[indClosest]->this_node.thread->getWantedEndPosition(endPosClosestToGoal);
-//   Vector3d endTanClosestToGoal;
-//   currNodes[indClosest]->this_node.thread->getWantedEndTangent(endTanClosestToGoal);
-
-//   //calculate the distance to this end
-//   //sample from this radius, add to end point
-//   double randX, randY, randZ, sampledRadius;
-//   double radius_pos = (endPos - endPosClosestToGoal).norm() + ADD_TO_GOAL_DIST_RADIUS;
-//   double dist_new_thread;
-//   do
-//   {
-//     //find point in sphere with this radius, add to goal endpoint
-//     double sampledRadius;
-//     do
-//     {
-//       randX = randomMaxAbsValue(radius_pos);
-//       randY = randomMaxAbsValue(radius_pos);
-//       randZ = randomMaxAbsValue(radius_pos);
-//       sampledRadius = randX*randX + randY*randY + randZ*randZ;
-//     } while (sampledRadius >= (radius_pos*radius_pos));
-//     posNewThread[1](0) = randX+endPos(0);
-//     posNewThread[1](1) = randY+endPos(1);
-//     posNewThread[1](2) = randZ+endPos(2);
-
-//     dist_new_thread = (posNewThread[1]-posNewThread[0]).norm();
-//   } while (dist_new_thread >= length_thread);
-
-//   //sample from a tan around the goal tan
-//   //sample from outside of sphere with radius equal to length between goal tan and closest tan
-//   //normalize the length of that new tan
-//   double radius_tan = (endTan - endTanClosestToGoal).norm() + ADD_TO_GOAL_TAN_RADIUS;
-//   double randTheta = M_PI*randomNumUnit();
-//   double randPhi = 2.0*M_PI*randomNumUnit();
-//   tanNewThread[1](0) = endTan(0)+radius_tan*cos(randTheta)*sin(randPhi);
-//   tanNewThread[1](1) = endTan(1)+radius_tan*sin(randTheta)*sin(randPhi);
-//   tanNewThread[1](2) = endTan(2)+radius_tan*cos(randPhi);
-
-//   tanNewThread[1].normalize();
-
-// //  std::cout << "goal end pos: " << endPos << std::endl;
-// //  std::cout << "goal end tan: " << endTan << std::endl;
-
-// //  std::cout << "new end pos: " << posNewThread[1] << std::endl;
-// //  std::cout << "new end tan: " << tanNewThread[1] << std::endl;
-
-
-//   goalThisIter.thread = new Thread(goal.thread);
-//   goalThisIter.thread->setEndConstraint(posNewThread[1], tanNewThread[1]);
-//   goalThisIter.thread->upsampleAndOptimize_minLength(0.065);
-//   goalThisIter.thread->minimize_energy();
-
-
-//   //goalThisIter.thread = new Thread(curvatureNewThread, torsionNewThread, lengthNewThread, 2, posNewThread, tanNewThread);
-//   //goalThisIter.thread = new Thread(length_thread, posNewThread[0], tanNewThread[0]);
-//   //goalThisIter.thread->minimize_energy();
-//   goalThisIter.setPoints();
-
-//   double distToGoal = goal.distanceToNode(goalThisIter);
-//   //std::cout << "distance to actual goal: " << distToGoal << std::endl;
-
-// }
-
-
-
-// double Thread_RRT::findClosestNode(RRT_Node& goalNode, int& ind_to_closest)
-// {
-//   ind_to_closest = 0;
-//   double dist = goalNode.distanceToNode(currNodes[0]->this_node);
-//   for (int i=1; i < currNodes.size(); i++)
-//   {
-//     double thisDist = goalNode.distanceToNode(currNodes[i]->this_node);
-//     if (thisDist < dist)
-//     {
-//       dist = thisDist;
-//       ind_to_closest = i;
-//     }
-//   }
-
-//   return dist;
-// }
-
-// void Thread_RRT::findThreadMotion(RRT_Node& start, RRT_Node& goal, Thread_Motion& bestMotion)
-// {
-//   //find vector to get position closer
-//   Vector3d startEnd;
-//   start.thread->getWantedEndPosition(startEnd);
-//   Vector3d goalEnd;
-//   goal.thread->getWantedEndPosition(goalEnd);
-
-//   bestMotion.pos_movement = goalEnd - startEnd;
-
-//   //add some noise to movement
-//   bestMotion.pos_movement(0) += randomMaxAbsValue(MAX_NOISE_DISTANCE_MOVEMENT);
-//   bestMotion.pos_movement(1) += randomMaxAbsValue(MAX_NOISE_DISTANCE_MOVEMENT);
-//   bestMotion.pos_movement(2) += randomMaxAbsValue(MAX_NOISE_DISTANCE_MOVEMENT);
-
-//   //make sure vector isn't too long (that's what she said)
-//   double normOfVec = bestMotion.pos_movement.norm();
-//   if (normOfVec > MAX_DISTANCE_MOVEMENT)
-//   {
-//     bestMotion.pos_movement *= (MAX_DISTANCE_MOVEMENT/normOfVec);
-//   }
-
-//   //rotate towards other tan
-//   Vector3d startTan;
-//   start.thread->getWantedEndTangent(startTan);
-//   Vector3d goalTan;
-//   goal.thread->getWantedEndTangent(goalTan);
-
-//   Vector3d vecToRotateAbout = startTan.cross(goalTan);
-//   vecToRotateAbout.normalize();
-//   //add noise to tan
-//   vecToRotateAbout(0) += randomMaxAbsValue(MAX_NOISE_ROTATION_VECTOR);
-//   vecToRotateAbout(1) += randomMaxAbsValue(MAX_NOISE_ROTATION_VECTOR);
-//   vecToRotateAbout(2) += randomMaxAbsValue(MAX_NOISE_ROTATION_VECTOR);
-//   vecToRotateAbout.normalize();
-
-//   double angToRotate = min(MAX_ANG_TO_ROTATE, acos(startTan.dot(goalTan)));
-//   angToRotate += randomMaxAbsValue(MAX_NOISE_ROTATION_ANGLE);
-
-//   bestMotion.tan_rotation = Eigen::AngleAxisd( angToRotate, vecToRotateAbout);
-
-// }
-
 
 
 

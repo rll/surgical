@@ -15,6 +15,7 @@ void applyControl(Thread* start, const VectorXd& u, vector<Frame_Motion*>& motio
   int number_steps = max ((int)ceil(max_ang / (M_PI/4.0)), 1);
   VectorXd u_to_use = u/((double)number_steps);
 
+
   Vector3d translation;
   translation << u_to_use(0), u_to_use(1), u_to_use(2);
 
@@ -35,7 +36,7 @@ void applyControl(Thread* start, const VectorXd& u, vector<Frame_Motion*>& motio
 
   // apply the control u to thread start, and return the new config in res
   Frame_Motion* toMove = new Frame_Motion(translation, rotation);
-
+  
 
   for (int i=0; i < number_steps; i++)
   {
@@ -46,7 +47,7 @@ void applyControl(Thread* start, const VectorXd& u, vector<Frame_Motion*>& motio
     start->set_end_constraint(end_pos, end_rot);
   }
 
-  start->minimize_energy();
+  //start->minimize_energy(); 
 }
 
   
@@ -139,4 +140,3 @@ void estimate_transition_matrix(Thread* thread, MatrixXd& A)
   A /= 2.0*eps;
   thread->restore_thread_pieces(thread_backup_pieces);
 }
-

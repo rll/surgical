@@ -93,7 +93,7 @@ GLfloat lightFourColor[] = {0.99, 0.99, 0.99, 1.0};
 // change prototype to include the return
 void generateRandomThread() {
   glThreads[endThread]->setThread(planner.generateSample(
-        (const Thread*) glThreads[endThread]->getThread()));
+        (const Thread*) glThreads[planThread]->getThread()));
   
   // minimize the energy on it
   glThreads[endThread]->minimize_energy();
