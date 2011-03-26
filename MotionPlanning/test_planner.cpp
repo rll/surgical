@@ -110,24 +110,50 @@ void planRRT() {
     planner.initialize(start, end);
     initialized = true;
   }
-  VectorXd goal_thread; VectorXd prev_thread; VectorXd next_thread;
-  planner.planStep(&goal_thread, &prev_thread, &next_thread);
+  //VectorXd goal_thread; VectorXd prev_thread; VectorXd next_thread;
+  //planner.planStep(&goal_thread, &prev_thread, &next_thread);
+  Thread goal_thread; Thread prev_thread; Thread next_thread; 
+  planner.planStep(goal_thread, prev_thread, next_thread); 
+  //planner.planStep(&goal_thread, &prev_thread, &next_thread);
+
+  VectorXd goal_pts; VectorXd prev_pts; VectorXd next_pts;
+  goal_thread.toVector(&goal_pts);
+  prev_thread.toVector(&prev_pts);
+  next_thread.toVector(&next_pts);
+  
   curNode = planner.getTree()->front();
 
   // draw the goal thread, the previous closest, and the new added thread
-  VectorXd angles(goal_thread.size()/3);
+  VectorXd angles(goal_pts.size()/3);
   angles.setZero();
-  glThreads[4]->setThread(new Thread(goal_thread, angles, Matrix3d::Identity()));
-  glThreads[4]->minimize_energy();
-  glThreads[5]->setThread(new Thread(prev_thread, angles, Matrix3d::Identity()));
-  glThreads[5]->minimize_energy();
-  glThreads[6]->setThread(new Thread(next_thread, angles, Matrix3d::Identity()));
-  glThreads[6]->minimize_energy();
+  //glThreads[4]->setThread(goal_thread);
+  //glThreads[5]->setThread(prev_thread);
+  // glThreads[6]->setThread(next_thread);
+  glThreads[4]->setThread(new Thread(goal_pts, angles, Matrix3d::Identity()));
+  //glThreads[4]->minimize_energy();
+  glThreads[5]->setThread(new Thread(prev_pts, angles, Matrix3d::Identity()));
+  //glThreads[5]->minimize_energy();
+  glThreads[6]->setThread(new Thread(next_pts, angles, Matrix3d::Identity()));
+  //glThreads[6]->minimize_energy();
+  
   if (initialized) {
-    glThreads[7]->setThread(new Thread(curNode->x, angles, Matrix3d::Identity()));
-    glThreads[7]->minimize_energy();
+    Thread curNodeThread = curNode->thread;
+    VectorXd curNodePts; 
+    curNodeThread.toVector(&curNodePts); 
+    //glThreads[7]->setThread(curNode->thread);
+    glThreads[7]->setThread(new Thread(curNodePts, angles, Matrix3d::Identity()));
+    //glThreads[7]->minimize_energy();
   }
   glutPostRedisplay();
+}
+
+void stepRRT(int times) { 
+  planRRT(); 
+  Thread goal_thread; Thread prev_thread; Thread next_thread; 
+  for (int i = 0; i < times - 2; i++) { 
+    planner.planStep(goal_thread, prev_thread, next_thread); 
+  }
+  planRRT();
 }
 
 void planMovement() {
@@ -252,8 +278,16 @@ void processSpecialKeys(int key, int x, int y) {
    if(initialized) {
      if (curNode->prev != NULL) {
        curNode = curNode->prev;
-       glThreads[7]->setThread(new Thread(curNode->x, VectorXd::Zero(curNode->N/3), Matrix3d::Identity()));
-       glThreads[7]->minimize_energy();
+       Thread curNodeThread = curNode->thread;
+       VectorXd curNodePts; 
+       curNodeThread.toVector(&curNodePts); 
+       VectorXd angles(curNodePts.size()/3);
+       angles.setZero();
+       glThreads[7]->setThread(new Thread(curNodePts, angles, Matrix3d::Identity()));
+       //glThreads[7]->setThread(&(curNode->thread));
+
+       //glThreads[7]->setThread(new Thread(curNode->x, VectorXd::Zero(curNode->N/3), Matrix3d::Identity()));
+       //glThreads[7]->minimize_energy();
        glutPostRedisplay();
      }
    }
@@ -261,8 +295,15 @@ void processSpecialKeys(int key, int x, int y) {
    if(initialized) {
      if (curNode->next != NULL) {
        curNode = curNode->next;
-       glThreads[7]->setThread(new Thread(curNode->x, VectorXd::Zero(curNode->N/3), Matrix3d::Identity()));
-       glThreads[7]->minimize_energy();
+       Thread curNodeThread = curNode->thread;
+       VectorXd curNodePts; 
+       curNodeThread.toVector(&curNodePts); 
+       VectorXd angles(curNodePts.size()/3);
+       angles.setZero();
+       glThreads[7]->setThread(new Thread(curNodePts, angles, Matrix3d::Identity()));
+       //glThreads[7]->setThread(&(curNode->thread));
+       //glThreads[7]->setThread(new Thread(curNode->x, VectorXd::Zero(curNode->N/3), Matrix3d::Identity()));
+       //glThreads[7]->minimize_energy();
        glutPostRedisplay();
      }
    }
@@ -291,8 +332,12 @@ void processNormalKeys(unsigned char key, int x, int y)
   }
   else if (key == 'd') {
     generateRandomThread();
-  } else if (key == 'a') {
+  } 
+  else if (key == 'a') {
     planRRT();
+  } 
+  else if (key == 's') { 
+    stepRRT(15000); 
   }
   else if (key == 27)
   {
