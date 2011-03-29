@@ -408,13 +408,16 @@ void suppress_hypoths(vector<Thread_Hypoth*>& hypoths)
 
     int num_hypoths_to_keep = min((int)(inds_to_keep.size()), NUM_HYPOTHS_MAX);
     Thread_Hypoth* hypoths_to_keep[num_hypoths_to_keep];
+
+    /* Flag hypoths to keep as NULL, store them in hypoths_to_keep,
+     * then remove all others in next loop. Finally, copy all the kept
+     * hypoths back into the original vector */
     for (int i=0; i < num_hypoths_to_keep; i++)
     {
         hypoths_to_keep[i] = hypoths[inds_to_keep[i]];
         hypoths[inds_to_keep[i]] = NULL;
     }
 
-  //delete the hypoths we didn't keep
     for (int i=0; i < hypoths.size(); i++)
     {
         if (hypoths[i] != NULL)
@@ -430,7 +433,7 @@ void suppress_hypoths(vector<Thread_Hypoth*>& hypoths)
 
 void suppress_hypoths(vector<Thread_Hypoth*>& hypoths, vector<int>& inds_to_keep)
 {
-  //const double dot_prod_thresh = 0.1;
+    //const double dot_prod_thresh = 0.1;
     const double dot_prod_thresh = 0.2;
     const double position_norm_thresh = 2.0;
     const double total_score_thresh = 4.0;
@@ -448,6 +451,11 @@ void suppress_hypoths(vector<Thread_Hypoth*>& hypoths, vector<int>& inds_to_keep
         {
             double dot_prod = hypoths[ind_checking]->end_edge().dot(hypoths[inds_to_keep[ind_comparing]]->end_edge());
             double pos_err = (hypoths[ind_checking]->end_pos() - hypoths[inds_to_keep[ind_comparing]]->end_pos()).norm();
+            /* dot product: if the last edges of the two hypotheses
+             * are too close to parallel
+             *
+             * position error: if the last positions of the two
+             * hypotheses are too close */
             if (dot_prod > dot_prod_thresh && pos_err < position_norm_thresh)
             {
                 keep_this_ind = false;
@@ -457,7 +465,6 @@ void suppress_hypoths(vector<Thread_Hypoth*>& hypoths, vector<int>& inds_to_keep
         if (keep_this_ind)
             inds_to_keep.push_back(ind_checking);
     }
-
 }
 
 
