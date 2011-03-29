@@ -30,7 +30,7 @@
 
 #define DISPLAY_ORIG_BASE "orig cam"
 #define DISPLAY_CANNY_BASE "canny cam"
-#define CLOSE_DISTANCE_MULT 1
+#define CLOSE_DISTANCE_COEFF 1 * _rest_length
 
 
 
@@ -111,14 +111,12 @@ public:
     Thread_Vision(char* im_base);
     ~Thread_Vision();
 
-
-      //vector<ThreadPiece> _thread_pieces;
-
-    //optimizations
+    //Optimizations
     bool optimizeThread(bool visualOnly=false);
 
     bool processHypothesesFromInit();
     vector<thread_hypoth_pair>* nearbyPairsOfThreadHypoths();
+    Thread_Hypoth* mergeThreads(Thread_Hypoth* thread1, Thread_Hypoth* thread2);
 
     void add_possible_next_hypoths(vector<Thread_Hypoth*> current_thread_hypoths);
     void sort_hypoths(vector<Thread_Hypoth*> current_thread_hypoths);

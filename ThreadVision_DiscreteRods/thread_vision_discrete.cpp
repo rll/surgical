@@ -474,24 +474,10 @@ vector<thread_hypoth_pair>* Thread_Vision::nearbyPairsOfThreadHypoths()
                     if (current_thread != other_thread) {
                         //Check end points
                         bool isCollision = false;
-                        double distance_threshhold = _rest_length * CLOSE_DISTANCE_MULT;
-                        if (distance_between_points(current_thread->start_pos(), other_thread->start_pos()) < distance_threshhold)
-                        {
-                            isCollision = true;
-                        }
-                        else if (distance_between_points(current_thread->start_pos(), other_thread->end_pos()) < distance_threshhold) 
-                        {
-                            isCollision = true;
-                        }
-                        else if (distance_between_points(current_thread->end_pos(), other_thread->start_pos()) < distance_threshhold) 
-                        {
-                            isCollision = true;
-                        }
-                        else if (distance_between_points(current_thread->end_pos(), other_thread->end_pos()) < distance_threshhold) 
-                        {
-                            isCollision = true;
-                        }
-                        if (isCollision) {
+
+                        MatchingEnds match = matchingEndsForThreads(current_thread, other_thread, CLOSE_DISTANCE_COEFF);
+
+                        if (match != MatchingNone) {
                             thread_hypoth_pair pair = {current_thread, other_thread};
                             bool exists = false;
                             for (int a = 0; a < allPairs->size(); a++) {
@@ -512,7 +498,28 @@ vector<thread_hypoth_pair>* Thread_Vision::nearbyPairsOfThreadHypoths()
     return allPairs;
 }
 
-//adds new hypoths based on tangents
+/* For efficiency, threads are mutated */
+Thread_Hypoth* Thread_Vision::mergeThreads(Thread_Hypoth* thread1, Thread_Hypoth* thread2) {
+    MatchingEnds match = matchingEndsForThreads(thread1, thread2, CLOSE_DISTANCE_COEFF);
+    if (match == MatchingStartStart) {
+        thread1->reverseThreadPieces();
+        thread1->appendThread(thread2);
+    }
+    else if (match == MatchingStartEnd) {
+        thread2->appendThread(thread1);
+    }
+    else if (match == MatchingEndStart) {
+        thread1->appendThread(thread2);
+    }
+    else if (match == MatchingEndEnd) {
+        thread2->reverseThreadPieces();
+        thread1->appendThread(thread2);
+    }
+
+    return thread1;
+}
+
+/* Adds new hypoths based on tangents */
 void Thread_Vision::add_possible_next_hypoths(vector<Thread_Hypoth*> current_thread_hypoths)
 {
     int curr_number_hypoths = current_thread_hypoths.size();
@@ -554,12 +561,10 @@ void Thread_Vision::sort_hypoths(vector<Thread_Hypoth*> current_thread_hypoths)
     sort(current_thread_hypoths.begin(), current_thread_hypoths.end(), lessthan_Thread_Hypoth);
 }
 
-
 void Thread_Vision::initializeThreadSearch()
 {
     updateCanny();
 }
-
 
 bool Thread_Vision::findNextStartPoint(vector<corresponding_pts>& pts, Point3f& initPt)
 {

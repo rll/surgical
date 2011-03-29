@@ -34,11 +34,22 @@ struct thread_hypoth_pair
     Thread_Hypoth *thread1;
     Thread_Hypoth *thread2;
 };
+
+typedef enum
+{
+    MatchingNone,
+    MatchingStartStart,
+    MatchingStartEnd,
+    MatchingEndStart,
+    MatchingEndEnd
+} MatchingEnds;
+
 bool operator <(const tangent_and_score& a, const tangent_and_score& b);
 
 
 void suppress_tangents(vector<tangent_and_score>& tangents, vector<tangent_and_score>& tangents_to_keep);
 void suppress_tangents(vector<tangent_and_score>& tangents, vector<int>& inds_to_keep);
 bool isEqualUnordered(thread_hypoth_pair pair1, thread_hypoth_pair pair2);
+MatchingEnds matchingEndsForThreads(Thread_Hypoth* thread1, Thread_Hypoth* thread2, double distanceThreshold);
 
 #endif

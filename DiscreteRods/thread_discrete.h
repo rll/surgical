@@ -127,14 +127,14 @@ class Thread
     void make_max_norm_one_allPieces(vector<Vector3d>& to_normalize);
 
     //energy coefficients
-		void set_bend_coeff(double bend_coeff){_thread_pieces.front()->set_bend_coeff(bend_coeff);}
-		void set_bend_matrix(const Matrix2d& bend_matrix){_thread_pieces.front()->set_bend_matrix(bend_matrix);}
-		void set_twist_coeff(double twist_coeff){_thread_pieces.front()->set_twist_coeff(twist_coeff);}
-		void set_grav_coeff(double grav_coeff){_thread_pieces.front()->set_grav_coeff(grav_coeff);}
-		double get_bend_coeff(void){return _thread_pieces[2]->get_bend_coeff();}
-		Matrix2d get_bend_matrix(void){return _thread_pieces[2]->get_bend_matrix();}
-		double get_twist_coeff(void){return _thread_pieces[2]->get_twist_coeff();}
-		double get_grav_coeff(void){return _thread_pieces[2]->get_grav_coeff();}
+	void set_bend_coeff(double bend_coeff){_thread_pieces.front()->set_bend_coeff(bend_coeff);}
+	void set_bend_matrix(const Matrix2d& bend_matrix){_thread_pieces.front()->set_bend_matrix(bend_matrix);}
+	void set_twist_coeff(double twist_coeff){_thread_pieces.front()->set_twist_coeff(twist_coeff);}
+	void set_grav_coeff(double grav_coeff){_thread_pieces.front()->set_grav_coeff(grav_coeff);}
+	double get_bend_coeff(void){return _thread_pieces[2]->get_bend_coeff();}
+	Matrix2d get_bend_matrix(void){return _thread_pieces[2]->get_bend_matrix();}
+	double get_twist_coeff(void){return _thread_pieces[2]->get_twist_coeff();}
+	double get_grav_coeff(void){return _thread_pieces[2]->get_grav_coeff();}
     void set_coeffs_normalized(double bend_coeff, double twist_coeff, double grav_coeff);
     void set_coeffs_normalized(const Matrix2d& bend_matrix, double twist_coeff, double grav_coeff);
 
@@ -160,10 +160,11 @@ class Thread
     //void set_twist_and_minimize(double twist);
     void set_twist_and_minimize(double twist, vector<Vector3d>& orig_pts);
 
-  protected:
+
     vector<ThreadPiece*> _thread_pieces;
     vector<ThreadPiece*> _thread_pieces_backup;
     vector<double> _angle_twist_backup;
+  protected:
 
 
     void add_momentum_to_gradient(vector<Vector3d>& vertex_gradients, vector<Vector3d>& new_gradients, double last_step_size);

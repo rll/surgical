@@ -1,4 +1,5 @@
 #include "thread_vision_utils.h"
+#include "threadhypoth_vision_discrete.h"
 
 void suppress_tangents(vector<tangent_and_score>& tangents, vector<tangent_and_score>& tangents_to_keep)
 {
@@ -53,3 +54,24 @@ bool isEqualUnordered(thread_hypoth_pair pair1, thread_hypoth_pair pair2)
     return (pair1.thread1 == pair2.thread1 && pair1.thread2 == pair2.thread2) || (pair1.thread1 == pair2.thread2 && pair1.thread2 == pair2.thread1);
 };
 
+MatchingEnds matchingEndsForThreads(Thread_Hypoth* thread1, Thread_Hypoth* thread2, double distanceThreshold)
+{
+    if (distance_between_points(thread1->start_pos(), thread2->start_pos()) < distanceThreshold)
+    {
+        return MatchingStartStart;
+    }
+    else if (distance_between_points(thread1->start_pos(), thread2->end_pos()) < distanceThreshold)
+    {
+        return MatchingStartEnd;
+    }
+    else if (distance_between_points(thread1->end_pos(), thread2->start_pos()) < distanceThreshold)
+    {
+        return MatchingEndStart;
+    }
+    else if (distance_between_points(thread1->end_pos(), thread2->end_pos()) < distanceThreshold)
+    {
+        return MatchingEndEnd;
+    }
+
+    return MatchingNone;
+}
