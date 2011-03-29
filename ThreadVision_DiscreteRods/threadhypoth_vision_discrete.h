@@ -29,11 +29,21 @@ public:
 
     void add_first_threadpieces(corresponding_pts& start_pt, tangent_and_score& start_tan);
     void optimize_visual();
+    
+    /* Add next piece based on visual reprojection only. If this hypoth splits,
+     * new hypoths are added to extra_next_hypoths
+     */
+    void add_possible_next_hypoths(vector<Thread_Hypoth*>& extra_next_hypoths); 
 
-    void add_possible_next_hypoths(vector<Thread_Hypoth*>& extra_next_hypoths); //add next piece based on visual reprojection only. If this hypoth splits, new hypoths are added to extra_next_hypoths
-    bool find_next_tan_visual(vector<tangent_and_score>& tangents); //calculates possible new pieces (edge+vertex) to add at the end of hypothsis
+    /* Calculates possible new pieces (edge+vertex) to add at the end of hypothesis */
+    bool find_next_tan_visual(vector<tangent_and_score>& tangents); 
 
-    void restore_thread_pieces_and_resize(vector<ThreadPiece*>& to_restore); //helper functions to save and restore state of thraedpieces
+    /* Methods for mutating the thread pieces */
+    void reverseThreadPieces();
+    void appendThread(Thread* aThread);
+
+    /* Helper functions to save and restore state of thread pieces */
+    void restore_thread_pieces_and_resize(vector<ThreadPiece*>& to_restore);
     void save_thread_pieces_and_resize(vector<ThreadPiece*>& to_save);
 
 

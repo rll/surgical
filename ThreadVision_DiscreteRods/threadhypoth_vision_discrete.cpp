@@ -1,4 +1,5 @@
 #include "threadhypoth_vision_discrete.h"
+#include <algorithm>
 
 using namespace cv;
 
@@ -161,9 +162,6 @@ void Thread_Hypoth::optimize_visual()
 
 
 }
-
-
-
 
 double Thread_Hypoth::calculate_visual_energy()
 {
@@ -352,7 +350,15 @@ bool Thread_Hypoth::find_next_tan_visual(vector<tangent_and_score>& tangents)
 }
 
 
+void Thread_Hypoth::reverseThreadPieces()
+{
+    reverse(_thread_pieces.begin(), _thread_pieces.end());
+}
 
+void Thread_Hypoth::appendThread(Thread* aThread)
+{
+    _thread_pieces.insert(_thread_pieces.end(), aThread->_thread_pieces.begin(), aThread->_thread_pieces.end());
+}
 
 void Thread_Hypoth::save_thread_pieces_and_resize(vector<ThreadPiece*>& to_save)
 {
