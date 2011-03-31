@@ -61,19 +61,21 @@ class Thread_RRT
   void getNextGoal(Thread* next);
   //double extendToward(const VectorXd& next, const Matrix3d& next_rot);
   double extendToward(const Thread* target);
+  double extendAsFarToward(const Thread* target);
   //double largeRotation(const VectorXd& next);
   double largeRotation(const Thread* target);
   //RRTNode* findClosestNode(const VectorXd& next);
   RRTNode* findClosestNode(const Thread* target);
-
+  
   double distanceBetween(const Thread* start, const Thread* end); 
 
-  void simpleInterpolation(const Vector3d& cur_pos, const Matrix3d& cur_rot, const Vector3d& next, const Matrix3d& next_rot, Vector3d* res_translation, Matrix3d* res_rotation);
-
+//  void simpleInterpolation(const Vector3d& cur_pos, const Matrix3d& cur_rot, const Vector3d& next, const Matrix3d& next_rot, Vector3d* res_translation, Matrix3d* res_rotation);
+  void simpleInterpolation(const Thread* start, const Thread* end, Vector3d* res_translation, Matrix3d* res_rotation);
 
   double distToGoal;
   double bestDist;
   double TOLERANCE;
+  double totalPenalty; 
 //  VectorXd next;
 //  Matrix3d next_rot;
   Thread* next_thread;

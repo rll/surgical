@@ -51,14 +51,14 @@ void applyControl(Thread* start, const VectorXd& u, vector<Frame_Motion*>& motio
 }
 
   
-void computeDifference(Thread* start, Thread* goal, VectorXd& res) {
+void computeDifference(Thread* start, const Thread* goal, VectorXd& res) {
   for (int piece_ind=0; piece_ind < goal->num_pieces(); piece_ind++)
   {
     res.segment(piece_ind*3, 3) = goal->vertex_at_ind(piece_ind) - start->vertex_at_ind(piece_ind);
   }
 }
 
-void computeDifference_maxMag(Thread* start, Thread* goal, VectorXd& res, double maxMag) {
+void computeDifference_maxMag(Thread* start, const Thread* goal, VectorXd& res, double maxMag) {
   for (int piece_ind=0; piece_ind < goal->num_pieces(); piece_ind++)
   {
     res.segment(piece_ind*3, 3) = goal->vertex_at_ind(piece_ind) - start->vertex_at_ind(piece_ind);
@@ -70,7 +70,7 @@ void computeDifference_maxMag(Thread* start, Thread* goal, VectorXd& res, double
 
 }
 
-void solveLinearizedControl(Thread* start, Thread* goal, vector<Frame_Motion*>& motions) {
+void solveLinearizedControl(Thread* start, const Thread* goal, vector<Frame_Motion*>& motions) {
   //const double MAX_STEP = 2.0;
   const double DAMPING_CONST = 0.2;
   const double MAX_MAG = 7.0;
@@ -102,7 +102,7 @@ void solveLinearizedControl(Thread* start, Thread* goal, vector<Frame_Motion*>& 
   applyControl(start, u, motions);
 }
 
-void solveLinearizedControl(Thread* start, Thread* goal) {
+void solveLinearizedControl(Thread* start, const Thread* goal) {
   vector<Frame_Motion*> tmp;
   solveLinearizedControl(start, goal, tmp);
 }

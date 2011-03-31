@@ -337,7 +337,7 @@ void processNormalKeys(unsigned char key, int x, int y)
     planRRT();
   } 
   else if (key == 's') { 
-    stepRRT(15000); 
+    stepRRT(100); 
   }
   else if (key == 27)
   {

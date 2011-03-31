@@ -53,6 +53,7 @@ void Thread_RRT::initialize(const Thread* start, const Thread* goal)
   distToGoal = DBL_MAX;
   bestDist = DBL_MAX;
   TOLERANCE = 0.01;
+  totalPenalty = 1.0; 
   //next.resize(_goal.size());
   //next_rot.setZero();
   next_thread = NULL; 
@@ -60,19 +61,17 @@ void Thread_RRT::initialize(const Thread* start, const Thread* goal)
 void Thread_RRT::planStep(Thread& new_sample_thread, Thread& closest_sample_thread, Thread& new_extend_thread) { 
 //void Thread_RRT::planStep(VectorXd* vertices, VectorXd* prev, VectorXd* next_thread) {
   cout << "getting target" << endl;
-  //getNextGoal(&next, &next_rot);
-
-  getNextGoal(next_thread);
-  new_sample_thread = *next_thread;
-//  *vertices = next;
-  cout << next_thread << endl;
-  cout << "extending to target" << endl;
-  if (drand48() < 1.0) {
-    distToGoal = extendToward(next_thread);
-  } else {
-    distToGoal = largeRotation(next_thread);
+  double newSampleDist = DBL_MAX;
+  while (newSampleDist == DBL_MAX) { 
+    getNextGoal(next_thread);
+    new_sample_thread = *next_thread;
+    cout << "extending to target" << endl;
+    if (drand48() < 1.0) {
+      newSampleDist = extendAsFarToward(next_thread);
+    } else {
+      newSampleDist = largeRotation(next_thread);
+    }
   }
-
   closest_sample_thread = (_tree.back()->prev->thread);
   new_extend_thread = (_tree.back()->thread);
   //*prev = (_tree.back()->prev->x);
@@ -202,7 +201,7 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
 
 //void Thread_RRT::getNextGoal(VectorXd* next, Matrix3d* next_rot) {
 void Thread_RRT::getNextGoal(Thread* next) {
-  if (drand48() < 0.30) {
+  if (drand48() < 0.10) {
     cout << "actual goal" << endl;
 //    next->resize(_goal.size());
 //    *next = _goal;
@@ -224,9 +223,16 @@ void Thread_RRT::getNextGoal(Thread* next) {
     next_thread = next;
 }
 
-void Thread_RRT::simpleInterpolation(const Vector3d& cur_pos, const Matrix3d& cur_rot, const Vector3d& next_pos, const Matrix3d& next_rot, Vector3d* translation, Matrix3d* rotation) {
+void Thread_RRT::simpleInterpolation(const Thread* start, const Thread* goal, Vector3d* translation, Matrix3d* rotation) {
+//void Thread_RRT::simpleInterpolation(const Vector3d& cur_pos, const Matrix3d& cur_rot, const Vector3d& next_pos, const Matrix3d& next_rot, Vector3d* translation, Matrix3d* rotation) {
   // use quaternion interpolation to move closer to end rot
   // figure out angle between quats, spherically interpolate.
+  Vector3d cur_pos = start->end_pos();
+  Matrix3d cur_rot = start->end_rot();
+
+  Vector3d next_pos = goal->end_pos();
+  Matrix3d next_rot = goal->end_rot();
+
   Matrix3d goal_rot = next_rot;
   Eigen::Quaterniond endq(cur_rot);
   Eigen::Quaterniond goalq(goal_rot);
@@ -319,7 +325,7 @@ double Thread_RRT::largeRotation(const Thread* target) {
   //delete start;
   //return (toadd->x - _goal).squaredNorm();
   cout << distanceBetween(&start, _goal_thread) << endl;
-  return distanceBetween(&start, _goal_thread);
+  return distanceBetween(&start, target);
 }
 
 double Thread_RRT::extendToward(const Thread* target) {
@@ -343,24 +349,28 @@ double Thread_RRT::extendToward(const Thread* target) {
   Vector3d translation;
   Matrix3d rotation;
   vector<Frame_Motion*> tmpMotions;
-  
-  /*simpleInterpolation(end_pos, end_rot, next_pos, next_rot, &translation, &rotation);
   //cout << " before motion: " << endl << end_pos << endl << end_rot << endl;
   // apply the motion
-  Frame_Motion* toMove = new Frame_Motion(translation, rotation);
-  tmpMotions.push_back(toMove);
-  toMove->applyMotion(end_pos, end_rot); 
+  /*simpleInterpolation(&start, target, &translation, &rotation);
+    Frame_Motion* toMove = new Frame_Motion(translation, rotation);
+    tmpMotions.push_back(toMove);
+    toMove->applyMotion(end_pos, end_rot); 
 
- 
   //cout << " after motion: " << endl << end_pos << endl << end_rot << endl;
-  start->set_end_constraint(end_pos, end_rot);
-  */
+  start.set_end_constraint(end_pos, end_rot);
+  */ 
 
   // solve and apply control to the closest thread
-  solveLinearizedControl(&start, next_thread, tmpMotions); 
-
+  solveLinearizedControl(&start, target, tmpMotions); 
   start.minimize_energy();
 
+  if (distanceBetween(&start, &(closest->thread)) < 5e-1) { 
+    closest->CVF += 1;
+    totalPenalty += 1;
+    cout << "[Total penalty on node, Total Penalty]: [ " << closest->CVF  
+        << ", " << totalPenalty << "]" << endl;
+    return DBL_MAX;
+  }
 
   cout << " attaching new node: " << endl;
   RRTNode* toadd = new RRTNode(&start);
@@ -370,18 +380,45 @@ double Thread_RRT::extendToward(const Thread* target) {
   toadd->lstMotions = tmpMotions;
   _tree.push_back(toadd);
   cout << "tree size: " << _tree.size() << endl;
+
   // return the distance of the new point to goal
   // delete start;
   //return (toadd->x - _goal).squaredNorm();
-  return distanceBetween(&start, _goal_thread); 
+  return distanceBetween(&start, target); 
+}
+
+double Thread_RRT::extendAsFarToward(const Thread* target) {
+  double prevScore = DBL_MAX;
+  double score = DBL_MAX;
+  do {
+    prevScore = score; 
+    score = extendToward(target); 
+  } while(prevScore - score > 1e-1); 
+  return score; 
 }
 
 
-double Thread_RRT::distanceBetween(const Thread* start, const Thread* end) { 
+double Thread_RRT::distanceBetween(const Thread* start, const Thread* end) {
+  int N = start->num_pieces();
+  Thread *st = (Thread *) start;
+  Thread *en = (Thread *) end; 
+
+  
+  double cost = 0.0; 
   VectorXd startV, endV; 
   start->toVector(&startV);
   end->toVector(&endV);
-  return (startV - endV).norm();
+  cost += (startV - endV).norm();
+
+  VectorXd startGradientV, endGradientV;
+  startGradientV.resize(3*N);
+  endGradientV.resize(3*N);
+  st->calculate_gradient_vertices_vectorized(&startGradientV);
+  en->calculate_gradient_vertices_vectorized(&endGradientV);
+  //cost += (startGradientV - endGradientV).norm();
+
+  return cost; 
+  //return (startV - endV).cwise().abs().sum();
 }
 
 RRTNode* Thread_RRT::findClosestNode(const Thread* target) {
@@ -389,7 +426,7 @@ RRTNode* Thread_RRT::findClosestNode(const Thread* target) {
   double norm = 0.0;
   RRTNode* ptr = NULL;
   for(int i = 0; i < _tree.size(); i++) {
-    if (_tree[i]->CVF < drand48()) {  
+    //if (_tree[i]->CVF / totalPenalty < drand48()) {  
       norm = distanceBetween(&(_tree[i]->thread), target); 
       // norm = (next - _tree[i]->x).squaredNorm();
       // norm = (next - _tree[i]->x).cwise().abs().sum();
@@ -397,7 +434,7 @@ RRTNode* Thread_RRT::findClosestNode(const Thread* target) {
         ptr = _tree[i];
         bestDist = norm;
       }
-    }
+    //}
   }
   if (target == _goal_thread) { 
     cout << "best dist: " << bestDist << endl;

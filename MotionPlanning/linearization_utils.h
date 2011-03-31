@@ -10,10 +10,10 @@
 
 void applyControl(Thread* start, const VectorXd& u);
 void applyControl(Thread* start, const VectorXd& u, vector<Frame_Motion*>& motions);
-void computeDifference(Thread* start, Thread* goal, VectorXd& res);
-void computeDifference_maxMag(Thread* start, Thread* goal, VectorXd& res, double maxMag);
-void solveLinearizedControl(Thread* start, Thread* goal);
-void solveLinearizedControl(Thread* start, Thread* goal, vector<Frame_Motion*>& motions);
+void computeDifference(Thread* start, const Thread* goal, VectorXd& res);
+void computeDifference_maxMag(Thread* start, const Thread* goal, VectorXd& res, double maxMag);
+void solveLinearizedControl(Thread* start, const Thread* goal);
+void solveLinearizedControl(Thread* start, const Thread* goal, vector<Frame_Motion*>& motions);
 void estimate_transition_matrix(Thread* thread, MatrixXd& A);
 
 
