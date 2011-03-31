@@ -1,0 +1,16 @@
+- interrupt handler for keys
+- look into the minimization to see if minimization affects end target
+- lsh for nns
+- work on moving both ends 
+- linearization on 2 ends
+- histogram of running times for a given sample
+
+future things: 
+- account for surgical instruments 
+  -RC planning to account for collisions 
+-incrementally add links
+
+
+needle steering, dubin's car
+smoothing paths
+ 
