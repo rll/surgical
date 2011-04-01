@@ -1,8 +1,8 @@
 UTILS_DIR = ../../utils/
 THREAD_DIR = ../DiscreteRods/
 VISION_DIR = ../vision/
-LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lPvAPI -lrt -lglut -lgle
-INCLUDES = -I/usr/local/include/ -I $(UTILS_DIR) -I/usr/local/include/eigen2/
+LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lPvAPI -lrt -lglut -lgle -llshkit -lgsl -lgslcblas
+INCLUDES = -I/usr/local/include/ -I $(UTILS_DIR) -I/usr/local/include/eigen2/ -I/usr/include/boost/ -I/usr/local/include/lshkit/
 #INCLUDES = -I/usr/local/include/ -I/usr/local/include/opencv/ -I/usr/local/include/libPvAPI -I $(UTILS_DIR)
 OPT_COMP = -DEIGEN_NO_DEBUG -O3
 # OPT_COMP =
@@ -22,8 +22,8 @@ target: test_linearization test_planner
 test_linearization: test_linearization.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o
 	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o test_linearization test_linearization.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o $(LIBS) $(PROFILER)
 
-test_planner: test_planner.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o clock.o glThread.o trajectory_reader.o planner_utils.o linearization_utils.o
-	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o test_planner test_planner.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o trajectory_recorder.o clock.o glThread.o planner_utils.o linearization_utils.o $(LIBS) $(PROFILER)
+test_planner: test_planner.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o clock.o glThread.o trajectory_reader.o planner_utils.o linearization_utils.o rrt_utils.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o test_planner test_planner.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o trajectory_recorder.o clock.o glThread.o planner_utils.o linearization_utils.o rrt_utils.o $(LIBS) $(PROFILER)
 
 
 ################################################
@@ -64,6 +64,9 @@ glThread.o : $(THREAD_DIR)glThread.cpp $(THREAD_DIR)glThread.h
 #Motion Planning
 linearization_utils.o: linearization_utils.cpp linearization_utils.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c linearization_utils.cpp $(PROFILER)
+
+rrt_utils.o : rrt_utils.cpp rrt_utils.h
+	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c rrt_utils.cpp $(PROFILER)
 
 planner_utils.o : planner_utils.cpp planner_utils.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c planner_utils.cpp $(PROFILER)

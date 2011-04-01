@@ -1,29 +1,6 @@
 #include "planner_utils.h"
 #include <time.h>
 
-RRTNode::~RRTNode() {
-  for(int i = 0; i < lstMotions.size(); i++) {
-    delete lstMotions[i];
-  }
-  lstMotions.clear();
-  //if (thread != NULL) { delete thread; }
-
-}
-
-RRTNode::RRTNode(): thread(Thread()), prev(NULL), next(NULL), linearized(false), CVF(0.0) {
-}
-
-RRTNode::RRTNode(const Thread* start): prev(NULL), next(NULL), linearized(false) {
-//  start->toVector(&x);
-//  start->getTwists(&twists);
-//  endrot = start->end_rot();
-  thread = *start;   
-  //B.resize(start->num_pieces()*3, 6);
-  CVF = 0.0; 
-  N = start->num_pieces()*3;
-}
-
-
 Thread_RRT::Thread_RRT()
 {
 }
@@ -45,7 +22,9 @@ void Thread_RRT::initialize(const Thread* start, const Thread* goal)
     delete _tree[i];
   }
   _tree.clear();
-  _tree.push_back(new RRTNode(start));
+
+  RRTNode* startNode = new RRTNode(start);
+  _tree.push_back(startNode);
 
 //  VectorXd test;
 //  start->toVector(&test);
@@ -57,6 +36,72 @@ void Thread_RRT::initialize(const Thread* start, const Thread* goal)
   //next.resize(_goal.size());
   //next_rot.setZero();
   next_thread = NULL; 
+
+  index = new LshTable<HASH>();
+  HASH::Parameter *param = new HASH::Parameter();
+  unsigned int dim = start->num_pieces()*3;
+  param->dim = dim;
+  param->repeat = 20;
+
+  index->init(*param, 4); 
+  index->insert(startNode); 
+
+/*  cout << "Test 1: query with only start in" << endl; 
+  RRTNode *nn = index->query(startNode);
+  cout << startNode << endl; 
+  cout << nn << endl;
+
+  RRTNode *goalNode = new RRTNode(goal); 
+  index->insert(goalNode);
+
+
+  cout << "Test 2: query with start and end in; query for start" << endl; 
+  nn = index->query(startNode);
+  cout << startNode << endl; 
+  cout << nn << endl;
+
+
+  cout << "Test 3: query with start and end in; query for end" << endl; 
+  nn = index->query(goalNode);
+  cout << goalNode << endl; 
+  cout << nn << endl;
+*/ 
+  /*
+  index = new lshkit::LshIndex<lshkit::HyperPlaneLsh, RRTNode* >(); 
+  lshkit::HyperPlaneLsh::Parameter* param = new lshkit::HyperPlaneLsh::Parameter(); 
+ // lshkit::Index::Parameter param;
+  unsigned int dim = start->num_pieces()*3;
+  param->dim = dim;
+
+  lshkit::DefaultRng *rng = new lshkit::DefaultRng();
+//  lshkit::HyperPlaneLsh hyperLsh(param, rng);
+  index->init(*param, *rng, 2);
+  
+  index->insert(startNode, startNode->getData());
+
+  RRTNode *goalNode = new RRTNode(goal);
+  index->insert(goalNode, goalNode->getData());
+  RRTNode *testNode = new RRTNode(start);
+  RRTNode::Accessor *acc = new RRTNode::Accessor();
+  lshkit::metric::l2<float> *met = new lshkit::metric::l2<float> (dim);
+  unsigned K = 1;
+  lshkit::TopkScanner<RRTNode::Accessor, lshkit::metric::l2<float> > *scn = 
+    new lshkit::TopkScanner<RRTNode::Accessor, lshkit::metric::l2<float> > (*acc, *met, K);
+
+  
+  //cout << (unsigned) (scn->topk().getK()) << endl;
+  //
+  cout << "test address: " << testNode->getData() << endl;
+  index->query(testNode->getData(), scn);
+
+  lshkit::Topk<RRTNode*> top = scn->topk();
+  for (vector<lshkit::TopkEntry<RRTNode*> >::const_iterator ii = top.begin();
+      ii != top.end(); ++ii) {
+    cout << "hi" << endl;
+  }
+
+  */
+
 }
 void Thread_RRT::planStep(Thread& new_sample_thread, Thread& closest_sample_thread, Thread& new_extend_thread) { 
 //void Thread_RRT::planStep(VectorXd* vertices, VectorXd* prev, VectorXd* next_thread) {
@@ -115,7 +160,8 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
 
   vector<Vector3d> vertices;
   vector<double> angles;
-  int N = goal_thread->num_pieces();
+  int N =
+ goal_thread->num_pieces();
   
   vertices.push_back(Vector3d::Zero());
   angles.push_back(0.0);
@@ -319,7 +365,8 @@ double Thread_RRT::largeRotation(const Thread* target) {
   //start->getTwists(&toadd->twists);
   //toadd->endrot = start->end_rot();
   toadd->lstMotions = tmpMotions;
-  _tree.push_back(toadd);
+  //_tree.push_back(toadd);
+  insertIntoRRT(toadd);
   cout << "tree size: " << _tree.size() << endl;
   // return the distance of the new point to goal
   //delete start;
@@ -378,7 +425,8 @@ double Thread_RRT::extendToward(const Thread* target) {
   //start->getTwists(&toadd->twists);
   //toadd->endrot = start->end_rot();
   toadd->lstMotions = tmpMotions;
-  _tree.push_back(toadd);
+  //_tree.push_back(toadd);
+  insertIntoRRT(toadd);
   cout << "tree size: " << _tree.size() << endl;
 
   // return the distance of the new point to goal
@@ -421,7 +469,7 @@ double Thread_RRT::distanceBetween(const Thread* start, const Thread* end) {
   //return (startV - endV).cwise().abs().sum();
 }
 
-RRTNode* Thread_RRT::findClosestNode(const Thread* target) {
+/*RRTNode* Thread_RRT::findClosestNode(const Thread* target) {
   double bestDist = DBL_MAX;
   double norm = 0.0;
   RRTNode* ptr = NULL;
@@ -440,6 +488,17 @@ RRTNode* Thread_RRT::findClosestNode(const Thread* target) {
     cout << "best dist: " << bestDist << endl;
   }
   return ptr;
+}*/ 
+
+RRTNode* Thread_RRT::findClosestNode(const Thread* target) { 
+  RRTNode* targetNode = new RRTNode(target); 
+  return (RRTNode*) index->query(targetNode); 
+
+}
+
+void Thread_RRT::insertIntoRRT(RRTNode* node) { 
+  _tree.push_back(node);
+  index->insert(node); 
 }
 
 

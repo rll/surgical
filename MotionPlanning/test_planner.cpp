@@ -13,6 +13,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <signal.h>
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -74,7 +75,7 @@ vector<Frame_Motion> movements;
 int curmotion = 0;
 bool initialized = false;
 RRTNode* curNode;
-
+bool interruptEnabled = false; 
 
 
 /* set up a light */
@@ -150,7 +151,7 @@ void planRRT() {
 void stepRRT(int times) { 
   planRRT(); 
   Thread goal_thread; Thread prev_thread; Thread next_thread; 
-  for (int i = 0; i < times - 2; i++) { 
+  for (int i = 0; (i < times - 2 && !interruptEnabled); i++) { 
     planner.planStep(goal_thread, prev_thread, next_thread); 
   }
   planRRT();
@@ -312,6 +313,7 @@ void processSpecialKeys(int key, int x, int y) {
 
 void processNormalKeys(unsigned char key, int x, int y)
 {
+  interruptEnabled = false; 
   if (key == 't') {
     key_pressed = MOVETAN;
   }
@@ -363,6 +365,11 @@ void processKeyUp(unsigned char key, int x, int y)
   move_end[0] = move_end[1] = tangent_end[0] = tangent_end[1] = tangent_rotation_end[0] = tangent_rotation_end[1] = 0.0;
 }
 
+void interruptHandler(int sig) {
+  cout << "Signal " << sig << " caught..." << endl;
+  interruptEnabled = true; 
+}
+
 
 
 void JoinStyle (int msg)
@@ -376,6 +383,7 @@ int main (int argc, char * argv[])
 
   srand(time(NULL));
   srand((unsigned int)time((time_t *)NULL));
+
 
   printf("Instructions:\n"
       "Hold down the left mouse button to rotate image: \n"
@@ -400,6 +408,8 @@ int main (int argc, char * argv[])
   //   radii[i]=THREAD_RADII;
   // }
 
+
+  signal(SIGINT, &interruptHandler);
 
   glutMainLoop ();
 }

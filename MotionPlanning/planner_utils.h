@@ -4,41 +4,27 @@
 #include "../DiscreteRods/thread_discrete.h"
 #include "../DiscreteRods/threadutils_discrete.h"
 #include "linearization_utils.h"
+#include "rrt_utils.h" 
+#include <lshkit.h> 
+#include "lsh-table.h" 
 #include <Eigen/Geometry>
 #include <vector>
+#include <set>
 
 using namespace std;
-
-class RRTNode {
- public:
-  ~RRTNode();
-  RRTNode();
-  RRTNode(const Thread* start);
-
-  RRTNode* next;
-  RRTNode* prev;
-  vector<Frame_Motion*> lstMotions;
-  MatrixXd B;
-  bool linearized;
-
-//  VectorXd x;
-//  VectorXd twists;
-//  Matrix3d endrot;
-  Thread thread;
-  int N;
-
-  double CVF; 
-
-  Matrix3d endRotation() {  return thread.end_rot(); }
-  //Matrix3d endRotation() {  return endrot; }
-  Vector3d endPosition() {  return thread.end_pos(); }
-  //Vector3d endPosition() {  return x.segment<3>(N-3); }
-  const Thread getThread() { return thread; } 
-};
+using namespace lshkit; 
 
 class Thread_RRT
 {
  public:
+
+  //typedef RRTNode* Key;
+  //typedef float* Value;
+  //typedef float* Domain;
+  //typedef RRTNode::Accessor ACCESSOR;
+  //typedef lshkit::metric::l2<float> METRIC;
+  //typedef lshkit::HyperPlaneLsh LSH;
+
   Thread_RRT();
   ~Thread_RRT();
 
@@ -48,7 +34,8 @@ class Thread_RRT
   void planStep(Thread& new_sample_thread, Thread& closest_sample_thread, Thread& new_extend_thread);
   vector<RRTNode*>* getTree() { return &_tree; }
   Thread* generateSample(const Thread* start);
- 
+  
+  typedef Repeat<HyperPlaneLsh> HASH; 
  
  private:
   vector<RRTNode*> _tree;
@@ -57,6 +44,8 @@ class Thread_RRT
   const Thread* _start_thread;
   const Thread* _goal_thread;
 
+
+  void insertIntoRRT(RRTNode* node);  
 //  void getNextGoal(VectorXd* next, Matrix3d* next_rot);
   void getNextGoal(Thread* next);
   //double extendToward(const VectorXd& next, const Matrix3d& next_rot);
@@ -66,7 +55,6 @@ class Thread_RRT
   double largeRotation(const Thread* target);
   //RRTNode* findClosestNode(const VectorXd& next);
   RRTNode* findClosestNode(const Thread* target);
-  
   double distanceBetween(const Thread* start, const Thread* end); 
 
 //  void simpleInterpolation(const Vector3d& cur_pos, const Matrix3d& cur_rot, const Vector3d& next, const Matrix3d& next_rot, Vector3d* res_translation, Matrix3d* res_rotation);
@@ -79,7 +67,9 @@ class Thread_RRT
 //  VectorXd next;
 //  Matrix3d next_rot;
   Thread* next_thread;
-
+  //lshkit::LshIndex<lshkit::HyperPlaneLsh, RRTNode* > *index; 
+  LshTable<HASH>*index;  
+  
 };
 
 #endif
