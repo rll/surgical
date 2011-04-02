@@ -31,8 +31,7 @@ public:
     void optimize_visual();
     
     /* Add next piece based on visual reprojection only. If this hypoth splits,
-     * new hypoths are added to extra_next_hypoths
-     */
+     * new hypoths are added to extra_next_hypoths */
     void add_possible_next_hypoths(vector<Thread_Hypoth*>& extra_next_hypoths); 
 
     /* Calculates possible new pieces (edge+vertex) to add at the end of hypothesis */

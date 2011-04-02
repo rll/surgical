@@ -63,10 +63,9 @@ Thread_Hypoth::~Thread_Hypoth()
 {
 }
 
-
 void Thread_Hypoth::optimize_visual()
 {
-  //std::cout << "optimizing visual" << std::endl;;
+    //std::cout << "optimizing visual" << std::endl;;
     double step_in_grad_dir_vertices = 1.0;
 
     const int num_opt_iters = 1000;
@@ -114,7 +113,7 @@ void Thread_Hypoth::optimize_visual()
             if (next_energy < curr_energy)
                 break;
 
-      //energy didn't improve, take a step in pos direction
+            //energy didn't improve, take a step in pos direction
             step_in_grad_dir_vertices /= 2.0;
             apply_vertex_offsets(vertex_gradients, false, step_in_grad_dir_vertices);
         }
@@ -129,7 +128,7 @@ void Thread_Hypoth::optimize_visual()
         next_energy = calculate_visual_energy();
 
 
-//   std::cout << "curr energy: " << curr_energy << "   next energy: " << next_energy << "  before projection: " << energy_before_projection << "  last step: " << step_in_grad_dir_vertices <<   std::endl;
+        //   std::cout << "curr energy: " << curr_energy << "   next energy: " << next_energy << "  before projection: " << energy_before_projection << "  last step: " << step_in_grad_dir_vertices <<   std::endl;
 
 
 
@@ -159,38 +158,31 @@ void Thread_Hypoth::optimize_visual()
 
     next_energy = calculate_visual_energy();
     double energy_no_vis = calculate_energy();
-
-
 }
 
+/* Uses bend energy, gravitational energy, and visual reprojection error */
 double Thread_Hypoth::calculate_visual_energy()
 {
-  /*double energy = Thread::calculate_energy();
-  for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
-  {
-  energy += ((ThreadPiece_Vision*)_thread_pieces[piece_ind])->energy_dist();
-  }
-  return energy;*/
+    double energy = 0.0;
+    for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
+    {
+        energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav();
+        energy += ((ThreadPiece_Vision*)_thread_pieces[piece_ind])->energy_dist();
+    }
 
-      double energy = 0.0;
-  for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
-  {
-      energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav();
-      energy += ((ThreadPiece_Vision*)_thread_pieces[piece_ind])->energy_dist();
-  }
-  return energy;
-
+    return energy;
 }
 
+/* Uses visual reprojection error */
 double Thread_Hypoth::calculate_visual_energy_only()
 {
     double energy = 0.0;
-  //std::cout << "energy from thread: " << energy << std::endl;
+    //std::cout << "energy from thread: " << energy << std::endl;
     for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
     {
         energy += ((ThreadPiece_Vision*)_thread_pieces[piece_ind])->energy_dist();
     }
-  //std::cout << "visual energy: " << energy << std::endl;
+    //std::cout << "visual energy: " << energy << std::endl;
     return energy;
 }
 
@@ -285,7 +277,9 @@ void Thread_Hypoth::add_possible_next_hypoths(vector<Thread_Hypoth*>& extra_next
     _thread_pieces_backup.back()->set_prev((ThreadPiece_Vision*)_thread_pieces_backup[_thread_pieces_backup.size()-2]);
 
 
-    //add the new hypoths
+    /* Adds the new hypoths to extra_next_hypoths, if there is more
+     * than 1. Will resize extra_next_hypoths and override previous
+     * values */
     extra_next_hypoths.resize(tan_and_scores.size()-1);
     for (int tan_ind =1; tan_ind < tan_and_scores.size(); tan_ind++)
     {
@@ -293,7 +287,6 @@ void Thread_Hypoth::add_possible_next_hypoths(vector<Thread_Hypoth*>& extra_next
         to_add_extra->_thread_pieces.back()->set_vertex(tan_and_scores[tan_ind].tan*_rest_length + _thread_pieces[_thread_pieces.size()-2]->vertex());
         to_add_extra->_thread_pieces.front()->initializeFrames(); 
         to_add_extra->calculate_score();
-
 
         extra_next_hypoths[tan_ind-1] = to_add_extra;
     }
