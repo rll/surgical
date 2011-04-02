@@ -69,6 +69,10 @@ public:
         Domain value = ((RRTNode *)key)->getData();
         for (unsigned i = 0; i < lshs_.size(); ++i) {
             unsigned index = lshs_[i](value);
+    typedef typename LSH::Parameter Parameter;
+    typedef typename LSH::Domain Domain; 
+    typedef const RRTNode* Key;
+    typedef std::vector<Key> Bin;
             tables_[i][index].push_back(key);
         }
     }
@@ -99,7 +103,7 @@ public:
         }
       }
       if (argMin == NULL) {
-        cout << "No match through hash! Running through all nodes..." << endl;
+        //cout << "No match through hash! Running through all nodes..." << endl;
         for (int i = 0; i < tables_[0].size(); i++) {
           BOOST_FOREACH(Key key, tables_[0][i]) { 
             ++keysConsidered;
@@ -112,7 +116,12 @@ public:
           }
         }
       }
-     cout << "Keys considered: " << keysConsidered << endl;
+     //cout << "Keys considered: " << keysConsidered << endl;
+     if (argMin == NULL) {
+        for (unsigned i =0; i < dim; i++) {
+          cout << target_value[i] << endl; 
+        }
+     }
      return argMin; 
     }
 
@@ -123,6 +132,29 @@ public:
       }
       return r; 
     }
+};
+
+
+template<typename LSH> 
+class LshMultiTable {
+    
+    typedef typename LSH::Parameter Parameter;
+    typedef typename LSH::Domain Domain; 
+    typedef const RRTNode* Key;
+    typedef std::vector<Key> Bin;
+    vector<LshTable<LSH> > tables; 
+    // index 0 contains the hash with the most bits, param.dim
+    // index 1 contains param.dim bits etc. 
+
+
+    /* param.dim must be a power of 2 */ 
+    void init (const Parameter &param, unsigned L) {
+      
+
+
+
+    }
+
 };
 
 

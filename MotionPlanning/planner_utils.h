@@ -35,6 +35,7 @@ class Thread_RRT
   vector<RRTNode*>* getTree() { return &_tree; }
   Thread* generateSample(const Thread* start);
   
+  double distanceBetween(const Thread* start, const Thread* end); 
   typedef Repeat<HyperPlaneLsh> HASH; 
  
  private:
@@ -55,7 +56,6 @@ class Thread_RRT
   double largeRotation(const Thread* target);
   //RRTNode* findClosestNode(const VectorXd& next);
   RRTNode* findClosestNode(const Thread* target);
-  double distanceBetween(const Thread* start, const Thread* end); 
 
 //  void simpleInterpolation(const Vector3d& cur_pos, const Matrix3d& cur_rot, const Vector3d& next, const Matrix3d& next_rot, Vector3d* res_translation, Matrix3d* res_rotation);
   void simpleInterpolation(const Thread* start, const Thread* end, Vector3d* res_translation, Matrix3d* res_rotation);

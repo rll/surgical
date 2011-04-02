@@ -46,82 +46,28 @@ void Thread_RRT::initialize(const Thread* start, const Thread* goal)
   index->init(*param, 4); 
   index->insert(startNode); 
 
-/*  cout << "Test 1: query with only start in" << endl; 
-  RRTNode *nn = index->query(startNode);
-  cout << startNode << endl; 
-  cout << nn << endl;
-
-  RRTNode *goalNode = new RRTNode(goal); 
-  index->insert(goalNode);
-
-
-  cout << "Test 2: query with start and end in; query for start" << endl; 
-  nn = index->query(startNode);
-  cout << startNode << endl; 
-  cout << nn << endl;
-
-
-  cout << "Test 3: query with start and end in; query for end" << endl; 
-  nn = index->query(goalNode);
-  cout << goalNode << endl; 
-  cout << nn << endl;
-*/ 
-  /*
-  index = new lshkit::LshIndex<lshkit::HyperPlaneLsh, RRTNode* >(); 
-  lshkit::HyperPlaneLsh::Parameter* param = new lshkit::HyperPlaneLsh::Parameter(); 
- // lshkit::Index::Parameter param;
-  unsigned int dim = start->num_pieces()*3;
-  param->dim = dim;
-
-  lshkit::DefaultRng *rng = new lshkit::DefaultRng();
-//  lshkit::HyperPlaneLsh hyperLsh(param, rng);
-  index->init(*param, *rng, 2);
-  
-  index->insert(startNode, startNode->getData());
-
-  RRTNode *goalNode = new RRTNode(goal);
-  index->insert(goalNode, goalNode->getData());
-  RRTNode *testNode = new RRTNode(start);
-  RRTNode::Accessor *acc = new RRTNode::Accessor();
-  lshkit::metric::l2<float> *met = new lshkit::metric::l2<float> (dim);
-  unsigned K = 1;
-  lshkit::TopkScanner<RRTNode::Accessor, lshkit::metric::l2<float> > *scn = 
-    new lshkit::TopkScanner<RRTNode::Accessor, lshkit::metric::l2<float> > (*acc, *met, K);
-
-  
-  //cout << (unsigned) (scn->topk().getK()) << endl;
-  //
-  cout << "test address: " << testNode->getData() << endl;
-  index->query(testNode->getData(), scn);
-
-  lshkit::Topk<RRTNode*> top = scn->topk();
-  for (vector<lshkit::TopkEntry<RRTNode*> >::const_iterator ii = top.begin();
-      ii != top.end(); ++ii) {
-    cout << "hi" << endl;
-  }
-
-  */
 
 }
 void Thread_RRT::planStep(Thread& new_sample_thread, Thread& closest_sample_thread, Thread& new_extend_thread) { 
 //void Thread_RRT::planStep(VectorXd* vertices, VectorXd* prev, VectorXd* next_thread) {
-  cout << "getting target" << endl;
+  //cout << "getting target" << endl;
   double newSampleDist = DBL_MAX;
   while (newSampleDist == DBL_MAX) { 
     getNextGoal(next_thread);
-    new_sample_thread = *next_thread;
-    cout << "extending to target" << endl;
+    //cout << "extending to target" << endl;
     if (drand48() < 1.0) {
       newSampleDist = extendAsFarToward(next_thread);
     } else {
       newSampleDist = largeRotation(next_thread);
     }
   }
+
+  new_sample_thread = *next_thread;
   closest_sample_thread = (_tree.back()->prev->thread);
   new_extend_thread = (_tree.back()->thread);
   //*prev = (_tree.back()->prev->x);
   //*next_thread = (_tree.back()->x);
-  cout << "done step" << endl;
+  //cout << "done step" << endl;
 
   RRTNode* closest = findClosestNode(_goal_thread);
   while(closest->prev != NULL) {
@@ -160,8 +106,7 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
 
   vector<Vector3d> vertices;
   vector<double> angles;
-  int N =
- goal_thread->num_pieces();
+  int N = goal_thread->num_pieces();
   
   vertices.push_back(Vector3d::Zero());
   angles.push_back(0.0);
@@ -174,20 +119,25 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
   
   Vector3d goal; 
   Vector3d noise; 
+  double max_thread_length = (N-2)*_rest_length; 
   if (drand48() < 0.3) { 
   
   // sample the goal by taking the current goal and adding noise
   // these samples are very similar to the goal 
+    //cout << "sampling near the goal" << endl; 
     goal = goal_thread->end_pos() - goal_thread->start_pos();
-    goal += (noise << Normal(0,1)*_rest_length,
+    do { 
+    noise = (noise << Normal(0,1)*_rest_length,
       Normal(0,1)*_rest_length,
       Normal(0,1)*_rest_length).finished();
+    } while((goal+noise).norm() > max_thread_length);
+
+    goal += noise; 
 
   } else { 
-    // sample the goal by sampling the in the sphere of the norm
+    // sample the goal by sampling in the sphere of the norm
     // these samples tend to increase the branching of the tree
-    double max_thread_length = (N-2)*_rest_length; 
-
+    //cout << "sampling in the ball" << endl;
     do {
       goal = (noise <<  Normal(0,1)*max_thread_length,
           Normal(0,1)*max_thread_length,
@@ -206,18 +156,20 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
 
 
   for(int i = 0; i < N-2; i++) {
-    Vector3d prevInc = inc; 
+    Vector3d prevInc = inc;
     vertices.push_back(vertices[vertices.size()-1] + inc);
     angles.push_back(0.0);
     // time to move toward the goal
     if ((vertices[vertices.size()-1] - goal).squaredNorm() > (N-2-i-1)*(N-2-i-1)*_rest_length*_rest_length) {
       inc = (goal - vertices[vertices.size()-1]).normalized()*_rest_length;
+      if ( acos(inc.dot(prevInc) / (prevInc.norm() * inc.norm())) > 3*M_PI/4 ) {
+        inc = prevInc; 
+      }
     } else {
       if (drand48() < 0.25) {
         if (drand48() < 0.3) {
          do {
-            inc 
-<< Normal(0,1), Normal(0,1), Normal(0,1);
+            inc << Normal(0,1), Normal(0,1), Normal(0,1);
             //inc = goal;
             inc.normalize();
             inc *= _rest_length;
@@ -232,9 +184,16 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
             angle = acos(inc.dot(prevInc) / (prevInc.norm()*inc.norm()));     
           } while(abs(angle) > M_PI/8.0);
         }
-          cout << angle << endl;
+          //cout << angle << endl;
       }
     }
+  }
+
+  for (int i = 0; i < N; i++) {
+    for (int j = 0; j < 3; j++) { 
+      cout << vertices[i][j] << " ";
+    }
+    cout << endl; 
   }
 
   Matrix3d rot = Matrix3d::Identity();
@@ -248,13 +207,13 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
 //void Thread_RRT::getNextGoal(VectorXd* next, Matrix3d* next_rot) {
 void Thread_RRT::getNextGoal(Thread* next) {
   if (drand48() < 0.10) {
-    cout << "actual goal" << endl;
+    //cout << "actual goal" << endl;
 //    next->resize(_goal.size());
 //    *next = _goal;
 //    *next_rot = _goal_rot;
     next = (Thread *) _goal_thread; 
   } else {
-    cout << "random gen" << endl;
+    //cout << "random gen" << endl;
     //if (next_thread != _goal_thread) {
     //  delete next_thread;
     //}
@@ -389,8 +348,13 @@ double Thread_RRT::extendToward(const Thread* target) {
   Matrix3d end_rot = closest->endRotation(); 
 
   // create a new thread based on the closest
-  Thread start = closest->thread;
+  //Thread start = closest->thread;
 
+  if (closest == NULL) {
+    cout << "HUH??????" << endl;
+  }
+
+  Thread* start = new Thread(closest->thread);
   
   //Vector3d next_pos = next.segment<3>(next.size()-3);
   Vector3d translation;
@@ -408,31 +372,32 @@ double Thread_RRT::extendToward(const Thread* target) {
   */ 
 
   // solve and apply control to the closest thread
-  solveLinearizedControl(&start, target, tmpMotions); 
-  start.minimize_energy();
+  solveLinearizedControl(start, target, tmpMotions); 
+  start->minimize_energy();
 
-  if (distanceBetween(&start, &(closest->thread)) < 5e-1) { 
+  if (distanceBetween(start, &(closest->thread)) < 5e-1) { 
     closest->CVF += 1;
     totalPenalty += 1;
-    cout << "[Total penalty on node, Total Penalty]: [ " << closest->CVF  
-        << ", " << totalPenalty << "]" << endl;
+    //cout << "[Total penalty on node, Total Penalty]: [ " << closest->CVF  
+    //    << ", " << totalPenalty << "]" << endl;
     return DBL_MAX;
   }
 
-  cout << " attaching new node: " << endl;
-  RRTNode* toadd = new RRTNode(&start);
+  //cout << " attaching new node: " << endl;
+  RRTNode* toadd = new RRTNode(start);
   toadd->prev = closest;
   //start->getTwists(&toadd->twists);
   //toadd->endrot = start->end_rot();
   toadd->lstMotions = tmpMotions;
   //_tree.push_back(toadd);
   insertIntoRRT(toadd);
-  cout << "tree size: " << _tree.size() << endl;
-
+  if (_tree.size() % 100 == 0) { 
+    cout << "tree size: " << _tree.size() << endl;
+  }
   // return the distance of the new point to goal
   // delete start;
   //return (toadd->x - _goal).squaredNorm();
-  return distanceBetween(&start, target); 
+  return distanceBetween(start, target); 
 }
 
 double Thread_RRT::extendAsFarToward(const Thread* target) {
@@ -480,7 +445,8 @@ double Thread_RRT::distanceBetween(const Thread* start, const Thread* end) {
       // norm = (next - _tree[i]->x).cwise().abs().sum();
       if (norm < bestDist) {
         ptr = _tree[i];
-        bestDist = norm;
+        be
+stDist = norm;
       }
     //}
   }
