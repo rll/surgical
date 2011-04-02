@@ -1,7 +1,7 @@
 UTILS_DIR = ../../utils/
 THREAD_DIR = ../DiscreteRods/
 VISION_DIR = ../vision/
-LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lPvAPI -lrt -lglut -lgle -llshkit -lgsl -lgslcblas -lboost_program_options
+LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lPvAPI -lrt -lglut -lgle -llshkit -lgsl -lgslcblas -lboost_program_options-mt
 INCLUDES = -I/usr/local/include/ -I $(UTILS_DIR) -I/usr/local/include/eigen2/ -I/usr/include/boost/ -I/usr/local/include/lshkit/
 #INCLUDES = -I/usr/local/include/ -I/usr/local/include/opencv/ -I/usr/local/include/libPvAPI -I $(UTILS_DIR)
 OPT_COMP = -DEIGEN_NO_DEBUG -O2
