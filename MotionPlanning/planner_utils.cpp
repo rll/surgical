@@ -189,12 +189,12 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
     }
   }
 
-  for (int i = 0; i < N; i++) {
+ /* for (int i = 0; i < N; i++) {
     for (int j = 0; j < 3; j++) { 
       cout << vertices[i][j] << " ";
     }
     cout << endl; 
-  }
+  }*/
 
   Matrix3d rot = Matrix3d::Identity();
   return new Thread(vertices, angles, rot);
