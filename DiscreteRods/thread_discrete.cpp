@@ -372,6 +372,8 @@ void Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 
   double max_movement_vertices = max_move_vert;
   project_length_constraint();
+
+
   bool recalc_vertex_grad = true;
 
   double curr_energy = calculate_energy();
@@ -1183,6 +1185,16 @@ void Thread::project_length_constraint()
   const double projection_scale_factor = 1.0;
   const double max_norm_to_break = 1e-5;
 
+
+  //quick check to see if we can avoid calling this function
+  bool all_norms_within_thresh = true;
+  for (int piece_ind = 0; piece_ind < _thread_pieces.size()-1; piece_ind++)
+  {
+    all_norms_within_thresh &= abs(_thread_pieces[piece_ind]->edge_norm() - _rest_length) < max_norm_to_break;
+  }
+  if (all_norms_within_thresh)
+    return;
+
   // set up the augmented lagrangian system: need C, grad C, mass mat.
   // y is the coordinates of all vertices
   // dy is what we are solving for
@@ -1196,9 +1208,7 @@ void Thread::project_length_constraint()
   VectorXd C(N-3);
   MatrixXd gradC(N-3, 3*(N-4));
 
-
   vector<Vector3d> vertex_offsets(_thread_pieces.size());
-
 
   int iter_num;
 
@@ -1232,9 +1242,9 @@ void Thread::project_length_constraint()
     // (gradC*gradC.transpose()).lu().solve(C,&dl);
     // VectorXd dy = -gradC.transpose()*dl;
 
+    gradC*gradC.transpose();
     (gradC*gradC.transpose()).llt().solveInPlace(C);
     dy = -gradC.transpose()*C;
-
 
     for(int i = 2; i < N-2; i++) {
       for(int j = 0; j < 3; j++) {
@@ -1257,7 +1267,7 @@ void Thread::project_length_constraint()
       break;
 
   }
-  // cout << iter_num << " " << normerror << endl;
+  //cout << iter_num << " " << normerror << endl;
 
 }
 

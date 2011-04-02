@@ -1,4 +1,5 @@
 *.o
+*.swp
 ThreadVision_DiscreteRods/threadStereo
 ThreadVision_DiscreteRods/threadStereo_fake
 tags
