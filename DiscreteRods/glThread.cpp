@@ -1,7 +1,10 @@
 #include "glThread.h"
+//default 23 links
+#define NUM_LINKS 23
+
 
 GLThread::GLThread() {
-  int numInit = 10;
+  int numInit = (NUM_LINKS-3)/2;
   double noise_factor = 0.0;
 
   vector<Vector3d> vertices;

@@ -34,17 +34,27 @@ class Thread_RRT
   void planStep(Thread& new_sample_thread, Thread& closest_sample_thread, Thread& new_extend_thread);
   vector<RRTNode*>* getTree() { return &_tree; }
   Thread* generateSample(const Thread* start);
-  
-  double distanceBetween(const Thread* start, const Thread* end); 
+  Thread* generateSample(int N); 
+
+  double distanceBetween(const Thread* start, const Thread* end) {
+    RRTNode* sNode = new RRTNode(start);
+    RRTNode* eNode = new RRTNode(end);
+    double score = utils.distanceBetween(sNode, eNode); 
+    delete sNode; 
+    delete eNode; 
+    return score;
+  }
   typedef Repeat<HyperPlaneLsh> HASH; 
  
  private:
   vector<RRTNode*> _tree;
-  VectorXd _goal;
-  Matrix3d _goal_rot;
-  const Thread* _start_thread;
-  const Thread* _goal_thread;
+//  VectorXd _goal;
+//  Matrix3d _goal_rot;
+//  const Thread* _start_thread;
+//  const Thread* _goal_thread;
 
+  const RRTNode* _start_node; 
+  const RRTNode* _goal_node;
 
   void insertIntoRRT(RRTNode* node);  
 //  void getNextGoal(VectorXd* next, Matrix3d* next_rot);
@@ -68,7 +78,9 @@ class Thread_RRT
 //  Matrix3d next_rot;
   Thread* next_thread;
   //lshkit::LshIndex<lshkit::HyperPlaneLsh, RRTNode* > *index; 
-  LshMultiTable<HASH>*index;  
+  LshMultiTable<HASH>*index; 
+
+  RRTNodeUtils utils; 
   
 };
 

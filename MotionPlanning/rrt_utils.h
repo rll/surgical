@@ -37,40 +37,15 @@ class RRTNode {
   //Vector3d endPosition() {  return x.segment<3>(N-3); }
   const Thread* getThread() { return thread; } 
   const float* getData() { return data; }
- 
-  /*class Accessor { 
-    set<RRTNode*> *nodes;
-    public: 
-      typedef RRTNode* Key;
-      typedef float* Value;
-      typedef float* Domain;
-      typedef RRTNode::Accessor ACCESSOR;
-      //typedef lshkit::metric::l2<float> METRIC;
-      //typedef lshkit::HyperPlaneLsh LSH;
-      Accessor();
-      bool mark (Key key) { 
-        cout << "Accessing Mark" << endl; 
-        cout << key << endl;
-        if (nodes->count(key) > 0) { 
-          cout << "Returning false" << endl;
-          return false;
-        }
-        cout << "Returning true" << endl;
-        nodes->insert(key);
-        return true;
-      }
 
-      Value operator()(Key key) {
-        cout << "Accessing key" << endl;
-        cout << key << endl;
-        return key->getData();
-      }
+};
 
-      void reset() { 
-        nodes->clear();
-      }
 
-  };*/
+class RRTNodeUtils {
+
+  public:
+    double distanceBetween(RRTNode* start, RRTNode* end);
+
 };
 
 #endif

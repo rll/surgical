@@ -32,7 +32,8 @@ public:
     typedef std::vector<Key> Bin;
     std::vector<LSH> lshs_;
     std::vector<std::vector<Bin> > tables_;
-    int dim;  
+    int dim; 
+    RRTNodeUtils utils;
 
     /// Constructor.
     LshTable() {
@@ -89,7 +90,8 @@ public:
           if(keys->count(key) == 0) {
             ++keysConsidered;
             keys->insert(key);
-            float score = metric(((RRTNode *)key)->getData(), target_value);
+            //float score = metric(((RRTNode *)key)->getData(), target_value);
+            float score = metric(key, target);
             //cout << "Score: " << score << endl; 
             if (score < minScore) { 
               minScore = score;
@@ -121,12 +123,16 @@ public:
      return argMin; 
     }
 
-    float metric (Domain d1, Domain d2) { 
+    /*float metric (Domain d1, Domain d2) { 
       float r = 0.0; 
       for (unsigned i = 0; i < dim; i++) {
         r+= (d1[i] - d2[i]) * (d1[i] - d2[i]); 
       }
       return r; 
+    }*/
+
+    float metric (Key d1, Key d2) {
+      return utils.distanceBetween((RRTNode *) d1, (RRTNode *) d2); 
     }
 };
 
@@ -186,8 +192,10 @@ class LshMultiTable {
       Domain target_value = ((RRTNode *) target)->getData();
       for (int i = 0; i < tables[0]->tables_[0].size(); i++) {
         BOOST_FOREACH(Key key, tables[0]->tables_[0][i]) { 
-          float score = tables[0]->metric(((RRTNode *)key)->getData(),
-              target_value);
+          //float score = tables[0]->metric(((RRTNode *)key)->getData(),
+          //    target_value);
+          float score = tables[0]->metric(key, target);
+
           //cout << "Score: " << score << endl; 
           if (score < minScore) { 
             minScore = score;

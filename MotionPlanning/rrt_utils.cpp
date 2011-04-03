@@ -6,6 +6,9 @@ RRTNode::~RRTNode() {
     delete lstMotions[i];
   }
   lstMotions.clear();
+
+  delete data; 
+
   //if (thread != NULL) { delete thread; }
 
 }
@@ -28,9 +31,21 @@ RRTNode::RRTNode(const Thread* start): prev(NULL), next(NULL), linearized(false)
   
 }
 
-/*RRTNode::Accessor::Accessor() { 
-  nodes = new set<RRTNode*>();
+
+double RRTNodeUtils::distanceBetween(RRTNode* start, RRTNode* end) { 
+  int N = start->N; 
+  
+  const float* startData = start->getData();
+  const float* endData = end->getData();
+
+
+  float r = 0.0;
+  for (int i = 0; i < N; i++) { 
+    r += (startData[i] - endData[i]) * (startData[i] - endData[i]);  
+  }
+
+  return sqrt(r); 
+
 }
-*/
 
 

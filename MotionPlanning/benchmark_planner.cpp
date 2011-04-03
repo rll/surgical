@@ -37,14 +37,19 @@ void benchmark(unsigned int seed, float threshold) {
   char filename[256];
   sprintf(filename, "benchmark_data/%u_%u.txt", seed, currentTime);
   outFile.open(filename); 
-  
-  Thread* startThread = (new GLThread())->getThread();
-  Thread* goalThread = new Thread(threads.front());
-  
+ 
+
+  Thread_RRT planner; 
+
+  //Thread* startThread = (new GLThread())->getThread();
+  //Thread* goalThread = new Thread(threads.front());
+  Thread* startThread = planner.generateSample(15);
+  Thread* goalThread = planner.generateSample(15);
+
+
   startThread->minimize_energy();
   goalThread->minimize_energy();
 
-  Thread_RRT planner; 
   planner.initialize(startThread, goalThread);
 
   Thread* goal_thread = new Thread();
