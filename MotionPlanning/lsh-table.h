@@ -69,10 +69,6 @@ public:
         Domain value = ((RRTNode *)key)->getData();
         for (unsigned i = 0; i < lshs_.size(); ++i) {
             unsigned index = lshs_[i](value);
-    typedef typename LSH::Parameter Parameter;
-    typedef typename LSH::Domain Domain; 
-    typedef const RRTNode* Key;
-    typedef std::vector<Key> Bin;
             tables_[i][index].push_back(key);
         }
     }
@@ -102,8 +98,8 @@ public:
           }
         }
       }
-      if (argMin == NULL) {
-        //cout << "No match through hash! Running through all nodes..." << endl;
+      /*if (argMin == NULL) {
+        cout << "No match through hash! Running through all nodes..." << endl;
         for (int i = 0; i < tables_[0].size(); i++) {
           BOOST_FOREACH(Key key, tables_[0][i]) { 
             ++keysConsidered;
@@ -121,7 +117,7 @@ public:
         for (unsigned i =0; i < dim; i++) {
           cout << target_value[i] << endl; 
         }
-     }
+     }*/
      return argMin; 
     }
 
@@ -137,22 +133,73 @@ public:
 
 template<typename LSH> 
 class LshMultiTable {
-    
+  public:   
     typedef typename LSH::Parameter Parameter;
     typedef typename LSH::Domain Domain; 
     typedef const RRTNode* Key;
     typedef std::vector<Key> Bin;
-    vector<LshTable<LSH> > tables; 
+    vector<LshTable<LSH>*> tables; 
+    int numTables;
+    int dim; 
+    int maxRepeat;
     // index 0 contains the hash with the most bits, param.dim
     // index 1 contains param.dim bits etc. 
 
+    LshMultiTable(){}
 
     /* param.dim must be a power of 2 */ 
     void init (const Parameter &param, unsigned L) {
-      
+      numTables = 0; 
+      dim = param.dim; 
+      maxRepeat = param.repeat;
+      int tmpRepeat = maxRepeat; 
+      Parameter *p = new Parameter();
+      do {
+        p->dim = dim;
+        p->repeat = tmpRepeat; 
+        LshTable<LSH>* table = new LshTable<LSH>();
+        table->init(*p, L);
+        tables.push_back(table);
+        tmpRepeat /= 2; 
+        numTables++; 
+      } while (tmpRepeat > 1); 
 
+    }
 
+    void insert(Key key) {
+      for (int i = 0; i < numTables; i++) {
+        tables[i]->insert(key);
+      }
+    }
 
+    Key query(Key target) {     
+      Key argMin = NULL; 
+      double minScore = DBL_MAX; 
+      for (int i = 0; i < numTables; i++) { 
+        argMin = tables[i]->query(target);
+        if (argMin != NULL) { 
+          return argMin;
+        }
+      }
+
+      //cout << "No match through hash! Running through all nodes..." << endl;
+      Domain target_value = ((RRTNode *) target)->getData();
+      for (int i = 0; i < tables[0]->tables_[0].size(); i++) {
+        BOOST_FOREACH(Key key, tables[0]->tables_[0][i]) { 
+          float score = tables[0]->metric(((RRTNode *)key)->getData(),
+              target_value);
+          //cout << "Score: " << score << endl; 
+          if (score < minScore) { 
+            minScore = score;
+            argMin = key; 
+          }
+        }
+      }
+      if (argMin == NULL) {
+        cout << "Target is buggy" << endl; 
+      }
+ 
+      return argMin; 
     }
 
 };

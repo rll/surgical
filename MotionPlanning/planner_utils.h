@@ -58,7 +58,7 @@ class Thread_RRT
   RRTNode* findClosestNode(const Thread* target);
 
 //  void simpleInterpolation(const Vector3d& cur_pos, const Matrix3d& cur_rot, const Vector3d& next, const Matrix3d& next_rot, Vector3d* res_translation, Matrix3d* res_rotation);
-  void simpleInterpolation(const Thread* start, const Thread* end, Vector3d* res_translation, Matrix3d* res_rotation);
+  void simpleInterpolation(Thread* start, const Thread* end, vector<Frame_Motion*>& motions);
 
   double distToGoal;
   double bestDist;
@@ -68,7 +68,7 @@ class Thread_RRT
 //  Matrix3d next_rot;
   Thread* next_thread;
   //lshkit::LshIndex<lshkit::HyperPlaneLsh, RRTNode* > *index; 
-  LshTable<HASH>*index;  
+  LshMultiTable<HASH>*index;  
   
 };
 

@@ -37,13 +37,13 @@ void Thread_RRT::initialize(const Thread* start, const Thread* goal)
   //next_rot.setZero();
   next_thread = NULL; 
 
-  index = new LshTable<HASH>();
+  index = new LshMultiTable<HASH>();
   HASH::Parameter *param = new HASH::Parameter();
   unsigned int dim = start->num_pieces()*3;
   param->dim = dim;
   param->repeat = 20;
 
-  index->init(*param, 4); 
+  index->init(*param, 2); 
   index->insert(startNode); 
 
 
@@ -228,10 +228,12 @@ void Thread_RRT::getNextGoal(Thread* next) {
     next_thread = next;
 }
 
-void Thread_RRT::simpleInterpolation(const Thread* start, const Thread* goal, Vector3d* translation, Matrix3d* rotation) {
+void Thread_RRT::simpleInterpolation(Thread* start, const Thread* goal, vector<Frame_Motion*>& motions) {
 //void Thread_RRT::simpleInterpolation(const Vector3d& cur_pos, const Matrix3d& cur_rot, const Vector3d& next_pos, const Matrix3d& next_rot, Vector3d* translation, Matrix3d* rotation) {
   // use quaternion interpolation to move closer to end rot
   // figure out angle between quats, spherically interpolate.
+  Vector3d translation;
+  Matrix3d rotation; 
   Vector3d cur_pos = start->end_pos();
   Matrix3d cur_rot = start->end_rot();
 
@@ -247,17 +249,23 @@ void Thread_RRT::simpleInterpolation(const Thread* start, const Thread* goal, Ve
   double angle = acos(after_goal.dot(after_end));
   double t = M_PI/8.0/angle;
   Eigen::Quaterniond finalq = endq.slerp(t, goalq).normalized();
-  (*rotation) = (finalq*endq.inverse()).toRotationMatrix();
+  rotation = (finalq*endq.inverse()).toRotationMatrix();
 
 
   // use linear interpolation to move closer to end pos
   Vector3d goal_pos = next_pos;
-  *translation = goal_pos - cur_pos;
+  translation = goal_pos - cur_pos;
   double step = 3.0;
-  if(translation->squaredNorm() > 0) {
-    translation->normalize();
+  if(translation.squaredNorm() > 0) {
+    translation.normalize();
   }
-  *translation *= step;
+  translation *= step;
+
+  Frame_Motion *toMove = new Frame_Motion(translation, rotation);
+  motions.push_back(toMove);
+  toMove->applyMotion(cur_pos, cur_rot);
+  start->set_end_constraint(cur_pos, cur_rot); 
+
 }
 double Thread_RRT::largeRotation(const Thread* target) {  
 //double Thread_RRT::largeRotation(const VectorXd& next) {
@@ -362,7 +370,7 @@ double Thread_RRT::extendToward(const Thread* target) {
   vector<Frame_Motion*> tmpMotions;
   //cout << " before motion: " << endl << end_pos << endl << end_rot << endl;
   // apply the motion
-  /*simpleInterpolation(&start, target, &translation, &rotation);
+  /*simpleInterpolation(&start, target, tmpMotions);
     Frame_Motion* toMove = new Frame_Motion(translation, rotation);
     tmpMotions.push_back(toMove);
     toMove->applyMotion(end_pos, end_rot); 
