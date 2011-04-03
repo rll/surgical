@@ -138,7 +138,7 @@ void planRRT() {
   //glThreads[6]->minimize_energy();
   
   if (initialized) {
-    Thread curNodeThread = curNode->thread;
+    Thread curNodeThread = *(curNode->thread);
     VectorXd curNodePts; 
     curNodeThread.toVector(&curNodePts); 
     //glThreads[7]->setThread(curNode->thread);
@@ -279,7 +279,7 @@ void processSpecialKeys(int key, int x, int y) {
    if(initialized) {
      if (curNode->prev != NULL) {
        curNode = curNode->prev;
-       Thread curNodeThread = curNode->thread;
+       Thread curNodeThread = *(curNode->thread);
        VectorXd curNodePts; 
        curNodeThread.toVector(&curNodePts); 
        VectorXd angles(curNodePts.size()/3);
@@ -296,7 +296,7 @@ void processSpecialKeys(int key, int x, int y) {
    if(initialized) {
      if (curNode->next != NULL) {
        curNode = curNode->next;
-       Thread curNodeThread = curNode->thread;
+       Thread curNodeThread = *(curNode->thread);
        VectorXd curNodePts; 
        curNodeThread.toVector(&curNodePts); 
        VectorXd angles(curNodePts.size()/3);

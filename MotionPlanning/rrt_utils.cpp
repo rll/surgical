@@ -14,7 +14,7 @@ RRTNode::RRTNode(const Thread* start): prev(NULL), next(NULL), linearized(false)
 //  start->toVector(&x);
 //  start->getTwists(&twists);
 //  endrot = start->end_rot();
-  thread = *start;   
+  thread = (Thread *) start;   
   //B.resize(start->num_pieces()*3, 6);
   CVF = 0.0; 
   N = start->num_pieces()*3;

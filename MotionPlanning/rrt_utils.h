@@ -25,17 +25,17 @@ class RRTNode {
 //  VectorXd x;
 //  VectorXd twists;
 //  Matrix3d endrot;
-  Thread thread;
+  Thread* thread;
   int N;
 
   double CVF; 
   float* data;
 
-  const Matrix3d &endRotation() {  return thread.end_rot(); }
+  const Matrix3d &endRotation() {  return thread->end_rot(); }
   //Matrix3d endRotation() {  return endrot; }
-  const Vector3d &endPosition() {  return thread.end_pos(); }
+  const Vector3d &endPosition() {  return thread->end_pos(); }
   //Vector3d endPosition() {  return x.segment<3>(N-3); }
-  const Thread getThread() { return thread; } 
+  const Thread* getThread() { return thread; } 
   const float* getData() { return data; }
  
   /*class Accessor { 
