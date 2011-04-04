@@ -47,7 +47,7 @@ void applyControl(Thread* start, const VectorXd& u, vector<Frame_Motion*>& motio
     start->set_end_constraint(end_pos, end_rot);
   }
 
-  //start->minimize_energy(); 
+  start->minimize_energy(); 
 }
 
   
@@ -85,7 +85,8 @@ void solveLinearizedControl(Thread* start, const Thread* goal, vector<Frame_Moti
   VectorXd dx(num_pieces*3);
   //computeDifference_maxMag(start, goal, dx, MAX_MAG);
   computeDifference_maxMag(start, goal, dx, MAX_MAG);
-  VectorXd u = B.transpose()*dx;
+  VectorXd u(6);
+  u = B.transpose()*dx;
   
   (B.transpose()*B + DAMPING_CONST*MatrixXd::Identity(6, 6)).llt().solveInPlace(u);
   // project it down to small step size

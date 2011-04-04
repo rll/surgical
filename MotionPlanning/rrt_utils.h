@@ -45,6 +45,7 @@ class RRTNodeUtils {
 
   public:
     double distanceBetween(RRTNode* start, RRTNode* end);
+    double l2PointsDifference(RRTNode* start, RRTNode* end);
 
 };
 

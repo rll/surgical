@@ -44,6 +44,17 @@ class Thread_RRT
     delete eNode; 
     return score;
   }
+
+  double l2PointsDifference(const Thread* start, const Thread* end) { 
+    RRTNode* sNode = new RRTNode(start);
+    RRTNode* eNode = new RRTNode(end);
+    double score = utils.l2PointsDifference(sNode, eNode); 
+    delete sNode; 
+    delete eNode; 
+    return score;
+  }
+
+  RRTNode* findClosestNode(const Thread* target, bool approximateNode=true);
   typedef Repeat<HyperPlaneLsh> HASH; 
  
  private:
@@ -58,14 +69,14 @@ class Thread_RRT
 
   void insertIntoRRT(RRTNode* node);  
 //  void getNextGoal(VectorXd* next, Matrix3d* next_rot);
-  void getNextGoal(Thread* next);
+  Thread* getNextGoal();
   //double extendToward(const VectorXd& next, const Matrix3d& next_rot);
-  double extendToward(const Thread* target);
-  double extendAsFarToward(const Thread* target);
+  double extendToward(Thread* target);
+  double extendAsFarToward(Thread* target);
   //double largeRotation(const VectorXd& next);
   double largeRotation(const Thread* target);
   //RRTNode* findClosestNode(const VectorXd& next);
-  RRTNode* findClosestNode(const Thread* target);
+
 
 //  void simpleInterpolation(const Vector3d& cur_pos, const Matrix3d& cur_rot, const Vector3d& next, const Matrix3d& next_rot, Vector3d* res_translation, Matrix3d* res_rotation);
   void simpleInterpolation(Thread* start, const Thread* end, vector<Frame_Motion*>& motions);

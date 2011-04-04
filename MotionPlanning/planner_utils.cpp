@@ -1,5 +1,9 @@
 #include "planner_utils.h"
 #include <time.h>
+#include <omp.h>
+
+
+omp_lock_t writelock; 
 
 Thread_RRT::Thread_RRT()
 {
@@ -16,7 +20,7 @@ void Thread_RRT::initialize(const Thread* start, const Thread* goal)
   //_goal_thread = goal;
   //  goal->toVector(&_goal);
   //  _goal_rot = goal->end_rot();
-
+  omp_init_lock(&writelock); 
   _start_node = new RRTNode(start);
   _goal_node = new RRTNode(goal);  
 
@@ -31,7 +35,7 @@ void Thread_RRT::initialize(const Thread* start, const Thread* goal)
   bestDist = DBL_MAX;
   TOLERANCE = 0.01;
   totalPenalty = 1.0; 
-  next_thread = NULL; 
+  //next_thread = NULL; 
 
   index = new LshMultiTable<HASH>();
   HASH::Parameter *param = new HASH::Parameter();
@@ -40,32 +44,36 @@ void Thread_RRT::initialize(const Thread* start, const Thread* goal)
   param->repeat = 20;
 
   index->init(*param, 2); 
-  index->insert(_start_node); 
+
+  insertIntoRRT((RRTNode *) _start_node); 
 
 
 }
 void Thread_RRT::planStep(Thread& new_sample_thread, Thread& closest_sample_thread, Thread& new_extend_thread) { 
 //void Thread_RRT::planStep(VectorXd* vertices, VectorXd* prev, VectorXd* next_thread) {
   //cout << "getting target" << endl;
+  Thread* next_target = NULL; 
   double newSampleDist = DBL_MAX;
   while (newSampleDist == DBL_MAX) { 
-    getNextGoal(next_thread);
+    next_target = getNextGoal();
     //cout << "extending to target" << endl;
     if (drand48() < 1.0) {
-      newSampleDist = extendAsFarToward(next_thread);
+      newSampleDist = extendAsFarToward(next_target);
     } else {
-      newSampleDist = largeRotation(next_thread);
+      newSampleDist = largeRotation(next_target);
     }
   }
 
-  new_sample_thread = *next_thread;
+  omp_set_lock(&writelock);
+  new_sample_thread = *next_target;
   closest_sample_thread = *(_tree.back()->prev->thread);
   new_extend_thread = *(_tree.back()->thread);
+  omp_unset_lock(&writelock);
   //*prev = (_tree.back()->prev->x);
   //*next_thread = (_tree.back()->x);
   //cout << "done step" << endl;
 
-  RRTNode* closest = findClosestNode(_goal_node->thread);
+  RRTNode* closest = findClosestNode(_goal_node->thread, false);
   while(closest->prev != NULL) {
     closest->prev->next = closest;
     closest = closest->prev;
@@ -116,7 +124,7 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
   Vector3d goal; 
   Vector3d noise; 
   double max_thread_length = (N-2)*_rest_length; 
-  if (drand48() < 0.3) { 
+  if (drand48() < 0.10) { 
   
   // sample the goal by taking the current goal and adding noise
   // these samples are very similar to the goal 
@@ -158,19 +166,19 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
     // time to move toward the goal
     if ((vertices[vertices.size()-1] - goal).squaredNorm() > (N-2-i-1)*(N-2-i-1)*_rest_length*_rest_length) {
       inc = (goal - vertices[vertices.size()-1]).normalized()*_rest_length;
-      if ( acos(inc.dot(prevInc) / (prevInc.norm() * inc.norm())) > 3*M_PI/4 ) {
-        inc = prevInc; 
-      }
+      //if ( acos(inc.dot(prevInc) / (prevInc.norm() * inc.norm())) > 3*M_PI/4 ) {
+        //inc = prevInc; 
+      //}
     } else {
       if (drand48() < 0.25) {
-        if (drand48() < 0.3) {
+        if (drand48() < 0.5) {
          do {
             inc << Normal(0,1), Normal(0,1), Normal(0,1);
             //inc = goal;
             inc.normalize();
             inc *= _rest_length;
             angle = acos(inc.dot(goal) / (goal.norm()*inc.norm()));     
-          } while(abs(angle) > M_PI/8.0);
+          } while(abs(angle) > M_PI/3.0);
         } else {
          do {
             inc << Normal(0,1), Normal(0,1), Normal(0,1);
@@ -178,7 +186,7 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
             inc.normalize();
             inc *= _rest_length;
             angle = acos(inc.dot(prevInc) / (prevInc.norm()*inc.norm()));     
-          } while(abs(angle) > M_PI/8.0);
+          } while(abs(angle) > M_PI/3.0);
         }
           //cout << angle << endl;
       }
@@ -274,27 +282,31 @@ Thread* Thread_RRT::generateSample(int N) {
 
 
 //void Thread_RRT::getNextGoal(VectorXd* next, Matrix3d* next_rot) {
-void Thread_RRT::getNextGoal(Thread* next) {
-  if (drand48() < 0.10) {
+Thread* Thread_RRT::getNextGoal() {
+  Thread* next_target = NULL; 
+  
+  if (drand48() < 0.01) {
     //cout << "actual goal" << endl;
 //    next->resize(_goal.size());
 //    *next = _goal;
 //    *next_rot = _goal_rot;
-    next = (Thread *) _goal_node->thread; 
+    next_target = (Thread *) _goal_node->thread; 
   } else {
     //cout << "random gen" << endl;
     //if (next_thread != _goal_thread) {
     //  delete next_thread;
     // }
-    next = generateSample(_goal_node->thread);
-    next->minimize_energy();
+    next_target = generateSample(_goal_node->thread);
+    //next->project_length_constraint();
+    //next->minimize_energy();
 //    next_thread = generateSample(_goal_thread);
 //    next_thread->minimize_energy();
 //    next_thread->toVector(next);
 //    *next_rot = next_thread->end_rot();
   }
 
-    next_thread = next;
+    //next_thread = next_target;
+    return next_target;
 }
 
 void Thread_RRT::simpleInterpolation(Thread* start, const Thread* goal, vector<Frame_Motion*>& motions) {
@@ -408,7 +420,7 @@ double Thread_RRT::largeRotation(const Thread* target) {
   return utils.distanceBetween(toadd, (RRTNode *) _goal_node);
 }
 
-double Thread_RRT::extendToward(const Thread* target) {
+double Thread_RRT::extendToward(Thread* target) {
 //double Thread_RRT::extendToward(const VectorXd& next, const Matrix3d& next_rot) {
 
   // get the end position and end_rotation of target
@@ -416,14 +428,25 @@ double Thread_RRT::extendToward(const Thread* target) {
   Matrix3d target_rot = target->end_rot();
 
   // find the node closest to the target and extract the end position and rotation
-  RRTNode* closest = findClosestNode(target);
+
+  RRTNode* closest; 
+  do {
+    closest = findClosestNode(target);
+    if (closest == NULL) {
+      cout << "Nearest neighbor returned null. Generating new target" << endl;
+      if (target == _goal_node->thread) { 
+        cout << "Goal thread buggy" << endl; 
+        exit(0);
+      }
+      //delete target;
+      cout << target << endl;
+      target = generateSample(_goal_node->thread); 
+      //next_thread = target;
+    }
+  } while (closest == NULL); 
+  
   Vector3d end_pos = closest->endPosition();
   Matrix3d end_rot = closest->endRotation(); 
-
-
-  if (closest == NULL) {
-    cout << "Nearest Neighbor returned null" << endl;
-  }
 
   // create a new thread based on the closest
   Thread* start = new Thread(*(closest->thread));
@@ -444,7 +467,7 @@ double Thread_RRT::extendToward(const Thread* target) {
   if (utils.distanceBetween(toadd, closest) < 5e-1) { 
     closest->CVF += 1;
     totalPenalty += 1;
-    delete toadd; 
+    //delete toadd; 
     //cout << "[Total penalty on node, Total Penalty]: [ " << closest->CVF  
     //    << ", " << totalPenalty << "]" << endl;
     return DBL_MAX;
@@ -458,19 +481,32 @@ double Thread_RRT::extendToward(const Thread* target) {
   if (_tree.size() % 100 == 0) { 
     cout << "tree size: " << _tree.size() << endl;
   }
+
+
+  // find distance of node to goal 
+  double scoreToGoal = utils.distanceBetween(toadd, (RRTNode *) _goal_node);
+
+  if (scoreToGoal < bestDist) { 
+      bestDist = scoreToGoal; 
+      //cout << "Best Dist " << scoreToGoal << endl;
+      cout << "Current Best Dist: " <<
+        utils.l2PointsDifference(toadd, (RRTNode *) _goal_node) << endl; 
+  }
+
   // return the distance of the new point to target
   RRTNode* targetNode = new RRTNode(target); 
-  double score = utils.distanceBetween(toadd, targetNode);
-  delete targetNode;
-  return score;
+  double scoreToTarget = utils.distanceBetween(toadd, targetNode);
+  //delete targetNode;
+
+  return scoreToTarget;
 }
 
-double Thread_RRT::extendAsFarToward(const Thread* target) {
+double Thread_RRT::extendAsFarToward(Thread* target) {
   double prevScore = DBL_MAX;
   double score = DBL_MAX;
   do {
     prevScore = score; 
-    score = extendToward(target); 
+    score = extendToward(target);
   } while(prevScore - score > 1e-1); 
   return score; 
 }
@@ -500,15 +536,32 @@ double Thread_RRT::extendAsFarToward(const Thread* target) {
 } */
 
 
-RRTNode* Thread_RRT::findClosestNode(const Thread* target) { 
-  RRTNode* targetNode = new RRTNode(target); 
-  return (RRTNode*) index->query(targetNode); 
+RRTNode* Thread_RRT::findClosestNode(const Thread* target, bool approximateNode) { 
+  omp_set_lock(&writelock);
 
+  RRTNode* bestNode = NULL;
+  if (approximateNode) { 
+    RRTNode* targetNode = new RRTNode(target); 
+    bestNode = (RRTNode *) index->query(targetNode); 
+  } else {
+    double bestDist = DBL_MAX;
+    for (int i = 0; i < _tree.size(); i++) { 
+      if (utils.distanceBetween((RRTNode *) _tree[i], (RRTNode *) _goal_node) 
+          < bestDist) {
+        bestDist = utils.distanceBetween((RRTNode *) _tree[i], (RRTNode *)_goal_node);
+        bestNode = _tree[i]; 
+      }
+    }
+  }
+  omp_unset_lock(&writelock);
+  return bestNode;
 }
 
-void Thread_RRT::insertIntoRRT(RRTNode* node) { 
+void Thread_RRT::insertIntoRRT(RRTNode* node) {
+  omp_set_lock(&writelock);
   _tree.push_back(node);
   index->insert(node); 
+  omp_unset_lock(&writelock);
 }
 
 

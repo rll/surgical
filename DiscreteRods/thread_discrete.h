@@ -16,8 +16,12 @@
     #define MAX_ROTATION_TWIST (M_PI/30.0)
     #define MOMENTUM_CONSTANT 0.0 /*how much of the last gradient do we use*/
 
-    #define MIN_MOVEMENT_VERTICES 1e-4
+    #define MIN_MOVEMENT_VERTICES 1e-4 //speedy at 1e-4
     #define MIN_ROTATION_TWIST (M_PI/1000.0)
+    
+    #define ENERGY_FOR_CONVERGENCE 1e-5 //speedy at 1e-5
+    #define NUM_MAX_ITERS 6000 //speedy at 6000
+
 #else
 
     #define MAX_MOVEMENT_VERTICES 0.2
@@ -26,6 +30,9 @@
 
     #define MIN_MOVEMENT_VERTICES 1e-6
     #define MIN_ROTATION_TWIST (M_PI/5000.0)
+
+    #define ENERGY_FOR_CONVERGENCE 1e-20
+    #define NUM_MAX_ITERS 16000
 
 #endif
 
@@ -58,11 +65,11 @@ class Thread
     //energy minimization
     //
 #ifdef ISOTROPIC
-    void minimize_energy(int num_opt_iters=6000, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence=1e-5);
-    void minimize_energy_hessian(int num_opt_iters=6000, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence=1e-5);
+    void minimize_energy(int num_opt_iters=NUM_MAX_ITERS, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence=ENERGY_FOR_CONVERGENCE);
+    void minimize_energy_hessian(int num_opt_iters=NUM_MAX_ITERS, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence=ENERGY_FOR_CONVERGENCE);
 #else
-    void minimize_energy(int num_opt_iters=16000, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence =1e-20);
-    void minimize_energy_hessian(int num_opt_iters=16000, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence =1e-20);
+    void minimize_energy(int num_opt_iters=NUM_MAX_ITERS, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence=ENERGY_FOR_CONVERGENCE);
+    void minimize_energy_hessian(int num_opt_iters=NUM_MAX_ITERS, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence =ENERGY_FOR_CONVERGENCE);
 #endif
     void minimize_energy_twist_angles();
 
@@ -106,6 +113,13 @@ class Thread
       vec->resize(num_pieces());
       for(int i = 0; i < num_pieces(); i++) {
         (*vec)(i) = _thread_pieces[i]->angle_twist();
+      }
+    }
+
+    void getEdges(VectorXd* vec) const {
+      vec->resize(3*(num_pieces()-1));
+      for (int i = 0; i < num_pieces() - 1; i++) {
+        vec->segment<3>(3*i) = _thread_pieces[i]->edge(); 
       }
     }
 

@@ -21,6 +21,7 @@
 #include <math.h>
 #include "../DiscreteRods/thread_discrete.h"
 #include "../DiscreteRods/trajectory_reader.h"
+#include "../DiscreteRods/trajectory_recorder.h"
 #include "planner_utils.h"
 #include "linearization_utils.h"
 
@@ -39,7 +40,7 @@ void InitThread(int argc, char* argv[]);
 #define MOVE_POS_CONST 1.0
 #define MOVE_TAN_CONST 0.2
 #define ROTATE_TAN_CONST 0.2
-
+#define RRT_GOAL_THREAD_FILE "rrt_goal_thread_data"
 
 enum key_code {NONE, MOVEPOS, MOVETAN, ROTATETAN};
 
@@ -90,6 +91,30 @@ GLfloat lightThreeColor[] = {0.99, 0.99, 0.99, 1.0};
 
 GLfloat lightFourPosition[] = {-140.0, 0.0, -200.0, 0.0};
 GLfloat lightFourColor[] = {0.99, 0.99, 0.99, 1.0};
+
+
+void writeGoalThreadToFile() { 
+  Trajectory_Recorder r(RRT_GOAL_THREAD_FILE);
+  r.add_thread_to_list(*(glThreads[endThread]->getThread()));
+  r.write_threads_to_file();
+
+}
+
+void readGoalThreadFromFile() { 
+  Trajectory_Reader r(RRT_GOAL_THREAD_FILE);
+  r.read_threads_from_file();
+  vector<Thread> threads = r.get_all_threads();
+  if (threads.size() > 0) { 
+
+    Thread* frontThread = new Thread(threads.front()); 
+    glThreads[endThread]->setThread(frontThread);
+    glThreads[endThread]->minimize_energy();
+    glutPostRedisplay();
+  } 
+
+
+
+}
 
 // change prototype to include the return
 void generateRandomThread() {
@@ -150,9 +175,13 @@ void planRRT() {
 
 void stepRRT(int times) { 
   planRRT(); 
-  Thread goal_thread; Thread prev_thread; Thread next_thread; 
-  for (int i = 0; (i < times - 2 && !interruptEnabled); i++) { 
-    planner.planStep(goal_thread, prev_thread, next_thread); 
+  Thread goal_thread; Thread prev_thread; Thread next_thread;
+
+#pragma omp parallel for num_threads(12)
+  for (int i = 0; (i < 5*times - 2); i++) {
+    if (!interruptEnabled) {
+      planner.planStep(goal_thread, prev_thread, next_thread); 
+    }
   }
   planRRT();
 }
@@ -340,6 +369,12 @@ void processNormalKeys(unsigned char key, int x, int y)
   } 
   else if (key == 's') { 
     stepRRT(100); 
+  }
+  else if (key == 'w') {
+    writeGoalThreadToFile();
+  }
+  else if (key == 'e') {
+    readGoalThreadFromFile();
   }
   else if (key == 27)
   {

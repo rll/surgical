@@ -1,11 +1,13 @@
 #include "glThread.h"
 //default 23 links
-#define NUM_LINKS 23
+#define NUM_LINKS 15
 
 
 GLThread::GLThread() {
   int numInit = (NUM_LINKS-3)/2;
   double noise_factor = 0.0;
+
+  display_start_pos.setZero();
 
   vector<Vector3d> vertices;
   vector<double> angles;

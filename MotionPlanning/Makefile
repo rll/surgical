@@ -4,7 +4,7 @@ VISION_DIR = ../vision/
 LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lPvAPI -lrt -lglut -lgle -llshkit -lgsl -lgslcblas -lboost_program_options-mt
 INCLUDES = -I/usr/local/include/ -I $(UTILS_DIR) -I/usr/local/include/eigen2/ -I/usr/include/boost/ -I/usr/local/include/lshkit/
 #INCLUDES = -I/usr/local/include/ -I/usr/local/include/opencv/ -I/usr/local/include/libPvAPI -I $(UTILS_DIR)
-OPT_COMP = -DEIGEN_NO_DEBUG -O2
+OPT_COMP = -DEIGEN_NO_DEBUG -O3
 # OPT_COMP =
 FOPENMP = -fopenmp
 CC = g++ $(OPT_COMP) $(COMPILEFLAG) $(FOPENMP)
@@ -17,7 +17,7 @@ FAKEIMS= -DFAKEIMS
 
 #target : testCanny testCapture example_capture_3cam calibrate_robots test_point_distances PositionsOnRequest PositionsOnRequest2 threadStereo
 
-target: test_linearization test_planner benchmark_planner
+target: test_linearization test_planner benchmark_planner benchmark_runner
 
 test_linearization: test_linearization.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o
 	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o test_linearization test_linearization.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o $(LIBS) $(PROFILER)
@@ -79,5 +79,5 @@ planner_utils.o : planner_utils.cpp planner_utils.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c planner_utils.cpp $(PROFILER)
 
 clean:
-	rm *.o *.gch test_linearization test_planner
+	rm *.o *.gch test_linearization test_planner benchmark_runner benchmark_planner
 

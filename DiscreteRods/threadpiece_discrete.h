@@ -16,8 +16,9 @@ static double TWIST_COEFF = BEND_COEFF*3.00;
 static double STRETCH_COEFF = 0.0;
 static double GRAV_COEFF = BEND_COEFF*1e-4;
 
-static const double _rest_length = 3.0;
+static const double _rest_length = 5.0;
 static const double _rest_length_squared = _rest_length*_rest_length;
+
 static Matrix2d J = Matrix2d(Eigen::Rotation2Dd(M_PI/2.0));
 static Matrix2d JB = J*B;
 
