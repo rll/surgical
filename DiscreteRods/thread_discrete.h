@@ -8,6 +8,7 @@
 #include "float.h"
 #include <Eigen/Cholesky>
 #include <Eigen/LU>
+#include <Eigen/SVD>
 
 
 #ifdef ISOTROPIC 
@@ -121,7 +122,7 @@ class Thread
     void calculate_gradient(vector<Vector3d>& vertex_gradients, vector<double>& angle_twist_gradients);
     void calculate_gradient_vertices(vector<Vector3d>& vertex_gradients);
     void calculate_gradient_vertices_vectorized(VectorXd* vertex_gradients);
-    void calculate_inv_hessian_vertices(MatrixXd& hessian);
+    void calculate_hessian_vertices(MatrixXd& hessian);
     void calculate_gradient_twist(vector<double>& angle_twist_gradients);
     void make_max_norm_one(vector<Vector3d>& to_normalize);
     void make_max_norm_one_allPieces(vector<Vector3d>& to_normalize);

@@ -489,10 +489,6 @@ void Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 
 void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
 {
-  double step_in_grad_dir_vertices = 1.0;
-
-
-
   double max_movement_vertices = max_move_vert;
   project_length_constraint();
   bool recalc_vertex_grad = true;
@@ -501,8 +497,9 @@ void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, do
   double next_energy = 0.0;
 
   int opt_iter;
-  MatrixXd Inv_Hessian(3*(int)_thread_pieces.size(), 3*(int)_thread_pieces.size());
+  MatrixXd Hessian(3*(int)_thread_pieces.size(), 3*(int)_thread_pieces.size());
   VectorXd Gradients(3*(int)_thread_pieces.size());
+  VectorXd offsets_vectorized(3*(int)_thread_pieces.size());
   vector<Vector3d> offsets(_thread_pieces.size());
   Gradients.setZero();
   for (opt_iter = 0; opt_iter < num_opt_iters; opt_iter++)
@@ -513,7 +510,7 @@ void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, do
     if (recalc_vertex_grad)
     {
       save_thread_pieces();
-      calculate_inv_hessian_vertices(Inv_Hessian);
+      calculate_hessian_vertices(Hessian);
       calculate_gradient_vertices_vectorized(&Gradients);
       curr_energy = calculate_energy();
     }
@@ -521,7 +518,19 @@ void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, do
 
     //std::cout << "hessian:\n" << Inv_Hessian << "\nGrads:\n" << Gradients << std::endl;
 
-    apply_vertex_offsets_vectorized(-max_movement_vertices*Inv_Hessian*Gradients, true);
+
+
+    Hessian.lu().solve(Gradients, &offsets_vectorized);
+    //offsets_vectorized = Inv_Hessian*Gradients;
+    //std::cout << "wanted step: " << offsets_vectorized.transpose() << std::endl;
+    for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
+    {
+      offsets[piece_ind] = offsets_vectorized.segment<3>(3*piece_ind);
+    }
+    make_max_norm_one(offsets);
+
+//    apply_vertex_offsets_vectorized(-max_movement_vertices*Inv_Hessian*Gradients, true);
+    apply_vertex_offsets(offsets, true, -max_movement_vertices);
       
     double energy_before_projection = calculate_energy();
     project_length_constraint();
@@ -530,7 +539,7 @@ void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, do
     next_energy = calculate_energy();
 
 
-    std::cout << "curr energy: " << curr_energy << "   next energy: " << next_energy << "  before projection: " << energy_before_projection << "  last step: " << step_in_grad_dir_vertices <<  std::endl;
+    std::cout << "curr energy: " << curr_energy << "   next energy: " << next_energy << "  before projection: " << energy_before_projection << "  last step: " << max_movement_vertices <<  std::endl;
 
     recalc_vertex_grad = true;
     if (next_energy + energy_error_for_convergence > curr_energy)
@@ -545,9 +554,9 @@ void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, do
         break;
       }
 
-      max_movement_vertices = step_in_grad_dir_vertices / 2.0;
+      max_movement_vertices = max_movement_vertices / 2.0;
     } else {
-      max_movement_vertices = min(step_in_grad_dir_vertices*2.0, max_move_vert);
+      max_movement_vertices = min(max_movement_vertices*2.0, max_move_vert);
       //max_movement_vertices = max_move_vert;
     }
 
@@ -556,7 +565,7 @@ void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, do
   curr_energy = calculate_energy();
 
   project_length_constraint();
-  minimize_energy_twist_angles();
+  //minimize_energy_twist_angles();
 
   next_energy = calculate_energy();
 
@@ -1001,41 +1010,109 @@ void Thread::calculate_gradient_vertices(vector<Vector3d>& vertex_gradients)
 }
 
 
-void Thread::calculate_inv_hessian_vertices(MatrixXd& inv_hessian)
+void Thread::calculate_hessian_vertices(MatrixXd& hessian)
 {
-  MatrixXd hessian(inv_hessian.rows(), inv_hessian.cols());
+  //ignore first and last 2 pieces
   hessian.setZero();
-  double eps = 1e-3;
+  const double eps = 1e-3;
   Vector3d grad_offets[3];
   grad_offsets[0] = Vector3d(eps, 0, 0);
   grad_offsets[1] = Vector3d(0, eps, 0);
   grad_offsets[2] = Vector3d(0, 0, eps);
 
-
+  Vector3d gradient;
+  //vector<ThreadPiece*> backup_pieces;
   for (int r=2; r < _thread_pieces.size()-2; r++)
   {
-    for (int c=2; c < _thread_pieces.size()-2; c++)
+    int r_ind = r-2;
+    for (int grad_ind = 0; grad_ind < 3; grad_ind++)
     {
-      for (int grad_ind = 0; grad_ind < 3; grad_ind++)
+      //save_thread_pieces_and_resize(backup_pieces);
+      _thread_pieces[r]->offset_and_update(grad_offsets[grad_ind]);
+      for (int c=max(2,r-2); c < min((int)_thread_pieces.size()-2,r+3); c++)
       {
-        Vector3d gradient;
-        _thread_pieces[r]->offset_and_update(grad_offsets[grad_ind]);
+        int c_ind = c-2;
         _thread_pieces[c]->gradient_vertex(gradient);
-        hessian.block(3*r+grad_ind ,3*c,1,3) = gradient.transpose();
-        _thread_pieces[r]->offset_and_update(-2.0*grad_offsets[grad_ind]);
-        _thread_pieces[c]->gradient_vertex(gradient);
-        hessian.block(3*r+grad_ind, 3*c,1,3) -= gradient.transpose();
-        hessian.block(3*r+grad_ind, 3*c,1,3) /= 2.0*eps;
-
-        _thread_pieces[r]->offset_and_update(grad_offsets[grad_ind]);
+        hessian.block(6+3*r_ind+grad_ind ,3*c_ind+6,1,3) = gradient.transpose();
       }
+
+      //restore_thread_pieces(backup_pieces);
+      _thread_pieces[r]->offset_and_update(-2.0*grad_offsets[grad_ind]);
+
+      for (int c=max(2,r-2); c < min((int)_thread_pieces.size()-2,r+3); c++)
+      {
+        int c_ind = c-2;
+        _thread_pieces[c]->gradient_vertex(gradient);
+        hessian.block(6+3*r_ind+grad_ind, 3*c_ind+6,1,3) -= gradient.transpose();
+        hessian.block(6+3*r_ind+grad_ind, 3*c_ind+6,1,3) /= 2.0*eps;
+      }
+      _thread_pieces[r]->offset_and_update(grad_offsets[grad_ind]);
+      //restore_thread_pieces_and_resize(backup_pieces);
     } 
   }
 
-//  std::cout << "hessian: " << hessian << std::endl;
 
-  inv_hessian = hessian.inverse();
-//  std::cout << inv_hessian*hessian << std::endl;
+
+  MatrixXd check_transposes(hessian.cols(), hessian.rows());
+  for (int r=0; r < hessian.rows(); r++)
+  {
+    for (int c=0; c < hessian.cols(); c++)
+    {
+      if (abs(hessian(r,c) - hessian(c,r)) < 1e-2)
+        check_transposes(r,c) = 0;
+      else
+        check_transposes(r,c) = (abs(hessian(r,c) - hessian(c,r)));
+
+      
+      if (abs(hessian(r,c)) < 1e-5)
+        hessian(r,c) = 0;
+    }
+
+  }
+/*
+  //calculate pseudoinverse with svd
+  Eigen::SVD<Eigen::MatrixXd> hessian_svd;
+  hessian_svd.compute(hessian);
+
+
+  MatrixXd sing_vals_mat(hessian_svd.singularValues().rows(), hessian_svd.singularValues().rows());
+  sing_vals_mat.setZero();
+  for (int i=0; i < hessian_svd.singularValues().rows(); i++)
+  {
+    if (hessian_svd.singularValues()(i) != 0)
+      sing_vals_mat(i,i) = 1.0/(hessian_svd.singularValues()(i));
+  }
+  inv_hessian.block(6,6,hessian.cols(), hessian.rows()) = hessian_svd.matrixV()*sing_vals_mat*hessian_svd.matrixU().transpose();
+  //inv_hessian.block(6,6,hessian.cols(), hessian.rows()) = hessian;
+
+  MatrixXd hess_times_inv(hessian.rows(), hessian.cols());
+  hess_times_inv = hessian*inv_hessian.block(6,6,hessian.cols(),hessian.rows());
+  MatrixXd inv_times_hess(hessian.rows(), hessian.cols());
+  inv_times_hess = inv_hessian.block(6,6,hessian.cols(),hessian.rows())*hessian;
+
+  for (int r=0; r < hessian.rows(); r++)
+  {
+    for (int c=0; c < hessian.cols(); c++)
+    {
+      if (abs(hess_times_inv(r,c)) < 1e-4)
+        hess_times_inv(r,c) = 0;
+
+      if (abs(inv_times_hess(r,c)) < 1e-4)
+        inv_times_hess(r,c) = 0;
+    }
+  }
+  */
+ 
+  //skip first 2 pieces
+  //inv_hessian.block(6,6,hessian.cols(), hessian.rows()) = hessian.inverse();
+  //std::cout << hessian << "\n\n\n";
+  //std::cout << hessian_svd.matrixU()*sing_vals_mat*hessian_svd.matrixV().transpose() << "\n\n\n";
+  //std::cout << check_transposes << "\n\n\n";
+  //std::cout << inv_hessian.block(6,6,hessian.rows(), hessian.cols()) << "\n\n\n";
+  //std::cout << hess_times_inv << "\n\n\n";
+  //std::cout << inv_times_hess << "\n\n\n";
+  //exit(0);
+
 
 }
 
@@ -1395,10 +1472,12 @@ void Thread::apply_vertex_offsets_vectorized(const VectorXd& offsets, bool skip_
   if (!skip_edge_cases)
     {
       exit(0);
-      // _thread_pieces[0]->offset_vertex(step_size*offsets[0]);
-      // _thread_pieces[1]->offset_vertex(step_size*offsets[1]);
-      // _thread_pieces[_thread_pieces.size()-2]->offset_vertex(step_size*offsets[_thread_pieces.size()-2]);
-      // _thread_pieces[_thread_pieces.size()-1]->offset_vertex(step_size*offsets[_thread_pieces.size()-1]);
+      /*
+      _thread_pieces[0]->offset_vertex(step_size*offsets[0]);
+      _thread_pieces[1]->offset_vertex(step_size*offsets[1]);
+      _thread_pieces[_thread_pieces.size()-2]->offset_vertex(step_size*offsets[_thread_pieces.size()-2]);
+      _thread_pieces[_thread_pieces.size()-1]->offset_vertex(step_size*offsets[_thread_pieces.size()-1]);
+      */
     }
 
   // #pragma omp parallel for num_threads(NUM_THREADS_PARALLEL_FOR)

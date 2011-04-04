@@ -17,6 +17,7 @@ static double STRETCH_COEFF = 0.0;
 static double GRAV_COEFF = BEND_COEFF*1e-4;
 
 static const double _rest_length = 3.0;
+static const double _rest_length_squared = _rest_length*_rest_length;
 static Matrix2d J = Matrix2d(Eigen::Rotation2Dd(M_PI/2.0));
 static Matrix2d JB = J*B;
 
@@ -38,8 +39,8 @@ class ThreadPiece
     void offset_vertex(const Vector3d& offset_vertex){_vertex += offset_vertex;}
     void set_angle_twist(double angle_twist){ _angle_twist = angle_twist;}
     void offset_angle_twist(const double offset_angle_twist){_angle_twist += offset_angle_twist;}
-    void set_prev(ThreadPiece* prev){_prev_piece = prev;}
-    void set_next(ThreadPiece* next){_next_piece = next;}
+    void set_prev(ThreadPiece* prev);
+    void set_next(ThreadPiece* next);
     void set_material_frame(const Matrix3d& material_frame){_material_frame = material_frame;}
     void set_bishop_frame(const Matrix3d& bishop_frame){_bishop_frame = bishop_frame;} //only makes sense for first piece
     const Matrix3d& material_frame(void) const {return _material_frame;}
@@ -53,6 +54,7 @@ class ThreadPiece
     //Geometry
     void initializeFrames();
     bool is_material_frame_consistent();
+    void set_total_length_and_first_last();
 
     void updateFrames();
 		void updateFrames_all(); //update frames for many vertex position changes
@@ -112,9 +114,14 @@ class ThreadPiece
     Matrix3d _material_frame;
     Matrix3d _bishop_frame;
 
+    double _total_length;
+    ThreadPiece* _first_piece;
+    ThreadPiece* _last_piece;
+
 
 
     void calculateBinormal(const Vector3d& edge_prev, const Vector3d& edge_after, Vector3d& binormal);
+		void calculateBinormal();
 		void calculateBinormal_withLength(const Vector3d& edge_prev, const Vector3d& edge_after, Vector3d& binormal);
 		void calculateBinormal_withLength();
     double twist_angle_error();
@@ -128,6 +135,8 @@ class ThreadPiece
 		void update_bishop_frame_firstPiece();
 		void update_bishop_frame_lastPiece();
 
+
+    //faster calculation of angle axis rotations
     Matrix3d rot;
     void set_rotation(const double& angle, const Vector3d& axis);
 
