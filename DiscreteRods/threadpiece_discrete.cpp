@@ -849,7 +849,9 @@ ThreadPiece& ThreadPiece::operator=(const ThreadPiece& rhs)
 
   _prev_piece = rhs._prev_piece;
   _next_piece = rhs._next_piece;
-
+  _total_length = rhs._total_length;
+  _first_piece = rhs._first_piece;
+  _last_piece = rhs._last_piece;
 
 	return *this;
 
@@ -866,5 +868,7 @@ void ThreadPiece::copyData(const ThreadPiece& rhs)
 	_curvature_binormal = rhs._curvature_binormal;
 	_bishop_frame = rhs._bishop_frame;
 	_material_frame = rhs._material_frame;
+  
+
 
 }
