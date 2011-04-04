@@ -1,6 +1,7 @@
 #include "threadpiece_discrete.h"
 
 ThreadPiece::ThreadPiece()
+: _total_length(_rest_length)
 {
 	grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
 	grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
@@ -10,7 +11,7 @@ ThreadPiece::ThreadPiece()
 
 
 	ThreadPiece::ThreadPiece(const Vector3d& vertex, const double angle_twist)
-: _vertex(vertex), _angle_twist(angle_twist), _prev_piece(NULL), _next_piece(NULL)
+: _vertex(vertex), _angle_twist(angle_twist), _prev_piece(NULL), _next_piece(NULL), _total_length(_rest_length), _first_piece(this), _last_piece(this)
 {
 	grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
 	grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
@@ -19,17 +20,19 @@ ThreadPiece::ThreadPiece()
 }
 
 	ThreadPiece::ThreadPiece(const Vector3d& vertex, const double angle_twist, ThreadPiece* prev, ThreadPiece* next)
-: _vertex(vertex), _angle_twist(angle_twist), _prev_piece(prev), _next_piece(next)
+: _vertex(vertex), _angle_twist(angle_twist)
 {
 	grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
 	grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
 	grad_offsets[2] = Vector3d(0.0, 0.0, grad_eps);
 	rot = Matrix3d::Zero();
+  set_prev(prev);
+  set_next(next);
 }
 
 
 	ThreadPiece::ThreadPiece(const ThreadPiece& rhs)
-: _vertex(rhs._vertex), _angle_twist(rhs._angle_twist), _edge(rhs._edge), _edge_norm(rhs._edge_norm), _curvature_binormal(rhs._curvature_binormal), _bishop_frame(rhs._bishop_frame), _material_frame(rhs._material_frame), _prev_piece(rhs._prev_piece), _next_piece(rhs._next_piece)
+: _vertex(rhs._vertex), _angle_twist(rhs._angle_twist), _edge(rhs._edge), _edge_norm(rhs._edge_norm), _curvature_binormal(rhs._curvature_binormal), _bishop_frame(rhs._bishop_frame), _material_frame(rhs._material_frame), _prev_piece(rhs._prev_piece), _next_piece(rhs._next_piece), _total_length(rhs._total_length), _first_piece(rhs._first_piece), _last_piece(rhs._last_piece)
 {
 	grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
 	grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
@@ -81,22 +84,8 @@ double ThreadPiece::energy_twist()
   {
     return 0.0; //same - since the first twist is set to be zero (aligning bishop to initial material frame)
   } else {
-    int num_edges = -1;
-    ThreadPiece* first_piece = this;
-    while (first_piece->_prev_piece != NULL)
-    {
-      num_edges++;
-      first_piece = first_piece->_prev_piece;
-    }
-    ThreadPiece* last_piece = this;
-    while (last_piece->_next_piece != NULL)
-    {
-      num_edges++;
-      last_piece = last_piece->_next_piece;
-    }
-    last_piece = last_piece->_prev_piece;
-    double angle_diff = last_piece->_angle_twist - first_piece->_angle_twist;
-    return ( (TWIST_COEFF*angle_diff*angle_diff)/(2.0*_rest_length*((double)num_edges)));
+    double angle_diff = _last_piece->_prev_piece->_angle_twist - _first_piece->_angle_twist;
+    return ( (TWIST_COEFF*angle_diff*angle_diff)/(_total_length));
   }
 
 
@@ -125,6 +114,81 @@ double ThreadPiece::energy_grav()
 {
 	return _vertex(2)*GRAV_COEFF;
 }
+
+
+void ThreadPiece::set_prev(ThreadPiece* prev)
+{
+  _prev_piece = prev;
+  set_total_length_and_first_last();
+
+	ThreadPiece* curr = _prev_piece;
+	while (curr != NULL)
+	{
+    curr->_total_length = _total_length;
+    curr->_first_piece = _first_piece;
+    curr->_last_piece = _last_piece;
+    curr = curr->_prev_piece;
+	}
+  
+	curr = _next_piece;
+	while (curr != NULL)
+	{
+    curr->_total_length = _total_length;
+    curr->_first_piece = _first_piece;
+    curr->_last_piece = _last_piece;
+    curr = curr->_next_piece;
+	}
+}
+
+void ThreadPiece::set_next(ThreadPiece* next)
+{
+  _next_piece = next;
+  set_total_length_and_first_last();
+
+	ThreadPiece* curr = _prev_piece;
+	while (curr != NULL)
+	{
+    curr->_total_length = _total_length;
+    curr->_first_piece = _first_piece;
+    curr->_last_piece = _last_piece;
+    curr = curr->_prev_piece;
+	}
+  
+	curr = _next_piece;
+	while (curr != NULL)
+	{
+    curr->_total_length = _total_length;
+    curr->_first_piece = _first_piece;
+    curr->_last_piece = _last_piece;
+    curr = curr->_next_piece;
+	}
+}
+
+void ThreadPiece::set_total_length_and_first_last()
+{
+	int total_pieces = 1;
+
+	ThreadPiece* curr = this;
+	while (curr->_prev_piece != NULL)
+	{
+		total_pieces++;
+		curr = curr->_prev_piece;
+	}
+  
+  _first_piece = curr;
+  
+	curr = this;
+	while (curr->_next_piece != NULL)
+	{
+		total_pieces++;
+		curr = curr->_next_piece;
+	}
+  
+  _last_piece = curr;
+	_total_length = ((double)(total_pieces-1))*_rest_length;
+
+}
+
 
 void ThreadPiece::set_bend_coeff(double bend_coeff)
 {
@@ -184,27 +248,7 @@ void ThreadPiece::gradient_twist(double& grad)
 void ThreadPiece::gradient_vertex(Vector3d& grad)
 {
 #ifdef ISOTROPIC
-	int total_pieces = 3;
-	double total_length;
-	double total_angle_diff;
-
-	ThreadPiece* curr = _prev_piece;
-	while (curr->_prev_piece != NULL)
-	{
-		total_pieces++;
-		curr = curr->_prev_piece;
-	}
-	total_angle_diff = -curr->_angle_twist;
-
-	curr = _next_piece;
-	while (curr->_next_piece != NULL)
-	{
-		total_pieces++;
-		curr = curr->_next_piece;
-	}
-	curr = curr->_prev_piece;
-	total_angle_diff += curr->_angle_twist;
-	total_length = (double)(total_pieces-1)*_rest_length;
+	double total_angle_diff = _last_piece->_prev_piece->_angle_twist - _first_piece->_angle_twist;
 
 		Matrix3d skew_i;
 		Matrix3d skew_i_im1;
@@ -216,26 +260,26 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
 	skew_i.setZero();
 	skew_i_im1.setZero();
 
-	double rest_length_squared = _rest_length*_rest_length;
+	//const double rest_length_squared = _rest_length*_rest_length;
 
 	skew_symmetric_for_cross_fast(_prev_piece->_prev_piece->_edge, skew_i_im1);
-	del_kb_i_ip1 = (2.0*skew_i_im1 - _prev_piece->_curvature_binormal*(_prev_piece->_prev_piece->_edge.transpose())) / (rest_length_squared + _prev_piece->_prev_piece->_edge.dot(_prev_piece->_edge));
+	del_kb_i_ip1 = (2.0*skew_i_im1 - _prev_piece->_curvature_binormal*(_prev_piece->_prev_piece->_edge.transpose())) / (_rest_length_squared + _prev_piece->_prev_piece->_edge.dot(_prev_piece->_edge));
 	del_psi_i_ip1 = -_prev_piece->_curvature_binormal/(2.0*_rest_length);
 
-	grad = (BEND_COEFF/_rest_length)*del_kb_i_ip1.transpose()*_prev_piece->_curvature_binormal - (TWIST_COEFF*total_angle_diff/total_length)*del_psi_i_ip1;
+	grad = (BEND_COEFF/_rest_length)*del_kb_i_ip1.transpose()*_prev_piece->_curvature_binormal - (TWIST_COEFF*total_angle_diff/_total_length)*del_psi_i_ip1;
 
 
 	skew_symmetric_for_cross_fast(_next_piece->_edge, skew_i);
-	del_kb_i_im1 = (2.0*skew_i + _next_piece->_curvature_binormal*(_next_piece->_edge.transpose())) / (rest_length_squared + _edge.dot(_next_piece->_edge));
+	del_kb_i_im1 = (2.0*skew_i + _next_piece->_curvature_binormal*(_next_piece->_edge.transpose())) / (_rest_length_squared + _edge.dot(_next_piece->_edge));
 	del_psi_i_im1 = _next_piece->_curvature_binormal/(2.0*_rest_length);
 
-	grad += (BEND_COEFF/_rest_length)*del_kb_i_im1.transpose()*_next_piece->_curvature_binormal - (TWIST_COEFF*total_angle_diff/total_length)*del_psi_i_im1;
+	grad += (BEND_COEFF/_rest_length)*del_kb_i_im1.transpose()*_next_piece->_curvature_binormal - (TWIST_COEFF*total_angle_diff/_total_length)*del_psi_i_im1;
 
 
 	skew_symmetric_for_cross_fast(_edge, skew_i);
 	skew_symmetric_for_cross_fast(_prev_piece->_edge, skew_i_im1);
 
-	double denom_i_i = rest_length_squared + _prev_piece->_edge.dot(_edge);
+	double denom_i_i = _rest_length_squared + _prev_piece->_edge.dot(_edge);
 	del_kb_i_im1 = (2.0*skew_i + _curvature_binormal*(_edge.transpose())) / denom_i_i;
 	del_kb_i_ip1 = (2.0*skew_i_im1 - _curvature_binormal*(_prev_piece->_edge.transpose())) / denom_i_i;
 
@@ -426,7 +470,7 @@ void ThreadPiece::offset_and_update_locally(const Vector3d& offset)
 
 void ThreadPiece::offset_and_update(const Vector3d& offset)
 {
-  //offset this vertex (call it vertex i)
+  //offset this vertex
   _vertex += offset;
   updateFrames();
 }
@@ -435,8 +479,11 @@ void ThreadPiece::offset_and_update(const Vector3d& offset)
 //not applicable for first 2 or last 2 pieces
 void ThreadPiece::updateFrames()
 {
-  if (_prev_piece == NULL || _prev_piece->_prev_piece == NULL || _next_piece == NULL || _next_piece->_next_piece == NULL)
-    return;
+  /*if (_prev_piece == NULL || _prev_piece->_prev_piece == NULL || _next_piece == NULL || _next_piece->_next_piece == NULL)
+  {
+    std::cerr << "shouldn't call updateFrames() on the first 2 or last 2 pieces!" << std::endl;
+    exit(0);
+  }*/
 
   _prev_piece->update_edge();
   update_edge();
@@ -479,7 +526,6 @@ void ThreadPiece::updateFrames_all()
 	ThreadPiece* curr_piece = _next_piece;
 
 #ifdef ISOTROPIC
-	double twist_to_add = 0;
 	for ( ; curr_piece->_next_piece != NULL; curr_piece = curr_piece->_next_piece)
 	{
 		curr_piece->update_edge();
@@ -543,8 +589,9 @@ void ThreadPiece::updateFrames_lastpiece()
 
 #ifndef ISOTROPIC
   _prev_piece->_prev_piece->update_material_frame();
-  _prev_piece->update_material_frame();
 #endif
+
+  _prev_piece->update_material_frame();
 
 }
 
@@ -553,7 +600,7 @@ void ThreadPiece::updateFrames_lastpiece()
 
 void ThreadPiece::update_bishop_frame()
 {
-  calculateBinormal_withLength();
+  calculateBinormal();
   //now rotate frame
   double curvature_binormal_norm = _curvature_binormal.norm();
   Vector3d toRotAround = _curvature_binormal/curvature_binormal_norm;
@@ -563,26 +610,41 @@ void ThreadPiece::update_bishop_frame()
   {
     _bishop_frame = _prev_piece->_bishop_frame;
   } else {
-    /*  double for_ang = (_prev_piece->_edge.dot(_edge))/(_prev_piece->_edge_norm*_edge_norm);
+    
+    double for_ang = (_prev_piece->_edge.dot(_edge))/(_prev_piece->_edge_norm*_edge_norm);
     for_ang = max( min ( for_ang, 1.0), -1.0);
     double ang_to_rot_old = acos(for_ang);
-    */
-    double ang_to_rot = atan(curvature_binormal_norm/2.0)*2.0;
     
-    set_rotation(ang_to_rot, toRotAround);
+    
+    //double ang_to_rot = atan2(curvature_binormal_norm/2.0)*2.0;
+    
+    set_rotation(ang_to_rot_old, toRotAround);
     _bishop_frame = rot*_prev_piece->_bishop_frame;
+
     
-    //this never seemed to happen, so commented for efficiency
-    /*
-    if ((_bishop_frame.col(0) - _edge.normalized()).norm() > 1e-3)
+    //this never seemed to happen, so comment for efficiency?
+    
+    double old_err = (_bishop_frame.col(0) - _edge.normalized()).norm();
+    if ( old_err > 1e-5)
     {
-      set_rotation(-ang_to_rot, toRotAround);
+      //std::cout << "old err: " << old_err;
+      set_rotation(-ang_to_rot_old, toRotAround);
       _bishop_frame = rot*_prev_piece->_bishop_frame;
+
+      double new_err = (_bishop_frame.col(0) - _edge.normalized()).norm();
+      //std::cout << "new err: " << new_err << std::endl;
+      //
+      //in case it actually got worse, switch back
+      if (new_err > old_err)
+      {
+        set_rotation(ang_to_rot_old, toRotAround);
+        _bishop_frame = rot*_prev_piece->_bishop_frame;
+      }
+
     }
-    */
+    
 
-
-    // _bishop_frame = Eigen::AngleAxisd(ang_to_rot, toRotAround)*_prev_piece->_bishop_frame;
+   // _bishop_frame = Eigen::AngleAxisd(ang_to_rot, toRotAround)*_prev_piece->_bishop_frame;
   }
 
 }
@@ -616,10 +678,10 @@ void ThreadPiece::update_bishop_frame_lastPiece()
 
 
 void ThreadPiece::set_rotation(const double& angle, const Vector3d& axis) {
-    rot.setZero();
+    //rot.setZero();
     double x = axis(0); double y = axis(1); double z = axis(2);
     double cost = cos(angle);
-    double m1cost = 1-cost;
+    double m1cost = 1.0-cost;
     double sint = sin(angle);
     rot <<
         cost + x*x*m1cost, x*y*m1cost - z*sint, x*z*m1cost + y*sint,
@@ -631,7 +693,7 @@ void ThreadPiece::update_material_frame()
 {
   //if (_next_piece==NULL || _next_piece->_next_piece == NULL || _prev_piece==NULL)
   //  return;
-	if (_angle_twist == 0) {
+	if (_angle_twist == 0.0) {
 		_material_frame = _bishop_frame;
 	}	else {
     set_rotation(_angle_twist, _edge/_edge_norm);
@@ -728,13 +790,22 @@ bool ThreadPiece::is_material_frame_consistent()
   double norm_direction = (_material_frame.col(0) - _bishop_frame.col(0)).norm();
   double angle_err = abs(twist_angle_error());
 
-  return (norm_direction < 1e-3 & angle_err < 1e-3);
+  return (norm_direction < 1e-10 & angle_err < 1e-10);
 }
 
 
 double ThreadPiece::twist_angle_error()
 {
   double angle_err_frames = angle_mismatch(_material_frame, _bishop_frame);
+  /*
+  double angle = angle_err_frames - _angle_twist;
+  while (angle < -M_PI)
+    angle += 2.0*M_PI;
+  while (angle > M_PI)
+    angle -= 2.0*M_PI;
+  return angle;
+  */
+
   return atan2( sin(angle_err_frames - _angle_twist), cos(angle_err_frames - _angle_twist));
 }
 
@@ -743,6 +814,12 @@ void ThreadPiece::calculateBinormal(const Vector3d& edge_prev, const Vector3d& e
 {
   binormal = 2.0*edge_prev.cross(edge_after);
   binormal /= (_rest_length*_rest_length + edge_prev.dot(edge_after));
+}
+
+void ThreadPiece::calculateBinormal()
+{
+  _curvature_binormal = 2.0*_prev_piece->_edge.cross(_edge);
+  _curvature_binormal /= (_rest_length*_rest_length + _prev_piece->_edge.dot(_edge));
 }
 
 void ThreadPiece::calculateBinormal_withLength(const Vector3d& edge_prev, const Vector3d& edge_after, Vector3d& binormal)
