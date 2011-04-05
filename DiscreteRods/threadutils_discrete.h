@@ -54,6 +54,23 @@ struct Frame_Motion
 
 };
 
+struct Two_Motions
+{
+  Frame_Motion _start;
+  Frame_Motion _end;
+
+  Two_Motions(){};
+
+  Two_Motions(const Frame_Motion& start, const Frame_Motion& end) :
+    _start(start), _end(end){};
+
+  Two_Motions(const Two_Motions& toCopy) :
+    _start(toCopy._start), _end(toCopy._end){};
+  
+  Two_Motions(const Vector3d& pos_movement_start, const Matrix3d& frame_rotation_start,const Vector3d& pos_movement_end, const Matrix3d& frame_rotation_end);
+
+};
+
 
 
 

@@ -201,3 +201,13 @@ void writeParams(std::string file, double* towrite) {
       << "GRAV_COEFF " << towrite[2] << std::endl;
   out.close();
 }
+
+
+Two_Motions::Two_Motions(const Vector3d& pos_movement_start, const Matrix3d& frame_rotation_start,const Vector3d& pos_movement_end, const Matrix3d& frame_rotation_end)
+{
+  _start._pos_movement = pos_movement_start;
+  _start._frame_rotation = frame_rotation_start;
+  _end._pos_movement = pos_movement_end;
+  _end._frame_rotation = frame_rotation_end;
+}
+

@@ -8,13 +8,16 @@
 #include "../DiscreteRods/thread_discrete.h"
 #include "../DiscreteRods/trajectory_reader.h"
 
-void applyControl(Thread* start, const VectorXd& u);
-void applyControl(Thread* start, const VectorXd& u, vector<Frame_Motion*>& motions);
+
+enum movement_mode {START, END, START_AND_END};
+
+void applyControl(Thread* start, const VectorXd& u, const movement_mode movement = END);
+void applyControl(Thread* start, const VectorXd& u, vector<Two_Motions*>& motions, const movement_mode movement = END);
 void computeDifference(Thread* start, const Thread* goal, VectorXd& res);
 void computeDifference_maxMag(Thread* start, const Thread* goal, VectorXd& res, double maxMag);
-void solveLinearizedControl(Thread* start, const Thread* goal);
-void solveLinearizedControl(Thread* start, const Thread* goal, vector<Frame_Motion*>& motions);
-void estimate_transition_matrix(Thread* thread, MatrixXd& A);
+void solveLinearizedControl(Thread* start, const Thread* goal, const movement_mode movement = END);
+void solveLinearizedControl(Thread* start, const Thread* goal, vector<Two_Motions*>& motions, const movement_mode movement = END);
+void estimate_transition_matrix(Thread* thread, MatrixXd& A, const movement_mode movement = END);
 
 
 #endif

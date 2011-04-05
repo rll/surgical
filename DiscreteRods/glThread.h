@@ -44,6 +44,7 @@ class GLThread {
   void minimize_energy();
   void updateThreadPoints();
   void ApplyUserInput(float move_end[], float tangent_end[], float tangent_rotation_end[]);
+  void ApplyUserInput(float move_end[], float tangent_end[], float tangent_rotation_end[], float move_start[], float tangent_start[], float tangent_rotation_start[]);
   void InitContour();
   void set_end_constraint(Vector3d pos, Matrix3d rot);
 

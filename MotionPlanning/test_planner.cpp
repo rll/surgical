@@ -42,7 +42,7 @@ void InitThread(int argc, char* argv[]);
 #define ROTATE_TAN_CONST 0.2
 #define RRT_GOAL_THREAD_FILE "rrt_goal_thread_data"
 
-enum key_code {NONE, MOVEPOS, MOVETAN, ROTATETAN};
+enum key_code {NONE, MOVEPOS, MOVETAN, ROTATETAN, MOVEPOSSTART, MOVETANSTART, ROTATETANSTART};
 
 
 float lastx_L=0;
@@ -50,10 +50,17 @@ float lasty_L=0;
 float lastx_R=0;
 float lasty_R=0;
 
+
+
 float rotate_frame[2];
+
 float move_end[2];
 float tangent_end[2];
 float tangent_rotation_end[2];
+
+float move_start[2];
+float tangent_start[2];
+float tangent_rotation_start[2];
 
 GLThread* glThreads[8];
 int totalThreads = 8;
@@ -240,6 +247,18 @@ void processLeft(int x, int y)
   {
     tangent_rotation_end[0] += (x-lastx_L)*ROTATE_TAN_CONST;
     tangent_rotation_end[1] += (lasty_L-y)*ROTATE_TAN_CONST;
+  } else if (key_pressed == MOVEPOSSTART)
+  {
+    move_start[0] += (x-lastx_L)*MOVE_POS_CONST;
+    move_start[1] += (lasty_L-y)*MOVE_POS_CONST;
+  } else if (key_pressed == MOVETANSTART)
+  {
+    tangent_start[0] += (x-lastx_L)*MOVE_TAN_CONST;
+    tangent_start[1] += (lasty_L-y)*MOVE_TAN_CONST;
+  } else if (key_pressed == ROTATETANSTART)
+  {
+    tangent_rotation_start[0] += (x-lastx_L)*ROTATE_TAN_CONST;
+    tangent_rotation_start[1] += (lasty_L-y)*ROTATE_TAN_CONST;
   }
   else {
     rotate_frame[0] += x-lastx_L;
@@ -257,21 +276,38 @@ void processRight(int x, int y)
 
   if (key_pressed == MOVEPOS)
   {
-    move_end[0] += (x-lastx_R)*MOVE_POS_CONST;
-    move_end[1] += (lasty_R-y)*MOVE_POS_CONST;
+    move_end[0] += (x-lastx_L)*MOVE_POS_CONST;
+    move_end[1] += (lasty_L-y)*MOVE_POS_CONST;
   } else if (key_pressed == MOVETAN)
   {
-    tangent_end[0] += (x-lastx_R)*MOVE_TAN_CONST;
-    tangent_end[1] += (lasty_R-y)*MOVE_TAN_CONST;
+    tangent_end[0] += (x-lastx_L)*MOVE_TAN_CONST;
+    tangent_end[1] += (lasty_L-y)*MOVE_TAN_CONST;
   } else if (key_pressed == ROTATETAN)
   {
-    tangent_rotation_end[0] += (x-lastx_R)*ROTATE_TAN_CONST;
-    tangent_rotation_end[1] += (lasty_R-y)*ROTATE_TAN_CONST;
+    tangent_rotation_end[0] += (x-lastx_L)*ROTATE_TAN_CONST;
+    tangent_rotation_end[1] += (lasty_L-y)*ROTATE_TAN_CONST;
+  } else if (key_pressed == MOVEPOSSTART)
+  {
+    move_start[0] += (x-lastx_L)*MOVE_POS_CONST;
+    move_start[1] += (lasty_L-y)*MOVE_POS_CONST;
+  } else if (key_pressed == MOVETANSTART)
+  {
+    tangent_start[0] += (x-lastx_L)*MOVE_TAN_CONST;
+    tangent_start[1] += (lasty_L-y)*MOVE_TAN_CONST;
+  } else if (key_pressed == ROTATETANSTART)
+  {
+    tangent_rotation_start[0] += (x-lastx_L)*ROTATE_TAN_CONST;
+    tangent_rotation_start[1] += (lasty_L-y)*ROTATE_TAN_CONST;
+  }   else {
+    rotate_frame[0] += x-lastx_L;
+    rotate_frame[1] += lasty_L-y;
   }
 
-  lastx_R = x;
-  lasty_R = y;
+  lastx_L = x;
+  lasty_L = y;
+
 }
+
 
 void MouseMotion (int x, int y)
 {
@@ -345,14 +381,17 @@ void processNormalKeys(unsigned char key, int x, int y)
   interruptEnabled = false; 
   if (key == 't') {
     key_pressed = MOVETAN;
-  }
-  else if (key == 'm') {
+  } else if (key == 'm') {
     key_pressed = MOVEPOS;
-  }
-  else if (key == 'r') {
+  } else if (key == 'r') {
     key_pressed = ROTATETAN;
-  }
-  else if (key == 'l') {
+  } else if (key == 'T') {
+    key_pressed = MOVETANSTART;
+  } else if (key == 'M') {
+    key_pressed = MOVEPOSSTART;
+  } else if (key == 'R') {
+    key_pressed = ROTATETANSTART;
+  }else if (key == 'l') {
     solveLinearizedControl(glThreads[planThread]->getThread(), 
                            glThreads[endThread]->getThread());
     glThreads[planThread]->updateThreadPoints();
@@ -479,10 +518,9 @@ void DrawStuff (void)
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
 
 
-  //change thread, if necessary
-  if (move_end[0] != 0.0 || move_end[1] != 0.0 || tangent_end[0] != 0.0 || tangent_end[1] != 0.0 || tangent_rotation_end[0] != 0 || tangent_rotation_end[1] != 0)
+ if (move_end[0] != 0.0 || move_end[1] != 0.0 || tangent_end[0] != 0.0 || tangent_end[1] != 0.0 || tangent_rotation_end[0] != 0 || tangent_rotation_end[1] != 0 || move_start[0] != 0.0 || move_start[1] != 0.0 || tangent_start[0] != 0.0 || tangent_start[1] != 0.0 || tangent_rotation_start[0] != 0 || tangent_rotation_start[1] != 0)
   {
-    glThreads[curThread]->ApplyUserInput(move_end, tangent_end, tangent_rotation_end);
+    glThreads[curThread]->ApplyUserInput(move_end, tangent_end, tangent_rotation_end, move_start, tangent_start, tangent_rotation_start);
   }
 
   // draw planner end points

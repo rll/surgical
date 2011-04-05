@@ -197,6 +197,21 @@ void GLThread::updateThreadPoints()
 
 void GLThread::ApplyUserInput(float move_end[], float tangent_end[], float tangent_rotation_end[])
 {
+	float move_start[2];
+	move_start[0] = 0.0;
+	move_start[1] = 0.0;
+	float tangent_start[2];
+	tangent_start[0] = 0.0;
+	tangent_start[1] = 0.0;
+	float tangent_rotation_start[2];
+	tangent_rotation_start[0] = 0.0;
+	tangent_rotation_start[1] = 0.0;
+
+	ApplyUserInput(move_end, tangent_end, tangent_rotation_end, move_start, tangent_start, tangent_rotation_start);
+}
+
+void GLThread::ApplyUserInput(float move_end[], float tangent_end[], float tangent_rotation_end[], float move_start[], float tangent_start[], float tangent_rotation_start[])
+{
   GLdouble model_view[16];
   glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
 
@@ -255,6 +270,54 @@ void GLThread::ApplyUserInput(float move_end[], float tangent_end[], float tange
   rotations[1].col(1) = new_end_tan_normal;
   rotations[1].col(2) = rotations[1].col(0).cross(new_end_tan_normal);
 
+  //change start positions
+  Vector3d new_start_pos;
+  gluProject(positions[0](0), positions[0](1), positions[0](2), model_view, projection, viewport, &winX, &winY, &winZ);
+  winX += move_start[0];
+  winY += move_start[1];
+  move_start[0] = 0.0;
+  move_start[1] = 0.0;
+  gluUnProject(winX, winY, winZ, model_view, projection, viewport, &new_start_pos(0), &new_start_pos(1), &new_start_pos(2));
+  //    std::cout << "X: " << positions[1](0) << " Y: " << positions[1](1) << " Z: " << positions[1](2) << std::endl;
+
+  positions[0] = new_start_pos;
+
+
+  //change start tangents
+  Vector3d new_start_tan;
+  gluProject(positions[0](0)+tangents[0](0),positions[0](1)+tangents[0](1), positions[0](2)+tangents[0](2), model_view, projection, viewport, &winX, &winY, &winZ);
+  winX += tangent_start[0];
+  winY += tangent_start[1];
+  tangent_start[0] = 0.0;
+  tangent_start[1] = 0.0;
+  gluUnProject(winX, winY, winZ, model_view, projection, viewport, &new_start_tan(0), &new_start_tan(1), &new_start_tan(2));
+  new_start_tan -= positions[0];
+  new_start_tan.normalize();
+
+
+  rotate_between_tangents(tangents[0], new_start_tan, rotation_new_tan);
+  rotations[0] = rotation_new_tan*rotations[0];
+
+
+  //check rotation around start tangent
+  tangent_normal_rotate_around = rotations[0].col(1);
+  Vector3d new_start_tan_normal;
+  gluProject(positions[0](0)+tangent_normal_rotate_around(0), positions[0](1)+tangent_normal_rotate_around(1), positions[0](2)+tangent_normal_rotate_around(2), model_view, projection, viewport, &winX, &winY, &winZ);
+  winX += tangent_rotation_start[0];
+  winY += tangent_rotation_start[1];
+  tangent_rotation_start[0] = 0.0;
+  tangent_rotation_start[1] = 0.0;
+  gluUnProject(winX, winY, winZ, model_view, projection, viewport, &new_start_tan_normal(0), &new_start_tan_normal(1), &new_start_tan_normal(2));
+  new_start_tan_normal -= positions[0];
+  //project this normal onto the plane normal to X (to ensure Y stays normal to X)
+  new_start_tan_normal -= new_start_tan_normal.dot(rotations[0].col(0))*rotations[0].col(0);
+  new_start_tan_normal.normalize();
+
+
+  rotations[0].col(1) = new_start_tan_normal;
+  rotations[0].col(2) = rotations[0].col(0).cross(new_start_tan_normal);
+
+
 
 
   //change thread
@@ -270,10 +333,10 @@ void GLThread::ApplyUserInput(float move_end[], float tangent_end[], float tange
 
 void GLThread::DrawAxes()
 {
-  //Draw Axes at End
-  Vector3d diff_pos = positions[1]-display_start_pos;
+ //Draw Axes at Start
+  Vector3d diff_pos = positions[0]-display_start_pos;
   double rotation_scale_factor = 10.0;
-  Matrix3d rotations_project = rotations[1]*rotation_scale_factor;
+  Matrix3d rotations_project = rotations[0]*rotation_scale_factor;
   glBegin(GL_LINES);
   glEnable(GL_LINE_SMOOTH);
   glColor3d(1.0, 0.0, 0.0); //red
@@ -286,6 +349,28 @@ void GLThread::DrawAxes()
   glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //z
   glVertex3f((float)(diff_pos(0)+rotations_project(0,2)), (float)(diff_pos(1)+rotations_project(1,2)), (float)(diff_pos(2)+rotations_project(2,2)));
   glEnd();
+
+
+  //Draw Axes at End
+  diff_pos = positions[1]-display_start_pos;
+  rotation_scale_factor = 10.0;
+  rotations_project = rotations[1]*rotation_scale_factor;
+  glBegin(GL_LINES);
+  glEnable(GL_LINE_SMOOTH);
+  glColor3d(1.0, 0.0, 0.0); //red
+  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //x
+  glVertex3f((float)(diff_pos(0)+rotations_project(0,0)), (float)(diff_pos(1)+rotations_project(1,0)), (float)(diff_pos(2)+rotations_project(2,0)));
+  glColor3d(0.0, 1.0, 0.0); //green
+  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //y
+  glVertex3f((float)(diff_pos(0)+rotations_project(0,1)), (float)(diff_pos(1)+rotations_project(1,1)), (float)(diff_pos(2)+rotations_project(2,1)));
+  glColor3d(0.0, 0.0, 1.0); //blue
+  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //z
+  glVertex3f((float)(diff_pos(0)+rotations_project(0,2)), (float)(diff_pos(1)+rotations_project(1,2)), (float)(diff_pos(2)+rotations_project(2,2)));
+
+  glEnd();
+
+
+
 }
 
 void GLThread::InitContour ()
