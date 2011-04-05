@@ -73,14 +73,19 @@ void Thread_RRT::planStep(Thread& new_sample_thread, Thread& closest_sample_thre
   //*next_thread = (_tree.back()->x);
   //cout << "done step" << endl;
 
+}
+
+void Thread_RRT::updateBestPath() {
+
   RRTNode* closest = findClosestNode(_goal_node->thread, false);
   while(closest->prev != NULL) {
     closest->prev->next = closest;
     closest = closest->prev;
   }
+
 }
 
-/*void Thread_RRT::planPath(const Thread* start, const Thread* goal, vector<Frame_Motion>& movements) {
+/*void Thread_RRT::planPath(const Thread* start, const Thread* goal, vector<Two_Motions>& movements) {
   initialize(start, goal);
 
   while(!(distToGoal < TOLERANCE)) {
@@ -309,7 +314,7 @@ Thread* Thread_RRT::getNextGoal() {
     return next_target;
 }
 
-void Thread_RRT::simpleInterpolation(Thread* start, const Thread* goal, vector<Frame_Motion*>& motions) {
+void Thread_RRT::simpleInterpolation(Thread* start, const Thread* goal, vector<Two_Motions*>& motions) {
 //void Thread_RRT::simpleInterpolation(const Vector3d& cur_pos, const Matrix3d& cur_rot, const Vector3d& next_pos, const Matrix3d& next_rot, Vector3d* translation, Matrix3d* rotation) {
   // use quaternion interpolation to move closer to end rot
   // figure out angle between quats, spherically interpolate.
@@ -342,9 +347,9 @@ void Thread_RRT::simpleInterpolation(Thread* start, const Thread* goal, vector<F
   }
   translation *= step;
 
-  Frame_Motion *toMove = new Frame_Motion(translation, rotation);
-  motions.push_back(toMove);
-  toMove->applyMotion(cur_pos, cur_rot);
+  //Two_Motions *toMove = new Two_Motions(translation, rotation);
+  //motions.push_back(toMove);
+  //toMove->applyMotion(cur_pos, cur_rot);
   start->set_end_constraint(cur_pos, cur_rot); 
 
 }
@@ -396,12 +401,13 @@ double Thread_RRT::largeRotation(const Thread* target) {
 
   // compute rotation about given axis
   Matrix3d rotation(Eigen::AngleAxisd(rot_dir*SMALL_STEP, end_rot*axis));
-  vector<Frame_Motion*> tmpMotions;
+  vector<Two_Motions*> tmpMotions;
   for(int i = 0; i < NUM_STEPS; i++) {
-    Frame_Motion* toMove = new Frame_Motion(translation, rotation);
+    //Two_Motions* toMove = new Two_Motions(translation, rotation);
     // apply the motion
-    tmpMotions.push_back(toMove);
-    toMove->applyMotion(end_pos, end_rot);
+    //tmpMotions.push_back(toMove);
+    //toMove->applyMotion(end_pos, end_rot);
+
     start->set_end_constraint(end_pos, end_rot);
     start->minimize_energy();
   }
@@ -411,7 +417,7 @@ double Thread_RRT::largeRotation(const Thread* target) {
   toadd->prev = closest;
   //start->getTwists(&toadd->twists);
   //toadd->endrot = start->end_rot();
-  toadd->lstMotions = tmpMotions;
+  //toadd->lstMotions = tmpMotions;
   //_tree.push_back(toadd);
   insertIntoRRT(toadd);
   cout << "tree size: " << _tree.size() << endl;
@@ -422,10 +428,6 @@ double Thread_RRT::largeRotation(const Thread* target) {
 
 double Thread_RRT::extendToward(Thread* target) {
 //double Thread_RRT::extendToward(const VectorXd& next, const Matrix3d& next_rot) {
-
-  // get the end position and end_rotation of target
-  Vector3d target_pos = target->end_pos();
-  Matrix3d target_rot = target->end_rot();
 
   // find the node closest to the target and extract the end position and rotation
 
@@ -445,21 +447,19 @@ double Thread_RRT::extendToward(Thread* target) {
     }
   } while (closest == NULL); 
   
-  Vector3d end_pos = closest->endPosition();
-  Matrix3d end_rot = closest->endRotation(); 
-
+  
   // create a new thread based on the closest
   Thread* start = new Thread(*(closest->thread));
   
   Vector3d translation;
   Matrix3d rotation;
-  vector<Frame_Motion*> tmpMotions;
+  vector<Two_Motions*> tmpMotions;
 
   //interpolation
   //simpleInterpolation(start, target, tmpMotions);
 
   // solve and apply control to the closest thread
-  solveLinearizedControl(start, target, tmpMotions); 
+  solveLinearizedControl(start, target, tmpMotions, START); 
   start->minimize_energy();
 
 

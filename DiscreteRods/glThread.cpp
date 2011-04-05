@@ -1,6 +1,6 @@
 #include "glThread.h"
 //default 23 links
-#define NUM_LINKS 15
+#define NUM_LINKS 13
 
 
 GLThread::GLThread() {

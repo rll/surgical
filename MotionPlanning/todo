@@ -1,8 +1,8 @@
 *- interrupt handler for keys
 - look into the minimization to see if minimization affects end target
 *- lsh for nns
-- work on moving both ends 
-- linearization on 2 ends
+*- work on moving both ends 
+*- linearization on 2 ends
 *- histogram of running times for a given sample
 
 - account for surgical instruments 
@@ -21,6 +21,8 @@ smoothing paths
 distance metric ideas:
 -put a cost on each point
 -lqr 
+
+4/4
 
 - restart, see if the same samples make the old tree better
 - fix hyperplanes or use exact nns
@@ -41,5 +43,6 @@ distance metric ideas:
 - have a procedure to verify that the min link model is decent approx for the real thread
 - constrain planning by the procedure
 
-
+4/5 
+  need to extend sampling to move both ends
 
