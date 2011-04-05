@@ -13,3 +13,16 @@ future things:
 
 needle steering, dubin's car
 smoothing paths
+
+
+
+4/1
+test running times on # of links
+see how dist fn affects running times
+
+distance metric ideas:
+-put a cost on each point
+-lqr 
+
+
+
