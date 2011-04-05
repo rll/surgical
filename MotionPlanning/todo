@@ -1,28 +1,45 @@
-- interrupt handler for keys
+*- interrupt handler for keys
 - look into the minimization to see if minimization affects end target
-- lsh for nns
+*- lsh for nns
 - work on moving both ends 
 - linearization on 2 ends
-- histogram of running times for a given sample
+*- histogram of running times for a given sample
 
-future things: 
 - account for surgical instruments 
-  -RC planning to account for collisions 
--incrementally add links
+-RC planning to account for collisions 
 
-
+future:
 needle steering, dubin's car
 smoothing paths
 
 
 
 4/1
-test running times on # of links
-see how dist fn affects running times
+* test running times on # of links
+  see how dist fn affects running times
 
 distance metric ideas:
 -put a cost on each point
 -lqr 
+
+- restart, see if the same samples make the old tree better
+- fix hyperplanes or use exact nns
+- see if histogram stuff has been done before
+- see if you can maintain shape
+
+- todo: change rest_length
+- rc planner infinite dim
+
+--kavraki open motion planning toolkit
+
+
+
+-approximate min links for thread
+-with min links, seed the higher dimension one
+  - run rrt see if you can get htere
+  - run local planner to see if we can stay on the path nicely 
+- have a procedure to verify that the min link model is decent approx for the real thread
+- constrain planning by the procedure
 
 
 
