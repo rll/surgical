@@ -315,18 +315,17 @@ Thread* Thread_RRT::getNextGoal() {
   Thread* next_target = NULL; 
   
   if (drand48() < 0.01) {
-    cout << "actual goal" << endl;
+    //cout << "actual goal" << endl;
 //    next->resize(_goal.size());
 //    *next = _goal;
 //    *next_rot = _goal_rot;
     next_target = new Thread(*(_goal_node->thread)); 
   } else {
-    cout << "random gen" << endl;
+    //cout << "random gen" << endl;
     //if (next_thread != _goal_thread) {
     //  delete next_thread;
     // }
     next_target = generateSample(_goal_node->thread);
-    cout << "sample generated" << endl;
     //next->project_length_constraint();
     //next->minimize_energy();
 //    next_thread = generateSample(_goal_thread);
