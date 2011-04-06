@@ -661,7 +661,7 @@ double playbackmotions(int max_linearizations)
   std::cout << "num states: " << saved_threads.size() << " " << two_motions.size() << std::endl;
   while (!trajectory_follower.is_done())
   {
-    trajectory_follower.Take_Step(4);
+    trajectory_follower.Take_Step(max_linearizations);
 
     *glThreads[simulated]->getThread() = *saved_threads[trajectory_follower.curr_ind()];
     std::cout << "curr ind: " << trajectory_follower.curr_ind() << std::endl;
