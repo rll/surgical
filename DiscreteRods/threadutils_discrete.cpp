@@ -211,3 +211,8 @@ Two_Motions::Two_Motions(const Vector3d& pos_movement_start, const Matrix3d& fra
   _end._frame_rotation = frame_rotation_end;
 }
 
+Two_Motions& Two_Motions::operator=(const Two_Motions& rhs)
+{
+  _start = rhs._start;
+  _end = rhs._end;
+}

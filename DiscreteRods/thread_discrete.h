@@ -85,6 +85,7 @@ class Thread
     void set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot);
     void rotate_end_by(double degrees);
     void apply_motion(Frame_Motion& motion);
+    void apply_motion(Two_Motions& motion);
     
     void project_length_constraint_old();
     void project_length_constraint();

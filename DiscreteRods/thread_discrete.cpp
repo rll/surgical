@@ -1875,6 +1875,19 @@ void Thread::apply_motion(Frame_Motion& motion)
   minimize_energy();
 }
 
+//applies motion to start and end
+void Thread::apply_motion(Two_Motions& motion)
+{
+  Vector3d start_pos = this->start_pos();;
+  Matrix3d start_rot = this->start_rot();
+  Vector3d end_pos = this->end_pos();;
+  Matrix3d end_rot = this->end_rot();
+  motion._start.applyMotion(start_pos, start_rot);
+  motion._end.applyMotion(end_pos, end_rot);
+  set_constraints(start_pos, start_rot, end_pos, end_rot);
+  minimize_energy();
+}
+
 void Thread::set_coeffs_normalized(double bend_coeff, double twist_coeff, double grav_coeff)
 {
   double norm_factor = 1.0/sqrt(pow(bend_coeff,2) + pow(twist_coeff,2) + pow(grav_coeff,2));

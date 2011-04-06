@@ -52,6 +52,7 @@ struct Frame_Motion
   Frame_Motion(const Vector3d& pos_movement, const Vector3d& rotation_axis, const double rotation_ang);
   void set_movement(const Vector3d& pos_movement){_pos_movement = pos_movement;};
   void set_rotation(const Matrix3d& frame_rotation){_frame_rotation = frame_rotation;};
+  void set_nomotion(){set_movement(Vector3d::Zero()); set_rotation(Matrix3d::Identity());}
 	void applyMotion(Vector3d& pos, Matrix3d& frame);
 	Frame_Motion& operator=(const Frame_Motion& rhs);
 
@@ -71,6 +72,8 @@ struct Two_Motions
     _start(toCopy._start), _end(toCopy._end){};
   
   Two_Motions(const Vector3d& pos_movement_start, const Matrix3d& frame_rotation_start,const Vector3d& pos_movement_end, const Matrix3d& frame_rotation_end);
+
+	Two_Motions& operator=(const Two_Motions& rhs);
 
 };
 

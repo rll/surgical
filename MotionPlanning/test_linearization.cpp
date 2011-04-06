@@ -21,6 +21,7 @@
 #include "../DiscreteRods/thread_discrete.h"
 #include "../DiscreteRods/trajectory_reader.h"
 #include "linearization_utils.h"
+#include "trajectory_follower.h"
 
 
 #define TRAJ_BASE_NAME_NYLON "../DiscreteRods/LearnParams/config/suturenylon_processed_projected"
@@ -583,7 +584,6 @@ double calculate_thread_error(Thread* start, Thread* goal)
   goal->get_thread_data(points_goal, angles_goal);
   
   return calculate_vector_diff_norm(points_start, points_goal);
-
 }
 
 
@@ -638,27 +638,39 @@ void InitMotions()
 
 double playbackmotions(int max_linearizations)
 {
-  const double linearization_error_thresh = 1.0;
-  double total_error = 0.0;
+  vector<Two_Motions*> two_motions;
+  vector<Thread*> saved_threads;
+  saved_threads.push_back(new Thread(*glThreads[simulated]->getThread()));
 
+  //record motions
   for (int i=0; i < motions.size(); i++)
   {
-    std::cout << "motion ind: " << i << std::endl;
-    glThreads[reality]->getThread()->apply_motion(motions[i]);
-    glThreads[simulated]->getThread()->apply_motion(motions[i]);
-    double error_last_linearization = calculate_thread_error(glThreads[simulated]->getThread(), glThreads[reality]->getThread());
-    for (int linearization_num=0; linearization_num < max_linearizations; linearization_num++)
-    {
-      solveLinearizedControl(glThreads[simulated]->getThread(), glThreads[reality]->getThread());
-      double error_this_linearizaton = calculate_thread_error(glThreads[simulated]->getThread(), glThreads[reality]->getThread());
-      if (error_this_linearizaton + linearization_error_thresh > error_last_linearization)
-        break;
+    two_motions.push_back(new Two_Motions());
+    two_motions.back()->_start.set_nomotion();
+    two_motions.back()->_end = motions[i];
 
-      error_last_linearization = error_this_linearizaton;
-    } 
+    saved_threads.push_back(new Thread(*saved_threads.back()));
+
+    saved_threads.back()->apply_motion(*two_motions.back());
+  }
+
+
+  //now play them back
+  double total_error = 0;
+  Trajectory_Follower trajectory_follower(saved_threads, two_motions, glThreads[reality]->getThread());
+  std::cout << "num states: " << saved_threads.size() << " " << two_motions.size() << std::endl;
+  while (!trajectory_follower.is_done())
+  {
+    trajectory_follower.Take_Step(4);
+
+    *glThreads[simulated]->getThread() = *saved_threads[trajectory_follower.curr_ind()];
+    std::cout << "curr ind: " << trajectory_follower.curr_ind() << std::endl;
+    *glThreads[reality]->getThread() = *trajectory_follower.curr_state();
+
     total_error += calculate_thread_error(glThreads[simulated]->getThread(), glThreads[reality]->getThread());
     DrawStuff();
   }
   return total_error/((double)motions.size());
-  
+
+
 }
