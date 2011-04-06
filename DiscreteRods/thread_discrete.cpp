@@ -118,6 +118,67 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
 
 }
 
+//As above, with a specific rest length
+Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, const double rest_length) :
+  _rest_length(rest_length)
+{
+  _thread_pieces.resize(vertices.size());
+  _thread_pieces_backup.resize(vertices.size());
+  _angle_twist_backup.resize(vertices.size());
+  for (int i=0; i < vertices.size(); i++)
+  {
+    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], this);
+//    _thread_pieces.push_back(ThreadPiece(vertices[i], twist_angles[i]));
+  }
+
+  for (int i=1; i < vertices.size(); i++)
+  {
+    _thread_pieces[i]->set_prev(_thread_pieces[i-1]);
+  }
+
+  for (int i=0; i < vertices.size()-1; i++)
+  {
+    _thread_pieces[i]->set_next(_thread_pieces[i+1]);
+  }
+
+	//setup backups
+  for (int i=0; i < vertices.size(); i++)
+  {
+    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], this);
+  }
+
+  for (int i=1; i < vertices.size(); i++)
+  {
+    _thread_pieces_backup[i]->set_prev(_thread_pieces_backup[i-1]);
+  }
+
+  for (int i=0; i < vertices.size()-1; i++)
+  {
+    _thread_pieces_backup[i]->set_next(_thread_pieces_backup[i+1]);
+  }
+
+
+  _thread_pieces.front()->set_bishop_frame(start_rot);
+  _thread_pieces.front()->set_material_frame(start_rot);
+
+  _thread_pieces.front()->initializeFrames();
+
+
+ // _saved_last_thetas.resize(_thread_pieces.size());
+  //_saved_last_theta_changes.resize(_thread_pieces.size());
+
+
+  set_start_constraint(vertices.front(), start_rot);
+
+  Matrix3d end_bishop = _thread_pieces[_thread_pieces.size()-2]->bishop_frame();
+  Matrix3d end_rot = Eigen::AngleAxisd(twist_angles[twist_angles.size()-2], end_bishop.col(0).normalized())*end_bishop;
+
+  set_end_constraint(vertices.back(), end_rot);
+
+}
+
+
+
 //Create a Thread. start_rot is the first bishop frame. end_rot is used to calculate the last twist angle
 Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot) :
   _rest_length(DEFAULT_REST_LENGTH)
@@ -256,7 +317,7 @@ Thread::Thread(const Thread& rhs) :
   for (int piece_ind =0; piece_ind < rhs._thread_pieces.size(); piece_ind++)
   {
     //_thread_pieces.push_back(rhs._thread_pieces[piece_ind]);
-    _thread_pieces[piece_ind] = new ThreadPiece(*rhs._thread_pieces[piece_ind]);
+    _thread_pieces[piece_ind] = new ThreadPiece(*rhs._thread_pieces[piece_ind], this);
   }
 
   for (int i=1; i < _thread_pieces.size(); i++)
@@ -273,7 +334,7 @@ Thread::Thread(const Thread& rhs) :
 	//setup backups
   for (int i=0; i < rhs._thread_pieces_backup.size(); i++)
   {
-    _thread_pieces_backup[i] = new ThreadPiece(*rhs._thread_pieces_backup[i]);
+    _thread_pieces_backup[i] = new ThreadPiece(*rhs._thread_pieces_backup[i], this);
     //_thread_pieces.push_back(ThreadPiece(vertices[i], twist_angles[i]));
   }
 
@@ -294,17 +355,10 @@ Thread::Thread(const Thread& rhs) :
 
   _thread_pieces.front()->initializeFrames();
 
-  //_saved_last_theta_changes.resize(_thread_pieces.size());
-
-  Matrix3d start_rot = rhs.start_rot();
-  Matrix3d end_rot = rhs.end_rot();
-  Vector3d start_pos = rhs.start_pos();
-  Vector3d end_pos = rhs.end_pos();
-
   //set_constraints(start_pos, start_rot, end_pos, end_rot);
-  set_start_constraint(start_pos, start_rot);
+  set_start_constraint(rhs.start_pos(), rhs.start_rot());
 
-  set_end_constraint(end_pos, this->end_rot());
+  set_end_constraint(rhs.end_pos(), rhs.end_rot());
   //project_length_constraint();
 }
 
@@ -1787,6 +1841,7 @@ void Thread::set_start_constraint(const Vector3d& start_pos, const Matrix3d& sta
 //assumes bishop frame for end is already calculated
 void Thread::set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot)
 {
+  
   _thread_pieces.back()->set_vertex(end_pos);
   //_end_rot = end_rot;
   _thread_pieces.back()->set_material_frame(end_rot);
@@ -1794,6 +1849,7 @@ void Thread::set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot
   //to fix tangent, set 2nd to last point as well
   Vector3d fixed_point = end_pos - end_rot.col(0)*_rest_length;
   _thread_pieces[_thread_pieces.size()-2]->set_vertex(fixed_point);
+
   _thread_pieces.back()->updateFrames_lastpiece();
 }
 
@@ -1928,7 +1984,7 @@ Thread& Thread::operator=(const Thread& rhs)
   for (int piece_ind =0; piece_ind < rhs._thread_pieces.size(); piece_ind++)
   {
     //_thread_pieces.push_back(rhs._thread_pieces[piece_ind]);
-    _thread_pieces[piece_ind] = new ThreadPiece(*rhs._thread_pieces[piece_ind]);
+    _thread_pieces[piece_ind] = new ThreadPiece(*rhs._thread_pieces[piece_ind], this);
   }
 
   for (int i=1; i < _thread_pieces.size(); i++)
@@ -1944,7 +2000,7 @@ Thread& Thread::operator=(const Thread& rhs)
 	//setup backups
   for (int piece_ind=0; piece_ind < rhs._thread_pieces_backup.size(); piece_ind++)
   {
-    _thread_pieces_backup[piece_ind] = new ThreadPiece(*rhs._thread_pieces_backup[piece_ind]);
+    _thread_pieces_backup[piece_ind] = new ThreadPiece(*rhs._thread_pieces_backup[piece_ind], this);
   }
 
   for (int i=1; i < _thread_pieces_backup.size(); i++)
@@ -1972,6 +2028,8 @@ Thread& Thread::operator=(const Thread& rhs)
   Vector3d end_pos = rhs.end_pos();
 
   set_constraints(start_pos, start_rot, end_pos, end_rot);
+
+  _rest_length = rhs._rest_length;
   //project_length_constraint();
 
 /*

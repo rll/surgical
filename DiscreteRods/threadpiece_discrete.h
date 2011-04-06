@@ -31,6 +31,8 @@ class ThreadPiece
     ThreadPiece(const Vector3d& vertex, const double angle_twist, Thread* my_thread);
     ThreadPiece(const Vector3d& vertex, const double angle_twist, ThreadPiece* prev, ThreadPiece* next, Thread* my_thread);
     ThreadPiece(const ThreadPiece& rhs);
+    ThreadPiece(const ThreadPiece& rhs, Thread* my_thread);
+
     ThreadPiece();
     virtual ~ThreadPiece();
 
@@ -91,6 +93,8 @@ class ThreadPiece
 
 
 		void copyData(const ThreadPiece& rhs);
+    void set_my_thread(Thread* my_thread){_my_thread = my_thread;};
+
 
     //overload operators
     ThreadPiece& operator=(const ThreadPiece& rhs);

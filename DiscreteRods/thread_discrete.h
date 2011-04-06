@@ -54,6 +54,7 @@ class Thread
     Thread(const VectorXd& vertices, const VectorXd& twists, const Matrix3d& start_rot);
     Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot);
     Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot);
+    Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, const double rest_length);
     Thread(const Thread& rhs);
     virtual ~Thread();
 

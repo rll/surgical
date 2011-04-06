@@ -114,7 +114,7 @@ void generateRandomThread() {
   vertices.push_back(Vector3d::Zero());
   angles.push_back(0.0);
 
-  vertices.push_back(Vector3d::UnitX()*_rest_length);
+  vertices.push_back(Vector3d::UnitX()*DEFAULT_REST_LENGTH);
   angles.push_back(0.0);
 
   double angle;
@@ -129,14 +129,14 @@ void generateRandomThread() {
   } while(abs(angle) > M_PI/4.0);
 
   inc.normalize();
-  inc *= _rest_length;
+  inc *= DEFAULT_REST_LENGTH;
 
   for(int i = 0; i < N-2; i++) {
     vertices.push_back(vertices[vertices.size()-1] + inc);
     angles.push_back(0.0);
     // time to move toward the goal
-    if ((vertices[vertices.size()-1] - goal).squaredNorm() > (N-2-i-1)*(N-2-i-1)*_rest_length*_rest_length) {
-      inc = (goal - vertices[vertices.size()-1]).normalized()*_rest_length;
+    if ((vertices[vertices.size()-1] - goal).squaredNorm() > (N-2-i-1)*(N-2-i-1)*DEFAULT_REST_LENGTH*DEFAULT_REST_LENGTH) {
+      inc = (goal - vertices[vertices.size()-1]).normalized()*DEFAULT_REST_LENGTH;
     }
   }
 

@@ -15,7 +15,7 @@ GLThread::GLThread() {
   vertices.push_back(Vector3d::Zero());
   angles.push_back(0.0);
   //push back unitx so first tangent matches start_frame
-  vertices.push_back(Vector3d::UnitX()*_rest_length);
+  vertices.push_back(Vector3d::UnitX()*DEFAULT_REST_LENGTH);
   angles.push_back(0.0);
 
   Vector3d direction;
@@ -27,7 +27,7 @@ GLThread::GLThread() {
     {
       Vector3d noise( ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0);
       noise *= noise_factor;
-      Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*_rest_length;
+      Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*DEFAULT_REST_LENGTH;
       vertices.push_back(next_Vec);
       angles.push_back(0.0);
 
@@ -46,14 +46,14 @@ GLThread::GLThread() {
     {
       Vector3d noise( ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0);
       noise *= noise_factor;
-      Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*_rest_length;
+      Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*DEFAULT_REST_LENGTH;
       vertices.push_back(next_Vec);
       angles.push_back(0.0);
 
     }
 
   //push back unitx so last tangent matches end_frame
-  vertices.push_back(vertices.back()+Vector3d::UnitX()*_rest_length);
+  vertices.push_back(vertices.back()+Vector3d::UnitX()*DEFAULT_REST_LENGTH);
   angles.push_back(0.0);
 
 
