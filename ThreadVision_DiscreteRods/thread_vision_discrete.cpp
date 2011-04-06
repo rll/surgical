@@ -360,7 +360,7 @@ bool Thread_Vision::optimizeThread(bool visualOnly)
     initializeThreadSearch();
     std::cout << "searching from ims" << std::endl;
 
-    //Init Start Hypoths
+    /* _start_data contains each search point to search from */
     for (int i = 0; i < _start_data.size(); i++){
         start_data initial_pt_and_tan = _start_data[i];
         vector<corresponding_pts> start_pts;
@@ -374,9 +374,9 @@ bool Thread_Vision::optimizeThread(bool visualOnly)
                 std::cout << "found tan" << std::endl;
 
                 _thread_hypoths.resize(_thread_hypoths.size() + 1);
+
                 //Check if this doesn't duplicate
                 vector<Thread_Hypoth*>& current_thread_hypoths = _thread_hypoths.back();
-                int ij = start_tangents.size();
                 current_thread_hypoths.resize(start_tangents.size());
 
                 for (int hypoth_ind = 0; hypoth_ind < start_tangents.size(); hypoth_ind++)
@@ -384,7 +384,6 @@ bool Thread_Vision::optimizeThread(bool visualOnly)
                     current_thread_hypoths[hypoth_ind] = new Thread_Hypoth(this);
                     current_thread_hypoths[hypoth_ind]->add_first_threadpieces(start_pts[0], start_tangents[hypoth_ind]);
                 }
-                //processHypothesesFromInit(start_pts[0], start_tangents, visualOnly);
             }
         }
     }
@@ -418,6 +417,8 @@ bool Thread_Vision::processHypothesesFromInit()
     while(running){
         running = false;
         for (int i = 0; i < _thread_hypoths.size(); i++){
+            /* A particular search from a single start point */
+            
             vector<Thread_Hypoth*> current_thread_hypoths = _thread_hypoths[i];
             Thread_Hypoth *test = current_thread_hypoths.front();
 
@@ -431,6 +432,7 @@ bool Thread_Vision::processHypothesesFromInit()
 
                 for (int hypoth_ind=0; hypoth_ind < current_thread_hypoths.size(); hypoth_ind++)
                 {
+                    /* Run the optimization algorithm, using visual distance and thread energy */
                     current_thread_hypoths[hypoth_ind]->optimize_visual();
                     current_thread_hypoths[hypoth_ind]->minimize_energy_twist_angles();
                     current_thread_hypoths[hypoth_ind]->calculate_score();
@@ -499,7 +501,8 @@ vector<thread_hypoth_pair>* Thread_Vision::nearbyPairsOfThreadHypoths()
 }
 
 /* For efficiency, threads are mutated */
-Thread_Hypoth* Thread_Vision::mergeThreads(Thread_Hypoth* thread1, Thread_Hypoth* thread2) {
+Thread_Hypoth* Thread_Vision::mergeThreads(Thread_Hypoth* thread1, Thread_Hypoth* thread2)
+{
     MatchingEnds match = matchingEndsForThreads(thread1, thread2, CLOSE_DISTANCE_COEFF);
     if (match == MatchingStartStart) {
         thread1->reverseThreadPieces();
@@ -566,7 +569,7 @@ void Thread_Vision::initializeThreadSearch()
 {
     updateCanny();
 }
-
+/* Find points close to initPt, then scores and projects them onto 2d points */
 bool Thread_Vision::findNextStartPoint(vector<corresponding_pts>& pts, Point3f& initPt)
 {
     double minDist = -0.5;
@@ -822,7 +825,6 @@ bool Thread_Vision::findTangent(corresponding_pts& start, Vector3d& init_tangent
 
     //rotate as in yaw, pitch, roll - no roll, since we only care about direction of tangent
     vector<tangent_and_score> tan_scores;
-// Point3f tanLocation;
     Vector3d start_pos;
     OpencvToEigen(start.pt3d, start_pos);
 
@@ -838,87 +840,80 @@ bool Thread_Vision::findTangent(corresponding_pts& start, Vector3d& init_tangent
 
             currTangent.normalize();
             /*
+            tanLocation.x = ((float)(length_for_tan*currTangent(0))) + start.pt3d.x;
+            tanLocation.y = ((float)(length_for_tan*currTangent(1))) + start.pt3d.y;
+            tanLocation.z = ((float)(length_for_tan*currTangent(2))) + start.pt3d.z;
 
+            double currScore = scoreProjection3dPoint(tanLocation);
+            */
+            double currScore = scoreProjection3dPointAndTanget(start_pos, currTangent*length_for_tan);
 
-tanLocation.x = ((float)(length_for_tan*currTangent(0))) + start.pt3d.x;
-tanLocation.y = ((float)(length_for_tan*currTangent(1))) + start.pt3d.y;
-tanLocation.z = ((float)(length_for_tan*currTangent(2))) + start.pt3d.z;
+            if (currScore < TANGENT_ERROR_THRESH)
+            {
+                tan_scores.resize(tan_scores.size()+1);
+                tan_scores.back().tan = currTangent;
+                tan_scores.back().score = currScore;
+            }
+        }
+    }
 
-double currScore = scoreProjection3dPoint(tanLocation);
-
-*/
-double currScore = scoreProjection3dPointAndTanget(start_pos, currTangent*length_for_tan);
-
-if (currScore < TANGENT_ERROR_THRESH)
-{
-    tan_scores.resize(tan_scores.size()+1);
-    tan_scores.back().tan = currTangent;
-    tan_scores.back().score = currScore;
-}
-
-
-
-}
-}
-
-if (tan_scores.size() <= 0)
-    return false;
+    if (tan_scores.size() <= 0)
+        return false;
 
 
 
     //tangents.push_back(*min_element(tan_scores.begin(), tan_scores.end()));
-suppress_tangents(tan_scores, tangents);
+    suppress_tangents(tan_scores, tangents);
 
-std::cout << "initial tans: " << std::endl;
-for (int i=0; i < tangents.size(); i++)
-{
-    std::cout << tangents[i].tan.transpose() << "\t\t" << tangents[i].score << std::endl;
-}
+    std::cout << "initial tans: " << std::endl;
+    for (int i=0; i < tangents.size(); i++)
+    {
+        std::cout << tangents[i].tan.transpose() << "\t\t" << tangents[i].score << std::endl;
+    }
 
-/*
-//FOR DEBUG - mark best match AND Tan
-Vector3d tangent;
-tangent = tangents[0].tan;
-
-
-Point2i proj_tan[NUMCAMS]; 
-Point3f bestTanLocation(  (float)(length_for_tan*tangent(0)) + start.pt3d.x,
-(float)(length_for_tan*tangent(1)) + start.pt3d.y, 
-(float)(length_for_tan*tangent(2)) + start.pt3d.z);
+    /*
+    //FOR DEBUG - mark best match AND Tan
+    Vector3d tangent;
+    tangent = tangents[0].tan;
 
 
-_cams->project3dPoint(bestTanLocation, proj_tan);
+    Point2i proj_tan[NUMCAMS]; 
+    Point3f bestTanLocation(  (float)(length_for_tan*tangent(0)) + start.pt3d.x,
+    (float)(length_for_tan*tangent(1)) + start.pt3d.y, 
+    (float)(length_for_tan*tangent(2)) + start.pt3d.z);
 
 
-for (int j = 0; j < NUMCAMS; j++)
-{
-display_for_debug[j].resize(display_for_debug[j].size()+1);
-display_for_debug[j][display_for_debug[j].size()-1].pts = new Point[8];
-display_for_debug[j][display_for_debug[j].size()-1].pts[0] = Point(start.pts2d[j].x-1, start.pts2d[j].y+1);
-display_for_debug[j][display_for_debug[j].size()-1].pts[1] = Point(start.pts2d[j].x+1, start.pts2d[j].y+1);
-display_for_debug[j][display_for_debug[j].size()-1].pts[2] = Point(start.pts2d[j].x+1, start.pts2d[j].y-1);
-display_for_debug[j][display_for_debug[j].size()-1].pts[3] = Point(start.pts2d[j].x-1, start.pts2d[j].y-1);
-display_for_debug[j][display_for_debug[j].size()-1].pts[4] = Point(proj_tan[j].x-1, proj_tan[j].y+1);
-display_for_debug[j][display_for_debug[j].size()-1].pts[5] = Point(proj_tan[j].x+1, proj_tan[j].y+1);
-display_for_debug[j][display_for_debug[j].size()-1].pts[6] = Point(proj_tan[j].x+1, proj_tan[j].y-1);
-display_for_debug[j][display_for_debug[j].size()-1].pts[7] = Point(proj_tan[j].x-1, proj_tan[j].y-1);
-display_for_debug[j][display_for_debug[j].size()-1].color = Scalar(255,255,0);
-display_for_debug[j][display_for_debug[j].size()-1].size = 8;
-}
-
-gl_display_for_debug.resize(gl_display_for_debug.size()+1);
-gl_display_for_debug.back().vertices = new Point3f[2];
-gl_display_for_debug.back().vertices[0] = start.pt3d;
-gl_display_for_debug.back().vertices[1] = bestTanLocation;
-gl_display_for_debug.back().size = 2;
-gl_display_for_debug.back().color[0] = 1.0;
-gl_display_for_debug.back().color[1] = 0.0;
-gl_display_for_debug.back().color[2] = 0.0;
+    _cams->project3dPoint(bestTanLocation, proj_tan);
 
 
-*/
-return true;
+    for (int j = 0; j < NUMCAMS; j++)
+    {
+    display_for_debug[j].resize(display_for_debug[j].size()+1);
+    display_for_debug[j][display_for_debug[j].size()-1].pts = new Point[8];
+    display_for_debug[j][display_for_debug[j].size()-1].pts[0] = Point(start.pts2d[j].x-1, start.pts2d[j].y+1);
+    display_for_debug[j][display_for_debug[j].size()-1].pts[1] = Point(start.pts2d[j].x+1, start.pts2d[j].y+1);
+    display_for_debug[j][display_for_debug[j].size()-1].pts[2] = Point(start.pts2d[j].x+1, start.pts2d[j].y-1);
+    display_for_debug[j][display_for_debug[j].size()-1].pts[3] = Point(start.pts2d[j].x-1, start.pts2d[j].y-1);
+    display_for_debug[j][display_for_debug[j].size()-1].pts[4] = Point(proj_tan[j].x-1, proj_tan[j].y+1);
+    display_for_debug[j][display_for_debug[j].size()-1].pts[5] = Point(proj_tan[j].x+1, proj_tan[j].y+1);
+    display_for_debug[j][display_for_debug[j].size()-1].pts[6] = Point(proj_tan[j].x+1, proj_tan[j].y-1);
+    display_for_debug[j][display_for_debug[j].size()-1].pts[7] = Point(proj_tan[j].x-1, proj_tan[j].y-1);
+    display_for_debug[j][display_for_debug[j].size()-1].color = Scalar(255,255,0);
+    display_for_debug[j][display_for_debug[j].size()-1].size = 8;
+    }
 
+    gl_display_for_debug.resize(gl_display_for_debug.size()+1);
+    gl_display_for_debug.back().vertices = new Point3f[2];
+    gl_display_for_debug.back().vertices[0] = start.pt3d;
+    gl_display_for_debug.back().vertices[1] = bestTanLocation;
+    gl_display_for_debug.back().size = 2;
+    gl_display_for_debug.back().color[0] = 1.0;
+    gl_display_for_debug.back().color[1] = 0.0;
+    gl_display_for_debug.back().color[2] = 0.0;
+
+
+    */
+    return true;
 }
 
 
