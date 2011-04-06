@@ -805,7 +805,7 @@ void initThread()
   vertices.push_back(Vector3d::Zero());
   angles.push_back(0.0);
   //push back unitx so first tangent matches start_frame
-  vertices.push_back(Vector3d::UnitX()*_rest_length);
+  vertices.push_back(Vector3d::UnitX()*DEFAULT_REST_LENGTH);
   angles.push_back(0.0);
 
   Vector3d direction;
@@ -817,7 +817,7 @@ void initThread()
   {
     Vector3d noise( ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0);
     noise *= noise_factor;
-    Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*_rest_length;
+    Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*DEFAULT_REST_LENGTH;
     vertices.push_back(next_Vec);
     angles.push_back(0.0);
 
@@ -836,14 +836,14 @@ void initThread()
   {
     Vector3d noise( ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0);
     noise *= noise_factor;
-    Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*_rest_length;
+    Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*DEFAULT_REST_LENGTH;
     vertices.push_back(next_Vec);
     angles.push_back(0.0);
 
   }
 
   //push back unitx so last tangent matches end_frame
-  vertices.push_back(vertices.back()+Vector3d::UnitX()*_rest_length);
+  vertices.push_back(vertices.back()+Vector3d::UnitX()*DEFAULT_REST_LENGTH);
   angles.push_back(0.0);
 
 
@@ -901,7 +901,7 @@ void initThread_closedPolygon()
 {
   int numVertices = 20;
   double angle_between = M_PI - (((double)(numVertices-2))*(M_PI))/((double)numVertices);
-  //note that edge length is equal to _rest_length
+  //note that edge length is equal to rest_length
 
   double noise_factor = 1.0;
 
@@ -926,7 +926,7 @@ void initThread_closedPolygon()
 
   for (int vert_ind=1; vert_ind < numVertices; vert_ind++)
   {
-    currPoint = currPoint + _rest_length*currRot.col(0);
+    currPoint = currPoint + DEFAULT_REST_LENGTH*currRot.col(0);
     vertices.push_back(currPoint);
     angles.push_back(0.0);
 
@@ -934,7 +934,7 @@ void initThread_closedPolygon()
   }
 
  //push back unitx so last tangent matches end_frame
-  currPoint = currPoint + _rest_length*currRot.col(0);
+  currPoint = currPoint + DEFAULT_REST_LENGTH*currRot.col(0);
   vertices.push_back(currPoint);
   angles.push_back(0.0);
 

@@ -1,19 +1,22 @@
 #include "thread_discrete.h"
 
-Thread::Thread()
+Thread::Thread() :
+  _rest_length(DEFAULT_REST_LENGTH)
 {
   _thread_pieces.resize(0);
 	_thread_pieces_backup.resize(0);
 }
 
 
-Thread::Thread(const VectorXd& vertices, const VectorXd& twists, const Matrix3d& start_rot) {
+Thread::Thread(const VectorXd& vertices, const VectorXd& twists, const Matrix3d& start_rot) :
+  _rest_length(DEFAULT_REST_LENGTH)
+{
   _thread_pieces.resize(twists.size());
   _thread_pieces_backup.resize(twists.size());
   _angle_twist_backup.resize(twists.size());
   for (int i=0; i < twists.size(); i++)
   {
-    _thread_pieces[i] = new ThreadPiece(vertices.segment<3>(3*i), twists(i));
+    _thread_pieces[i] = new ThreadPiece(vertices.segment<3>(3*i), twists(i), this);
   }
 
   for (int i=1; i < twists.size(); i++)
@@ -29,7 +32,7 @@ Thread::Thread(const VectorXd& vertices, const VectorXd& twists, const Matrix3d&
   //setup backups
   for (int i=0; i < twists.size(); i++)
     {
-      _thread_pieces_backup[i] = new ThreadPiece(vertices.segment<3>(3*i), twists(i));
+      _thread_pieces_backup[i] = new ThreadPiece(vertices.segment<3>(3*i), twists(i), this);
     }
 
   for (int i=1; i < twists.size(); i++)
@@ -57,14 +60,15 @@ Thread::Thread(const VectorXd& vertices, const VectorXd& twists, const Matrix3d&
 }
 
 //Create a Thread. start_rot is the first bishop frame. the last material frame is calculated from twist_angles
-Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot)
+Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot) :
+  _rest_length(DEFAULT_REST_LENGTH)
 {
   _thread_pieces.resize(vertices.size());
   _thread_pieces_backup.resize(vertices.size());
   _angle_twist_backup.resize(vertices.size());
   for (int i=0; i < vertices.size(); i++)
   {
-    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i]);
+    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], this);
 //    _thread_pieces.push_back(ThreadPiece(vertices[i], twist_angles[i]));
   }
 
@@ -81,7 +85,7 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
 	//setup backups
   for (int i=0; i < vertices.size(); i++)
   {
-    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i]);
+    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], this);
   }
 
   for (int i=1; i < vertices.size(); i++)
@@ -115,7 +119,8 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
 }
 
 //Create a Thread. start_rot is the first bishop frame. end_rot is used to calculate the last twist angle
-Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot)
+Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot) :
+  _rest_length(DEFAULT_REST_LENGTH)
 {
   //_thread_pieces.resize(vertices.size());
   _thread_pieces_backup.resize(vertices.size());
@@ -123,7 +128,7 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
   _thread_pieces.resize(vertices.size());
   for (int i=0; i < vertices.size(); i++)
   {
-    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i]);
+    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], this);
   }
 
   for (int i=1; i < vertices.size(); i++)
@@ -139,7 +144,7 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
 	//setup backups
   for (int i=0; i < vertices.size(); i++)
   {
-    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i]);
+    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], this);
     //_thread_pieces.push_back(ThreadPiece(vertices[i], twist_angles[i]));
   }
 
@@ -241,7 +246,8 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
 
 }
 
-Thread::Thread(const Thread& rhs)
+Thread::Thread(const Thread& rhs) :
+  _rest_length(rhs._rest_length)
 {
   _thread_pieces.resize(rhs._thread_pieces.size());
   _thread_pieces_backup.resize(rhs._thread_pieces_backup.size());

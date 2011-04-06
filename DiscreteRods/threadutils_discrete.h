@@ -3,6 +3,9 @@
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include <Eigen/Cholesky>
+#include <Eigen/LU>
+#include <Eigen/SVD>
 #include <math.h>
 #include <iostream>
 #include <fstream>

@@ -2,13 +2,13 @@
 #ifndef _thread_discrete_h
 #define _thread_discrete_h
 
-#include "threadpiece_discrete.h"
 #include <algorithm>
 #include "omp.h"
 #include "float.h"
-#include <Eigen/Cholesky>
-#include <Eigen/LU>
-#include <Eigen/SVD>
+#include "threadutils_discrete.h"
+#include "threadpiece_discrete.h"
+
+
 
 
 #ifdef ISOTROPIC 
@@ -36,7 +36,7 @@
 
 #endif
 
-
+#define DEFAULT_REST_LENGTH 3.0 /*default rest length for each threadpiece*/
 
 //#define NUM_THREADS_PARALLEL_FOR 2
 #define num_iters_twist_est_max 0
@@ -92,8 +92,11 @@ class Thread
     const Matrix3d& start_rot(void) const {return _thread_pieces.front()->material_frame();}
     const Matrix3d& end_rot(void) const {return _thread_pieces[_thread_pieces.size()-2]->material_frame();}
     const Matrix3d& end_bishop(void) const {return _thread_pieces[_thread_pieces.size()-2]->bishop_frame();}
+    const double start_angle(void) const {return _thread_pieces.front()->angle_twist();}
     const double end_angle(void) const {return _thread_pieces[_thread_pieces.size()-2]->angle_twist();}
     const double angle_at_ind(int i) const {return _thread_pieces[i]->angle_twist();}
+    const double total_length(void) const {return _rest_length*((double)_thread_pieces.size());}
+    const double rest_length(void) const {return _rest_length;}
     const Vector3d& vertex_at_ind(int i) const {return _thread_pieces[i]->vertex();}
 
     const Vector3d& start_pos(void) const {return _thread_pieces.front()->vertex();}
@@ -174,6 +177,11 @@ class Thread
     void evaluate_twist_scores(vector<double>& twist_to_try, vector<double>& twist_scores, vector<double>& angle_start, vector<double>& angle_end);
     //void set_twist_and_minimize(double twist);
     void set_twist_and_minimize(double twist, vector<Vector3d>& orig_pts);
+
+
+    void set_rest_length(double rest_length){_rest_length = rest_length;}
+
+    double _rest_length;
 
   protected:
     vector<ThreadPiece*> _thread_pieces;
