@@ -64,9 +64,9 @@ float tangent_rotation_start[2];
 
 GLThread* glThreads[8];
 int totalThreads = 8;
-int curThread = 1;
+int curThread = 2;
 int startThread = 0;
-int planThread = 1;
+int planThread = 2;
 int realThread = 2;
 int endThread = 3;
 int newRRTNodeThread = 6;
@@ -146,35 +146,23 @@ void planRRT() {
   //VectorXd goal_thread; VectorXd prev_thread; VectorXd next_thread;
   //planner.planStep(&goal_thread, &prev_thread, &next_thread);
   Thread goal_thread; Thread prev_thread; Thread next_thread; 
-  planner.planStep(goal_thread, prev_thread, next_thread); 
+  planner.planStep(goal_thread, prev_thread, next_thread);
+  planner.updateBestPath(); 
   //planner.planStep(&goal_thread, &prev_thread, &next_thread);
 
-  VectorXd goal_pts; VectorXd prev_pts; VectorXd next_pts;
-  goal_thread.toVector(&goal_pts);
-  prev_thread.toVector(&prev_pts);
-  next_thread.toVector(&next_pts);
-  
   curNode = planner.getTree()->front();
 
   // draw the goal thread, the previous closest, and the new added thread
-  VectorXd angles(goal_pts.size()/3);
-  angles.setZero();
-  //glThreads[4]->setThread(goal_thread);
-  //glThreads[5]->setThread(prev_thread);
-  // glThreads[6]->setThread(next_thread);
-  glThreads[4]->setThread(new Thread(goal_pts, angles, Matrix3d::Identity()));
+  glThreads[4]->setThread(new Thread(goal_thread));
+  glThreads[5]->setThread(new Thread(prev_thread));
+  glThreads[6]->setThread(new Thread(next_thread));
   //glThreads[4]->minimize_energy();
-  glThreads[5]->setThread(new Thread(prev_pts, angles, Matrix3d::Identity()));
   //glThreads[5]->minimize_energy();
-  glThreads[6]->setThread(new Thread(next_pts, angles, Matrix3d::Identity()));
   //glThreads[6]->minimize_energy();
   
   if (initialized) {
-    Thread curNodeThread = *(curNode->thread);
-    VectorXd curNodePts; 
-    curNodeThread.toVector(&curNodePts); 
-    //glThreads[7]->setThread(curNode->thread);
-    glThreads[7]->setThread(new Thread(curNodePts, angles, Matrix3d::Identity()));
+    Thread* curNodeThread = new Thread(*(curNode->thread));
+    glThreads[7]->setThread(curNodeThread);
     //glThreads[7]->minimize_energy();
   }
   glutPostRedisplay();
@@ -185,12 +173,12 @@ void stepRRT(int times) {
   Thread goal_thread; Thread prev_thread; Thread next_thread;
 
 #pragma omp parallel for num_threads(12)
-  for (int i = 0; (i < 5*times - 2); i++) {
+  for (int i = 0; (i < 500*times - 2); i++) {
     if (!interruptEnabled) {
       planner.planStep(goal_thread, prev_thread, next_thread); 
     }
   }
-  planRRT();
+  planRRT(); //  this will call updateBestPath
 }
 
 void planMovement() {
@@ -344,12 +332,14 @@ void processSpecialKeys(int key, int x, int y) {
    if(initialized) {
      if (curNode->prev != NULL) {
        curNode = curNode->prev;
-       Thread curNodeThread = *(curNode->thread);
-       VectorXd curNodePts; 
-       curNodeThread.toVector(&curNodePts); 
+       Thread* curNodeThread = new Thread(*(curNode->thread));
+       /*VectorXd curNodePts; 
+       curNodeThread->toVector(&curNodePts); 
        VectorXd angles(curNodePts.size()/3);
-       angles.setZero();
-       glThreads[7]->setThread(new Thread(curNodePts, angles, Matrix3d::Identity()));
+       angles.setZero();*/
+       glThreads[7]->setThread(curNodeThread);
+       //glThreads[7]->setThread(new Thread(curNodePts, angles, Matrix3d::Identity()));
+       
        //glThreads[7]->setThread(&(curNode->thread));
 
        //glThreads[7]->setThread(new Thread(curNode->x, VectorXd::Zero(curNode->N/3), Matrix3d::Identity()));
@@ -361,12 +351,14 @@ void processSpecialKeys(int key, int x, int y) {
    if(initialized) {
      if (curNode->next != NULL) {
        curNode = curNode->next;
-       Thread curNodeThread = *(curNode->thread);
-       VectorXd curNodePts; 
-       curNodeThread.toVector(&curNodePts); 
+       Thread* curNodeThread = new Thread(*(curNode->thread));
+       /*VectorXd curNodePts; 
+       curNodeThread->toVector(&curNodePts); 
        VectorXd angles(curNodePts.size()/3);
-       angles.setZero();
-       glThreads[7]->setThread(new Thread(curNodePts, angles, Matrix3d::Identity()));
+       angles.setZero();*/
+       glThreads[7]->setThread(curNodeThread);
+
+       //glThreads[7]->setThread(new Thread(curNodePts, angles, Matrix3d::Identity()));
        //glThreads[7]->setThread(&(curNode->thread));
        //glThreads[7]->setThread(new Thread(curNode->x, VectorXd::Zero(curNode->N/3), Matrix3d::Identity()));
        //glThreads[7]->minimize_energy();
@@ -393,7 +385,8 @@ void processNormalKeys(unsigned char key, int x, int y)
     key_pressed = ROTATETANSTART;
   }else if (key == 'l') {
     solveLinearizedControl(glThreads[planThread]->getThread(), 
-                           glThreads[endThread]->getThread());
+                           glThreads[endThread]->getThread(), 
+                           START);
     glThreads[planThread]->updateThreadPoints();
     glutPostRedisplay();
   }
@@ -409,10 +402,10 @@ void processNormalKeys(unsigned char key, int x, int y)
   else if (key == 's') { 
     stepRRT(100); 
   }
-  else if (key == 'w') {
+  else if (key == 'x') {
     writeGoalThreadToFile();
   }
-  else if (key == 'e') {
+  else if (key == '/') {
     readGoalThreadFromFile();
   }
   else if (key == 27)
@@ -429,7 +422,7 @@ void processKeyUp(unsigned char key, int x, int y)
 {
   if (key == '+') {
     selectThread(1);
-  } else if (key == '-') {
+  } else if (key == '-' || key == '_' ) {
     selectThread(-1);
   } else if (key == 'w') {
     drawTree = !drawTree;
@@ -455,8 +448,8 @@ void JoinStyle (int msg)
 int main (int argc, char * argv[])
 {
 
-  srand(time(NULL));
-  srand((unsigned int)time((time_t *)NULL));
+  //srand(time(NULL));
+  //srand((unsigned int)time((time_t *)NULL));
 
 
   printf("Instructions:\n"
@@ -535,12 +528,16 @@ void DrawStuff (void)
 
 
   for(int i = 0; i < totalThreads; i++) {
+    if ( !initialized && i != planThread  && i != endThread ) continue; 
+    if ( initialized && i != planThread && i != endThread && i != 4 
+        && i != 5 && i != 6 && i != 7 ) continue; 
+
     glThreads[i]->DrawAxes();
 
     //Draw Thread
     if (i==curThread) {
       glColor3f (0.8, 0.4, 0.0);
-    } else if (i==startThread) {
+    } else if (i==planThread) {
       glColor3f (0.2, 0.8, 0.2);
     } else if (i==endThread) {
       glColor3f (0.8, 0.2, 0.2);

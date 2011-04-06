@@ -68,14 +68,14 @@ void benchmark(unsigned int seed, float threshold) {
 #pragma omp parallel for num_threads(12)
     for (int i = 0; i < 36; i++) { 
       planner.planStep(*goal_thread, *prev_thread, *next_thread);
-
     }
+
+    planner.updateBestPath(); 
 
     RRTNode* closestNode = planner.findClosestNode(goalThread, false); 
 
     if (planner.l2PointsDifference(closestNode->thread, goalThread) < bestScore) {
-      bestScore = planner.l2PointsDifference(closestNode->thread,
-          goalThread);
+      bestScore = planner.l2PointsDifference(closestNode->thread, goalThread);
 
       cout << "Statistics: [Seed, Score, Time, Nodes] "; 
       cout << "[" << seed << ", " << bestScore << ", " << t.elapsed() <<

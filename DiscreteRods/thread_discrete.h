@@ -126,7 +126,12 @@ class Thread
       }
     }
 
-
+    void getCurvatureBinormal(VectorXd* vec) const {
+      vec->resize(3*num_pieces());
+      for (int i = 0; i < num_pieces(); i++) { 
+        vec->segment<3>(3*i) = _thread_pieces[i]->curvature_binormal();
+      }
+    }
     //debugging tools
     bool is_consistent();
     double calculate_holonomy();

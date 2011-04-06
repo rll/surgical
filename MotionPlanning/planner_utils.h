@@ -28,10 +28,11 @@ class Thread_RRT
   Thread_RRT();
   ~Thread_RRT();
 
-  //void planPath(const Thread* start, const Thread* goal, vector<Frame_Motion>& movements);
+  //void planPath(const Thread* start, const Thread* goal, vector<Two_Motions>& movements);
   void initialize(const Thread* start, const Thread* goal);
   //void planStep(VectorXd* goal, VectorXd* prev, VectorXd* next_thread);
   void planStep(Thread& new_sample_thread, Thread& closest_sample_thread, Thread& new_extend_thread);
+  void updateBestPath(); 
   vector<RRTNode*>* getTree() { return &_tree; }
   Thread* generateSample(const Thread* start);
   Thread* generateSample(int N); 
@@ -79,7 +80,7 @@ class Thread_RRT
 
 
 //  void simpleInterpolation(const Vector3d& cur_pos, const Matrix3d& cur_rot, const Vector3d& next, const Matrix3d& next_rot, Vector3d* res_translation, Matrix3d* res_rotation);
-  void simpleInterpolation(Thread* start, const Thread* end, vector<Frame_Motion*>& motions);
+  void simpleInterpolation(Thread* start, const Thread* end, vector<Two_Motions*>& motions);
 
   double distToGoal;
   double bestDist;

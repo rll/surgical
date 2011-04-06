@@ -28,30 +28,41 @@ RRTNode::RRTNode(const Thread* start): prev(NULL), next(NULL), linearized(false)
   start->getTwists(&twists); 
 
   VectorXd gradient;
-  //gradient.resize(positions.size());
- 
-  //((Thread*) start)->calculate_gradient_vertices_vectorized(&gradient);
   start->getEdges(&gradient); 
 
+  VectorXd curvature_binormal;
+  start->getCurvatureBinormal(&curvature_binormal); 
+
 
   
 
-  N = positions.size() + twists.size() + gradient.size();
+  N = positions.size() + twists.size() + 
+    gradient.size() + curvature_binormal.size();
   data = new float[N];
   
+  int currentIndex = 0; 
+
   for (int i = 0; i < positions.size(); i++) {
     if (!isnan(positions[i]))
-        data[i] = (float) (10*positions[i]); 
+        data[i + currentIndex] = (float) (10*positions[i]); 
   }
   
+  currentIndex += positions.size(); 
   for (int i = 0; i < twists.size(); i++) {
-    if (!isnan(twists[i]))
-        data[i+positions.size()] = (float) (5*twists[i]);
+    if (!isnan(twists[i]))  
+        data[i+currentIndex] = (float) (5*twists[i]);
   }
 
+  currentIndex += twists.size(); 
   for (int i = 0; i < gradient.size(); i++) {
     if (!isnan(gradient[i])) 
-      data[i+positions.size()+twists.size()] = (float) (50*gradient[i]);
+      data[i+currentIndex] = (float) (5*gradient[i]);
+  }
+
+  currentIndex += gradient.size(); 
+  for (int i = 0; i < curvature_binormal.size(); i++) {
+    if(!isnan(curvature_binormal[i])) 
+        data[i+currentIndex] = (float) (0*curvature_binormal[i]);
   }
 
 
@@ -72,7 +83,6 @@ double RRTNodeUtils::distanceBetween(RRTNode* start, RRTNode* end) {
   }
 
   return r; 
-
 }
 
 
