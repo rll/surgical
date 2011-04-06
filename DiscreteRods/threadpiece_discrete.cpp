@@ -40,7 +40,7 @@ ThreadPiece::ThreadPiece() :
 }
 	
   ThreadPiece::ThreadPiece(const ThreadPiece& rhs, Thread* my_thread)
-: _vertex(rhs._vertex), _angle_twist(rhs._angle_twist), _edge(rhs._edge), _edge_norm(rhs._edge_norm), _curvature_binormal(rhs._curvature_binormal), _bishop_frame(rhs._bishop_frame), _material_frame(rhs._material_frame), _my_thread(my_thread)
+: _vertex(rhs._vertex), _angle_twist(rhs._angle_twist), _edge(rhs._edge), _edge_norm(rhs._edge_norm), _curvature_binormal(rhs._curvature_binormal), _bishop_frame(rhs._bishop_frame), _material_frame(rhs._material_frame), _prev_piece(rhs._prev_piece), _next_piece(rhs._next_piece), _my_thread(my_thread)
 {
 	grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
 	grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
