@@ -12,7 +12,7 @@ Thread_Vision::Thread_Vision()
         650,  // gain
         "optimized", // optimized or measured
         107109, // camera uid
-        "./stereo_test/stereo_test1-");
+        (string(SAVED_IMAGE_BASE) + "1-").c_str());
     //IM_DIR_1); 
     _captures[0]->setExposure(5000);
     //_captures[0]->setExposure(11000);
@@ -23,7 +23,7 @@ Thread_Vision::Thread_Vision()
         650,  // gain
         "optimized", // optimized or measured
         107110, // camera uid
-        "./stereo_test/stereo_test2-");
+        (string(SAVED_IMAGE_BASE) + "2-").c_str());
     //        IM_DIR_2); 
     _captures[1]->setExposure(3000);
     //_captures[1]->setExposure(7500);
@@ -33,7 +33,7 @@ Thread_Vision::Thread_Vision()
         650,  // gain
         "optimized", // optimized or measured
         107111, // camera uid
-        "./stereo_test/stereo_test3-");
+        (string(SAVED_IMAGE_BASE) + "3-").c_str());
     //          IM_DIR_3); 
     _captures[2]->setExposure(3500);
 

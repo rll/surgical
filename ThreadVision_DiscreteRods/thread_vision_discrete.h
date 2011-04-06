@@ -32,6 +32,8 @@
 #define DISPLAY_CANNY_BASE "canny cam"
 #define CLOSE_DISTANCE_COEFF 1 * _rest_length
 
+#define SAVED_IMAGE_BASE "./stereo_test/stereo_test"
+
 
 
 USING_PART_OF_NAMESPACE_EIGEN
