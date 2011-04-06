@@ -16,10 +16,6 @@ Thread_RRT::~Thread_RRT()
 void Thread_RRT::initialize(const Thread* start, const Thread* goal)
 {
 
-  //_start_thread = start;
-  //_goal_thread = goal;
-  //  goal->toVector(&_goal);
-  //  _goal_rot = goal->end_rot();
   omp_init_lock(&writelock); 
   _start_node = new RRTNode(start);
   _goal_node = new RRTNode(goal);  
@@ -35,7 +31,6 @@ void Thread_RRT::initialize(const Thread* start, const Thread* goal)
   bestDist = DBL_MAX;
   TOLERANCE = 0.01;
   totalPenalty = 1.0; 
-  //next_thread = NULL; 
 
   index = new LshMultiTable<HASH>();
   HASH::Parameter *param = new HASH::Parameter();
@@ -50,7 +45,6 @@ void Thread_RRT::initialize(const Thread* start, const Thread* goal)
 
 }
 void Thread_RRT::planStep(Thread& new_sample_thread, Thread& closest_sample_thread, Thread& new_extend_thread) { 
-//void Thread_RRT::planStep(VectorXd* vertices, VectorXd* prev, VectorXd* next_thread) {
   //cout << "getting target" << endl;
   Thread* next_target = NULL; 
   double newSampleDist = DBL_MAX;
@@ -69,8 +63,6 @@ void Thread_RRT::planStep(Thread& new_sample_thread, Thread& closest_sample_thre
   closest_sample_thread = *(_tree.back()->prev->thread);
   new_extend_thread = *(_tree.back()->thread);
   omp_unset_lock(&writelock);
-  //*prev = (_tree.back()->prev->x);
-  //*next_thread = (_tree.back()->x);
   //cout << "done step" << endl;
 
 }
@@ -84,6 +76,35 @@ void Thread_RRT::updateBestPath() {
   }
 
 }
+
+
+Thread* Thread_RRT::halfDimApproximation(const Thread* target) {
+
+  vector<Vector3d> vertices;     
+  vector<double> angles;
+
+
+  for(int i = 0; i < target->num_pieces(); i++) {
+    if (i % 2 == 0) { 
+      vertices.push_back(target->vertex_at_ind(i));
+      angles.push_back(0.0); 
+    }
+  }
+
+  Matrix3d target_start_rot = target->start_rot();
+  
+  Thread* reducedDimensionThread = new Thread(vertices, angles, 
+      target_start_rot); 
+
+  Vector3d target_end_pos = target->end_pos();
+  Matrix3d target_end_rot = target->end_rot();
+
+  reducedDimensionThread->set_end_constraint(target_end_pos, target_end_rot);
+  reducedDimensionThread->project_length_constraint();
+  return reducedDimensionThread;
+
+}
+
 
 /*void Thread_RRT::planPath(const Thread* start, const Thread* goal, vector<Two_Motions>& movements) {
   initialize(start, goal);
@@ -117,60 +138,69 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
   vector<double> angles;
   int N = goal_thread->num_pieces();
   
-  vertices.push_back(Vector3d::Zero());
-  angles.push_back(0.0);
+  Vector3d start; 
+  Vector3d goal; 
+  
+  double max_thread_length = N*goal_thread->rest_length(); 
+  double noise_multiplier; 
+  if (drand48() < 0.50) { 
+     
+    // sample the start by taking the current start and adding noise
+    // sample the goal by taking the current goal and adding noise 
+    //cout << "sampling near the start" << endl;
+    
+    noise_multiplier = goal_thread->rest_length(); 
 
-  vertices.push_back(Vector3d::UnitX()*_rest_length);
+  } else { 
+    // sample the start by sampling in the sphere of the norm
+    // these samples tend to increase the branching of the tree
+    //cout << "sampling in the ball" << endl;
+  
+    noise_multiplier = max_thread_length / 5; // not exactly as big as we might like
+  
+  }
+
+
+  start = goal_thread->start_pos();
+  goal = goal_thread->end_pos(); 
+  Vector3d noise_start;
+  Vector3d noise_goal; 
+  do {
+    noise_start = (noise_start << Normal(0,1)*noise_multiplier,
+        Normal(0,1)*noise_multiplier,
+        Normal(0,1)*noise_multiplier).finished();
+    noise_goal = (noise_goal << Normal(0,1)*noise_multiplier,
+        Normal(0,1)*noise_multiplier,
+        Normal(0,1)*noise_multiplier).finished();
+
+  } while(((goal+noise_goal)-(start+noise_start)).norm() > max_thread_length);
+
+  start += noise_start;
+  goal += noise_goal;
+  
+  
+  vertices.push_back(start);
   angles.push_back(0.0);
 
   double angle;
   Vector3d inc;
   
-  Vector3d goal; 
-  Vector3d noise; 
-  double max_thread_length = (N-2)*_rest_length; 
-  if (drand48() < 0.10) { 
-  
-  // sample the goal by taking the current goal and adding noise
-  // these samples are very similar to the goal 
-    //cout << "sampling near the goal" << endl; 
-    goal = goal_thread->end_pos() - goal_thread->start_pos();
-    do { 
-    noise = (noise << Normal(0,1)*_rest_length,
-      Normal(0,1)*_rest_length,
-      Normal(0,1)*_rest_length).finished();
-    } while((goal+noise).norm() > max_thread_length);
-
-    goal += noise; 
-
-  } else { 
-    // sample the goal by sampling in the sphere of the norm
-    // these samples tend to increase the branching of the tree
-    //cout << "sampling in the ball" << endl;
-    do {
-      goal = (noise <<  Normal(0,1)*max_thread_length,
-          Normal(0,1)*max_thread_length,
-          Normal(0,1)*max_thread_length).finished();
-
-    } while (goal.norm() > max_thread_length); 
-  }
-
   do {
     inc << Normal(0,1), Normal(0,1), Normal(0,1);
     //inc = goal;
     inc.normalize();
-    inc *= _rest_length;
+    inc *= goal_thread->rest_length();
     angle = acos(inc.dot(goal)/(goal.norm()*inc.norm()));
-  } while(abs(angle) > M_PI/2.0);
+  } while(abs(angle) > 3*M_PI/4.0);
 
 
-  for(int i = 0; i < N-2; i++) {
+  for(int i = 0; i < N-1; i++) {
     Vector3d prevInc = inc;
     vertices.push_back(vertices[vertices.size()-1] + inc);
     angles.push_back(0.0);
     // time to move toward the goal
-    if ((vertices[vertices.size()-1] - goal).squaredNorm() > (N-2-i-1)*(N-2-i-1)*_rest_length*_rest_length) {
-      inc = (goal - vertices[vertices.size()-1]).normalized()*_rest_length;
+    if ((vertices[vertices.size()-1] - goal).squaredNorm() > (N-2-i-1)*(N-2-i-1)*goal_thread->rest_length()*goal_thread->rest_length()) {
+      inc = (goal - vertices[vertices.size()-1]).normalized()*goal_thread->rest_length();
       //if ( acos(inc.dot(prevInc) / (prevInc.norm() * inc.norm())) > 3*M_PI/4 ) {
         //inc = prevInc; 
       //}
@@ -181,7 +211,7 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
             inc << Normal(0,1), Normal(0,1), Normal(0,1);
             //inc = goal;
             inc.normalize();
-            inc *= _rest_length;
+            inc *= goal_thread->rest_length();
             angle = acos(inc.dot(goal) / (goal.norm()*inc.norm()));     
           } while(abs(angle) > M_PI/3.0);
         } else {
@@ -189,7 +219,7 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
             inc << Normal(0,1), Normal(0,1), Normal(0,1);
             //inc = goal;
             inc.normalize();
-            inc *= _rest_length;
+            inc *= goal_thread->rest_length();
             angle = acos(inc.dot(prevInc) / (prevInc.norm()*inc.norm()));     
           } while(abs(angle) > M_PI/3.0);
         }
@@ -198,15 +228,9 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
     }
   }
 
- /* for (int i = 0; i < N; i++) {
-    for (int j = 0; j < 3; j++) { 
-      cout << vertices[i][j] << " ";
-    }
-    cout << endl; 
-  }*/
 
   Matrix3d rot = Matrix3d::Identity();
-  return new Thread(vertices, angles, rot);
+  return new Thread(vertices, angles, rot, goal_thread->rest_length());
 
 }
 
@@ -217,6 +241,7 @@ Thread* Thread_RRT::generateSample(int N) {
   
   vertices.push_back(Vector3d::Zero());
   angles.push_back(0.0);
+  int _rest_length = 3;
 
   vertices.push_back(Vector3d::UnitX()*_rest_length);
   angles.push_back(0.0);
@@ -278,7 +303,7 @@ Thread* Thread_RRT::generateSample(int N) {
 
 
   Matrix3d rot = Matrix3d::Identity();
-  Thread* newSample = new Thread(vertices, angles, rot); 
+  Thread* newSample = new Thread(vertices, angles, rot, _rest_length); 
   newSample->minimize_energy();
   return newSample;
 
@@ -286,22 +311,22 @@ Thread* Thread_RRT::generateSample(int N) {
 
 
 
-//void Thread_RRT::getNextGoal(VectorXd* next, Matrix3d* next_rot) {
 Thread* Thread_RRT::getNextGoal() {
   Thread* next_target = NULL; 
   
   if (drand48() < 0.01) {
-    //cout << "actual goal" << endl;
+    cout << "actual goal" << endl;
 //    next->resize(_goal.size());
 //    *next = _goal;
 //    *next_rot = _goal_rot;
-    next_target = (Thread *) _goal_node->thread; 
+    next_target = new Thread(*(_goal_node->thread)); 
   } else {
-    //cout << "random gen" << endl;
+    cout << "random gen" << endl;
     //if (next_thread != _goal_thread) {
     //  delete next_thread;
     // }
     next_target = generateSample(_goal_node->thread);
+    cout << "sample generated" << endl;
     //next->project_length_constraint();
     //next->minimize_energy();
 //    next_thread = generateSample(_goal_thread);
@@ -315,7 +340,6 @@ Thread* Thread_RRT::getNextGoal() {
 }
 
 void Thread_RRT::simpleInterpolation(Thread* start, const Thread* goal, vector<Two_Motions*>& motions) {
-//void Thread_RRT::simpleInterpolation(const Vector3d& cur_pos, const Matrix3d& cur_rot, const Vector3d& next_pos, const Matrix3d& next_rot, Vector3d* translation, Matrix3d* rotation) {
   // use quaternion interpolation to move closer to end rot
   // figure out angle between quats, spherically interpolate.
   Vector3d translation;
@@ -354,7 +378,6 @@ void Thread_RRT::simpleInterpolation(Thread* start, const Thread* goal, vector<T
 
 }
 double Thread_RRT::largeRotation(const Thread* target) {  
-//double Thread_RRT::largeRotation(const VectorXd& next) {
   // find the closest node in the tree to next
   VectorXd V_target;
   target->toVector(&V_target);
@@ -427,8 +450,7 @@ double Thread_RRT::largeRotation(const Thread* target) {
 }
 
 double Thread_RRT::extendToward(Thread* target) {
-//double Thread_RRT::extendToward(const VectorXd& next, const Matrix3d& next_rot) {
-
+  
   // find the node closest to the target and extract the end position and rotation
 
   RRTNode* closest; 
@@ -450,7 +472,9 @@ double Thread_RRT::extendToward(Thread* target) {
   
   // create a new thread based on the closest
   Thread* start = new Thread(*(closest->thread));
-  
+  start->set_rest_length(closest->thread->rest_length());
+
+
   Vector3d translation;
   Matrix3d rotation;
   vector<Two_Motions*> tmpMotions;
@@ -459,7 +483,8 @@ double Thread_RRT::extendToward(Thread* target) {
   //simpleInterpolation(start, target, tmpMotions);
 
   // solve and apply control to the closest thread
-  solveLinearizedControl(start, target, tmpMotions, START); 
+  solveLinearizedControl(start, target, tmpMotions, START);
+  solveLinearizedControl(start, target, tmpMotions, END); 
   start->minimize_energy();
 
 

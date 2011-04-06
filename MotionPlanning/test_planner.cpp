@@ -118,8 +118,11 @@ void readGoalThreadFromFile() {
     glThreads[endThread]->minimize_energy();
     glutPostRedisplay();
   } 
+}
 
-
+void reduceDimension() {
+  glThreads[curThread]->setThread(planner.halfDimApproximation(
+        (const Thread*) glThreads[curThread]->getThread()));
 
 }
 
@@ -383,7 +386,7 @@ void processNormalKeys(unsigned char key, int x, int y)
     key_pressed = MOVEPOSSTART;
   } else if (key == 'R') {
     key_pressed = ROTATETANSTART;
-  }else if (key == 'l') {
+  } else if (key == 'l') {
     solveLinearizedControl(glThreads[planThread]->getThread(), 
                            glThreads[endThread]->getThread(), 
                            START);
@@ -407,6 +410,9 @@ void processNormalKeys(unsigned char key, int x, int y)
   }
   else if (key == '/') {
     readGoalThreadFromFile();
+  }
+  else if (key == 'v') { 
+    reduceDimension();
   }
   else if (key == 27)
   {
