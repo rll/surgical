@@ -77,14 +77,23 @@ void applyControl(Thread* start, const VectorXd& u, vector<Two_Motions*>& motion
 void computeDifference(Thread* start, const Thread* goal, VectorXd& res) {
   for (int piece_ind=0; piece_ind < goal->num_pieces(); piece_ind++)
   {
-    res.segment(piece_ind*3, 3) = goal->vertex_at_ind(piece_ind) - start->vertex_at_ind(piece_ind);
+    res.segment(piece_ind*3, 3) = (goal->vertex_at_ind(piece_ind) - start->vertex_at_ind(piece_ind));
   }
+  for (int piece_ind=0; piece_ind < goal->num_pieces(); piece_ind++)
+  {
+    res.segment(goal->num_pieces()*3 +piece_ind*3, 3) = (goal->edge_at_ind(piece_ind) - start->edge_at_ind(piece_ind));
+  }
+
 }
 
 void computeDifference_maxMag(Thread* start, const Thread* goal, VectorXd& res, double maxMag) {
   for (int piece_ind=0; piece_ind < goal->num_pieces(); piece_ind++)
   {
-    res.segment(piece_ind*3, 3) = goal->vertex_at_ind(piece_ind) - start->vertex_at_ind(piece_ind);
+    res.segment(piece_ind*3, 3) = (goal->vertex_at_ind(piece_ind) - start->vertex_at_ind(piece_ind));
+  }
+  for (int piece_ind=0; piece_ind < goal->num_pieces(); piece_ind++)
+  {
+    res.segment(goal->num_pieces()*3 +piece_ind*3, 3) = (goal->edge_at_ind(piece_ind) - start->edge_at_ind(piece_ind));
   }
   
   double res_norm = res.norm();
@@ -95,8 +104,9 @@ void computeDifference_maxMag(Thread* start, const Thread* goal, VectorXd& res, 
 
 void solveLinearizedControl(Thread* start, const Thread* goal, vector<Two_Motions*>& motions, const movement_mode movement) {
   //const double MAX_STEP = 2.0;
-  const double DAMPING_CONST = 0.2;
-  const double MAX_MAG = 7.0;
+  const double DAMPING_CONST_POINTS = 0.1;
+  const double DAMPING_CONST_ANGLES = 0.4;
+  const double MAX_MAG = 12.0;
 
   int num_controls;
   if (movement == START_AND_END)
@@ -104,20 +114,39 @@ void solveLinearizedControl(Thread* start, const Thread* goal, vector<Two_Motion
   else
     num_controls = 6;
 
+
   int num_pieces = start->num_pieces();
   // linearize the controls around the current thread (quasistatic, no dynamics)
-  MatrixXd B(3*num_pieces,num_controls);
-
+  MatrixXd B(6*num_pieces,num_controls);
   estimate_transition_matrix(start, B, movement);
 
+  //weight matrix for different aspects of state
+  MatrixXd weighting_mat = MatrixXd::Identity(6*num_pieces, 6*num_pieces);
+  for (int i=0; i < 3*num_pieces; i++)
+  {
+    weighting_mat(i,i) = WEIGHT_VERTICES;
+  } 
+  for (int i=0; i < 3*num_pieces; i++)
+  {
+    weighting_mat(i+3*num_pieces,i+3*num_pieces) = WEIGHT_EDGES;
+  } 
+
   // solve the least-squares problem
-  VectorXd dx(num_pieces*3);
-  //computeDifference_maxMag(start, goal, dx, MAX_MAG);
+  VectorXd dx(num_pieces*6);
   computeDifference_maxMag(start, goal, dx, MAX_MAG);
   VectorXd u(num_controls);
-  u = B.transpose()*dx;
+  u = B.transpose()*weighting_mat*dx;
 
-  (B.transpose()*B + DAMPING_CONST*MatrixXd::Identity(num_controls, num_controls)).llt().solveInPlace(u);
+  MatrixXd damping_mat = MatrixXd::Identity(num_controls, num_controls);
+  for (int i=0; i < num_controls; i++)
+  {
+    if ( (i%6) < 3)
+      damping_mat(i,i) = DAMPING_CONST_POINTS;
+    else
+      damping_mat(i,i) = DAMPING_CONST_ANGLES;
+  }
+
+  (B.transpose()*weighting_mat*B + damping_mat).llt().solveInPlace(u);
   // project it down to small step size
   //double u_norm = (B*u).norm();
   //u *= min(10.0/u_norm, u_norm/10.0);
@@ -153,6 +182,10 @@ void estimate_transition_matrix(Thread* thread, MatrixXd& A, const movement_mode
     {
       A.block(piece_ind*3, i, 3,1) = thread->vertex_at_ind(piece_ind);
     }
+    for (int piece_ind=0; piece_ind < num_pieces; piece_ind++)
+    {
+      A.block(3*num_pieces + piece_ind*3, i, 3,1) = thread->edge_at_ind(piece_ind);
+    }
 
     du(i) = -eps;
     thread->restore_thread_pieces(thread_backup_pieces);
@@ -161,7 +194,25 @@ void estimate_transition_matrix(Thread* thread, MatrixXd& A, const movement_mode
     {
       A.block(piece_ind*3, i, 3,1) -= thread->vertex_at_ind(piece_ind);
     }
+    for (int piece_ind=0; piece_ind < num_pieces; piece_ind++)
+    {
+      A.block(3*num_pieces + piece_ind*3, i, 3,1) -= thread->edge_at_ind(piece_ind);
+    }
   }
   A /= 2.0*eps;
   thread->restore_thread_pieces(thread_backup_pieces);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+

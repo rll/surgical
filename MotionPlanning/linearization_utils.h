@@ -9,6 +9,9 @@
 #include "../DiscreteRods/trajectory_reader.h"
 
 
+#define WEIGHT_VERTICES 1.0
+#define WEIGHT_EDGES 2.0
+
 enum movement_mode {START, END, START_AND_END};
 
 void applyControl(Thread* start, const VectorXd& u, const movement_mode movement = END);
@@ -18,6 +21,7 @@ void computeDifference_maxMag(Thread* start, const Thread* goal, VectorXd& res, 
 void solveLinearizedControl(Thread* start, const Thread* goal, const movement_mode movement = END);
 void solveLinearizedControl(Thread* start, const Thread* goal, vector<Two_Motions*>& motions, const movement_mode movement = END);
 void estimate_transition_matrix(Thread* thread, MatrixXd& A, const movement_mode movement = END);
+
 
 
 #endif

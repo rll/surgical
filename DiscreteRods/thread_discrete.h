@@ -100,6 +100,7 @@ class Thread
     const double total_length(void) const {return _rest_length*((double)_thread_pieces.size());}
     const double rest_length(void) const {return _rest_length;}
     const Vector3d& vertex_at_ind(int i) const {return _thread_pieces[i]->vertex();}
+    const Vector3d& edge_at_ind(int i) const {return _thread_pieces[i]->edge();}
 
     const Vector3d& start_pos(void) const {return _thread_pieces.front()->vertex();}
     const Vector3d& end_pos(void) const {return _thread_pieces.back()->vertex();}
