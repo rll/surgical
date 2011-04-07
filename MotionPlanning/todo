@@ -26,6 +26,9 @@ distance metric ideas:
 
 - restart, see if the same samples make the old tree better
 - fix hyperplanes or use exact nns
+  - see which samples are being pulled
+
+ 
 - see if histogram stuff has been done before
 - see if you can maintain shape
 
@@ -34,9 +37,8 @@ distance metric ideas:
 
 --kavraki open motion planning toolkit
 
-
-
 -approximate min links for thread
+  -can we subsample more effectively? 
 -with min links, seed the higher dimension one
   - run rrt see if you can get htere
   - run local planner to see if we can stay on the path nicely 
@@ -45,4 +47,12 @@ distance metric ideas:
 
 4/5 
   need to extend sampling to move both ends
+- invariant to length of links? 
+- apply motion to 2nd point as opposed to 1st
 
+-email james about mp
+  -how to reduce links? 
+  -incremental search -- bound curving and twisting
+  -bound energy? 
+
+ -ask jur about baseline rrt planner
