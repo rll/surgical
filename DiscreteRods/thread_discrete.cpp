@@ -334,12 +334,13 @@ void Thread::delete_threadpieces(vector<ThreadPiece*> thread_pieces)
 }
 
 
-//calculate energy for entire Thread
+/* Calculate energy for the entire thread
+ * Needs at least two thread pieces to work */
 double Thread::calculate_energy()
 {
 
 #ifdef ISOTROPIC
-  double energy = _thread_pieces[2]->get_twist_coeff()*(pow(_thread_pieces[_thread_pieces.size()-2]->angle_twist()-_thread_pieces.front()->angle_twist(),2))/(2.0*_rest_length*(_thread_pieces.size()-2));
+  double energy = _thread_pieces[2]->get_twist_coeff() * (pow(_thread_pieces[_thread_pieces.size() - 2]->angle_twist() - _thread_pieces.front()->angle_twist(),2)) / (2.0 * _rest_length * (_thread_pieces.size() - 2));
 
 	//std::cout << _thread_pieces[2]->get_twist_coeff() << " " << _thread_pieces.size() << " " << _thread_pieces[_thread_pieces.size()-2]->angle_twist() << " " << _thread_pieces.front()->angle_twist() << " " << 2.0*_rest_length*(_thread_pieces.size()-2) << std::endl;
 
