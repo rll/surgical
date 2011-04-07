@@ -414,33 +414,33 @@ void Thread_Vision::get_thread_data(vector<Vector3d>& points, vector<double>& tw
 bool Thread_Vision::processHypothesesFromInit()
 {
     bool running = true;
+
+    /* For all i in 1...N */
     while(running){
         running = false;
-        for (int i = 0; i < _thread_hypoths.size(); i++){
-            /* A particular search from a single start point */
-            
-            vector<Thread_Hypoth*> current_thread_hypoths = _thread_hypoths[i];
-            Thread_Hypoth *test = current_thread_hypoths.front();
+        /* Changed to only the first start point for efficiency */
+        
+        vector<Thread_Hypoth*> current_thread_hypoths = _thread_hypoths[0];
+        Thread_Hypoth *test = current_thread_hypoths.front();
 
-            if (current_thread_hypoths.front()->num_pieces()*_rest_length < _max_length_thread)
+        if (current_thread_hypoths.front()->num_pieces()*_rest_length < _max_length_thread)
+        {
+            running = true;
+
+            suppress_hypoths(current_thread_hypoths);
+            add_possible_next_hypoths(current_thread_hypoths);
+            suppress_hypoths(current_thread_hypoths);
+
+            for (int hypoth_ind=0; hypoth_ind < current_thread_hypoths.size(); hypoth_ind++)
             {
-                running = true;
-
-                suppress_hypoths(current_thread_hypoths);
-                add_possible_next_hypoths(current_thread_hypoths);
-                suppress_hypoths(current_thread_hypoths);
-
-                for (int hypoth_ind=0; hypoth_ind < current_thread_hypoths.size(); hypoth_ind++)
-                {
-                    /* Run the optimization algorithm, using visual distance and thread energy */
-                    current_thread_hypoths[hypoth_ind]->optimize_visual();
-                    current_thread_hypoths[hypoth_ind]->minimize_energy_twist_angles();
-                    current_thread_hypoths[hypoth_ind]->calculate_score();
-                }
+                /* Run the optimization algorithm, using visual distance and thread energy */
+                current_thread_hypoths[hypoth_ind]->optimize_visual();
+                current_thread_hypoths[hypoth_ind]->minimize_energy_twist_angles();
+                current_thread_hypoths[hypoth_ind]->calculate_score();
             }
         }
 
-        //Detect close segments
+        /* Detect close segments */
         vector<thread_hypoth_pair> *allPairs = nearbyPairsOfThreadHypoths();
         if (allPairs->size() > 0){
             std::cout << "Threads close: " << allPairs->size() << std::endl;
