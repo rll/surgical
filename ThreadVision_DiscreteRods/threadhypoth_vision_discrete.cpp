@@ -201,14 +201,14 @@ void Thread_Hypoth::calculate_visual_gradient_vertices(vector<Vector3d>& vertex_
     }
 }
 
-
-
-
-
-
 void Thread_Hypoth::add_first_threadpieces(corresponding_pts& start_pt, tangent_and_score& start_tan)
 {
-  //need to assign start rotation. Arbitrary for now
+    add_first_threadpieces(start_pt, start_tan, 0);
+}
+
+void add_first_threadpieces(corresponding_pts& start_pt, tangent_and_score& start_tan, double startTwist)
+{
+    //need to assign start rotation. Arbitrary for now
     Vector3d perp_col = Vector3d::UnitY();
     make_vectors_perpendicular(start_tan.tan, perp_col);
     Matrix3d start_rot;
@@ -218,10 +218,10 @@ void Thread_Hypoth::add_first_threadpieces(corresponding_pts& start_pt, tangent_
 
     _thread_pieces.resize(2);
 
-    Vector3d to_set_vertex;
-    OpencvToEigen(start_pt.pt3d, to_set_vertex);
-    _thread_pieces[0] = new ThreadPiece_Vision(to_set_vertex, 0.0, NULL, NULL, _thread_vision);
-    _thread_pieces[1] = new ThreadPiece_Vision(to_set_vertex+_rest_length*start_tan.tan, 0.0, (ThreadPiece_Vision*)_thread_pieces[0], NULL, _thread_vision);
+    Vector3d start_vertex;
+    OpencvToEigen(start_pt.pt3d, start_vertex);
+    _thread_pieces[0] = new ThreadPiece_Vision(start_vertex, 0.0, NULL, NULL, _thread_vision);
+    _thread_pieces[1] = new ThreadPiece_Vision(start_vertex+_rest_length*start_tan.tan, startTwist, (ThreadPiece_Vision*)_thread_pieces[0], NULL, _thread_vision);
     _thread_pieces[0]->set_next(_thread_pieces[1]);
 
     _thread_pieces.front()->set_bishop_frame(start_rot);
