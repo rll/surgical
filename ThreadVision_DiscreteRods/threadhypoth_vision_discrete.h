@@ -62,9 +62,8 @@ public:
 
 
     double _score; //this is not ensured to be updated!! 
+    double _previous_energy;
     Thread_Vision* _thread_vision;
-
-
 };
 
 void suppress_hypoths(vector<Thread_Hypoth*>& hypoths);

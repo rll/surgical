@@ -65,6 +65,7 @@ Thread_Hypoth::~Thread_Hypoth()
 
 void Thread_Hypoth::optimize_visual()
 {
+    _previous_energy = calculate_visual_energy();
     //std::cout << "optimizing visual" << std::endl;;
     double step_in_grad_dir_vertices = 1.0;
 
@@ -103,7 +104,7 @@ void Thread_Hypoth::optimize_visual()
         }
 
         step_in_grad_dir_vertices = max_movement_vertices;
-        apply_vertex_offsets(vertex_gradients, false, -step_in_grad_dir_vertices);      
+        apply_vertex_offsets(vertex_gradients, false, -step_in_grad_dir_vertices);
 #ifndef ISOTROPIC
         minimize_energy_twist_angles();
 #endif
@@ -138,7 +139,7 @@ void Thread_Hypoth::optimize_visual()
             if (next_energy >= curr_energy) {
                 restore_thread_pieces();
                 recalc_vertex_grad = false;
-            } 
+            }
 
             if (max_movement_vertices <= MIN_MOVEMENT_VERTICES_VISION)
             {
@@ -188,7 +189,7 @@ double Thread_Hypoth::calculate_visual_energy_only()
 
 void Thread_Hypoth::calculate_score()
 {
-    _score = calculate_visual_energy();
+    _score = _previous_energy - calculate_visual_energy();
 }
 
 
@@ -254,9 +255,10 @@ void Thread_Hypoth::add_possible_next_hypoths(vector<Thread_Hypoth*>& extra_next
     Vector3d new_vertex_init;
     new_vertex_init = _thread_pieces[_thread_pieces.size()-2]->edge() + _thread_pieces.back()->vertex();
     double new_angle = (_thread_pieces.size() <= 2 ? 0 : _thread_pieces[_thread_pieces.size()-2]->angle_twist() + _thread_pieces[_thread_pieces.size()-2]->angle_twist()/((double)_thread_pieces.size()-2) );
+
     _thread_pieces.push_back(new ThreadPiece_Vision(new_vertex_init, new_angle, (ThreadPiece_Vision*)_thread_pieces.back(), NULL, _thread_vision));
     _thread_pieces[_thread_pieces.size()-2]->set_next((ThreadPiece_Vision*)_thread_pieces.back());
-    _thread_pieces[_thread_pieces.size()-2]->set_angle_twist(new_angle);
+    _thread_pieces[_thread_pieces.size()-2]->set_angle_twist(new_angle); //Since last two pieces have to have the same twist
 
     //this could be sped up - only need to update last piece
     _thread_pieces.front()->initializeFrames();
@@ -285,7 +287,7 @@ void Thread_Hypoth::add_possible_next_hypoths(vector<Thread_Hypoth*>& extra_next
     {
         Thread_Hypoth* to_add_extra = new Thread_Hypoth(*this);
         to_add_extra->_thread_pieces.back()->set_vertex(tan_and_scores[tan_ind].tan*_rest_length + _thread_pieces[_thread_pieces.size()-2]->vertex());
-        to_add_extra->_thread_pieces.front()->initializeFrames(); 
+        to_add_extra->_thread_pieces.front()->initializeFrames();
         to_add_extra->calculate_score();
 
         extra_next_hypoths[tan_ind-1] = to_add_extra;
@@ -297,9 +299,9 @@ bool Thread_Hypoth::find_next_tan_visual(vector<tangent_and_score>& tangents)
 {
     const double length_for_tan = _rest_length;
     const double ang_to_rotate = M_PI/60.0;
-  //const int num_reprojs_per_tan = 10;
+    //const int num_reprojs_per_tan = 10;
 
-  //rotate as in yaw, pitch, roll - no roll, since we only care about direction of tangent
+    //rotate as in yaw, pitch, roll - no roll, since we only care about direction of tangent
     vector<tangent_and_score> tan_scores;
     Vector3d axis1 = this->end_rot().col(2).normalized();
     double angle_min = DBL_MAX;
@@ -320,7 +322,7 @@ bool Thread_Hypoth::find_next_tan_visual(vector<tangent_and_score>& tangents)
 
             currScore += TAN_SCORE_DOT_PROD_COEFF*(currTangent.dot(this->end_rot().col(0).normalized()));
 
-      //std::cout << "currScore: " << currScore << "  threadvision: " << _thread_pieces[_thread_pieces.size()-2]->vertex().transpose() << std::endl;
+            //std::cout << "currScore: " << currScore << "  threadvision: " << _thread_pieces[_thread_pieces.size()-2]->vertex().transpose() << std::endl;
             if (currScore < TANGENT_ERROR_THRESH)
             {
                 tangent_and_score toAdd(currTangent, currScore);
