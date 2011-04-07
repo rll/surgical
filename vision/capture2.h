@@ -56,182 +56,182 @@ enum {CONTINUOUS, SINGLEFRAME};
 
 class Capture
 {
-    public:
-        //firewire
-        //Capture(int camId, const char *camName, int gain, const char *extrinsics_version, const char* imageFiles = NULL);
-        //gige
-        Capture(int camId, const char *camName, int gain, const char *extrinsics_version, int uid, const char* imageFiles = NULL);
-        Capture();
-        ~Capture();
+public:
+    //firewire
+    //Capture(int camId, const char *camName, int gain, const char *extrinsics_version, const char* imageFiles = NULL);
+    //gige
+    Capture(int camId, const char *camName, int gain, const char *extrinsics_version, int uid, const char* imageFiles = NULL);
+    Capture();
+    ~Capture();
 
-        // 	Reads the parameters (intrinsics, extrinsics, ...)
-        void init(const char *path);
+    // 	Reads the parameters (intrinsics, extrinsics, ...)
+    void init(const char *path);
 
-        // 	Returns the name
-        const char * name(void) const { return nameInternal.c_str() ;}
+    // 	Returns the name
+    const char * name(void) const { return nameInternal.c_str() ;}
 
-        // 	returns a matrix with the camera position taken from the extrinsics
-        //CvMat* cameraPosition(void) const {return mCameraPosition ; }
+    // 	returns a matrix with the camera position taken from the extrinsics
+    //CvMat* cameraPosition(void) const {return mCameraPosition ; }
 
-        const Mat cameraPosition(void) const {return mCameraPosition ; }
-        const Mat extRotationVector(void) const {return mExtRotationVector;}
-        const Mat cameraMatrix(void) const {return intrinsicMatrix;}
+    const Mat cameraPosition(void) const {return mCameraPosition ; }
+    const Mat extRotationVector(void) const {return mExtRotationVector;}
+    const Mat cameraMatrix(void) const {return intrinsicMatrix;}
 
-        const Mat extTranslationVector(void) const {return mExtTranslationVector;}
-        const Mat rot_world2cam(void) const {return mR_world2cam;}
-        const Mat rot_cam2world(void) const {return mR_cam2world;}
+    const Mat extTranslationVector(void) const {return mExtTranslationVector;}
+    const Mat rot_world2cam(void) const {return mR_world2cam;}
+    const Mat rot_cam2world(void) const {return mR_cam2world;}
 
-        // 	takes a 3d point, passes it to the ColorCentroid for display and returns its prjection on the camera frame
-        void projectPointUndistorted(const Mat& point3d, Point2f& point2d);        
-        void projectPointUndistorted(const Mat& point3d, Point2i& point2d);        
-        //Point2D displayEstimatedLocation(const Point3D &);
-        //Point2D getEstimatedLocationProjection(const Point3D &);
+    // 	takes a 3d point, passes it to the ColorCentroid for display and returns its prjection on the camera frame
+    void projectPointUndistorted(const Mat& point3d, Point2f& point2d);
+    void projectPointUndistorted(const Mat& point3d, Point2i& point2d);
+    //Point2D displayEstimatedLocation(const Point3D &);
+    //Point2D getEstimatedLocationProjection(const Point3D &);
 
-        // 	returns a pointer to the current frame
-        /* IplImage * currentFrame(void) const {return mFrame;}
+    // 	returns a pointer to the current frame
+    /* IplImage * currentFrame(void) const {return mFrame;}
            IplImage * getUndistortedImage(void);
            IplImage * undistortImage(const tPvFrame* frame);*/
 
-        const Mat& currentFrame(void) const {return mFrame;}
-        Mat getUndistortedImage(void);
-        void undistortImage(const tPvFrame* frame, Mat& toUndistort);
-        void undistortImage(const Mat& img, Mat& toUndistort);
-        double currentTimestamp(void) const { return frameTimestamp; }
+    const Mat& currentFrame(void) const {return mFrame;}
+    Mat getUndistortedImage(void);
+    void undistortImage(const tPvFrame* frame, Mat& toUndistort);
+    void undistortImage(const Mat& img, Mat& toUndistort);
+    double currentTimestamp(void) const { return frameTimestamp; }
 
-        // whatever needs to handle point undistortion
-        Mat ptMat;
-        Mat ptUndistorted;
-        Mat mRayCam;
-        Mat mRayWorld;
+    // whatever needs to handle point undistortion
+    Mat ptMat;
+    Mat ptUndistorted;
+    Mat mRayCam;
+    Mat mRayWorld;
 
-        //CvScalar undistortPoint(const Point2D& pt) const;
-        //const Mat getUndistortedRay(const Point2D& pt) const;
-        void getWorldRay(const Point& pt, Mat& ray);
-        void getWorldRay(const Point2f& pt, Mat& ray);
+    //CvScalar undistortPoint(const Point2D& pt) const;
+    //const Mat getUndistortedRay(const Point2D& pt) const;
+    void getWorldRay(const Point& pt, Mat& ray);
+    void getWorldRay(const Point2f& pt, Mat& ray);
 
-        // grabs one frame
-        bool grabFrame(void);
+    // grabs one frame
+    bool grabFrame(void);
 
-        //grabs frame and places it in queue
-        void startFrameGrab(void);
-        //returns it from queue
-        bool grabFrameAlreadyQueued(void);
-        bool grabFrameAlreadyQueuedUndistorted(void);
-        
-        void copyImage(const tPvFrame* frame, Mat& dest) const;
+    //grabs frame and places it in queue
+    void startFrameGrab(void);
+    //returns it from queue
+    bool grabFrameAlreadyQueued(void);
+    bool grabFrameAlreadyQueuedUndistorted(void);
 
-        // 	tries to grab a frame, returns true if success
-        bool waitForFrame(void);
-        bool waitForFrameUndistorted(void);
+    void copyImage(const tPvFrame* frame, Mat& dest) const;
 
-        void startCapture(void);
-        void endCapture(void);
+    // 	tries to grab a frame, returns true if success
+    bool waitForFrame(void);
+    bool waitForFrameUndistorted(void);
 
-        void syncFrameCaptureSetCenter(vector<Capture*>& otherCams); //sets this as sync out, otherCams with syncIn
-				void syncFrameCaptureSetCenter();
-				void setSyncIn();
+    void startCapture(void);
+    void endCapture(void);
 
-
-        void OpenCamera(int uid);
-
-        void setExposure(int exposure);
-        void AddOtherCameraInformation(const Capture& otherCamera);
-        void GetEpipolarLine(const Capture& otherCamera, const Point2f& pointSeenOtherFrame, Mat& lineParams);
-        void GetEpipolarLine(const Capture& otherCamera, const Point2i& pointSeenOtherFrame, Mat& lineParams);
-
-        bool inRange(int row, int col) {return row >= 0 & row < mFrame.rows & col >= 0 & col < mFrame.cols;}
+    void syncFrameCaptureSetCenter(vector<Capture*>& otherCams); //sets this as sync out, otherCams with syncIn
+    void syncFrameCaptureSetCenter();
+    void setSyncIn();
 
 
-        void drawPose(Mat& rotation_matrix, Mat& translation_vector);
+    void OpenCamera(int uid);
 
-				void setImageNumber(int imNum){imageNumber = imNum;};
-				void subtractImageNumber(){imageNumber--;};
-        int getImageNumber() { return imageNumber; };
+    void setExposure(int exposure);
+    void AddOtherCameraInformation(const Capture& otherCamera);
+    void GetEpipolarLine(const Capture& otherCamera, const Point2f& pointSeenOtherFrame, Mat& lineParams);
+    void GetEpipolarLine(const Capture& otherCamera, const Point2i& pointSeenOtherFrame, Mat& lineParams);
 
-    private:
-        static int camsActive;
-
-        int idInternal;
-        bool initDone;
-        std::string nameInternal;
-        int mGain;
-        bool mGigE;
-
-        //	Camera  parameters;
-        unsigned long   UID;
-        tPvHandle       Handle;
-        tPvFrame        tmpFrame;
-        tPvFrame*        Frames;
-        bool            Abort;
-        tPvCameraInfo	cameraInfo;
-        unsigned long	frameSize;
-        tPvErr			Errcode;
-        tPvUint32   width, height;
-        bool frameReady;
-
-        int* frameNums;
-        int curFrame;
-        double frameTimestamp;
-
-        Mat   bgrImage;
-
-        // 	Intrinsic parameters:
-        double focalLength[2];
-        double principalPoint[2];
-        double distortion_coeffs[4];
-        
-        Mat intrinsicMatrix;
-        Mat intrinsicMatrixCorrected;
-        Mat distortionMatrix;
-
-        // 	Extrinsic parameters
-        Mat mExtTranslationVector;
-        Mat mExtRotationVector;
+    bool inRange(int row, int col) {return row >= 0 & row < mFrame.rows & col >= 0 & col < mFrame.cols;}
 
 
-        Uav::Quaternion cam_q;
-        TVector3 cam_ned;
+    void drawPose(Mat& rotation_matrix, Mat& translation_vector);
 
-        Mat mCameraPosition;
-        Mat mR_world2cam;
-        Mat mR_cam2world;
+    void setImageNumber(int imNum){imageNumber = imNum;};
+    void subtractImageNumber(){imageNumber--;};
+    int getImageNumber() { return imageNumber; };
+
+private:
+    static int camsActive;
+
+    int idInternal;
+    bool initDone;
+    std::string nameInternal;
+    int mGain;
+    bool mGigE;
+
+    //	Camera  parameters;
+    unsigned long   UID;
+    tPvHandle       Handle;
+    tPvFrame        tmpFrame;
+    tPvFrame*        Frames;
+    bool            Abort;
+    tPvCameraInfo	cameraInfo;
+    unsigned long	frameSize;
+    tPvErr			Errcode;
+    tPvUint32   width, height;
+    bool frameReady;
+
+    int* frameNums;
+    int curFrame;
+    double frameTimestamp;
+
+    Mat   bgrImage;
+
+    // 	Intrinsic parameters:
+    double focalLength[2];
+    double principalPoint[2];
+    double distortion_coeffs[4];
+
+    Mat intrinsicMatrix;
+    Mat intrinsicMatrixCorrected;
+    Mat distortionMatrix;
+
+    // 	Extrinsic parameters
+    Mat mExtTranslationVector;
+    Mat mExtRotationVector;
 
 
-        Mat mFrame;
-        Mat mDistortedImage;
-        Mat mUndistortedImage;
-        Mat xDistortMap;
-        Mat yDistortMap;
-        //	CvCapture* mCapture;
+    Uav::Quaternion cam_q;
+    TVector3 cam_ned;
+
+    Mat mCameraPosition;
+    Mat mR_world2cam;
+    Mat mR_cam2world;
 
 
-        bool capturing;
-
-        bool mFromFileFlag;
-        std::ifstream mImageFilesStream;
-        char* baseImageName;
-        char imageNum[256];
-        int imageNumber;
-
-
-        const char *m_extrinsics_version;
+    Mat mFrame;
+    Mat mDistortedImage;
+    Mat mUndistortedImage;
+    Mat xDistortMap;
+    Mat yDistortMap;
+    //	CvCapture* mCapture;
 
 
-        void WaitForCamera(unsigned int i = 1)
-        {
-            printf("waiting for a camera ...\n");
-            while((PvCameraCount()<i) && !Abort)
-                usleep(250);
-            printf("\n");
-        }
-      
-        struct InterCameraInfo {
-            Mat OtherCameraPositionMyFrame;
-            Point2f OtherCameraPositionMyPix;  //note, this pixel is is [x,y], not [row,col]
-            Mat RotationToMyFrame;
-        };
-        
-        vector<InterCameraInfo> otherCamParams; 
+    bool capturing;
+
+    bool mFromFileFlag;
+    std::ifstream mImageFilesStream;
+    char* baseImageName;
+    char imageNum[256];
+    int imageNumber;
+
+
+    const char *m_extrinsics_version;
+
+
+    void WaitForCamera(unsigned int i = 1)
+    {
+        printf("waiting for a camera ...\n");
+        while((PvCameraCount()<i) && !Abort)
+            usleep(250);
+        printf("\n");
+    }
+
+    struct InterCameraInfo {
+        Mat OtherCameraPositionMyFrame;
+        Point2f OtherCameraPositionMyPix;  //note, this pixel is is [x,y], not [row,col]
+        Mat RotationToMyFrame;
+    };
+
+    vector<InterCameraInfo> otherCamParams;
 
 };
 

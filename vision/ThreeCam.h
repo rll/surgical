@@ -34,9 +34,9 @@ using namespace cv;
 
 struct corresponding_pts 
 {
-  Point2i pts2d[NUMCAMS];
-  Point3f pt3d;
-  double score;
+    Point2i pts2d[NUMCAMS];
+    Point3f pt3d;
+    double score;
 };
 
 
@@ -47,7 +47,7 @@ bool operator <(const corresponding_pts& a, const corresponding_pts& b);
 class ThreeCam
 {
 
-  public:
+public:
     ThreeCam(Capture* cams[]);
     ~ThreeCam();
     void updateImages();
@@ -55,14 +55,14 @@ class ThreeCam
     void updateImagesBlocking();
     void updateImagesBlockingNoUndistort();
     void updateTimestamps();
-		void initializeCanny(float width[], float edge_sigma[], float blur_sigma[], double thresh1[], double thresh2[]);
+    void initializeCanny(float width[], float edge_sigma[], float blur_sigma[], double thresh1[], double thresh2[]);
     void convertToGrayscale();
-		void filterCanny();
+    void filterCanny();
 
-		Mat* frames(void) {return _frames;}
-		Mat* frames_gray(void) {return _frames_gray;}
-		Mat* cannyIms(void) {return _cannyIms;}
-		Mat* cannyAngs(void) {return _cannyAngs;}
+    Mat* frames(void) {return _frames;}
+    Mat* frames_gray(void) {return _frames_gray;}
+    Mat* cannyIms(void) {return _cannyIms;}
+    Mat* cannyAngs(void) {return _cannyAngs;}
     Capture** captures(void) {return _captures;}
     double* timestamps(void) {return _timestamps;}
 
@@ -86,20 +86,20 @@ class ThreeCam
     void setImageNumber(int imNum);
 
 
-  private:
+private:
     string _camNames[NUMCAMS];
-    
+
     Capture* _captures[NUMCAMS];
-		CannyOrient* _cannyFilters[NUMCAMS];
+    CannyOrient* _cannyFilters[NUMCAMS];
 
     Mat _frames[NUMCAMS];
     Mat _frames_gray[NUMCAMS];
     double _timestamps[NUMCAMS];
 
-		Mat _cannyIms[NUMCAMS];
-		Mat _cannyAngs[NUMCAMS];
-		double _canny_Thresh1[NUMCAMS];
-		double _canny_Thresh2[NUMCAMS];
+    Mat _cannyIms[NUMCAMS];
+    Mat _cannyAngs[NUMCAMS];
+    double _canny_Thresh1[NUMCAMS];
+    double _canny_Thresh2[NUMCAMS];
 
     StereoOnClicks* stereoOnClicks;
     int _saved_im_ind;

@@ -45,7 +45,7 @@
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
-    void InitLights();
+void InitLights();
 void InitGLUT(int argc, char * argv[]);
 void InitStuff();
 void DrawStuff();
@@ -150,7 +150,7 @@ void applyControl(Thread* start, const VectorXd& u, VectorXd* res) {
     Eigen::Quaterniond q(dw, u(3),u(4),u(5));
     Matrix3d rotation(q);
 
-  // apply the control u to thread start, and return the new config in res
+    // apply the control u to thread start, and return the new config in res
     Frame_Motion toMove(translation, rotation);
 
     Vector3d end_pos = start->end_pos();
@@ -183,79 +183,79 @@ void processLeft(int x, int y)
     {
         move_end[0] += (x-lastx_L)*MOVE_POS_CONST;
         move_end[1] += (lasty_L-y)*MOVE_POS_CONST;
-        } else if (key_pressed == MOVETAN)
-        {
-            tangent_end[0] += (x-lastx_L)*MOVE_TAN_CONST;
-            tangent_end[1] += (lasty_L-y)*MOVE_TAN_CONST;
-            } else if (key_pressed == ROTATETAN)
-            {
-                tangent_rotation_end[0] += (x-lastx_L)*ROTATE_TAN_CONST;
-                tangent_rotation_end[1] += (lasty_L-y)*ROTATE_TAN_CONST;
-            }
-            else {
-                rotate_frame[0] += x-lastx_L;
-                rotate_frame[1] += lasty_L-y;
-            }
+    } else if (key_pressed == MOVETAN)
+    {
+        tangent_end[0] += (x-lastx_L)*MOVE_TAN_CONST;
+        tangent_end[1] += (lasty_L-y)*MOVE_TAN_CONST;
+    } else if (key_pressed == ROTATETAN)
+    {
+        tangent_rotation_end[0] += (x-lastx_L)*ROTATE_TAN_CONST;
+        tangent_rotation_end[1] += (lasty_L-y)*ROTATE_TAN_CONST;
+    }
+    else {
+        rotate_frame[0] += x-lastx_L;
+        rotate_frame[1] += lasty_L-y;
+    }
 
+    lastx_L = x;
+    lasty_L = y;
+}
+
+void processRight(int x, int y)
+{
+    //rotate_frame[0] += x-lastx_R;
+    //rotate_frame[1] += y-lasty_R;
+
+    if (key_pressed == MOVEPOS)
+    {
+        move_end[0] += (x-lastx_R)*MOVE_POS_CONST;
+        move_end[1] += (lasty_R-y)*MOVE_POS_CONST;
+    } else if (key_pressed == MOVETAN)
+    {
+        tangent_end[0] += (x-lastx_R)*MOVE_TAN_CONST;
+        tangent_end[1] += (lasty_R-y)*MOVE_TAN_CONST;
+    } else if (key_pressed == ROTATETAN)
+    {
+        tangent_rotation_end[0] += (x-lastx_R)*ROTATE_TAN_CONST;
+        tangent_rotation_end[1] += (lasty_R-y)*ROTATE_TAN_CONST;
+    }
+
+    lastx_R = x;
+    lasty_R = y;
+}
+
+void MouseMotion (int x, int y)
+{
+    if (pressed_mouse_button == GLUT_LEFT_BUTTON) {
+        processLeft(x, y);
+    } else if (pressed_mouse_button == GLUT_RIGHT_BUTTON) {
+        processRight(x,y);
+    }
+    glutPostRedisplay ();
+}
+
+void processMouse(int button, int state, int x, int y)
+{
+    if (state == GLUT_DOWN)
+    {
+        pressed_mouse_button = button;
+        if (button == GLUT_LEFT_BUTTON)
+        {
             lastx_L = x;
             lasty_L = y;
         }
-
-        void processRight(int x, int y)
+        if (button == GLUT_RIGHT_BUTTON)
         {
-  //rotate_frame[0] += x-lastx_R;
-  //rotate_frame[1] += y-lasty_R;
-
-            if (key_pressed == MOVEPOS)
-            {
-                move_end[0] += (x-lastx_R)*MOVE_POS_CONST;
-                move_end[1] += (lasty_R-y)*MOVE_POS_CONST;
-                } else if (key_pressed == MOVETAN)
-                {
-                    tangent_end[0] += (x-lastx_R)*MOVE_TAN_CONST;
-                    tangent_end[1] += (lasty_R-y)*MOVE_TAN_CONST;
-                    } else if (key_pressed == ROTATETAN)
-                    {
-                        tangent_rotation_end[0] += (x-lastx_R)*ROTATE_TAN_CONST;
-                        tangent_rotation_end[1] += (lasty_R-y)*ROTATE_TAN_CONST;
-                    }
-
-                    lastx_R = x;
-                    lasty_R = y;
-                }
-
-                void MouseMotion (int x, int y)
-                {
-                    if (pressed_mouse_button == GLUT_LEFT_BUTTON) {
-                        processLeft(x, y);
-                    } else if (pressed_mouse_button == GLUT_RIGHT_BUTTON) {
-                        processRight(x,y);
-                    }
-                    glutPostRedisplay ();
-                }
-
-                void processMouse(int button, int state, int x, int y)
-                {
-                    if (state == GLUT_DOWN)
-                    {
-                        pressed_mouse_button = button;
-                        if (button == GLUT_LEFT_BUTTON)
-                        {
-                            lastx_L = x;
-                            lasty_L = y;
-                        }
-                        if (button == GLUT_RIGHT_BUTTON)
-                        {
-                            lastx_R = x;
-                            lasty_R = y;
-                        }
-                        glutPostRedisplay ();
-                    }
-                }
+            lastx_R = x;
+            lasty_R = y;
+        }
+        glutPostRedisplay ();
+    }
+}
 
 
-                void processSpecialKeys(int key, int x, int y) {
- /*if (key == GLUT_KEY_LEFT) {
+void processSpecialKeys(int key, int x, int y) {
+    /*if (key == GLUT_KEY_LEFT) {
  if(initialized) {
  if (curNode->prev != NULL) {
  curNode = curNode->prev;
@@ -274,7 +274,7 @@ void processLeft(int x, int y)
  }
  }
  }
- */
+     */
 }
 
 void processNormalKeys(unsigned char key, int x, int y)
@@ -296,444 +296,441 @@ void processNormalKeys(unsigned char key, int x, int y)
             glThreads[startThread]->setThread((new Thread(all_threads[thread_ind])));
             glutPostRedisplay();
         }
-        } else if (key == 'b') {
-            thread_ind--;
-            std::cout << "displaying thread " << thread_ind  << std::endl;
-            if (thread_ind >= 0 && thread_ind < all_threads.size())
-            {
-                glThreads[startThread]->setThread((new Thread(all_threads[thread_ind])));
-                glutPostRedisplay();
-            }
-            } else if (key == 'v') {
-    //updateIms();
-                findThreadInIms();
-                glutPostRedisplay();
-                } else if (key == '1' && key <= '3')
-                {
-                    show_threads[((int)key-'1')] = !show_threads[((int)key-'1')];
-                    } else if (key == 'q') {
-                        thread_vision.prev_hypoth();
-                        glThreads[optimize_thread]->setThread((new Thread(*thread_vision.curr_thread())));
-                        glutPostRedisplay();
-                        } else if (key == 'w') {
-                            thread_vision.next_hypoth();
-                            glThreads[optimize_thread]->setThread((new Thread(*thread_vision.curr_thread())));
-                            glutPostRedisplay();
-                        }
+    } else if (key == 'b') {
+        thread_ind--;
+        std::cout << "displaying thread " << thread_ind  << std::endl;
+        if (thread_ind >= 0 && thread_ind < all_threads.size())
+        {
+            glThreads[startThread]->setThread((new Thread(all_threads[thread_ind])));
+            glutPostRedisplay();
+        }
+    } else if (key == 'v') {
+        //updateIms();
+        findThreadInIms();
+        glutPostRedisplay();
+    } else if (key == '1' && key <= '3')
+    {
+        show_threads[((int)key-'1')] = !show_threads[((int)key-'1')];
+    } else if (key == 'q') {
+        thread_vision.prev_hypoth();
+        glThreads[optimize_thread]->setThread((new Thread(*thread_vision.curr_thread())));
+        glutPostRedisplay();
+    } else if (key == 'w') {
+        thread_vision.next_hypoth();
+        glThreads[optimize_thread]->setThread((new Thread(*thread_vision.curr_thread())));
+        glutPostRedisplay();
+    }
 
-                        else if (key == 27) {
-                            exit(0);
-                        }
+    else if (key == 27) {
+        exit(0);
+    }
 
-                        lastx_R = x;
-                        lasty_R = y;
+    lastx_R = x;
+    lasty_R = y;
 
-                    }
+}
 
-                    void processKeyUp(unsigned char key, int x, int y)
-                    {
-                        if (key == '+') {
-                            selectThread(1);
-                            } else if (key == '-') {
-                                selectThread(-1);
-                            }
-                            key_pressed = NONE;
-                            move_end[0] = move_end[1] = tangent_end[0] = tangent_end[1] = tangent_rotation_end[0] = tangent_rotation_end[1] = 0.0;
-                        }
-
-
-
-                        void JoinStyle (int msg)
-                        {
-                            exit (0);
-                        }
-
-
-                        int main (int argc, char * argv[])
-                        {
-
-                            srand(time(NULL));
-                            srand((unsigned int)time((time_t *)NULL));
-
-                            printf("Instructions:\n"
-                                "Hold down the left mouse button to rotate image: \n"
-                                "\n"
-                                "Hold 'm' while holding down the right mouse to move the end\n"
-                                "Hold 't' while holding down the right mouse to rotate the tangent \n"
-                                "\n"
-                                "Press 'Esc' to quit\n"
-                                );
-
-                            InitGLUT(argc, argv);
-                            InitLights();
-                            InitStuff ();
+void processKeyUp(unsigned char key, int x, int y)
+{
+    if (key == '+') {
+        selectThread(1);
+    } else if (key == '-') {
+        selectThread(-1);
+    }
+    key_pressed = NONE;
+    move_end[0] = move_end[1] = tangent_end[0] = tangent_end[1] = tangent_rotation_end[0] = tangent_rotation_end[1] = 0.0;
+}
 
 
 
-                            InitThread(argc, argv);
+void JoinStyle (int msg)
+{
+    exit (0);
+}
+
+
+int main (int argc, char * argv[])
+{
+
+    srand(time(NULL));
+    srand((unsigned int)time((time_t *)NULL));
+
+    printf("Instructions:\n"
+            "Hold down the left mouse button to rotate image: \n"
+            "\n"
+            "Hold 'm' while holding down the right mouse to move the end\n"
+            "Hold 't' while holding down the right mouse to rotate the tangent \n"
+            "\n"
+            "Press 'Esc' to quit\n"
+    );
+
+    InitGLUT(argc, argv);
+    InitLights();
+    InitStuff ();
+
+
+
+    InitThread(argc, argv);
 
 #ifdef NYLON
-                            thread_vision.set_reproj_fix_canny(POINTFILE_NYLON);
+    thread_vision.set_reproj_fix_canny(POINTFILE_NYLON);
 #elif defined PURPLE
-                            thread_vision.set_reproj_fix_canny(POINTFILE_PURPLE);
+    thread_vision.set_reproj_fix_canny(POINTFILE_PURPLE);
 #elif defined BLACK
-                            thread_vision.set_reproj_fix_canny(POINTFILE_BLACK);
+    thread_vision.set_reproj_fix_canny(POINTFILE_BLACK);
 #endif
 
-  // for (int i=0; i < NUM_PTS; i++)
-  // {
-  //   radii[i]=THREAD_RADII;
-  // }
+    // for (int i=0; i < NUM_PTS; i++)
+    // {
+    //   radii[i]=THREAD_RADII;
+    // }
 
-                            if (TRY_ALL)
-                            {
-                                char filename_errs[256];
+    if (TRY_ALL)
+    {
+        char filename_errs[256];
 #ifdef NYLON
-                                sprintf(filename_errs, "%s%s.txt", POINTS_ERR_SAVE_BASE, "nylon");
+        sprintf(filename_errs, "%s%s.txt", POINTS_ERR_SAVE_BASE, "nylon");
 #elif defined PURPLE
-                                sprintf(filename_errs, "%s%s.txt", POINTS_ERR_SAVE_BASE, "purple");
+        sprintf(filename_errs, "%s%s.txt", POINTS_ERR_SAVE_BASE, "purple");
 #elif defined BLACK
-                                sprintf(filename_errs, "%s%s.txt", POINTS_ERR_SAVE_BASE, "black");
+        sprintf(filename_errs, "%s%s.txt", POINTS_ERR_SAVE_BASE, "black");
 #else
-                                sprintf(filename_errs, "%s%s.txt", POINTS_ERR_SAVE_BASE, "notype");
+        sprintf(filename_errs, "%s%s.txt", POINTS_ERR_SAVE_BASE, "notype");
 #endif
-                                std::ofstream points_err_out;
-                                points_err_out.precision(10);
-                                points_err_out.open(filename_errs);
-                                while (thread_ind < all_threads.size())
-                                {
-                                    processNormalKeys('v', lastx_R, lasty_R);
+        std::ofstream points_err_out;
+        points_err_out.precision(10);
+        points_err_out.open(filename_errs);
+        while (thread_ind < all_threads.size())
+        {
+            processNormalKeys('v', lastx_R, lasty_R);
 
-                                    points_err_out << thread_ind << " " << err_fullopt << " " << err_visiononly << " " << twistAngle_correct << " " <<score_correct_twist << " " << " " << twistAngle_best << " " << score_best_twist << "\n";
-                                    points_err_out.flush();
+            points_err_out << thread_ind << " " << err_fullopt << " " << err_visiononly << " " << twistAngle_correct << " " <<score_correct_twist << " " << " " << twistAngle_best << " " << score_best_twist << "\n";
+            points_err_out.flush();
 
-                                    processNormalKeys('s', lastx_R, lasty_R);
-                                }
-                                points_err_out.close();
-                                exit(0);
-                            }
-
-
+            processNormalKeys('s', lastx_R, lasty_R);
+        }
+        points_err_out.close();
+        exit(0);
+    }
 
 
-                            glutMainLoop ();
-                        }
 
 
-                        GLuint sphereList;
-                        void InitStuff (void)
-                        {
-                            glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
-                            glEnable(GL_BLEND);
-                            glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  //gleSetJoinStyle (TUBE_NORM_PATH_EDGE | TUBE_JN_ANGLE );
-                            rotate_frame[0] = 30.0;
-                            rotate_frame[1] = -75.0;
+    glutMainLoop ();
+}
 
-                            sphereList = glGenLists(1);
-                            glNewList(sphereList, GL_COMPILE);
-                            glutSolidSphere(0.5,16,16);
-                            glEndList();
-                        }
+
+GLuint sphereList;
+void InitStuff (void)
+{
+    glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+    glEnable(GL_BLEND);
+    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    //gleSetJoinStyle (TUBE_NORM_PATH_EDGE | TUBE_JN_ANGLE );
+    rotate_frame[0] = 30.0;
+    rotate_frame[1] = -75.0;
+
+    sphereList = glGenLists(1);
+    glNewList(sphereList, GL_COMPILE);
+    glutSolidSphere(0.5,16,16);
+    glEndList();
+}
 
 /* draw the helix shape */
-                        void DrawStuff (void)
-                        {
-                            glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-                            glColor3f (0.8, 0.3, 0.6);
+void DrawStuff (void)
+{
+    glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glColor3f (0.8, 0.3, 0.6);
 
-                            glPushMatrix ();
+    glPushMatrix ();
 
-  /* set up some matrices so that the object spins with the mouse */
-                            glTranslatef (50.0,20.0,-120.0);
-                            glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
-                            glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
+    /* set up some matrices so that the object spins with the mouse */
+    glTranslatef (50.0,20.0,-120.0);
+    glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
+    glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
 
-  //change thread, if necessary
-                            if (move_end[0] != 0.0 || move_end[1] != 0.0 || tangent_end[0] != 0.0 || tangent_end[1] != 0.0 || tangent_rotation_end[0] != 0 || tangent_rotation_end[1] != 0)
-                            {
-                                glThreads[curThread]->ApplyUserInput(move_end, tangent_end, tangent_rotation_end);
-                            }
-
-
-  //Draw Axes
-                            DrawAxes();
-                            addThreadDebugInfo();
-
-                            glThreads[startThread]->updateThreadPoints();
-                            Vector3d display_start_pos = glThreads[startThread]->getStartPosition();
+    //change thread, if necessary
+    if (move_end[0] != 0.0 || move_end[1] != 0.0 || tangent_end[0] != 0.0 || tangent_end[1] != 0.0 || tangent_rotation_end[0] != 0 || tangent_rotation_end[1] != 0)
+    {
+        glThreads[curThread]->ApplyUserInput(move_end, tangent_end, tangent_rotation_end);
+    }
 
 
-                            for(int i = 0; i < totalThreads; i++) {
-    //Draw Thread
-                                if (!show_threads[i])
-                                    continue;
-                                if (i==startThread) {
-                                    glColor4f (0.8, 0.5, 0.0, 1.0);
-                                } else if (i==just_vis_error_thread) {
-                                    glColor4f (0.8, 0.0, 0.0, 1.0);
-                                } else if (i==optimize_thread) {
-                                    glColor4f (0.0, 0.0, 0.8, 1.0);
-                                } else {
-                                    glColor4f (0.5, 0.5, 0.5, 1.0);
-                                }
-                                glThreads[i]->display_start_pos = display_start_pos;
-                                glThreads[i]->DrawThread();
-                                if (i != just_vis_error_thread)
-                                {
-      //glThreads[i]->DrawAxes();
-                                }
-                            }
+    //Draw Axes
+    DrawAxes();
+    addThreadDebugInfo();
 
-                            if (thread_vision_searched)
-                            {
-                                thread_vision.display();
-                                save_opengl_image();
-                            }
+    glThreads[startThread]->updateThreadPoints();
+    Vector3d display_start_pos = glThreads[startThread]->getStartPosition();
 
 
-                            glPopMatrix ();
-                            glutSwapBuffers ();
-                        }
+    for(int i = 0; i < totalThreads; i++) {
+        //Draw Thread
+        if (!show_threads[i])
+            continue;
+        if (i==startThread) {
+            glColor4f (0.8, 0.5, 0.0, 1.0);
+        } else if (i==just_vis_error_thread) {
+            glColor4f (0.8, 0.0, 0.0, 1.0);
+        } else if (i==optimize_thread) {
+            glColor4f (0.0, 0.0, 0.8, 1.0);
+        } else {
+            glColor4f (0.5, 0.5, 0.5, 1.0);
+        }
+        glThreads[i]->display_start_pos = display_start_pos;
+        glThreads[i]->DrawThread();
+        if (i != just_vis_error_thread)
+        {
+            //glThreads[i]->DrawAxes();
+        }
+    }
+
+    if (thread_vision_searched)
+    {
+        thread_vision.display();
+        save_opengl_image();
+    }
+
+
+    glPopMatrix ();
+    glutSwapBuffers ();
+}
 
 
 
-                        void InitThread(int argc, char* argv[])
-                        {
+void InitThread(int argc, char* argv[])
+{
 #ifdef NYLON
-                            _thread_type = nylon;
+    _thread_type = nylon;
 #elif defined PURPLE
-                            _thread_type = purple;
+    _thread_type = purple;
 #elif defined BLACK
-                            _thread_type = black;
+    _thread_type = black;
 #else
-                            _thread_type = black;
+    _thread_type = black;
 #endif
 
-                            std::cout << "thread type: " << _thread_type << std::endl;
+    std::cout << "thread type: " << _thread_type << std::endl;
 
-                            if (_thread_type == nylon)
-                            {
-                                traj_reader.set_file(TRAJ_BASE_NAME_NYLON);
-                                sprintf(image_save_base, "%s%s", IMG_SAVE_BASE, "nylon");
-                                sprintf(image_save_base_both, "%s%s", IMG_SAVE_BASE_BOTHRES, "nylon");
-                                sprintf(image_save_base_vis, "%s%s", IMG_SAVE_BASE_VIS, "nylon");
-                                sprintf(image_save_base_opengl, "%s%s", IMG_SAVE_OPENGL, "nylon");
-                            } else if (_thread_type == purple) {
-                                traj_reader.set_file(TRAJ_BASE_NAME_PURPLE);
-                                sprintf(image_save_base, "%s%s", IMG_SAVE_BASE, "purple");
-                                sprintf(image_save_base_both, "%s%s", IMG_SAVE_BASE_BOTHRES, "purple");
-                                sprintf(image_save_base_vis, "%s%s", IMG_SAVE_BASE_VIS, "purple");
-                                sprintf(image_save_base_opengl, "%s%s", IMG_SAVE_OPENGL, "purple");
-                            } else if (_thread_type == black) {
-                                traj_reader.set_file(TRAJ_BASE_NAME_BLACK);
-                                sprintf(image_save_base, "%s%s", IMG_SAVE_BASE, "black");
-                                sprintf(image_save_base_both, "%s%s", IMG_SAVE_BASE_BOTHRES, "black");
-                                sprintf(image_save_base_vis, "%s%s", IMG_SAVE_BASE_VIS, "black");
-                                sprintf(image_save_base_opengl, "%s%s", IMG_SAVE_OPENGL, "black");
-                            }
-
-
-                            traj_reader.read_threads_from_file();
-                            all_threads = traj_reader.get_all_threads(); 
-
-                            for (int i=0; i < totalThreads; i++)
-                            {
-                                glThreads[i] = new GLThread();
-                                glThreads[i]->setThread(new Thread(all_threads[thread_ind]));
-                                glThreads[i]->updateThreadPoints();
-                                if (i == just_vis_error_thread)
-                                    show_threads[i] = false;
-                                else
-                                    show_threads[i] = true;
-
-                                if (_thread_type == nylon)
-                                {
-                                    glThreads[i]->to_set_bend = 232.0000;
-                                    glThreads[i]->to_set_twist = 847.000;
-                                    glThreads[i]->to_set_grav = 1e-4;
-                                } else if (_thread_type == purple) {
-                                    glThreads[i]->to_set_bend = 17.0000;
-                                    glThreads[i]->to_set_twist = 54.6250;
-                                    glThreads[i]->to_set_grav = 1e-4;
-                                } else if (_thread_type == black) {
-                                    glThreads[i]->to_set_bend = 123.5000;
-                                    glThreads[i]->to_set_twist = 209.250;
-                                    glThreads[i]->to_set_grav = 1e-4;
-                                }
+    if (_thread_type == nylon)
+    {
+        traj_reader.set_file(TRAJ_BASE_NAME_NYLON);
+        sprintf(image_save_base, "%s%s", IMG_SAVE_BASE, "nylon");
+        sprintf(image_save_base_both, "%s%s", IMG_SAVE_BASE_BOTHRES, "nylon");
+        sprintf(image_save_base_vis, "%s%s", IMG_SAVE_BASE_VIS, "nylon");
+        sprintf(image_save_base_opengl, "%s%s", IMG_SAVE_OPENGL, "nylon");
+    } else if (_thread_type == purple) {
+        traj_reader.set_file(TRAJ_BASE_NAME_PURPLE);
+        sprintf(image_save_base, "%s%s", IMG_SAVE_BASE, "purple");
+        sprintf(image_save_base_both, "%s%s", IMG_SAVE_BASE_BOTHRES, "purple");
+        sprintf(image_save_base_vis, "%s%s", IMG_SAVE_BASE_VIS, "purple");
+        sprintf(image_save_base_opengl, "%s%s", IMG_SAVE_OPENGL, "purple");
+    } else if (_thread_type == black) {
+        traj_reader.set_file(TRAJ_BASE_NAME_BLACK);
+        sprintf(image_save_base, "%s%s", IMG_SAVE_BASE, "black");
+        sprintf(image_save_base_both, "%s%s", IMG_SAVE_BASE_BOTHRES, "black");
+        sprintf(image_save_base_vis, "%s%s", IMG_SAVE_BASE_VIS, "black");
+        sprintf(image_save_base_opengl, "%s%s", IMG_SAVE_OPENGL, "black");
+    }
 
 
-                            }
-                        }
+    traj_reader.read_threads_from_file();
+    all_threads = traj_reader.get_all_threads();
+
+    for (int i=0; i < totalThreads; i++)
+    {
+        glThreads[i] = new GLThread();
+        glThreads[i]->setThread(new Thread(all_threads[thread_ind]));
+        glThreads[i]->updateThreadPoints();
+        if (i == just_vis_error_thread)
+            show_threads[i] = false;
+        else
+            show_threads[i] = true;
+
+        if (_thread_type == nylon)
+        {
+            glThreads[i]->to_set_bend = 232.0000;
+            glThreads[i]->to_set_twist = 847.000;
+            glThreads[i]->to_set_grav = 1e-4;
+        } else if (_thread_type == purple) {
+            glThreads[i]->to_set_bend = 17.0000;
+            glThreads[i]->to_set_twist = 54.6250;
+            glThreads[i]->to_set_grav = 1e-4;
+        } else if (_thread_type == black) {
+            glThreads[i]->to_set_bend = 123.5000;
+            glThreads[i]->to_set_twist = 209.250;
+            glThreads[i]->to_set_grav = 1e-4;
+        }
 
 
-                        void DrawAxes()
-                        {
-  //Draw Axes
-                            glBegin(GL_LINES);
-                            glEnable(GL_LINE_SMOOTH);
-                            glColor3d(1.0, 0.0, 0.0); //red
-                            glVertex3f(0.0f, 0.0f, 0.0f); //x
-                            glVertex3f(10.0f, 0.0f, 0.0f);
-                            glColor3d(0.0, 1.0, 0.0); //green
-                            glVertex3f(0.0f, 0.0f, 0.0f); //y
-                            glVertex3f(0.0f, 10.0f, 0.0f);
-                            glColor3d(0.0, 0.0, 1.0); //blue
-                            glVertex3f(0.0f, 0.0f, 0.0f); //z
-                            glVertex3f(0.0f, 0.0f, 10.0f);
-
-  //label axes
-                            void * font = GLUT_BITMAP_HELVETICA_18;
-                            glColor3d(1.0, 0.0, 0.0); //red
-                            glRasterPos3i(20.0, 0.0, -1.0);
-                            glutBitmapCharacter(font, 'X');
-                            glColor3d(0.0, 1.0, 0.0); //red
-                            glRasterPos3i(0.0, 20.0, -1.0);
-                            glutBitmapCharacter(font, 'Y');
-                            glColor3d(0.0, 0.0, 1.0); //red
-                            glRasterPos3i(-1.0, 0.0, 20.0);
-                            glutBitmapCharacter(font, 'Z');
-                            glEnd();
-                        }
+    }
+}
 
 
-                        void InitGLUT(int argc, char * argv[]) {
-  /* initialize glut */
-                            glutInit (&argc, argv); //can i do that?
-                            glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-                            glutInitWindowSize(900,900);
-                            glutCreateWindow ("Thread");
-                            glutDisplayFunc (DrawStuff);
-                            glutMotionFunc (MouseMotion);
-                            glutMouseFunc (processMouse);
-                            glutKeyboardFunc(processNormalKeys);
-                            glutSpecialFunc(processSpecialKeys);
-                            glutKeyboardUpFunc(processKeyUp);
+void DrawAxes()
+{
+    //Draw Axes
+    glBegin(GL_LINES);
+    glEnable(GL_LINE_SMOOTH);
+    glColor3d(1.0, 0.0, 0.0); //red
+    glVertex3f(0.0f, 0.0f, 0.0f); //x
+    glVertex3f(10.0f, 0.0f, 0.0f);
+    glColor3d(0.0, 1.0, 0.0); //green
+    glVertex3f(0.0f, 0.0f, 0.0f); //y
+    glVertex3f(0.0f, 10.0f, 0.0f);
+    glColor3d(0.0, 0.0, 1.0); //blue
+    glVertex3f(0.0f, 0.0f, 0.0f); //z
+    glVertex3f(0.0f, 0.0f, 10.0f);
 
-  /* create popup menu */
-                            glutCreateMenu (JoinStyle);
-                            glutAddMenuEntry ("Exit", 99);
-                            glutAttachMenu (GLUT_MIDDLE_BUTTON);
-
-  /* initialize GL */
-                            glClearDepth (1.0);
-                            glEnable (GL_DEPTH_TEST);
-                            glClearColor (0.0, 0.0, 0.0, 0.0);
-                            glShadeModel (GL_SMOOTH);
-
-                            glMatrixMode (GL_PROJECTION);
-  /* roughly, measured in centimeters */
-                            glFrustum (-30.0, 30.0, -30.0, 30.0, 50.0, 500.0);
-                            glMatrixMode(GL_MODELVIEW);
-                        }
+    //label axes
+    void * font = GLUT_BITMAP_HELVETICA_18;
+    glColor3d(1.0, 0.0, 0.0); //red
+    glRasterPos3i(20.0, 0.0, -1.0);
+    glutBitmapCharacter(font, 'X');
+    glColor3d(0.0, 1.0, 0.0); //red
+    glRasterPos3i(0.0, 20.0, -1.0);
+    glutBitmapCharacter(font, 'Y');
+    glColor3d(0.0, 0.0, 1.0); //red
+    glRasterPos3i(-1.0, 0.0, 20.0);
+    glutBitmapCharacter(font, 'Z');
+    glEnd();
+}
 
 
-                        void InitLights() {
-  /* initialize lighting */
-                            glLightfv (GL_LIGHT0, GL_POSITION, lightOnePosition);
-                            glLightfv (GL_LIGHT0, GL_DIFFUSE, lightOneColor);
-                            glEnable (GL_LIGHT0);
-                            glLightfv (GL_LIGHT1, GL_POSITION, lightTwoPosition);
-                            glLightfv (GL_LIGHT1, GL_DIFFUSE, lightTwoColor);
-                            glEnable (GL_LIGHT1);
-                            glLightfv (GL_LIGHT2, GL_POSITION, lightThreePosition);
-                            glLightfv (GL_LIGHT2, GL_DIFFUSE, lightThreeColor);
-                            glEnable (GL_LIGHT2);
-                            glLightfv (GL_LIGHT3, GL_POSITION, lightFourPosition);
-                            glLightfv (GL_LIGHT3, GL_DIFFUSE, lightFourColor);
-                            glEnable (GL_LIGHT3);
-                            glEnable (GL_LIGHTING);
-                            glColorMaterial (GL_FRONT_AND_BACK, GL_DIFFUSE);
-                            glEnable (GL_COLOR_MATERIAL);
-                        }
+void InitGLUT(int argc, char * argv[]) {
+    /* initialize glut */
+    glutInit (&argc, argv); //can i do that?
+    glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowSize(900,900);
+    glutCreateWindow ("Thread");
+    glutDisplayFunc (DrawStuff);
+    glutMotionFunc (MouseMotion);
+    glutMouseFunc (processMouse);
+    glutKeyboardFunc(processNormalKeys);
+    glutSpecialFunc(processSpecialKeys);
+    glutKeyboardUpFunc(processKeyUp);
+
+    /* create popup menu */
+    glutCreateMenu (JoinStyle);
+    glutAddMenuEntry ("Exit", 99);
+    glutAttachMenu (GLUT_MIDDLE_BUTTON);
+
+    /* initialize GL */
+    glClearDepth (1.0);
+    glEnable (GL_DEPTH_TEST);
+    glClearColor (0.0, 0.0, 0.0, 0.0);
+    glShadeModel (GL_SMOOTH);
+
+    glMatrixMode (GL_PROJECTION);
+    /* roughly, measured in centimeters */
+    glFrustum (-30.0, 30.0, -30.0, 30.0, 50.0, 500.0);
+    glMatrixMode(GL_MODELVIEW);
+}
+
+
+void InitLights() {
+    /* initialize lighting */
+    glLightfv (GL_LIGHT0, GL_POSITION, lightOnePosition);
+    glLightfv (GL_LIGHT0, GL_DIFFUSE, lightOneColor);
+    glEnable (GL_LIGHT0);
+    glLightfv (GL_LIGHT1, GL_POSITION, lightTwoPosition);
+    glLightfv (GL_LIGHT1, GL_DIFFUSE, lightTwoColor);
+    glEnable (GL_LIGHT1);
+    glLightfv (GL_LIGHT2, GL_POSITION, lightThreePosition);
+    glLightfv (GL_LIGHT2, GL_DIFFUSE, lightThreeColor);
+    glEnable (GL_LIGHT2);
+    glLightfv (GL_LIGHT3, GL_POSITION, lightFourPosition);
+    glLightfv (GL_LIGHT3, GL_DIFFUSE, lightFourColor);
+    glEnable (GL_LIGHT3);
+    glEnable (GL_LIGHTING);
+    glColorMaterial (GL_FRONT_AND_BACK, GL_DIFFUSE);
+    glEnable (GL_COLOR_MATERIAL);
+}
 
 
 
 //New version for search from both ends
-                        void updateIms(Point3f& start_pt, Vector3d& start_tan, Point3f& end_pt, Vector3d& end_tan)
-                        {
-                            glThreads[startThread]->updateThreadPoints();
-                            vector<Vector3d> points = glThreads[startThread]->points;
+void updateIms(Point3f& start_pt, Vector3d& start_tan, Point3f& end_pt, Vector3d& end_tan)
+{
+    glThreads[startThread]->updateThreadPoints();
+    vector<Vector3d> points = glThreads[startThread]->points;
 
 #ifdef FAKEIMS
-                            int num_pts = 300;
+    int num_pts = 300;
 
-                            vector<cv::Point3f> points_to_proj;
+    vector<cv::Point3f> points_to_proj;
 
-                            for (int i=0; i < points.size()-1; i++)
-                            {
-                                Vector3d vec_between = points[i+1]-points[i];
-                                for (int j=0; j <= num_pts; j++)
-                                {
-                                    Vector3d nextPoint = points[i]+( ((double)j)/((double)num_pts))*vec_between;
-                                    cv::Point3f toAdd((float)nextPoint(0), (float)nextPoint(1), (float)nextPoint(2));
-                                    points_to_proj.push_back(toAdd);
-                                }
-                            }
+    /* Interpolate between points linearly for the generated image */
+    for (int i=0; i < points.size()-1; i++)
+    {
+        Vector3d vec_between = points[i+1]-points[i];
+        for (int j=0; j <= num_pts; j++)
+        {
+            Vector3d nextPoint = points[i]+( ((double)j)/((double)num_pts))*vec_between;
+            cv::Point3f toAdd((float)nextPoint(0), (float)nextPoint(1), (float)nextPoint(2));
+            points_to_proj.push_back(toAdd);
+        }
+    }
 
-                            Mat ims[3];
-                            for (int i=0; i < 3; i++){
-                                ims[i] = cv::Mat::zeros(thread_vision._frames[i].size(), CV_8UC3);
-                            }
+    Mat ims[3];
+    for (int i=0; i < 3; i++){
+        ims[i] = cv::Mat::zeros(thread_vision._frames[i].size(), CV_8UC3);
+    }
 
-                            Point2i points2d[NUMCAMS];
-                            for (int i=0; i < points_to_proj.size(); i++)
-                            {
-                                thread_vision._cams->project3dPoint(points_to_proj[i], points2d);
-                                for (int j=0; j < NUMCAMS; j++)
-                                {
-                                    if (thread_vision._captures[j]->inRange(points2d[j].y, points2d[j].x))
-                                    {
-                                        ims[j].at<Vec3b>(points2d[j].y, points2d[j].x)[0] = (unsigned char)255;
-                                        ims[j].at<Vec3b>(points2d[j].y, points2d[j].x)[1] = (unsigned char)255;
-                                        ims[j].at<Vec3b>(points2d[j].y, points2d[j].x)[2] = (unsigned char)255;
-                                    }
-                                }
+    Point2i points2d[NUMCAMS];
+    for (int i=0; i < points_to_proj.size(); i++)
+    {
+        thread_vision._cams->project3dPoint(points_to_proj[i], points2d);
+        for (int j=0; j < NUMCAMS; j++)
+        {
+            if (thread_vision._captures[j]->inRange(points2d[j].y, points2d[j].x))
+            {
+                ims[j].at<Vec3b>(points2d[j].y, points2d[j].x)[0] = (unsigned char)255;
+                ims[j].at<Vec3b>(points2d[j].y, points2d[j].x)[1] = (unsigned char)255;
+                ims[j].at<Vec3b>(points2d[j].y, points2d[j].x)[2] = (unsigned char)255;
+            }
+        }
 
-                            }
+    }
 
- /* imshow("1", ims[0]);
- imshow("2", ims[1]);
- imshow("3", ims[2]);
- */
 
- char im_name[256];
- for (int cam_ind = 0; cam_ind < NUMCAMS; cam_ind++)
- {
-     sprintf(im_name, "./stereo_test/stereo_test%d-%d.tif", cam_ind+1, curr_im_ind);
-     imwrite(im_name, ims[cam_ind]);
- }
- curr_im_ind++;
+    char im_name[256];
+    for (int cam_ind = 0; cam_ind < NUMCAMS; cam_ind++)
+    {
+        sprintf(im_name, "./stereo_test/stereo_test%d-%d.tif", cam_ind+1, curr_im_ind);
+        imwrite(im_name, ims[cam_ind]);
+    }
+    curr_im_ind++;
 #else
- thread_vision._cams->setImageNumber(thread_ind+1);
+    thread_vision._cams->setImageNumber(thread_ind+1);
 #endif
- EigenToOpencv(points.front(), start_pt);
- EigenToOpencv(points.back(), end_pt);
+    EigenToOpencv(points.front(), start_pt);
+    EigenToOpencv(points.back(), end_pt);
 
- start_tan = (points[1]-points[0]).normalized();
- end_tan = (points[points.size() - 2] - points[points.size() - 1]).normalized();
+    start_tan = (points[1]-points[0]).normalized();
+    end_tan = (points[points.size() - 2] - points[points.size() - 1]).normalized();
 
 }
 
 /*
-void findThreadInIms()
-{
-thread_vision_searched = true;
+   void findThreadInIms()
+   {
+   thread_vision_searched = true;
 
-vector<Vector3d> points_im;
-vector<double> angle_im;
-vector<Vector3d> points_real;
-vector<double> angle_real;
+   vector<Vector3d> points_im;
+   vector<double> angle_im;
+   vector<Vector3d> points_real;
+   vector<double> angle_real;
 
-glThreads[startThread]->getThread()->get_thread_data(points_real, angle_real);
+   glThreads[startThread]->getThread()->get_thread_data(points_real, angle_real);
 
 
-thread_vision.set_max_length(MAX_LENGTH_VIS);
-thread_vision.clear_display();
+   thread_vision.set_max_length(MAX_LENGTH_VIS);
+   thread_vision.clear_display();
 
-updateIms(_start_pt, _start_tan);
-thread_vision.setInitPt(_start_pt);
-thread_vision.setInitTan(_start_tan);
+   updateIms(_start_pt, _start_tan);
+   thread_vision.setInitPt(_start_pt);
+   thread_vision.setInitTan(_start_tan);
 
 
 
@@ -790,13 +787,13 @@ double score_closest;
 double best_score = DBL_MAX;
 for (int i=0; i < thread_vision.twist_scores.size(); i++)
 {
-if ( abs(thread_vision.twist_scores[i].twist_angle - glThreads[startThread]->getThread()->end_angle()) < closest_angle_diff)
-{
-closest_angle_diff = abs(thread_vision.twist_scores[i].twist_angle - glThreads[startThread]->getThread()->end_angle());
-score_closest = thread_vision.twist_scores[i].score;
-}
+    if ( abs(thread_vision.twist_scores[i].twist_angle - glThreads[startThread]->getThread()->end_angle()) < closest_angle_diff)
+    {
+        closest_angle_diff = abs(thread_vision.twist_scores[i].twist_angle - glThreads[startThread]->getThread()->end_angle());
+        score_closest = thread_vision.twist_scores[i].score;
+    }
 
-best_score = min(best_score, thread_vision.twist_scores[i].score);
+    best_score = min(best_score, thread_vision.twist_scores[i].score);
 }
 
 score_correct_twist = score_closest;
@@ -806,7 +803,7 @@ score_best_twist = best_score;
 
 glThreads[startThread]->printThreadData();
 }
-*/
+ */
 
 
 void findThreadInIms()
@@ -837,7 +834,7 @@ void findThreadInIms()
         thread_vision.addThreadPointsToDebugImages(Scalar(200,0,0));
         thread_vision.add_debug_points_to_ims();
 
-    //thread_vision.display();
+        //thread_vision.display();
         thread_vision.saveImages(image_save_base, thread_ind+1);
 
 
@@ -878,7 +875,7 @@ void save_opengl_image()
 {
     const int IMG_COLS_TOTAL = 900;
     const int IMG_ROWS_TOTAL = 900;
-  //playback and save images
+    //playback and save images
     Mat img(900, 900, CV_8UC3);
     vector<Mat> img_planes;
     split(img, img_planes);
@@ -904,9 +901,6 @@ void save_opengl_image()
     sprintf(im_name, "%s-%d.jpg", image_save_base_opengl, thread_ind+1);
     imwrite(im_name, img);
     waitKey(1);
-  //sleep(0);
-
-
 } 
 
 
