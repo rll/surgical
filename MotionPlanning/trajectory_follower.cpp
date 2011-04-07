@@ -1,6 +1,6 @@
 #include "trajectory_follower.h"
 
-Trajectory_Follower::Trajectory_Follower(vector<Thread*>& trajectory, vector<Two_Motions*>& motions, Thread* start_thread) :
+Trajectory_Follower::Trajectory_Follower(vector<Thread*>& trajectory, vector<vector<Two_Motions*> >& motions, Thread* start_thread) :
   _curr_ind(0)
 {
   _trajectory = trajectory;
@@ -15,21 +15,34 @@ Trajectory_Follower::~Trajectory_Follower()
 }
 
 
-void Trajectory_Follower::Take_Step(int max_linearizations)
+vector<Two_Motions*> Trajectory_Follower::Take_Step(int max_linearizations)
 {
+  vector<Two_Motions*> motionsGenerated;
   if (is_done())
-    return;
+    return motionsGenerated;
   Thread* next_state = new Thread(*_reached_states.back());
 
-  const double linearization_error_thresh = 1.0;
+  const double linearization_error_thresh = 1;
 
-  next_state->apply_motion(*_motions[_curr_ind]);
+  //next_state->apply_motion(*_motions[_curr_ind]);
+  vector<Two_Motions*> motionLst = _motions[_curr_ind];
+  for (int i = 0; i < motionLst.size(); i++) { 
+    next_state->apply_motion(*motionLst[i]);
+  }
   _curr_ind++;
 
   double error_last_linearization = calculate_thread_error(_trajectory[_curr_ind], next_state);
   for (int linearization_num=0; linearization_num < max_linearizations; linearization_num++)
   {
-    solveLinearizedControl(_trajectory[_curr_ind], next_state);
+    vector<Two_Motions*> tmpMotions;
+    if (drand48() < 0.5) { 
+    solveLinearizedControl(next_state, _trajectory[_curr_ind], tmpMotions, START); 
+    } else {
+    solveLinearizedControl(next_state, _trajectory[_curr_ind], tmpMotions, END); 
+    }
+    for (int i = 0; i < tmpMotions.size(); i++) {
+      motionsGenerated.push_back(tmpMotions[i]);
+    }
     double error_this_linearizaton = calculate_thread_error(_trajectory[_curr_ind], next_state);
     if (error_this_linearizaton + linearization_error_thresh > error_last_linearization)
       break;
@@ -38,6 +51,8 @@ void Trajectory_Follower::Take_Step(int max_linearizations)
   } 
 
   _reached_states.push_back(next_state);
+
+  return motionsGenerated; 
 }
 
 bool Trajectory_Follower::is_done()
@@ -45,7 +60,6 @@ bool Trajectory_Follower::is_done()
   return _curr_ind >= (_trajectory.size()-1);
 
 }
-
 
 double Trajectory_Follower::calculate_thread_error(Thread* start, Thread* goal)
 {

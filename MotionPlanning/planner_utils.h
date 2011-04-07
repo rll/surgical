@@ -50,7 +50,8 @@ class Thread_RRT
   RRTNode* findClosestNode(const Thread* target, bool approximateNode=true);
   typedef Repeat<HyperPlaneLsh> HASH; 
 
-  Thread* halfDimApproximation(const Thread* target); 
+  Thread* halfDimApproximation(const Thread* target);
+  Thread* doubleDimApproximation(const Thread* target); 
 
  private:
   vector<RRTNode*> _tree;

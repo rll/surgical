@@ -1,10 +1,11 @@
 #include "glThread.h"
 //default 23 links
-#define NUM_LINKS 13
+#define NUM_POINTS 19
+#define GL_REST_LENGTH 3.5
 
 
 GLThread::GLThread() {
-  int numInit = (NUM_LINKS-3)/2;
+  int numInit = (NUM_POINTS-3)/2;
   double noise_factor = 0.0;
 
   display_start_pos.setZero();
@@ -15,7 +16,7 @@ GLThread::GLThread() {
   vertices.push_back(Vector3d::Zero());
   angles.push_back(0.0);
   //push back unitx so first tangent matches start_frame
-  vertices.push_back(Vector3d::UnitX()*DEFAULT_REST_LENGTH);
+  vertices.push_back(Vector3d::UnitX()*GL_REST_LENGTH);
   angles.push_back(0.0);
 
   Vector3d direction;
@@ -27,7 +28,7 @@ GLThread::GLThread() {
     {
       Vector3d noise( ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0);
       noise *= noise_factor;
-      Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*DEFAULT_REST_LENGTH;
+      Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*GL_REST_LENGTH;
       vertices.push_back(next_Vec);
       angles.push_back(0.0);
 
@@ -46,14 +47,14 @@ GLThread::GLThread() {
     {
       Vector3d noise( ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0);
       noise *= noise_factor;
-      Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*DEFAULT_REST_LENGTH;
+      Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*GL_REST_LENGTH;
       vertices.push_back(next_Vec);
       angles.push_back(0.0);
 
     }
 
   //push back unitx so last tangent matches end_frame
-  vertices.push_back(vertices.back()+Vector3d::UnitX()*DEFAULT_REST_LENGTH);
+  vertices.push_back(vertices.back()+Vector3d::UnitX()*GL_REST_LENGTH);
   angles.push_back(0.0);
 
 
@@ -64,6 +65,7 @@ GLThread::GLThread() {
 
 
   _thread = new Thread(vertices, angles, rotations[0], rotations[1]);
+  _thread->set_rest_length(GL_REST_LENGTH);
 
 #ifdef ISOTROPIC
   to_set_bend = _thread->get_bend_coeff();

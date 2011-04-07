@@ -163,6 +163,11 @@ class Thread
     void set_coeffs_normalized(double bend_coeff, double twist_coeff, double grav_coeff);
     void set_coeffs_normalized(const Matrix2d& bend_matrix, double twist_coeff, double grav_coeff);
 
+    void set_end_twist(double twist) { 
+      _thread_pieces[_thread_pieces.size()-2]->set_angle_twist(twist);
+      _thread_pieces[_thread_pieces.size()-2]->update_material_frame();
+
+    }
 
     int num_pieces() const {return _thread_pieces.size();};
 

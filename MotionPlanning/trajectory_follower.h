@@ -11,15 +11,20 @@
 class Trajectory_Follower
 {
   public:
-    Trajectory_Follower(vector<Thread*>& trajectory, vector<Two_Motions*>& motions, Thread* start_thread);
+    Trajectory_Follower(vector<Thread*>& trajectory, vector<vector<Two_Motions*> >& motions, Thread* start_thread);
 
     ~Trajectory_Follower();
 
 
-    void Take_Step(const int max_linearization = 1);
+    vector<Two_Motions*> Take_Step(const int max_linearization = 1);
     bool is_done();
 
     Thread* curr_state() {return _reached_states.back();}
+    Thread* curr_target() { 
+      if (!is_done()) { 
+        return _trajectory[_curr_ind]; 
+      }
+    }
     const int curr_ind() const {return _curr_ind;}
 
 
@@ -27,7 +32,7 @@ class Trajectory_Follower
   protected:
     vector<Thread*> _trajectory;
     vector<Thread*> _reached_states;
-    vector<Two_Motions*> _motions;
+    vector<vector<Two_Motions*> > _motions;
     int _curr_ind;
 
 

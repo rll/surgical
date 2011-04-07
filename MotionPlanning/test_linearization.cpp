@@ -638,17 +638,19 @@ void InitMotions()
 
 double playbackmotions(int max_linearizations)
 {
-  vector<Two_Motions*> two_motions;
+  vector<vector<Two_Motions*> > all_motions; 
   vector<Thread*> saved_threads;
   saved_threads.push_back(new Thread(*glThreads[simulated]->getThread()));
 
   //record motions
   for (int i=0; i < motions.size(); i++)
   {
+    vector<Two_Motions*> two_motions; 
     two_motions.push_back(new Two_Motions());
     two_motions.back()->_start.set_nomotion();
     two_motions.back()->_end = motions[i];
 
+    all_motions.push_back(two_motions);
     saved_threads.push_back(new Thread(*saved_threads.back()));
 
     saved_threads.back()->apply_motion(*two_motions.back());
@@ -657,8 +659,8 @@ double playbackmotions(int max_linearizations)
 
   //now play them back
   double total_error = 0;
-  Trajectory_Follower trajectory_follower(saved_threads, two_motions, glThreads[reality]->getThread());
-  std::cout << "num states: " << saved_threads.size() << " " << two_motions.size() << std::endl;
+  Trajectory_Follower trajectory_follower(saved_threads, all_motions, glThreads[reality]->getThread());
+  std::cout << "num states: " << saved_threads.size() << " " << all_motions.size() << std::endl;
   while (!trajectory_follower.is_done())
   {
     trajectory_follower.Take_Step(max_linearizations);

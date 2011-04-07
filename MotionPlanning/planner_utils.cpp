@@ -78,29 +78,103 @@ void Thread_RRT::updateBestPath() {
 }
 
 
+Thread* Thread_RRT::doubleDimApproximation(const Thread* target) {
+  vector<Vector3d> vertices;
+  vector<double> angles;
+
+
+  Vector3d startEdge = target->start_edge();
+  Vector3d endEdge = target->end_edge();
+  startEdge.normalize();
+  endEdge.normalize();
+  
+  vertices.push_back(target->vertex_at_ind(1)-(1/1.842)*startEdge*target->rest_length());
+  angles.push_back(0.0);
+  vertices.push_back(target->vertex_at_ind(1));
+  //vertices.push_back(target->start_pos()+startEdge*target->rest_length());
+  angles.push_back(0.0);
+  
+
+  for (int i = 2; i < target->num_pieces()-1; i++) {
+    vertices.push_back((target->vertex_at_ind(i)+target->vertex_at_ind(i-1))/2);
+    vertices.push_back(target->vertex_at_ind(i));
+    angles.push_back(0.0);
+    angles.push_back(0.0);
+  }
+  vertices.push_back(vertices[vertices.size()-1] + endEdge*target->rest_length());
+
+  angles.push_back(0.0);
+
+  Vector3d target_start_pos = target->start_pos();
+  Matrix3d target_start_rot = target->start_rot();
+  Vector3d target_end_pos = target->end_pos();
+  Matrix3d target_end_rot = target->end_rot(); 
+
+  Thread* increasedDimThread = new Thread(vertices, angles, target_start_rot);
+  double rest_length_ratio = ((double)target->num_pieces()) / increasedDimThread->num_pieces();
+
+  //increasedDimThread->set_end_twist(target->end_angle());
+  increasedDimThread->set_rest_length(target->rest_length() * rest_length_ratio);
+  increasedDimThread->set_end_constraint(vertices[vertices.size()-1], target_end_rot);
+ // increasedDimThread->project_length_constraint();
+  
+
+  cout << increasedDimThread->num_pieces() << endl; 
+
+  return increasedDimThread;
+
+}
+
 Thread* Thread_RRT::halfDimApproximation(const Thread* target) {
+
+  cout << "Start with p: " << target->num_pieces() << endl;
 
   vector<Vector3d> vertices;     
   vector<double> angles;
 
+  Vector3d startEdge = target->start_edge();
+  Vector3d endEdge = target->end_edge();
+  
+  startEdge.normalize();
+  endEdge.normalize();
 
-  for(int i = 0; i < target->num_pieces(); i++) {
-    if (i % 2 == 0) { 
+
+  vertices.push_back(target->vertex_at_ind(1) - 2*startEdge*target->rest_length());
+  angles.push_back(0.0);
+  vertices.push_back(target->vertex_at_ind(1));
+  angles.push_back(0.0);
+
+  for(int i = 2; i < target->num_pieces()-1; i++) {
+    if ((i-1) % 2 == 0) { 
       vertices.push_back(target->vertex_at_ind(i));
       angles.push_back(0.0); 
     }
   }
 
+  vertices.push_back(vertices[vertices.size()-1] + 2*endEdge*target->rest_length());
+  angles.push_back(0.0);
+
   Matrix3d target_start_rot = target->start_rot();
   
   Thread* reducedDimensionThread = new Thread(vertices, angles, 
-      target_start_rot); 
+      target_start_rot);
+//  double rest_length_ratio = ((double)target->num_pieces()) / reducedDimensionThread->num_pieces();
+  double rest_length_ratio = 2.0; 
+  cout << rest_length_ratio << endl;
+  reducedDimensionThread->set_rest_length(target->rest_length()*rest_length_ratio);
 
   Vector3d target_end_pos = target->end_pos();
   Matrix3d target_end_rot = target->end_rot();
 
-  reducedDimensionThread->set_end_constraint(target_end_pos, target_end_rot);
-  reducedDimensionThread->project_length_constraint();
+  //reducedDimensionThread->set_end_twist(target->end_angle());
+  reducedDimensionThread->set_end_constraint(vertices[vertices.size()-1], target_end_rot);
+  //reducedDimensionThread->project_length_constraint();
+  //reducedDimensionThread->minimize_energy(20000, 1e-6, 0.2, 1e-7);
+  //reducedDimensionThread->minimize_energy();
+
+
+  cout << reducedDimensionThread->num_pieces() << endl; 
+
   return reducedDimensionThread;
 
 }
@@ -143,7 +217,7 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
   
   double max_thread_length = N*goal_thread->rest_length(); 
   double noise_multiplier; 
-  if (drand48() < 0.50) { 
+  if (drand48() < 0.20) { 
      
     // sample the start by taking the current start and adding noise
     // sample the goal by taking the current goal and adding noise 
@@ -314,7 +388,7 @@ Thread* Thread_RRT::generateSample(int N) {
 Thread* Thread_RRT::getNextGoal() {
   Thread* next_target = NULL; 
   
-  if (drand48() < 0.01) {
+  if (drand48() < 0.30) {
     //cout << "actual goal" << endl;
 //    next->resize(_goal.size());
 //    *next = _goal;
@@ -482,8 +556,8 @@ double Thread_RRT::extendToward(Thread* target) {
   //simpleInterpolation(start, target, tmpMotions);
 
   // solve and apply control to the closest thread
-  solveLinearizedControl(start, target, tmpMotions, START);
-  solveLinearizedControl(start, target, tmpMotions, END); 
+  solveLinearizedControl(start, target, tmpMotions, START_AND_END);
+  //solveLinearizedControl(start, target, tmpMotions, END); 
   start->minimize_energy();
 
 
