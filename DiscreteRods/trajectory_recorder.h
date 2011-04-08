@@ -31,24 +31,18 @@ class Trajectory_Recorder
 {
 	public:
 		Trajectory_Recorder();
-		Trajectory_Recorder(const char* fileName_threads_in);
+		Trajectory_Recorder(char* fileName_threads_in);
 
-	/*	void add_motion_to_list(Vector3d& start_pos, Vector3d& end_pos, Vector3d& start_tan, Vector3d& end_tan);
-		void add_motion_to_list(Vector3d& pos_mov, Matrix3d& tan_rot);
-		void add_motion_to_list(Thread_Motion& motion);*/
 		void add_thread_to_list(const Thread& thread);
 
-		//void write_motions_to_file();
 		void write_threads_to_file();
 		void clear_threads();
 
+        void setFileName(char* newFileName);
+
 	private:
 		char _fileName_threads[256];
-		//vector<Thread_Motion> _motions;
 		vector<Thread> _threads;
-
-
-
 };
 
 #endif

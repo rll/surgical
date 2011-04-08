@@ -17,9 +17,10 @@
 #include <Eigen/Geometry>
 #include <math.h>
 #include "../DiscreteRods/thread_discrete.h"
-#include "../DiscreteRods/trajectory_reader.h"
 #include "../DiscreteRods/glThread.h"
 #include "thread_vision_discrete.h"
+#include "../DiscreteRods/trajectory_reader.h"
+#include "../DiscreteRods/trajectory_recorder.h"
 
 #define TRAJ_BASE_NAME_NYLON "../DiscreteRods/LearnParams/config/suturenylon_processed_projected"
 #define TRAJ_BASE_NAME_PURPLE "../DiscreteRods/LearnParams/config/suturepurple_processed_projected"
@@ -103,6 +104,7 @@ char image_save_base_vis[256];
 char image_save_base_opengl[256];;
 
 Trajectory_Reader traj_reader;
+Trajectory_Recorder traj_recorder;
 vector<Thread> all_threads;
 int thread_ind = 0;
 double err_visiononly;
@@ -319,6 +321,22 @@ void processNormalKeys(unsigned char key, int x, int y)
         thread_vision.next_hypoth();
         glThreads[optimize_thread]->setThread((new Thread(*thread_vision.curr_thread())));
         glutPostRedisplay();
+    } else if (key == 's') {
+        /* Save current trajectory */
+        cout << "Saving...\n";
+        cout << "Please enter destination file name (without extension): ";
+        char *dstFileName = new char[256];
+        cin >> dstFileName;
+        char *fullPath = new char[256];
+        sprintf(fullPath, "%s%s", "saved_threads/", dstFileName);
+
+        traj_recorder.setFileName(fullPath);
+
+        //Thread copiedThread(all_threads[thread_ind]);
+        Thread *newThread = glThreads[startThread]->getThread();
+        Thread copiedThread(*newThread);
+        traj_recorder.add_thread_to_list(copiedThread);
+        traj_recorder.write_threads_to_file();
     }
 
     else if (key == 27) {
@@ -379,11 +397,6 @@ int main (int argc, char * argv[])
 #elif defined BLACK
     thread_vision.set_reproj_fix_canny(POINTFILE_BLACK);
 #endif
-
-    // for (int i=0; i < NUM_PTS; i++)
-    // {
-    //   radii[i]=THREAD_RADII;
-    // }
 
     if (TRY_ALL)
     {
@@ -511,10 +524,21 @@ void InitThread(int argc, char* argv[])
 #endif
 
     std::cout << "thread type: " << _thread_type << std::endl;
+    string fileLocation = "";
+    cout << "Please enter file name (without extension): ";
+    getline(cin, fileLocation);
 
     if (_thread_type == nylon)
     {
-        traj_reader.set_file(TRAJ_BASE_NAME_NYLON);
+        //TRAJ_BASE_NAME_NYLON
+        if (fileLocation.length() > 0) {
+            traj_reader.set_file(fileLocation.insert(0, "saved_threads/").c_str());
+        }
+        else {
+            traj_reader.set_file("saved_threads/endsloop");
+        }
+
+
         sprintf(image_save_base, "%s%s", IMG_SAVE_BASE, "nylon");
         sprintf(image_save_base_both, "%s%s", IMG_SAVE_BASE_BOTHRES, "nylon");
         sprintf(image_save_base_vis, "%s%s", IMG_SAVE_BASE_VIS, "nylon");
@@ -537,6 +561,7 @@ void InitThread(int argc, char* argv[])
     traj_reader.read_threads_from_file();
     all_threads = traj_reader.get_all_threads();
 
+    int j = all_threads.size();
     for (int i=0; i < totalThreads; i++)
     {
         glThreads[i] = new GLThread();
@@ -561,8 +586,6 @@ void InitThread(int argc, char* argv[])
             glThreads[i]->to_set_twist = 209.250;
             glThreads[i]->to_set_grav = 1e-4;
         }
-
-
     }
 }
 
@@ -712,100 +735,6 @@ void updateIms(Point3f& start_pt, Vector3d& start_tan, Point3f& end_pt, Vector3d
 
 }
 
-/*
-   void findThreadInIms()
-   {
-   thread_vision_searched = true;
-
-   vector<Vector3d> points_im;
-   vector<double> angle_im;
-   vector<Vector3d> points_real;
-   vector<double> angle_real;
-
-   glThreads[startThread]->getThread()->get_thread_data(points_real, angle_real);
-
-
-   thread_vision.set_max_length(MAX_LENGTH_VIS);
-   thread_vision.clear_display();
-
-   updateIms(_start_pt, _start_tan);
-   thread_vision.setInitPt(_start_pt);
-   thread_vision.setInitTan(_start_tan);
-
-
-
-//  if (thread_vision.optimizeThread(true))
-//  {
-//    std::cout << "found thread vis only" << std::endl;
-//    glThreads[just_vis_error_thread]->setThread(new Thread(*thread_vision.curr_thread()));
-//    glThreads[just_vis_error_thread]->printThreadData();
-//    //glThreads[optimize_thread]->updateThreadPoints();
-//  }
-//  thread_vision.addThreadPointsToDebugImages(Scalar(0,0,200));
-//  thread_vision.add_debug_points_to_ims();
-//  thread_vision.saveImages(image_save_base_vis, thread_ind+1);
-// 
-//  thread_vision.get_thread_data(points_im, angle_im);
-//  err_visiononly = calculate_vector_norm_avg(points_im, points_real)/points_im.size();
-
-
-
-thread_vision.clear_display();
-updateIms(_start_pt, _start_tan);
-thread_vision.setInitPt(_start_pt);
-thread_vision.setInitTan(_start_tan);
-if (thread_vision.optimizeThread(true))
-{
-std::cout << "found thread full opt" << std::endl;
-glThreads[optimize_thread]->setThread(new Thread(*thread_vision.curr_thread()));
-glThreads[just_vis_error_thread]->setThread(new Thread(*thread_vision.curr_thread()));
-//glThreads[optimize_thread]->updateThreadPoints();
-
-thread_vision.addThreadPointsToDebugImages(Scalar(200,0,0));
-thread_vision.add_debug_points_to_ims();
-
-//thread_vision.display();
-thread_vision.saveImages(image_save_base, thread_ind+1);
-
-
-thread_vision.clear_display();
-thread_vision.addThreadPointsToDebugImages(Scalar(0,0,200), glThreads[just_vis_error_thread]->getThread());
-thread_vision.addThreadPointsToDebugImages(Scalar(200,0,0));
-thread_vision.add_debug_points_to_ims();
-thread_vision.saveImages(image_save_base_both, thread_ind+1);
-
-
-thread_vision.get_thread_data(points_im, angle_im);
-err_fullopt = calculate_vector_norm_avg(points_im, points_real)/points_im.size();
-std::cout << "err: " << err_fullopt<< "\t\tvision only: " << err_visiononly << std::endl;
-
-twistAngle_correct = glThreads[startThread]->getThread()->end_angle();
-twistAngle_best = thread_vision.end_angle();
-
-double closest_angle_diff = DBL_MAX;
-double score_closest;
-double best_score = DBL_MAX;
-for (int i=0; i < thread_vision.twist_scores.size(); i++)
-{
-    if ( abs(thread_vision.twist_scores[i].twist_angle - glThreads[startThread]->getThread()->end_angle()) < closest_angle_diff)
-    {
-        closest_angle_diff = abs(thread_vision.twist_scores[i].twist_angle - glThreads[startThread]->getThread()->end_angle());
-        score_closest = thread_vision.twist_scores[i].score;
-    }
-
-    best_score = min(best_score, thread_vision.twist_scores[i].score);
-}
-
-score_correct_twist = score_closest;
-score_best_twist = best_score;
-
-}
-
-glThreads[startThread]->printThreadData();
-}
- */
-
-
 void findThreadInIms()
 {
     thread_vision_searched = true;
@@ -846,7 +775,6 @@ void findThreadInIms()
         twistAngle_best = thread_vision.end_angle();
 
     }
-
 }
 
 
