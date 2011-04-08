@@ -26,8 +26,11 @@ class Trajectory_Follower
       }
     }
     const int curr_ind() const {return _curr_ind;}
-
-
+    void getReachedStates(vector<Thread*>& traj) { 
+      for (int i = 0; i < _reached_states.size(); i++) {
+        traj.push_back(_reached_states[i]);
+      }
+    }
 
   protected:
     vector<Thread*> _trajectory;

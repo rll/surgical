@@ -84,10 +84,11 @@ Thread* Thread_RRT::doubleDimApproximation(const Thread* target) {
 
 
   Vector3d startEdge = target->start_edge();
+ // Vector3d startEdge = target->vertex_at_ind(1) - target->vertex_at_ind(0);
   Vector3d endEdge = target->end_edge();
   startEdge.normalize();
   endEdge.normalize();
-  
+
   vertices.push_back(target->vertex_at_ind(1)-0.5*startEdge*target->rest_length());
   angles.push_back(0.0);
   vertices.push_back(target->vertex_at_ind(1));
@@ -101,7 +102,7 @@ Thread* Thread_RRT::doubleDimApproximation(const Thread* target) {
     angles.push_back(0.0);
     angles.push_back(0.0);
   }
-  vertices.push_back(vertices[vertices.size()-1] + endEdge*target->rest_length());
+  vertices.push_back(vertices[vertices.size()-1] + 0.5*endEdge*target->rest_length());
 
   angles.push_back(0.0);
 
@@ -110,13 +111,14 @@ Thread* Thread_RRT::doubleDimApproximation(const Thread* target) {
   Vector3d target_end_pos = target->end_pos();
   Matrix3d target_end_rot = target->end_rot(); 
 
-  Thread* increasedDimThread = new Thread(vertices, angles, target_start_rot);
-  double rest_length_ratio = ((double)target->num_pieces()) / increasedDimThread->num_pieces();
+  Thread* increasedDimThread = new Thread(vertices, angles, target_start_rot, 0.5*target->rest_length());
+  //double rest_length_ratio = ((double)target->num_pieces()) / increasedDimThread->num_pieces();
 
-  //increasedDimThread->set_end_twist(target->end_angle());
-  increasedDimThread->set_rest_length(target->rest_length() * rest_length_ratio);
+  //double rest_length_ratio = 0.5;
+  //increasedDimThread->set_rest_length(target->rest_length() * rest_length_ratio);
+  increasedDimThread->set_end_twist(target->end_angle());
   increasedDimThread->set_end_constraint(vertices[vertices.size()-1], target_end_rot);
- increasedDimThread->project_length_constraint();
+  increasedDimThread->project_length_constraint();
   
 
   cout << increasedDimThread->num_pieces() << endl; 
@@ -135,9 +137,9 @@ Thread* Thread_RRT::halfDimApproximation(const Thread* target) {
   Vector3d startEdge = target->start_edge();
   Vector3d endEdge = target->end_edge();
   
+
   startEdge.normalize();
   endEdge.normalize();
-
 
   vertices.push_back(target->vertex_at_ind(1) - 2*startEdge*target->rest_length());
   angles.push_back(0.0);
@@ -157,18 +159,17 @@ Thread* Thread_RRT::halfDimApproximation(const Thread* target) {
   Matrix3d target_start_rot = target->start_rot();
   
   Thread* reducedDimensionThread = new Thread(vertices, angles, 
-      target_start_rot);
+      target_start_rot, target->rest_length() * 2.0);
 //  double rest_length_ratio = ((double)target->num_pieces()) / reducedDimensionThread->num_pieces();
-  double rest_length_ratio = 2.0; 
-  cout << rest_length_ratio << endl;
-  reducedDimensionThread->set_rest_length(target->rest_length()*rest_length_ratio);
+  //double rest_length_ratio = 2.0; 
+  //reducedDimensionThread->set_rest_length(target->rest_length()*rest_length_ratio);
 
   Vector3d target_end_pos = target->end_pos();
   Matrix3d target_end_rot = target->end_rot();
 
-  //reducedDimensionThread->set_end_twist(target->end_angle());
+  reducedDimensionThread->set_end_twist(target->end_angle());
   reducedDimensionThread->set_end_constraint(vertices[vertices.size()-1], target_end_rot);
-  //reducedDimensionThread->project_length_constraint();
+  reducedDimensionThread->project_length_constraint();
   //reducedDimensionThread->minimize_energy(20000, 1e-6, 0.2, 1e-7);
   //reducedDimensionThread->minimize_energy();
 

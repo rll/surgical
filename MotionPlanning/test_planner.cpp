@@ -173,7 +173,7 @@ void DimensionReductionBestPath() {
   Thread goal_thread; Thread prev_thread; Thread next_thread; 
   while(!interruptEnabled) {
   #pragma omp parallel for num_threads(12)
-    for (int i = 0; i < 500; i++) {
+    for (int i = 0; i < 999999; i++) {
       if (!interruptEnabled) {  
         planner.planStep(goal_thread, prev_thread, next_thread);
       }
@@ -187,7 +187,6 @@ void DimensionReductionBestPath() {
   vector<vector<Two_Motions*> > motions; 
   while (node != NULL) {
     Thread* doubleDimApprox = planner.doubleDimApproximation(node->thread);
-    planner.doubleDimApproximation(doubleDimApprox);
     path.push_back(doubleDimApprox);
     motions.push_back(node->lstMotions);
     node = node->next;
@@ -195,20 +194,47 @@ void DimensionReductionBestPath() {
   }
 
   Thread* followerThread = new Thread(*glThreads[planThread]->getThread());
-  followerThread->minimize_energy();
-  follower = new Trajectory_Follower(path, motions, followerThread);
+  //followerThread->minimize_energy();
+  //follower = new Trajectory_Follower(path, motions, followerThread);
 
-  Thread* localFollowerThread = new Thread(*glThreads[planThread]->getThread());
-  localFollowerThread->minimize_energy();
+//  Thread* localFollowerThread = new Thread(*glThreads[planThread]->getThread());
+  Thread* localFollowerThread = new Thread(*planner.halfDimApproximation(glThreads[planThread]->getThread()));
+  //localFollowerThread->minimize_energy();
   Trajectory_Follower* localFollower = new Trajectory_Follower(path, motions, localFollowerThread);
 
   localCurNode = new RRTNode(new Thread(*localFollowerThread));
   RRTNode* prevNode = localCurNode;
   while (!localFollower->is_done()) {
     cout << "precomputing step" << endl;
-    localFollower->Take_Step(150);
+    localFollower->Take_Step(3);
     cout << "step complete" << endl; 
     RRTNode* node = new RRTNode(new Thread(*localFollower->curr_state()));
+    node->prev = prevNode;
+    prevNode->next = node;
+    prevNode = node; 
+  }
+
+  vector<Thread*> traj; 
+  localFollower->getReachedStates(traj);
+  cout << "Trajectory size: " << traj.size() << endl; 
+  vector<Thread*> newPath;
+  newPath.resize(traj.size());
+
+  for (int i = 0; i < traj.size(); i++) {
+    newPath[i] = planner.doubleDimApproximation(traj[i]);
+  }
+
+  Thread* newLFT = new Thread(*glThreads[planThread]->getThread());
+  Trajectory_Follower* newLF = new Trajectory_Follower(newPath, motions, newLFT);
+
+  localCurNode = new RRTNode(new Thread(*newLFT));
+
+  prevNode = localCurNode;
+  while (!newLF->is_done()) {
+    cout << "precomputing step" << endl;
+    newLF->Take_Step(5);
+    cout << "step complete" << endl; 
+    RRTNode* node = new RRTNode(new Thread(*newLF->curr_state()));
     node->prev = prevNode;
     prevNode->next = node;
     prevNode = node; 

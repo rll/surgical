@@ -40,14 +40,15 @@ vector<Two_Motions*> Trajectory_Follower::Take_Step(int max_linearizations)
       motionsGenerated.push_back(tmpMotions[i]);
     }
     double error_this_linearizaton = calculate_thread_error(_trajectory[_curr_ind], next_state);
-    if (error_this_linearizaton + linearization_error_thresh > error_last_linearization)
+    if (error_this_linearizaton + linearization_error_thresh > error_last_linearization) 
       break;
 
     error_last_linearization = error_this_linearizaton;
   } 
 
+  cout << "adding to reached states " << next_state << endl; 
   _reached_states.push_back(next_state);
-
+  cout << "reached states size: " << _reached_states.size() << endl ; 
   return motionsGenerated; 
 }
 
@@ -56,6 +57,7 @@ bool Trajectory_Follower::is_done()
   return _curr_ind >= (_trajectory.size()-1);
 
 }
+
 
 double Trajectory_Follower::calculate_thread_error(Thread* start, Thread* goal)
 {
