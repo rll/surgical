@@ -1927,7 +1927,7 @@ void Thread::apply_motion_nearEnds(Two_Motions& motion)
     Vector3d start_motion_indir = motion._start._pos_movement.dot(entire_length_vector)*entire_length_vector;
     Vector3d end_motion_indir = motion._end._pos_movement.dot(entire_length_vector)*entire_length_vector;
 
-    double total_movement = start_motion_indir.norm() + end_motion_indir.norm()+1e-1;
+    double total_movement = start_motion_indir.norm() + end_motion_indir.norm()+1e-5;
 
     start_pos -= start_motion_indir*(too_long_by/total_movement);
     end_pos -= end_motion_indir*(too_long_by/total_movement);
@@ -1937,7 +1937,7 @@ void Thread::apply_motion_nearEnds(Two_Motions& motion)
   pointB= end_pos-end_rot.col(0)*_rest_length;
   entire_length_vector = pointB - pointA;
   too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
-  std::cout << "too long by " << too_long_by << std::endl;
+  //std::cout << "too long by " << too_long_by << std::endl;
 
 
   set_constraints(start_pos, start_rot, end_pos, end_rot);
