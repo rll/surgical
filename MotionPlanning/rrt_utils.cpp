@@ -44,7 +44,7 @@ RRTNode::RRTNode(const Thread* start): prev(NULL), next(NULL), linearized(false)
 
   for (int i = 0; i < positions.size(); i++) {
     if (!isnan(positions[i]))
-        data[i + currentIndex] = (float) (10*positions[i]); 
+        data[i + currentIndex] = (float) (5*positions[i]); 
   }
   
   currentIndex += positions.size(); 
@@ -56,7 +56,7 @@ RRTNode::RRTNode(const Thread* start): prev(NULL), next(NULL), linearized(false)
   currentIndex += twists.size(); 
   for (int i = 0; i < gradient.size(); i++) {
     if (!isnan(gradient[i])) 
-      data[i+currentIndex] = (float) (10*gradient[i]);
+      data[i+currentIndex] = (float) (5*gradient[i]);
   }
 
   currentIndex += gradient.size(); 

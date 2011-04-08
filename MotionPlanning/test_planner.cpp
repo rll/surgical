@@ -149,11 +149,14 @@ void DimensionReductionBestPath() {
     Thread* start = glThreads[planThread]->getThread();
     Thread* end = glThreads[endThread]->getThread();
 
-    start->minimize_energy(20000, 1e-6, 0.2, 1e-7);
-    end->minimize_energy(20000, 1e-6, 0.2, 1e-7);
+    start->minimize_energy(20000, 1e-10, 0.2, 1e-11);
+    end->minimize_energy(20000, 1e-10, 0.2, 1e-11);
 
     Thread* startApprox = planner.halfDimApproximation(start);
     Thread* endApprox = planner.halfDimApproximation(end);
+
+    startApprox = planner.halfDimApproximation(startApprox);
+    endApprox = planner.halfDimApproximation(endApprox);
 
     planner.initialize(startApprox, endApprox);
     glThreads[4]->setThread(new Thread(*startApprox));
@@ -183,7 +186,9 @@ void DimensionReductionBestPath() {
   vector<Thread*> path; 
   vector<vector<Two_Motions*> > motions; 
   while (node != NULL) {
-    path.push_back(planner.doubleDimApproximation(node->thread));
+    Thread* doubleDimApprox = planner.doubleDimApproximation(node->thread);
+    planner.doubleDimApproximation(doubleDimApprox);
+    path.push_back(doubleDimApprox);
     motions.push_back(node->lstMotions);
     node = node->next;
     
@@ -201,7 +206,7 @@ void DimensionReductionBestPath() {
   RRTNode* prevNode = localCurNode;
   while (!localFollower->is_done()) {
     cout << "precomputing step" << endl;
-    localFollower->Take_Step(2);
+    localFollower->Take_Step(150);
     cout << "step complete" << endl; 
     RRTNode* node = new RRTNode(new Thread(*localFollower->curr_state()));
     node->prev = prevNode;
@@ -224,15 +229,9 @@ void stepTrajectoryFollower() {
   if (follower->is_done()) {
     cout << "trajectory follower done" << endl; 
     cout << "attempting solveLinearizedControl" << endl;
-    if (drand48() < 0.5) { 
       solveLinearizedControl(glThreads[startThread]->getThread(), 
           glThreads[endThread]->getThread(), 
-          START);
-    } else {
-      solveLinearizedControl(glThreads[startThread]->getThread(), 
-          glThreads[endThread]->getThread(), 
-          END);
-    }
+          START_AND_END);
   } else { 
     cout << "taking step" << endl; 
     follower->Take_Step(1);
@@ -265,7 +264,6 @@ void stepTrajectoryFollower(bool forward) {
         glThreads[startThread]->updateThreadPoints();
         //glThreads[startThread]->minimize_energy();
       } else { 
-
         cout << "trajectory follower done" << endl; 
         cout << "attempting solveLinearizedControl" << endl; 
         solveLinearizedControl(glThreads[startThread]->getThread(), 

@@ -88,7 +88,7 @@ Thread* Thread_RRT::doubleDimApproximation(const Thread* target) {
   startEdge.normalize();
   endEdge.normalize();
   
-  vertices.push_back(target->vertex_at_ind(1)-(1/1.842)*startEdge*target->rest_length());
+  vertices.push_back(target->vertex_at_ind(1)-0.5*startEdge*target->rest_length());
   angles.push_back(0.0);
   vertices.push_back(target->vertex_at_ind(1));
   //vertices.push_back(target->start_pos()+startEdge*target->rest_length());
@@ -116,7 +116,7 @@ Thread* Thread_RRT::doubleDimApproximation(const Thread* target) {
   //increasedDimThread->set_end_twist(target->end_angle());
   increasedDimThread->set_rest_length(target->rest_length() * rest_length_ratio);
   increasedDimThread->set_end_constraint(vertices[vertices.size()-1], target_end_rot);
- // increasedDimThread->project_length_constraint();
+ increasedDimThread->project_length_constraint();
   
 
   cout << increasedDimThread->num_pieces() << endl; 
