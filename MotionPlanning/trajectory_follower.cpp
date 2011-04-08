@@ -27,7 +27,7 @@ vector<Two_Motions*> Trajectory_Follower::Take_Step(int max_linearizations)
   //next_state->apply_motion(*_motions[_curr_ind]);
   vector<Two_Motions*> motionLst = _motions[_curr_ind];
   for (int i = 0; i < motionLst.size(); i++) { 
-    //next_state->apply_motion_nearEnds(*motionLst[i]);
+    next_state->apply_motion_nearEnds(*motionLst[i]);
   }
   _curr_ind++;
 
