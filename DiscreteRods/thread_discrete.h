@@ -16,11 +16,11 @@
     #define MAX_ROTATION_TWIST (M_PI/30.0)
     #define MOMENTUM_CONSTANT 0.0 /*how much of the last gradient do we use*/
 
-    #define MIN_MOVEMENT_VERTICES 1e-4 //speedy at 1e-4
+    #define MIN_MOVEMENT_VERTICES 1e-5 //speedy at 1e-4
     #define MIN_ROTATION_TWIST (M_PI/1000.0)
     
-    #define ENERGY_FOR_CONVERGENCE 1e-5 //speedy at 1e-5
-    #define NUM_MAX_ITERS 6000 //speedy at 6000
+    #define ENERGY_FOR_CONVERGENCE 1e-6 //speedy at 1e-5
+    #define NUM_MAX_ITERS 8000 //speedy at 6000
 
 #else
 
@@ -97,7 +97,7 @@ class Thread
     const double start_angle(void) const {return _thread_pieces.front()->angle_twist();}
     const double end_angle(void) const {return _thread_pieces[_thread_pieces.size()-2]->angle_twist();}
     const double angle_at_ind(int i) const {return _thread_pieces[i]->angle_twist();}
-    const double total_length(void) const {return _rest_length*((double)_thread_pieces.size());}
+    const double total_length(void) const {return _rest_length*((double)_thread_pieces.size()-1);}
     const double rest_length(void) const {return _rest_length;}
     const Vector3d& vertex_at_ind(int i) const {return _thread_pieces[i]->vertex();}
     const Vector3d& edge_at_ind(int i) const {return _thread_pieces[i]->edge();}
