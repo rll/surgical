@@ -243,10 +243,12 @@ void Thread_Hypoth::add_possible_next_hypoths(
     Vector3d new_vertex_init;
     new_vertex_init = _thread_pieces[_thread_pieces.size() - 2]->edge()
             + _thread_pieces.back()->vertex();
-    double new_angle = (_thread_pieces.size() <= 2 ? 0
-            : _thread_pieces[_thread_pieces.size() - 2]->angle_twist()
-                    + _thread_pieces[_thread_pieces.size() - 2]->angle_twist()
-                            / ((double) _thread_pieces.size() - 2));
+
+    double new_angle = 0;
+    if (_thread_pieces.size() > 2) {
+        new_angle = _thread_pieces[_thread_pieces.size() - 2]->angle_twist();
+        new_angle += new_angle / (_thread_pieces.size() - 1);
+    }
 
     _thread_pieces.push_back(
             new ThreadPiece_Vision(new_vertex_init, new_angle,
