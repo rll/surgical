@@ -1878,12 +1878,61 @@ void Thread::apply_motion(Frame_Motion& motion)
 //applies motion to start and end
 void Thread::apply_motion(Two_Motions& motion)
 {
-  Vector3d start_pos = this->start_pos();;
+  Vector3d start_pos = this->start_pos();
   Matrix3d start_rot = this->start_rot();
-  Vector3d end_pos = this->end_pos();;
+  Vector3d end_pos = this->end_pos();
   Matrix3d end_rot = this->end_rot();
   motion._start.applyMotion(start_pos, start_rot);
   motion._end.applyMotion(end_pos, end_rot);
+  set_constraints(start_pos, start_rot, end_pos, end_rot);
+  minimize_energy();
+}
+
+//applies motion to END
+void Thread::apply_motion_nearEnds(Frame_Motion& motion)
+{
+  Vector3d end_pos = this->end_pos();
+  Matrix3d end_rot = this->end_rot();
+  motion.applyMotion(end_pos, end_rot);
+  //now account for translation that occurs because of rotation
+  end_pos += (vertex_at_ind(_thread_pieces.size()-2)+motion._pos_movement) - (end_pos-end_rot.col(0).normalized()*_rest_length);
+  set_end_constraint(end_pos, end_rot);
+  minimize_energy();
+}
+
+void Thread::apply_motion_nearEnds(Two_Motions& motion)
+{
+  Vector3d start_pos = this->start_pos();
+  Matrix3d start_rot = this->start_rot();
+  Vector3d end_pos = this->end_pos();
+  Matrix3d end_rot = this->end_rot();
+  motion._start.applyMotion(start_pos, start_rot);
+  motion._end.applyMotion(end_pos, end_rot);
+
+  //make it so the motion is at 2nd and 2nd to last vertices
+  //thus, account for how the frame rotation affected position of those vertices
+  start_pos += (vertex_at_ind(1)+motion._start._pos_movement) - (start_pos+start_rot.col(0)*_rest_length);
+  end_pos += (vertex_at_ind(_thread_pieces.size()-2)+motion._end._pos_movement) - (end_pos-end_rot.col(0)*_rest_length);
+
+  //check to make sure we aren't trying to go beyond the max length
+  Vector3d pointA = start_pos+start_rot.col(0)*_rest_length;
+  Vector3d pointB= end_pos-end_rot.col(0)*_rest_length;
+
+  //if so, correct by moving back into acceptable region
+  Vector3d entire_length_vector = pointB - pointA;
+  double too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
+  if (too_long_by > 0)
+  {
+    entire_length_vector.normalize();
+    Vector3d start_motion_indir = motion._start._pos_movement.dot(entire_length_vector)*entire_length_vector;
+    Vector3d end_motion_indir = motion._end._pos_movement.dot(entire_length_vector)*entire_length_vector;
+
+    double total_movement = start_motion_indir.norm() + end_motion_indir.norm();
+
+    start_pos -= start_motion_indir*(too_long_by/total_movement);
+    end_pos -= end_motion_indir*(too_long_by/total_movement);
+  }
+
   set_constraints(start_pos, start_rot, end_pos, end_rot);
   minimize_energy();
 }

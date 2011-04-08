@@ -491,6 +491,9 @@ void DrawStuff (void)
 
     double winX, winY, winZ;
 
+    Two_Motions motion_to_apply;
+    motion_to_apply._start.set_nomotion();
+
 
     //change end positions
     Vector3d new_end_pos;
@@ -513,11 +516,14 @@ void DrawStuff (void)
     new_end_tan -= positions[1];
     new_end_tan.normalize();
 
-    positions[1] = new_end_pos;
+    //positions[1] = new_end_pos;
+    motion_to_apply._end._pos_movement = new_end_pos-positions[1];
 
     Matrix3d rotation_new_tan;
     rotate_between_tangents(tangents[1], new_end_tan, rotation_new_tan);
-    rotations[1] = rotation_new_tan*rotations[1];
+    //rotations[1] = rotation_new_tan*rotations[1];
+    motion_to_apply._end._frame_rotation = rotation_new_tan;
+
 
 
     //check rotation around tangent
@@ -564,12 +570,13 @@ void DrawStuff (void)
     new_start_tan -= positions[0];
     new_start_tan.normalize();
 
-    positions[0] = new_start_pos;
+//    positions[0] = new_start_pos;
+    motion_to_apply._start._pos_movement = new_start_pos-positions[0];
 
     Matrix3d rotation_new_start_tan;
     rotate_between_tangents(tangents[0], new_start_tan, rotation_new_start_tan);
-    rotations[0] = rotation_new_start_tan*rotations[0];
-
+    //rotations[0] = rotation_new_start_tan*rotations[0];
+    motion_to_apply._start._frame_rotation = rotation_new_start_tan;
 
     //check rotation around tangent
     Matrix3d old_rot_start = rotations[0];
@@ -602,7 +609,8 @@ void DrawStuff (void)
 
 
     //change thread
-    thread->set_constraints(positions[0], rotations[0], positions[1], rotations[1]);
+    //thread->set_constraints(positions[0], rotations[0], positions[1], rotations[1]);
+    thread->apply_motion_nearEnds(motion_to_apply);
     //thread->set_end_constraint(positions[1], rotations[1]);
 
     thread->minimize_energy();

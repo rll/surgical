@@ -37,6 +37,7 @@
 #endif
 
 #define DEFAULT_REST_LENGTH 3.0 /*default rest length for each threadpiece*/
+#define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
 //#define NUM_THREADS_PARALLEL_FOR 2
 #define num_iters_twist_est_max 0
@@ -84,8 +85,10 @@ class Thread
     void set_start_constraint(const Vector3d& start_pos, const Matrix3d& start_rot);
     void set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot);
     void rotate_end_by(double degrees);
-    void apply_motion(Frame_Motion& motion);
+    void apply_motion(Frame_Motion& motion); //applies motion to end points/rotations
     void apply_motion(Two_Motions& motion);
+    void apply_motion_nearEnds(Frame_Motion& motion); //applies motion to 2nd and 2nd to last points/rotations, and clamps to ensure constraints are not violated
+    void apply_motion_nearEnds(Two_Motions& motion);
     
     void project_length_constraint_old();
     void project_length_constraint();
@@ -97,7 +100,7 @@ class Thread
     const double start_angle(void) const {return _thread_pieces.front()->angle_twist();}
     const double end_angle(void) const {return _thread_pieces[_thread_pieces.size()-2]->angle_twist();}
     const double angle_at_ind(int i) const {return _thread_pieces[i]->angle_twist();}
-    const double total_length(void) const {return _rest_length*((double)_thread_pieces.size()-1);}
+    const double total_length(void) const {return _rest_length*((double)(num_edges()));}
     const double rest_length(void) const {return _rest_length;}
     const Vector3d& vertex_at_ind(int i) const {return _thread_pieces[i]->vertex();}
     const Vector3d& edge_at_ind(int i) const {return _thread_pieces[i]->edge();}
@@ -170,7 +173,8 @@ class Thread
 
     }
 
-    int num_pieces() const {return _thread_pieces.size();};
+    const int num_pieces() const {return _thread_pieces.size();};
+    const int num_edges() const {return _thread_pieces.size()-1;};
 
     void save_angle_twists();
     void restore_angle_twists();

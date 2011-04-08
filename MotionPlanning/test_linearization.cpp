@@ -22,6 +22,8 @@
 #include "../DiscreteRods/trajectory_reader.h"
 #include "linearization_utils.h"
 #include "trajectory_follower.h"
+#include "../../utils/clock.h"
+
 
 
 #define TRAJ_BASE_NAME_NYLON "../DiscreteRods/LearnParams/config/suturenylon_processed_projected"
@@ -641,7 +643,8 @@ double playbackmotions(int max_linearizations)
   vector<vector<Two_Motions*> > all_motions; 
   vector<Thread*> saved_threads;
   saved_threads.push_back(new Thread(*glThreads[simulated]->getThread()));
-
+  
+  double start_time = GetClock(); //time(NULL);
   //record motions
   for (int i=0; i < motions.size(); i++)
   {
@@ -653,7 +656,7 @@ double playbackmotions(int max_linearizations)
     all_motions.push_back(two_motions);
     saved_threads.push_back(new Thread(*saved_threads.back()));
 
-    saved_threads.back()->apply_motion(*two_motions.back());
+    saved_threads.back()->apply_motion_nearEnds(*two_motions.back());
   }
 
 
@@ -672,6 +675,12 @@ double playbackmotions(int max_linearizations)
     total_error += calculate_thread_error(glThreads[simulated]->getThread(), glThreads[reality]->getThread());
     DrawStuff();
   }
+
+  double end_time = GetClock();//time(NULL);
+  std::cout << "num seconds: " << end_time - start_time << std::endl;
+
+
+
   return total_error/((double)motions.size());
 
 

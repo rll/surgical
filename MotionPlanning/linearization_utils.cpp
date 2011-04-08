@@ -54,13 +54,10 @@ void applyControl(Thread* start, const VectorXd& u, vector<Two_Motions*>& motion
   }
 
 
-  Vector3d pos_start;
-  Matrix3d rot_start;
-  Vector3d pos_end;
-  Matrix3d rot_end;
   for (int i=0; i < number_steps; i++)
   {
-    pos_start = start->start_pos();
+    
+    /*pos_start = start->start_pos();
     rot_start = start->start_rot();
     pos_end = start->end_pos();
     rot_end = start->end_rot();
@@ -73,7 +70,9 @@ void applyControl(Thread* start, const VectorXd& u, vector<Two_Motions*>& motion
       start->set_constraints(pos_start, rot_start, pos_end, rot_end);
       motions.push_back(toMove);
     }
+*/
 
+    start->apply_motion_nearEnds(*toMove);
   }
 
   start->minimize_energy(); 
