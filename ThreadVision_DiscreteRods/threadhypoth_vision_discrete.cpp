@@ -193,11 +193,9 @@ void Thread_Hypoth::add_first_threadpieces(corresponding_pts& start_pt,
 {
     add_first_threadpieces(start_pt, start_tan, 0);
 }
-
-void add_first_threadpieces(corresponding_pts& start_pt,
+void Thread_Hypoth::add_first_threadpieces(corresponding_pts& start_pt,
         tangent_and_score& start_tan, double startTwist)
 {
-    //need to assign start rotation. Arbitrary for now
     Vector3d perp_col = Vector3d::UnitY();
     make_vectors_perpendicular(start_tan.tan, perp_col);
     Matrix3d start_rot;

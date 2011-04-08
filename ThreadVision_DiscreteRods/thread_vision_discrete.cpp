@@ -1,4 +1,5 @@
 #include "thread_vision_discrete.h"
+#define _USE_MATH_DEFINES
 
 Thread_Vision::Thread_Vision()
 {
@@ -132,14 +133,6 @@ Thread_Vision::Thread_Vision()
 
 
 #endif
-
-
-    //_captures[2]->setExposure(8000);
-
-    /*namedWindow(_names[0], CV_WINDOW_AUTOSIZE);
-    namedWindow(_names[1], CV_WINDOW_AUTOSIZE);
-    namedWindow(_names[2], CV_WINDOW_AUTOSIZE);
-    */
 
     char names_char[NUMCAMS][256];
     char canny_char[NUMCAMS][256];
@@ -375,14 +368,20 @@ bool Thread_Vision::optimizeThread(bool visualOnly)
 
                 _thread_hypoths.resize(_thread_hypoths.size() + 1);
 
-                //Check if this doesn't duplicate
                 vector<Thread_Hypoth*>& current_thread_hypoths = _thread_hypoths.back();
                 current_thread_hypoths.resize(start_tangents.size());
 
                 for (int hypoth_ind = 0; hypoth_ind < start_tangents.size(); hypoth_ind++)
                 {
-                    current_thread_hypoths[hypoth_ind] = new Thread_Hypoth(this);
-                    current_thread_hypoths[hypoth_ind]->add_first_threadpieces(start_pts[0], start_tangents[hypoth_ind]);
+                    /* Generate possible twists from -2pi/maxlength to 2pi/maxlength */
+                    int twistIncrements = 10;
+                    for (int j = 0; j < twistIncrements; j++) {
+                        int numThreadPieces = _max_length_thread / _rest_length;
+                        double baseTwist = 2.0 * M_PI / _rest_length;
+                        double startTwist = -1 * baseTwist + j * (baseTwist * 2 / twistIncrements);
+                        current_thread_hypoths[hypoth_ind] = new Thread_Hypoth(this);
+                        current_thread_hypoths[hypoth_ind]->add_first_threadpieces(start_pts[0], start_tangents[hypoth_ind], startTwist);
+                    }
                 }
             }
         }
@@ -446,9 +445,11 @@ bool Thread_Vision::processHypothesesFromInit()
             std::cout << "Threads close: " << allPairs->size() << std::endl;
         }
     }
-    best_thread_hypoths = _thread_hypoths[1];
-    //Algorithm should grow all threads independently and not join,
-    //so I just take the first one
+
+    /* Algorithm should grow all threads independently and not join,
+     * so I just take the first one */
+    best_thread_hypoths = _thread_hypoths[0];
+
     if (best_thread_hypoths.size() == 0)
     {
         std::cout << "NO HYPOTHS LEFT" << std::endl;
@@ -868,7 +869,7 @@ bool Thread_Vision::findTangent(corresponding_pts& start, Vector3d& init_tangent
     std::cout << "initial tans: " << std::endl;
     for (int i=0; i < tangents.size(); i++)
     {
-        std::cout << tangents[i].tan.transpose() << "\t\t" << tangents[i].score << std::endl;
+        std::cout << "Tangent: (" <<  tangents[i].tan.transpose() << ")" << "\t\t" << "Score: " << tangents[i].score << std::endl;
     }
 
     /*

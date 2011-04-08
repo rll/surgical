@@ -25,10 +25,8 @@ public:
     Thread_Hypoth(const Thread_Hypoth& rhs);
     ~Thread_Hypoth();
 
-    void add_first_threadpieces(corresponding_pts& start_pt,
-            tangent_and_score& start_tan);
-    void add_first_threadpieces(corresponding_pts& start_pt,
-            tangent_and_score& start_tan, double startTwist);
+    void add_first_threadpieces(corresponding_pts& start_pt, tangent_and_score& start_tan);
+    void add_first_threadpieces(corresponding_pts& start_pt, tangent_and_score& start_tan, double startTwist);
     void optimize_visual();
 
     /* Add next piece based on visual reprojection only. If this hypoth splits,
