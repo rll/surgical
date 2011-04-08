@@ -9,7 +9,6 @@
 #include <Eigen/Cholesky>
 #include <Eigen/LU>
 
-
 #ifdef ISOTROPIC 
     #define MAX_MOVEMENT_VERTICES 0.2
     #define MAX_ROTATION_TWIST (M_PI/30.0)
