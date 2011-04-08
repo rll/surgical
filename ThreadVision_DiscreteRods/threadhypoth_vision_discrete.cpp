@@ -59,9 +59,10 @@ Thread_Hypoth::~Thread_Hypoth()
 void Thread_Hypoth::optimize_visual()
 {
     _previous_energy = calculate_visual_energy();
-    //std::cout << "optimizing visual" << std::endl;;
+    std::cout << "Optimizing Visual Energy" << std::endl;;
     double step_in_grad_dir_vertices = 1.0;
 
+    /* Constants for accuracy */
     const int num_opt_iters = 1000;
     const double energy_error_for_convergence = 1e-5;
 
@@ -175,7 +176,7 @@ double Thread_Hypoth::calculate_visual_energy_only()
 
 void Thread_Hypoth::calculate_score()
 {
-    _score = _previous_energy - calculate_visual_energy();
+    _score = calculate_visual_energy();//_previous_energy - 
 }
 
 void Thread_Hypoth::calculate_visual_gradient_vertices(
