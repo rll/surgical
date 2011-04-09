@@ -543,7 +543,7 @@ void DrawStuff (void)
 
     rotations[1].col(1) = new_end_tan_normal;
     rotations[1].col(2) = rotations[1].col(0).cross(new_end_tan_normal);
-
+    motion_to_apply._end._frame_rotation = Eigen::AngleAxisd(angle_mismatch(rotations[1], thread->end_rot()), rotations[1].col(0).normalized())*motion_to_apply._end._frame_rotation;
 
 
 
@@ -596,8 +596,11 @@ void DrawStuff (void)
 
     rotations[0].col(1) = new_start_tan_normal;
     rotations[0].col(2) = rotations[0].col(0).cross(new_start_tan_normal);
+    double angle_change_start = angle_mismatch(rotations[0], thread->start_rot());
+    motion_to_apply._start._frame_rotation = Eigen::AngleAxisd(angle_change_start, rotations[0].col(0).normalized())*motion_to_apply._start._frame_rotation;
 
-    zero_angle += angle_mismatch(rotations[0], old_rot_start);
+
+    zero_angle += angle_change_start;
 
 
 

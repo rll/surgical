@@ -89,6 +89,7 @@ class Thread
     void apply_motion(Two_Motions& motion);
     void apply_motion_nearEnds(Frame_Motion& motion); //applies motion to 2nd and 2nd to last points/rotations, and clamps to ensure constraints are not violated
     void apply_motion_nearEnds(Two_Motions& motion);
+    void unviolate_total_length_constraint();
     
     void project_length_constraint_old();
     void project_length_constraint();

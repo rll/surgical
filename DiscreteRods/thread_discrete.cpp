@@ -1931,18 +1931,40 @@ void Thread::apply_motion_nearEnds(Two_Motions& motion)
 
     start_pos -= start_motion_indir*(too_long_by/total_movement);
     end_pos -= end_motion_indir*(too_long_by/total_movement);
+
+    //due to numerical reasons, this sometimes seems to fail. if so, just move the end back in
+    unviolate_total_length_constraint();
   }
 
+  /*
   pointA = start_pos+start_rot.col(0)*_rest_length;
   pointB= end_pos-end_rot.col(0)*_rest_length;
   entire_length_vector = pointB - pointA;
   too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
-  //std::cout << "too long by " << too_long_by << std::endl;
+  std::cout << "too long by " << too_long_by << std::endl;
+  */
 
 
   set_constraints(start_pos, start_rot, end_pos, end_rot);
   minimize_energy();
 }
+
+
+void Thread::unviolate_total_length_constraint()
+{
+  Vector3d pointA = this->start_pos()+this->start_rot().col(0)*_rest_length;
+  Vector3d pointB= this->end_pos()-this->end_rot().col(0)*_rest_length;
+  Vector3d entire_length_vector = pointB - pointA;
+  double too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
+
+  if (too_long_by > 0)
+  {
+    entire_length_vector.normalize();
+    set_end_constraint(this->end_pos() -entire_length_vector*too_long_by, this->end_rot());
+  }
+
+}
+
 
 void Thread::set_coeffs_normalized(double bend_coeff, double twist_coeff, double grav_coeff)
 {

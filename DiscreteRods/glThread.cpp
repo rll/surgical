@@ -225,6 +225,10 @@ void GLThread::ApplyUserInput(float move_end[], float tangent_end[], float tange
 
   double winX, winY, winZ;
 
+  Two_Motions motion_to_apply;
+  motion_to_apply._start.set_nomotion();
+
+
   //change end positions
   Vector3d new_end_pos;
   gluProject(positions[1](0), positions[1](1), positions[1](2), model_view, projection, viewport, &winX, &winY, &winZ);
@@ -246,11 +250,13 @@ void GLThread::ApplyUserInput(float move_end[], float tangent_end[], float tange
   new_end_tan -= positions[1];
   new_end_tan.normalize();
 
-  positions[1] = new_end_pos;
+  //positions[1] = new_end_pos;
+  motion_to_apply._end._pos_movement = new_end_pos-positions[1];
 
   Matrix3d rotation_new_tan;
   rotate_between_tangents(tangents[1], new_end_tan, rotation_new_tan);
-  rotations[1] = rotation_new_tan*rotations[1];
+  //rotations[1] = rotation_new_tan*rotations[1];
+  motion_to_apply._end._frame_rotation = rotation_new_tan;
 
 
   //check rotation around tangent
@@ -270,6 +276,8 @@ void GLThread::ApplyUserInput(float move_end[], float tangent_end[], float tange
 
   rotations[1].col(1) = new_end_tan_normal;
   rotations[1].col(2) = rotations[1].col(0).cross(new_end_tan_normal);
+  motion_to_apply._end._frame_rotation = Eigen::AngleAxisd(angle_mismatch(rotations[1], _thread->end_rot()), rotations[1].col(0).normalized())*motion_to_apply._end._frame_rotation;
+
 
   //change start positions
   Vector3d new_start_pos;
@@ -281,7 +289,6 @@ void GLThread::ApplyUserInput(float move_end[], float tangent_end[], float tange
   gluUnProject(winX, winY, winZ, model_view, projection, viewport, &new_start_pos(0), &new_start_pos(1), &new_start_pos(2));
   //    std::cout << "X: " << positions[1](0) << " Y: " << positions[1](1) << " Z: " << positions[1](2) << std::endl;
 
-  positions[0] = new_start_pos;
 
 
   //change start tangents
@@ -296,9 +303,14 @@ void GLThread::ApplyUserInput(float move_end[], float tangent_end[], float tange
   new_start_tan.normalize();
 
 
-  rotate_between_tangents(tangents[0], new_start_tan, rotation_new_tan);
-  rotations[0] = rotation_new_tan*rotations[0];
+  //positions[0] = new_start_pos;
+  motion_to_apply._start._pos_movement = new_start_pos-positions[0];
 
+  Matrix3d rotation_new_start_tan;
+  rotate_between_tangents(tangents[0], new_start_tan, rotation_new_tan);
+  //rotations[0] = rotation_new_start_tan*rotations[0];
+  motion_to_apply._start._frame_rotation = rotation_new_tan;
+ 
 
   //check rotation around start tangent
   tangent_normal_rotate_around = rotations[0].col(1);
@@ -317,13 +329,17 @@ void GLThread::ApplyUserInput(float move_end[], float tangent_end[], float tange
 
   rotations[0].col(1) = new_start_tan_normal;
   rotations[0].col(2) = rotations[0].col(0).cross(new_start_tan_normal);
+  double angle_change_start = angle_mismatch(rotations[0], _thread->start_rot());
+  motion_to_apply._start._frame_rotation = Eigen::AngleAxisd(angle_change_start, rotations[0].col(0).normalized())*motion_to_apply._start._frame_rotation;
+
 
 
 
 
   //change thread
-  _thread->set_constraints(positions[0], rotations[0], positions[1], rotations[1]);
+  //_thread->set_constraints(positions[0], rotations[0], positions[1], rotations[1]);
   //thread->set_end_constraint(positions[1], rotations[1]);
+  _thread->apply_motion_nearEnds(motion_to_apply);
 
   // std::cout <<"CONSTRAINT END:\n" << rotations[1] << std::endl;
   _thread->minimize_energy();
