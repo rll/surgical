@@ -43,12 +43,9 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
   goal_vector.setZero();
   VectorXd state_for_ends(_size_each_state);
   thread_to_state_withTwist(trajectory.front(), state_for_ends);
-  cout << state_for_ends.rows() << endl;
-  cout << _size_each_state << endl;
   goal_vector.segment(0, _size_each_state) = -1 * state_for_ends;
   thread_to_state_withTwist(trajectory.back(), state_for_ends);
   goal_vector.segment((_num_threads-2)*_size_each_state, _size_each_state) = state_for_ends;
-  std::cout << goal_vector.transpose() << std::endl;
 
 
   //vector to contain the new states
@@ -70,6 +67,7 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
 
     for (int i=1; i < trajectory.size()-1; i++)
     {
+      std::cout << "i: " << i << std::endl;
       int state_start_ind = (i-1)*_size_each_state;
       Matrix3d start_rot = trajectory[i]->start_rot();
       delete trajectory[i];
@@ -87,32 +85,13 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
 
     
       trajectory[i] = new Thread(points, angles, start_rot);
+      trajectory[i]->unviolate_total_length_constraint();
+      trajectory[i]->minimize_energy();
     }
       
   }
 
-    vector<Vector3d> points(_num_vertices);
-    vector<double> angles(_num_vertices);
-    for (int i=1; i < trajectory.size()-1; i++)
-    {
-      int state_start_ind = (i-1)*_size_each_state;
-      Matrix3d start_rot = trajectory[i]->start_rot();
-      delete trajectory[i];
-      Vector3d point1 = new_states.segment(state_start_ind,3);
-      Vector3d point2 = new_states.segment(state_start_ind+3,3);
-      start_rot.col(0) = point2-point1;
-      start_rot.col(1) = (start_rot.col(1) - start_rot.col(0).cross(start_rot.col(2))).normalized();
-      start_rot.col(2) = start_rot.col(0).cross(start_rot.col(1)).normalized();
-      
-      angles[_num_vertices-2] = new_states(state_start_ind+_size_each_state-1);
-      for (int j =0; j < _num_vertices; j++)
-      {
-        points[j] = new_states.segment(state_start_ind+ (j*3), 3);
-      }
 
-    
-      trajectory[i] = new Thread(points, angles, start_rot);
-    }
 
   return true;
 }

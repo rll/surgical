@@ -455,7 +455,7 @@ void generateInterpolatedThread() {
 
   Thread* start = new Thread(*glThreads[planThread]->getThread());
   Thread* end = new Thread(*glThreads[endThread]->getThread());
-  numApprox = 4;
+  numApprox = 100;
   interpolationDemo = true; 
   vector<Thread*> traj;
   traj.resize(numApprox);
@@ -474,7 +474,7 @@ void generateInterpolatedThread() {
 
   Iterative_Control* ic = new Iterative_Control(traj.size(), traj.front()->num_pieces());
 
-  //ic->iterative_control_opt(traj, zeroCtrl, 0);
+  ic->iterative_control_opt(traj, zeroCtrl, 1);
   cout << "iterative ctrl ret" << endl; 
 
   for (int i = 0; i < traj.size(); i++) { 
