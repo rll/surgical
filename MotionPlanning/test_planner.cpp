@@ -26,7 +26,7 @@
 #include "linearization_utils.h"
 #include "trajectory_follower.h"
 #include <boost/progress.hpp> 
-
+#include "iterative_control.h"
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
@@ -452,9 +452,10 @@ void stepTrajectoryFollower(bool forward) {
 }
 
 void generateInterpolatedThread() { 
+
   Thread* start = new Thread(*glThreads[planThread]->getThread());
   Thread* end = new Thread(*glThreads[endThread]->getThread());
-  numApprox = 40;
+  numApprox = 4;
   interpolationDemo = true; 
   vector<Thread*> traj;
   traj.resize(numApprox);
@@ -463,8 +464,20 @@ void generateInterpolatedThread() {
   vector<Two_Motions*> controls;
   cout << "calling interpolate" << endl; 
   interpolateThreads(traj, controls);
+  vector<VectorXd> zeroCtrl; 
 
   for (int i = 0; i < traj.size(); i++) {
+    VectorXd ctrl(12);
+    ctrl.setZero();
+    zeroCtrl.push_back(ctrl); 
+  }
+
+  Iterative_Control* ic = new Iterative_Control(traj.size(), traj.front()->num_pieces());
+
+  //ic->iterative_control_opt(traj, zeroCtrl, 0);
+  cout << "iterative ctrl ret" << endl; 
+
+  for (int i = 0; i < traj.size(); i++) { 
     apprxThreads[i]->setThread(new Thread(*traj[i]));
     apprxThreads[i]->updateThreadPoints();
   }
@@ -472,6 +485,8 @@ void generateInterpolatedThread() {
   glutPostRedisplay();
 
 }
+
+
 
 
 // change prototype to include the return

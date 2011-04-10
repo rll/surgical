@@ -43,7 +43,9 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
   goal_vector.setZero();
   VectorXd state_for_ends(_size_each_state);
   thread_to_state_withTwist(trajectory.front(), state_for_ends);
-  goal_vector.segment(0, _size_each_state) = -state_for_ends;
+  cout << state_for_ends.rows() << endl;
+  cout << _size_each_state << endl;
+  goal_vector.segment(0, _size_each_state) = -1 * state_for_ends;
   thread_to_state_withTwist(trajectory.back(), state_for_ends);
   goal_vector.segment((_num_threads-2)*_size_each_state, _size_each_state) = state_for_ends;
   std::cout << goal_vector.transpose() << std::endl;

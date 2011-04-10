@@ -410,7 +410,7 @@ int main (int argc, char * argv[])
   }
 
 
-  Iterative_Control iter_control(num_threads, 5);
+  Iterative_Control iter_control(num_threads, traj.front()->num_pieces());
   iter_control.iterative_control_opt(traj, controls, 1);
 
 

@@ -415,44 +415,6 @@ Thread* Thread_RRT::getNextGoal() {
     return next_target;
 }
 
-void Thread_RRT::simpleInterpolation(Thread* start, const Thread* goal, vector<Two_Motions*>& motions) {
-  // use quaternion interpolation to move closer to end rot
-  // figure out angle between quats, spherically interpolate.
-  Vector3d translation;
-  Matrix3d rotation; 
-  Vector3d cur_pos = start->end_pos();
-  Matrix3d cur_rot = start->end_rot();
-
-  Vector3d next_pos = goal->end_pos();
-  Matrix3d next_rot = goal->end_rot();
-
-  Matrix3d goal_rot = next_rot;
-  Eigen::Quaterniond endq(cur_rot);
-  Eigen::Quaterniond goalq(goal_rot);
-
-  Vector3d after_goal = goal_rot*Vector3d::UnitX();
-  Vector3d after_end = cur_rot*Vector3d::UnitX();
-  double angle = acos(after_goal.dot(after_end));
-  double t = M_PI/8.0/angle;
-  Eigen::Quaterniond finalq = endq.slerp(t, goalq).normalized();
-  rotation = (finalq*endq.inverse()).toRotationMatrix();
-
-
-  // use linear interpolation to move closer to end pos
-  Vector3d goal_pos = next_pos;
-  translation = goal_pos - cur_pos;
-  double step = 3.0;
-  if(translation.squaredNorm() > 0) {
-    translation.normalize();
-  }
-  translation *= step;
-
-  //Two_Motions *toMove = new Two_Motions(translation, rotation);
-  //motions.push_back(toMove);
-  //toMove->applyMotion(cur_pos, cur_rot);
-  start->set_end_constraint(cur_pos, cur_rot); 
-
-}
 double Thread_RRT::largeRotation(const Thread* target) {  
   // find the closest node in the tree to next
   VectorXd V_target;
