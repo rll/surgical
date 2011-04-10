@@ -11,7 +11,7 @@
 
 #define WEIGHT_VERTICES 1.0
 #define WEIGHT_EDGES 2.0
-#define WEIGHT_ANGLE 10.0
+#define WEIGHT_ANGLE 0.0
 
 enum movement_mode {START, END, START_AND_END};
 

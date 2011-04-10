@@ -1971,6 +1971,33 @@ void Thread::unviolate_total_length_constraint()
     set_end_constraint(this->end_pos() -entire_length_vector*too_long_by, this->end_rot());
   }
 
+
+  pointA = this->start_pos()+this->start_rot().col(0)*_rest_length;
+  pointB= this->end_pos()-this->end_rot().col(0)*_rest_length;
+  entire_length_vector = pointB - pointA;
+  too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
+
+  std::cout << "total length: " << entire_length_vector.norm() << std::endl;
+  
+
+}
+
+
+void Thread::copy_data_from_vector(VectorXd& toCopy)
+{
+  for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
+  {
+    std::cout << "before vertex: " << _thread_pieces[piece_ind]->vertex().transpose() << "\t\t";
+    _thread_pieces[piece_ind]->set_vertex(toCopy.segment(piece_ind*3,3));
+    std::cout << "after vertex: " << _thread_pieces[piece_ind]->vertex().transpose() << std::endl;
+  }
+
+  _thread_pieces[0]->update_edge();
+  _thread_pieces[1]->update_edge();
+  _thread_pieces[0]->update_bishop_frame_firstPiece();
+  _thread_pieces[0]->initializeFrames();
+  _thread_pieces[_thread_pieces.size()-2]->set_angle_twist(toCopy(toCopy.rows()-1));
+  _thread_pieces[_thread_pieces.size()-2]->update_material_frame();
 }
 
 
