@@ -2,4 +2,7 @@
 *.swp
 ThreadVision_DiscreteRods/threadStereo
 ThreadVision_DiscreteRods/threadStereo_fake
+ThreadVision_DiscreteRods/stereo_test/*
 tags
+vision/captures/*
+
