@@ -409,3 +409,20 @@ void thread_to_state_withTwist(const Thread* thread, VectorXd& state)
   }
   state(6*num_pieces - 3) = thread->end_angle();
 }
+
+
+void weight_state(VectorXd& state)
+{
+  const int num_pieces = (state.rows()-1+3)/6;
+  for (int piece_ind=0; piece_ind < num_pieces; piece_ind++)
+  {
+    state.segment(piece_ind*3, 3) *= WEIGHT_VERTICES;
+  }
+
+  for (int piece_ind=0; piece_ind < num_pieces-1; piece_ind++)
+  {
+    state.segment((num_pieces+piece_ind)*3, 3) *= WEIGHT_EDGES;
+  }
+  state(6*num_pieces - 3) *= WEIGHT_ANGLE;
+  
+}

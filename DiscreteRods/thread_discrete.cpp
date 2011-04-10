@@ -1995,10 +1995,18 @@ void Thread::copy_data_from_vector(VectorXd& toCopy)
   _thread_pieces[0]->update_edge();
   _thread_pieces[1]->update_edge();
   _thread_pieces[0]->update_bishop_frame_firstPiece();
+  _thread_pieces[0]->update_material_frame();
   _thread_pieces[0]->initializeFrames();
+  set_start_constraint(_thread_pieces.front()->vertex(), this->start_rot());
+  
+  set_end_constraint(_thread_pieces.back()->vertex(), this->end_rot());
   _thread_pieces[_thread_pieces.size()-2]->set_angle_twist(toCopy(toCopy.rows()-1));
   _thread_pieces[_thread_pieces.size()-2]->update_material_frame();
+  set_end_constraint(_thread_pieces.back()->vertex(), this->end_rot());
+
 }
+
+
 
 
 void Thread::set_coeffs_normalized(double bend_coeff, double twist_coeff, double grav_coeff)

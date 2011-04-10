@@ -801,6 +801,7 @@ void processKeyUp(unsigned char key, int x, int y)
 }
 
 void interruptHandler(int sig) {
+	exit(0);
   cout << "Signal " << sig << " caught..." << endl;
   interruptEnabled = true; 
 }

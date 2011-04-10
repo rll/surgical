@@ -1,4 +1,6 @@
 #include "iterative_control.h"
+#include <fstream>
+
 
 Iterative_Control::Iterative_Control(int num_threads, int num_vertices)
 {
@@ -26,6 +28,7 @@ void Iterative_Control::resize_controller(int num_threads, int num_vertices)
   _size_each_state = (6*num_vertices) - 3 + 1;
   _cols_all_unknown_states = (num_threads-2)*_size_each_state;
   _all_trans.resize(_size_each_state*(_num_threads-1), (_num_threads-2)*_size_each_state + (_num_threads-1)*_size_each_control);
+  _all_trans.setZero();
 
   init_all_trans();
 }
@@ -35,7 +38,7 @@ void Iterative_Control::resize_controller(int num_threads, int num_vertices)
 
 bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vector<VectorXd>& controls, int num_opts)
 {
-  if (trajectory.size() != _num_threads)
+  if (trajectory.size() != _num_threads && trajectory.front()->num_pieces() != _num_vertices)
     return false;
 
   //setup goal vector
@@ -43,27 +46,46 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
   goal_vector.setZero();
   VectorXd state_for_ends(_size_each_state);
   thread_to_state_withTwist(trajectory.front(), state_for_ends);
+  weight_state(state_for_ends);
   goal_vector.segment(0, _size_each_state) = -1 * state_for_ends;
   thread_to_state_withTwist(trajectory.back(), state_for_ends);
+  weight_state(state_for_ends);
   goal_vector.segment((_num_threads-2)*_size_each_state, _size_each_state) = state_for_ends;
-
 
   //vector to contain the new states
   VectorXd new_states((_num_threads-2)*_size_each_state + (_num_threads-1)*_size_each_control);
 
 
-
   for (int opt_iter=0; opt_iter < num_opts; opt_iter++)
   {
     add_transitions_alltrans(trajectory);
-    SparseMatrix<double, RowMajor> all_trans_sparse(_all_trans);
-    SparseLU<SparseMatrix<double, RowMajor>, SuperLU> lu_factorization(SparseMatrix<double, RowMajor>(all_trans_sparse.transpose())*all_trans_sparse);
-    //lu_factorization.solve(goal_copy, &new_states);
-    VectorXd b = SparseMatrix<double, RowMajor>(all_trans_sparse.transpose())*goal_vector;
-    lu_factorization.solve(b, &new_states);
+    MatrixXd all_trans_sparse(_all_trans);
+    //LU<MatrixXd> lu_factorization((MatrixXd(all_trans_sparse.transpose())*all_trans_sparse));
+    VectorXd b = MatrixXd(all_trans_sparse.transpose())*goal_vector;
+    //new_states = b;
+    //lu_factorization.solve(b, &new_states);
+    //lu_factorization.solveInPlace(new_states);
+    
+
+    VectorXd c(goal_vector.rows());
+    (_all_trans*_all_trans.transpose()).lu().solve(goal_vector, &c);
+ 
+    new_states = _all_trans.transpose()*c;
+
+    std::cout << "error: " << (_all_trans*new_states - goal_vector).norm() << std::endl;
+
+
+    ofstream g_vec("goal_vector.txt");
+    g_vec << goal_vector << std::endl;
+
+    ofstream alltrans("all_trans.txt");
+    alltrans << _all_trans << std::endl;
+   // std::cout <<  "A\n" << _all_trans << std::endl;
+   // std::cout <<  "new_states\n" << new_states << std::endl;
 
     vector<Vector3d> points(_num_vertices);
     vector<double> angles(_num_vertices);
+
 
     for (int i=1; i < trajectory.size()-1; i++)
     {
@@ -134,6 +156,7 @@ void Iterative_Control::add_transitions_alltrans(vector<Thread*>& trajectory)
       }
     }
   }
+
 
 }
 

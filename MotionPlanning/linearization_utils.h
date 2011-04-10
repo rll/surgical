@@ -10,7 +10,7 @@
 
 
 #define WEIGHT_VERTICES 1.0
-#define WEIGHT_EDGES 2.0
+#define WEIGHT_EDGES 0.0
 #define WEIGHT_ANGLE 0.0
 
 enum movement_mode {START, END, START_AND_END};
@@ -28,6 +28,6 @@ void simpleInterpolation(Thread* start, const Thread* goal, vector<Two_Motions*>
 
 void thread_to_state(const Thread* thread, VectorXd& state);
 void thread_to_state_withTwist(const Thread* thread, VectorXd& state);
-
+void weight_state(VectorXd& state);
 
 #endif

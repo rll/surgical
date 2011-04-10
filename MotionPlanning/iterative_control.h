@@ -2,12 +2,14 @@
 #define _iterative_control_h
 
 
-#define EIGEN_SUPERLU_SUPPORT
+#define EIGEN_UMFPACK_SUPPORT
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <Eigen/Cholesky>
 #include <Eigen/Sparse>
 #include <Eigen/QR>
+#include <Eigen/LU>
+#include <Eigen/SVD>
 #include <math.h>
 #include "linearization_utils.h"
 #include "../DiscreteRods/thread_discrete.h"
@@ -36,7 +38,7 @@ class Iterative_Control
     void init_all_trans(); /* adds the diagonal weighting terms to _all_trans */
     void add_transitions_alltrans(vector<Thread*>& trajectory);
 
-    DynamicSparseMatrix<double, RowMajor> _all_trans;
+    MatrixXd _all_trans;
     int _num_threads;
     int _size_each_state;
     int _num_vertices;
