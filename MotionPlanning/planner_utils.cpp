@@ -121,7 +121,7 @@ Thread* Thread_RRT::doubleDimApproximation(const Thread* target) {
   increasedDimThread->project_length_constraint();
   
 
-  cout << increasedDimThread->num_pieces() << endl; 
+//  cout << increasedDimThread->num_pieces() << endl; 
 
   return increasedDimThread;
 
@@ -129,7 +129,7 @@ Thread* Thread_RRT::doubleDimApproximation(const Thread* target) {
 
 Thread* Thread_RRT::halfDimApproximation(const Thread* target) {
 
-  cout << "Start with p: " << target->num_pieces() << endl;
+//  cout << "Start with p: " << target->num_pieces() << endl;
 
   vector<Vector3d> vertices;     
   vector<double> angles;
@@ -174,7 +174,7 @@ Thread* Thread_RRT::halfDimApproximation(const Thread* target) {
   //reducedDimensionThread->minimize_energy();
 
 
-  cout << reducedDimensionThread->num_pieces() << endl; 
+ // cout << reducedDimensionThread->num_pieces() << endl; 
 
   return reducedDimensionThread;
 
@@ -304,7 +304,9 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
   }
 
 
-  Matrix3d rot = Matrix3d::Identity();
+  Matrix3d rot;
+  inc << Normal(0,1), Normal(0,1), Normal(0,1);
+  rotation_from_euler_angles(rot, inc(0), inc(1), inc(2));
   return new Thread(vertices, angles, rot, goal_thread->rest_length());
 
 }

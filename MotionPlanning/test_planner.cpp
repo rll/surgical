@@ -25,6 +25,8 @@
 #include "planner_utils.h"
 #include "linearization_utils.h"
 #include "trajectory_follower.h"
+#include <boost/progress.hpp> 
+
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
@@ -71,6 +73,12 @@ int realThread = 2;
 int endThread = 3;
 int newRRTNodeThread = 6;
 
+GLThread* apprxThreads[500]; 
+RRTNode* apprxNodes[5];
+RRTNode* curApprxNodes[5];
+int numApprox = 0; 
+
+
 // double radii[NUM_PTS];
 int pressed_mouse_button;
 
@@ -89,6 +97,7 @@ RRTNode* curNode;
 RRTNode* localCurNode;
 
 bool interruptEnabled = false; 
+bool interpolationDemo = false; 
 
 
 /* set up a light */
@@ -134,12 +143,128 @@ void reduceDimension() {
 }
 
 void increaseDimension() { 
-  
   glThreads[curThread]->setThread(planner.doubleDimApproximation(
         (const Thread*) glThreads[curThread]->getThread()));
 
   glThreads[curThread]->updateThreadPoints();
   glutPostRedisplay();
+}
+
+
+void DimensionReductionBestPath(Thread* start, Thread* target, int n, vector<Thread*>& traj, vector<vector<Two_Motions*> >& mot) 
+{
+  Thread* st = new Thread(*start);
+  Thread* en = new Thread(*target); 
+
+  // need to call minimize energy on start from outside this method 
+  if (n == 0) {
+    glThreads[4]->setThread(new Thread(*start));
+    glThreads[4]->updateThreadPoints();
+    glThreads[5]->setThread(new Thread(*target));
+    glThreads[5]->updateThreadPoints();
+    glThreads[6]->setThread(new Thread(*target));
+    glThreads[6]->updateThreadPoints();
+    planner.initialize(new Thread(*st), new Thread(*en));
+    initialized = true; 
+
+    Thread goal_thread; Thread prev_thread; Thread next_thread; 
+    while(!interruptEnabled) {
+      #pragma omp parallel for num_threads(12)
+      for (int i = 0; i < 999999; i++) {
+        if (!interruptEnabled) {  
+          planner.planStep(goal_thread, prev_thread, next_thread);
+        }
+      }
+    }
+    
+    planner.updateBestPath();
+    
+    RRTNode* node = planner.getTree()->front();
+    node = node->next;
+    while (node != NULL) {
+      traj.push_back(new Thread(*node->thread));
+      mot.push_back(node->lstMotions);
+      node = node->next;
+    }
+
+  } else { 
+    Thread* approxStart = planner.halfDimApproximation(st);
+    Thread* approxTarget = planner.halfDimApproximation(en); 
+    vector<Thread*> path;
+    vector<vector<Two_Motions*> > motions; 
+    DimensionReductionBestPath(approxStart, approxTarget, n-1, path, motions);
+    /* use Trajectory Follower to follow the path in higher D space. */ 
+    
+    // transform the path to higher D space 
+    vector<Thread*> transformed_path; 
+    transformed_path.resize(path.size());
+    boost::progress_display progress(path.size()); 
+    for (int i = 0; i < path.size(); i++) {
+      transformed_path[i] = planner.doubleDimApproximation(path[i]);
+      ++progress; 
+    }
+     
+    // follow the trajectory of the transformed approximation
+    Trajectory_Follower *pathFollower = 
+      new Trajectory_Follower(transformed_path, motions, st);
+
+    pathFollower->control_to_finish(3*n);
+    pathFollower->getReachedStates(traj);
+    cout << traj.size() << endl;
+    pathFollower->getMotions(mot);
+  }
+
+  apprxNodes[n] = new RRTNode(new Thread(*st));
+  curApprxNodes[n] = apprxNodes[n]; 
+  RRTNode* prevNode = apprxNodes[n]; 
+  for (int i = 0; i < traj.size(); i++) {
+    RRTNode* node = new RRTNode(new Thread(*traj[i]));
+    node->prev = prevNode;
+    prevNode->next = node;
+    prevNode = node; 
+  }
+
+}
+
+
+void DimensionReductionBestPath(int n) {
+
+  if (!initialized) { 
+    Thread* start = new Thread(*glThreads[planThread]->getThread());
+    Thread* end = new Thread(*glThreads[endThread]->getThread()); 
+    start->minimize_energy(20000, 1e-10, 0.2, 1e-11);
+    end->minimize_energy(20000, 1e-10, 0.2, 1e-11);
+
+    glThreads[planThread]->setThread(new Thread(*start));
+    glThreads[planThread]->updateThreadPoints();
+    glThreads[endThread]->setThread(new Thread(*end)); 
+    glThreads[endThread]->updateThreadPoints();
+
+    initialized = true;
+    numApprox = n;
+    vector<Thread*> traj;
+    vector<vector<Two_Motions*> > mot;
+
+    DimensionReductionBestPath(start, end, n, traj, mot);  
+
+    localCurNode = apprxNodes[n]; 
+
+    glThreads[startThread]->setThread(new Thread(*start));
+    glThreads[startThread]->updateThreadPoints();
+    curNode = planner.getTree()->front();
+    Thread* curNodeThread = new Thread(*(curNode->thread));
+    glThreads[7]->setThread(curNodeThread);
+    glThreads[7]->updateThreadPoints();
+
+    for (int i = 0; i < numApprox; i++) {
+      apprxThreads[i]->setThread(new Thread(*apprxNodes[i]->thread));
+      apprxThreads[i]->updateThreadPoints(); 
+    }
+  }
+
+  glutPostRedisplay();
+
+
 
 }
 
@@ -274,6 +399,14 @@ void stepTrajectoryFollower() {
 void stepTrajectoryFollower(bool forward) { 
   if(initialized) {
     if (!forward) {
+      for (int i = 0; i < numApprox; i++) { 
+        if (curApprxNodes[i]->prev != NULL) { 
+          curApprxNodes[i] = curApprxNodes[i]->prev;
+          Thread* curApprxThread = new Thread(*(curApprxNodes[i]->thread));
+          apprxThreads[i]->setThread(curApprxThread);
+          apprxThreads[i]->updateThreadPoints(); 
+        }
+      }
       if (localCurNode->prev != NULL) {
         localCurNode = localCurNode->prev;
         Thread* localCurNodeThread = new Thread(*(localCurNode->thread));
@@ -282,7 +415,15 @@ void stepTrajectoryFollower(bool forward) {
         //glThreads[startThread]->minimize_energy();
       }
     }
-    else { 
+    else {
+      for (int i = 0; i < numApprox; i++) {
+        if (curApprxNodes[i]->next != NULL) { 
+          curApprxNodes[i] = curApprxNodes[i]->next;
+          Thread* curApprxThread = new Thread(*(curApprxNodes[i]->thread));
+          apprxThreads[i]->setThread(curApprxThread);
+          apprxThreads[i]->updateThreadPoints(); 
+        }
+      }
       if (localCurNode->next != NULL) {
         localCurNode = localCurNode->next;
         Thread* localCurNodeThread = new Thread(*(localCurNode->thread));
@@ -310,6 +451,27 @@ void stepTrajectoryFollower(bool forward) {
   glutPostRedisplay();
 }
 
+void generateInterpolatedThread() { 
+  Thread* start = new Thread(*glThreads[planThread]->getThread());
+  Thread* end = new Thread(*glThreads[endThread]->getThread());
+  numApprox = 40;
+  interpolationDemo = true; 
+  vector<Thread*> traj;
+  traj.resize(numApprox);
+  traj[0] = start;
+  traj[traj.size()-1]= end; 
+  vector<Two_Motions*> controls;
+  cout << "calling interpolate" << endl; 
+  interpolateThreads(traj, controls);
+
+  for (int i = 0; i < traj.size(); i++) {
+    apprxThreads[i]->setThread(new Thread(*traj[i]));
+    apprxThreads[i]->updateThreadPoints();
+  }
+
+  glutPostRedisplay();
+
+}
 
 
 // change prototype to include the return
@@ -568,7 +730,10 @@ void processNormalKeys(unsigned char key, int x, int y)
   }
   else if (key == 'd') {
     generateRandomThread();
-  } 
+  }
+  else if (key == 'i') {
+    generateInterpolatedThread();
+  }
   else if (key == 'a') {
     planRRT();
   } 
@@ -588,8 +753,8 @@ void processNormalKeys(unsigned char key, int x, int y)
     increaseDimension();
   }
   else if (key == 'n') {
-    DimensionReductionBestPath();
-  }
+    DimensionReductionBestPath(2);
+  } 
   else if (key == '>') {
     stepTrajectoryFollower(true); 
   } 
@@ -741,6 +906,30 @@ void DrawStuff (void)
     glThreads[i]->DrawThread();
   }
 
+  for(int i = 0; i < numApprox; i++) {
+    if ( !initialized && !interpolationDemo ) continue; 
+
+    apprxThreads[i]->DrawAxes();
+
+    //Draw Thread
+    if (i % 7 == 0) {
+      glColor3f (0.8, 0.4, 0.0);
+    } else if (i % 7 ==1) {
+      glColor3f (0.2, 0.8, 0.2);
+    } else if (i % 7 ==2) {
+      glColor3f (0.25, 0.55, 1.0); 
+    } else if (i % 7 ==3) {
+      glColor3f (0.8, 0.2, 0.2);
+    } else if (i % 7==4) {
+      glColor3f (0.2, 0.2, 0.8);
+    } else if (i % 7==5) {
+      glColor3f (0.4, 0.4, 0.7);
+    } else {
+      glColor3f (0.5, 0.5, 0.1);
+    }
+    apprxThreads[i]->DrawThread();
+  }
+
   glPopMatrix ();
   glutSwapBuffers ();
 }
@@ -753,6 +942,10 @@ void InitThread(int argc, char* argv[])
     for(int i = 0; i < totalThreads; i++) {
       glThreads[i] = new GLThread();
     }
+    for(int i = 0; i < 500; i ++) {
+      apprxThreads[i] = new GLThread();
+    }
+
   } else {
     Trajectory_Reader start_reader(argv[1]);
     start_reader.read_threads_from_file();
@@ -838,7 +1031,8 @@ void InitGLUT(int argc, char * argv[]) {
   glutInit (&argc, argv); //can i do that?
   glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   glutInitWindowSize(900,900);
-  glutCreateWindow ("Thread");
+  glutCreateWindow ("Thread")
+;
   glutDisplayFunc (DrawStuff);
   glutMotionFunc (MouseMotion);
   glutMouseFunc (processMouse);

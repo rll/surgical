@@ -1,4 +1,6 @@
 #include "trajectory_follower.h"
+#include <boost/progress.hpp>
+
 
 Trajectory_Follower::Trajectory_Follower(vector<Thread*>& trajectory, vector<vector<Two_Motions*> >& motions, Thread* start_thread) :
   _curr_ind(0)
@@ -8,6 +10,8 @@ Trajectory_Follower::Trajectory_Follower(vector<Thread*>& trajectory, vector<vec
 
   _reached_states.resize(1);
   _reached_states[0] = new Thread(*start_thread);
+  _reached_states_motions.resize(1); 
+
 }
 
 Trajectory_Follower::~Trajectory_Follower()
@@ -15,16 +19,13 @@ Trajectory_Follower::~Trajectory_Follower()
 }
 
 
-vector<Two_Motions*> Trajectory_Follower::Take_Step(int max_linearizations)
+void Trajectory_Follower::Take_Step(int max_linearizations)
 {
   vector<Two_Motions*> motionsGenerated;
-  if (is_done())
-    return motionsGenerated;
   Thread* next_state = new Thread(*_reached_states.back());
 
   const double linearization_error_thresh = 1;
 
-  //next_state->apply_motion(*_motions[_curr_ind]);
   vector<Two_Motions*> motionLst = _motions[_curr_ind];
   for (int i = 0; i < motionLst.size(); i++) { 
     next_state->apply_motion_nearEnds(*motionLst[i]);
@@ -46,10 +47,11 @@ vector<Two_Motions*> Trajectory_Follower::Take_Step(int max_linearizations)
     error_last_linearization = error_this_linearizaton;
   } 
 
-  cout << "adding to reached states " << next_state << endl; 
+  //cout << "adding to reached states " << next_state << endl; 
   _reached_states.push_back(next_state);
-  cout << "reached states size: " << _reached_states.size() << endl ; 
-  return motionsGenerated; 
+  _reached_states_motions.push_back(motionsGenerated);
+  //cout << "reached states size: " << _reached_states.size() << endl ; 
+  
 }
 
 bool Trajectory_Follower::is_done()
@@ -57,6 +59,16 @@ bool Trajectory_Follower::is_done()
   return _curr_ind >= (_trajectory.size()-1);
 
 }
+
+void Trajectory_Follower::control_to_finish(int max_linearizations) {
+  cout << "Control to finish" << endl; 
+  boost::progress_display progress(_trajectory.size() - _curr_ind); 
+  while(!is_done()) { 
+    Take_Step(max_linearizations);
+    ++progress;
+  }
+}
+
 
 
 double Trajectory_Follower::calculate_thread_error(Thread* start, Thread* goal)

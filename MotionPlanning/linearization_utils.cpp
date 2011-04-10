@@ -1,5 +1,5 @@
 #include "linearization_utils.h"
-
+#include <boost/progress.hpp>
 
 
 void applyControl(Thread* start, const VectorXd& u, const movement_mode movement) { 
@@ -210,6 +210,138 @@ void estimate_transition_matrix(Thread* thread, MatrixXd& A, const movement_mode
   thread->restore_thread_pieces(thread_backup_pieces);
 }
 
+void simpleInterpolation(Thread* start, Thread* goal, vector<Two_Motions*>& motions) {
+
+  double step = 1; 
+
+  Vector3d cur_start_pos = start->start_pos();
+  Matrix3d cur_start_rot = start->start_rot();
+  Vector3d cur_end_pos = start->end_pos();
+  Matrix3d cur_end_rot = start->end_rot();
+
+  Vector3d goal_start_pos = goal->start_pos();
+  Matrix3d goal_start_rot = goal->start_rot();
+  Vector3d goal_end_pos = goal->end_pos();
+  Matrix3d goal_end_rot = goal->end_rot();
+
+  Eigen::Quaterniond cur_startq(cur_start_rot);
+  Eigen::Quaterniond cur_endq(cur_end_rot);
+  Eigen::Quaterniond goal_startq(goal_start_rot);
+  Eigen::Quaterniond goal_endq(goal_end_rot); 
+
+  Vector3d cur_start_col = cur_start_rot*Vector3d::UnitX();
+  Vector3d cur_end_col = cur_end_rot*Vector3d::UnitX();
+  Vector3d goal_start_col = goal_start_rot*Vector3d::UnitX();
+  Vector3d goal_end_col = goal_end_rot*Vector3d::UnitX();
+
+  cout << "cur start_col: " << cur_start_col << endl; 
+  cout << "goal start_col: " << goal_start_col << endl; 
+
+  double diff_start_angle = angle_between(cur_start_col, goal_start_col);
+  double diff_end_angle = angle_between(cur_end_col, goal_end_col);
+  
+  cout << "start diff angle: " << diff_start_angle << endl ; 
+
+  double t_start = M_PI/8.0/diff_start_angle;
+  double t_end = M_PI/8.0/diff_end_angle;
+
+  Eigen::Quaterniond final_startq = cur_startq.slerp(t_start, goal_startq).normalized();
+  Eigen::Quaterniond final_endq = cur_endq.slerp(t_end, goal_endq).normalized();
+  
+  Matrix3d interpolated_start_rotation = (final_startq*cur_startq.inverse()).toRotationMatrix(); 
+  Matrix3d interpolated_end_rotation = (final_endq*cur_endq.inverse()).toRotationMatrix();
+  Vector3d interpolated_start_pos = goal_start_pos - cur_start_pos;
+  Vector3d interpolated_end_pos = goal_end_pos - cur_end_pos;
+
+  if(interpolated_start_pos.squaredNorm() > 0) { 
+    interpolated_start_pos.normalized();
+    interpolated_start_pos *= step;
+  }
+  
+  if(interpolated_end_pos.squaredNorm() > 0) { 
+    interpolated_end_pos.normalized();
+    interpolated_end_pos *= step;
+  }
+  cout << "start pos ctrl: " << endl; 
+  cout << interpolated_start_pos.transpose() << endl; 
+  cout << "start rot ctrl: " << endl; 
+  cout << interpolated_start_rotation << endl; 
+
+
+  Two_Motions* interpMotion = new Two_Motions(interpolated_start_pos, interpolated_start_rotation, interpolated_end_pos, interpolated_end_rotation);
+
+  motions.push_back(interpMotion);
+  start->apply_motion_nearEnds(*interpMotion);
+
+
+}
+
+void interpolateThreads(vector<Thread*>&traj, vector<Two_Motions*>& controls) {
+  
+  Thread* start = traj.front();
+  Thread* end = traj[traj.size()-1];
+
+  vector<Vector3d> start_pts;
+  vector<Vector3d> end_pts;
+  vector<double> start_twist_angles;
+  vector<double> end_twist_angles; 
+  start->get_thread_data(start_pts, start_twist_angles);  
+  end->get_thread_data(end_pts, end_twist_angles); 
+  
+  Matrix3d start_start_rot = start->start_rot();
+  Matrix3d end_start_rot = end->start_rot(); 
+  Matrix3d start_end_rot = start->end_rot();
+  Matrix3d end_end_rot = end->end_rot(); 
+
+  Eigen::Quaterniond start_startq(start_start_rot);
+  Eigen::Quaterniond end_startq(end_start_rot);
+  Eigen::Quaterniond start_endq(start_end_rot);
+  Eigen::Quaterniond end_endq(end_end_rot); 
+
+
+  double T = traj.size(); 
+  
+  cout << "starting interpolation" << endl; 
+  boost::progress_display progress(traj.size()-2); 
+#pragma omp parallel for num_threads(12) 
+  for (int t = 1; t < traj.size()-1; t++) {
+    vector<Vector3d> interpolated_pts;
+    vector<double> interpolated_angles; 
+    for (int p = 0; p < start_pts.size(); p++) { 
+      Vector3d pts = ((T-t)/T)*start_pts[p] + (t/T)*end_pts[p];
+      interpolated_pts.push_back(pts);
+      interpolated_angles.push_back(0.0);
+    }
+    Eigen::Quaterniond interp_start_q = start_startq.slerp(t/T, end_startq);
+    Eigen::Quaterniond interp_end_q = start_endq.slerp(t/T, end_endq);
+    Matrix3d start_rot = interp_start_q.toRotationMatrix();
+    Matrix3d end_rot = interp_end_q.toRotationMatrix(); 
+    Thread* interpolated_thread = new Thread(interpolated_pts, interpolated_angles, start_rot, end_rot);
+
+    interpolated_thread->minimize_energy();
+    traj[t] = interpolated_thread; 
+    ++progress; 
+  }
+
+
+
+
+/*  for (int i = 1; i < traj.size() - 1; i++) {
+    cout << i << endl; 
+    Thread* st = new Thread(*traj[i-1]);
+    VectorXd points; 
+    st->toVector(&points);
+    cout << points << endl; 
+    vector<Two_Motions*> cntrls;
+    cout << "calling simple interpolation" << endl; 
+    simpleInterpolation(st, end, cntrls);
+    controls.push_back(cntrls.front());
+    traj[i] = st;  
+  }
+*/
+
+
+}
 
 void estimate_transition_matrix_withTwist(Thread* thread, MatrixXd& A, const movement_mode movement)
 {

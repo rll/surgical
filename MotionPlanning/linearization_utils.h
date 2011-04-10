@@ -23,6 +23,8 @@ void solveLinearizedControl(Thread* start, const Thread* goal, const movement_mo
 void solveLinearizedControl(Thread* start, const Thread* goal, vector<Two_Motions*>& motions, const movement_mode movement = END);
 void estimate_transition_matrix(Thread* thread, MatrixXd& A, const movement_mode movement = END);
 void estimate_transition_matrix_withTwist(Thread* thread, MatrixXd& A, const movement_mode movement = END);
+void interpolateThreads(vector<Thread*>&traj, vector<Two_Motions*>& controls);
+void simpleInterpolation(Thread* start, const Thread* goal, vector<Two_Motions*>& motions);
 
 void thread_to_state(const Thread* thread, VectorXd& state);
 void thread_to_state_withTwist(const Thread* thread, VectorXd& state);
