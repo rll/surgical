@@ -85,8 +85,8 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
 
     
       trajectory[i] = new Thread(points, angles, start_rot);
-      trajectory[i]->unviolate_total_length_constraint();
-      trajectory[i]->minimize_energy();
+      //trajectory[i]->unviolate_total_length_constraint();
+      //trajectory[i]->minimize_energy();
     }
       
   }

@@ -65,7 +65,7 @@ void benchmark(unsigned int seed, float threshold) {
   boost::timer t; 
 
   do {
-#pragma omp parallel for num_threads(12)
+#pragma omp parallel for num_threads(NUM_CPU_THREADS)
     for (int i = 0; i < 36; i++) { 
       planner.planStep(*goal_thread, *prev_thread, *next_thread);
     }

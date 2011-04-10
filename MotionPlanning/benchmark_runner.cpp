@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <omp.h> 
 #include <signal.h>
-#define PARALLEL_BENCHMARK 1
+
 
 using namespace std;
 namespace po = boost::program_options;
@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
   signal(SIGINT, &exit); 
   
   srand(seed); 
-//#pragma omp parallel for num_threads(PARALLEL_BENCHMARK)
+//#pragma omp parallel for num_threads(NUM_CPU_THREADS)
   for (int i = 0; i < numTests; i++) { 
 //   omp_set_lock(&writelock);
     char buffer[256]; 

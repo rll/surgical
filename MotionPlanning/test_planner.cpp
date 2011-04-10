@@ -169,7 +169,7 @@ void DimensionReductionBestPath(Thread* start, Thread* target, int n, vector<Thr
 
     Thread goal_thread; Thread prev_thread; Thread next_thread; 
     while(!interruptEnabled) {
-      #pragma omp parallel for num_threads(12)
+      #pragma omp parallel for num_threads(NUM_CPU_THREADS)
       for (int i = 0; i < 999999; i++) {
         if (!interruptEnabled) {  
           planner.planStep(goal_thread, prev_thread, next_thread);
@@ -297,7 +297,7 @@ void DimensionReductionBestPath() {
   
   Thread goal_thread; Thread prev_thread; Thread next_thread; 
   while(!interruptEnabled) {
-  #pragma omp parallel for num_threads(12)
+  #pragma omp parallel for num_threads(NUM_CPU_THREADS)
     for (int i = 0; i < 999999; i++) {
       if (!interruptEnabled) {  
         planner.planStep(goal_thread, prev_thread, next_thread);
@@ -539,7 +539,7 @@ void stepRRT(int times) {
   planRRT(); 
   Thread goal_thread; Thread prev_thread; Thread next_thread;
 
-#pragma omp parallel for num_threads(12)
+#pragma omp parallel for num_threads(NUM_CPU_THREADS)
   for (int i = 0; (i < 500*times - 2); i++) {
     if (!interruptEnabled) {
       planner.planStep(goal_thread, prev_thread, next_thread); 
@@ -845,7 +845,7 @@ int main (int argc, char * argv[])
 
 
   signal(SIGINT, &interruptHandler);
-
+  cout << "Running with CPU Threads = " << NUM_CPU_THREADS << endl; 
   glutMainLoop ();
 }
 

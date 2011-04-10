@@ -1,3 +1,5 @@
+HOSTNAME=-D$(shell uname -n)
+
 UTILS_DIR = ../../utils/
 THREAD_DIR = ../DiscreteRods/
 VISION_DIR = ../vision/
@@ -6,8 +8,8 @@ INCLUDES = -I/usr/local/include/ -I $(UTILS_DIR) -I/usr/local/include/eigen2/ -I
 #INCLUDES = -I/usr/local/include/ -I/usr/local/include/opencv/ -I/usr/local/include/libPvAPI -I $(UTILS_DIR)
 OPT_COMP = -DEIGEN_NO_DEBUG -O3 
 FOPENMP = -fopenmp
-CC = g++ $(OPT_COMP) $(COMPILEFLAG) $(FOPENMP)
-LD = g++ $(OPT_COMP) $(LDFLAG) $(FOPENMP) 
+CC = g++ $(OPT_COMP) $(COMPILEFLAG) $(FOPENMP) $(HOSTNAME)
+LD = g++ $(OPT_COMP) $(LDFLAG) $(FOPENMP) $(HOSTNAME)
 # DEBUG = -ggdb
 DEBUG = -ggdb
 PROFILER =

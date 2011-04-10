@@ -13,6 +13,14 @@
 #include <vector>
 #include <algorithm>
 
+#ifdef surgical1
+  #define NUM_CPU_THREADS 6 
+#elif surgical2
+  #define NUM_CPU_THREADS 12
+#else
+  #define NUM_CPU_THREADS 1
+#endif
+  
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN

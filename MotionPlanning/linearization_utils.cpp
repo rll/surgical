@@ -327,7 +327,7 @@ void interpolateThreads(vector<Thread*>&traj, vector<Two_Motions*>& controls) {
   }
   boost::progress_display progress(T-2); 
 
-  #pragma omp parallel for num_threads(12) 
+  #pragma omp parallel for num_threads(NUM_CPU_THREADS) 
   for (int t = 1; t < traj.size()-1; t++) { 
     traj[t]->minimize_energy(); 
     ++progress; 
