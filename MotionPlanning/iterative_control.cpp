@@ -68,7 +68,7 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
     
 
     VectorXd c(goal_vector.rows());
-    (_all_trans*_all_trans.transpose()).lu().solve(goal_vector, &c);
+    (_all_trans*_all_trans.transpose()).svd().solve(goal_vector, &c);
  
     new_states = _all_trans.transpose()*c;
 
