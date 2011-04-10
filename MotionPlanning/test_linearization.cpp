@@ -21,6 +21,7 @@
 #include "../DiscreteRods/thread_discrete.h"
 #include "../DiscreteRods/trajectory_reader.h"
 #include "linearization_utils.h"
+#include "iterative_control.h"
 #include "trajectory_follower.h"
 #include "../../utils/clock.h"
 
@@ -400,6 +401,7 @@ int main (int argc, char * argv[])
   for (int i=0; i < num_threads;i++)
   {
     GLThread* a = new GLThread();
+    a->getThread()->minimize_energy();
     traj.push_back(a->getThread());
   }
   for (int i=0; i < num_threads-1; i++)
@@ -408,7 +410,8 @@ int main (int argc, char * argv[])
   }
 
 
-  iterative_control_opt(traj, controls);
+  Iterative_Control iter_control(num_threads, 5);
+  iter_control.iterative_control_opt(traj, controls, 1);
 
 
   // for (int i=0; i < NUM_PTS; i++)

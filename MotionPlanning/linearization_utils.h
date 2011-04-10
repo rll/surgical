@@ -4,7 +4,6 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <Eigen/Cholesky>
-#include <Eigen/Sparse>
 #include <math.h>
 #include "../DiscreteRods/thread_discrete.h"
 #include "../DiscreteRods/trajectory_reader.h"
@@ -12,8 +11,7 @@
 
 #define WEIGHT_VERTICES 1.0
 #define WEIGHT_EDGES 2.0
-
-using namespace Eigen;
+#define WEIGHT_ANGLE 10.0
 
 enum movement_mode {START, END, START_AND_END};
 
@@ -24,11 +22,10 @@ void computeDifference_maxMag(Thread* start, const Thread* goal, VectorXd& res, 
 void solveLinearizedControl(Thread* start, const Thread* goal, const movement_mode movement = END);
 void solveLinearizedControl(Thread* start, const Thread* goal, vector<Two_Motions*>& motions, const movement_mode movement = END);
 void estimate_transition_matrix(Thread* thread, MatrixXd& A, const movement_mode movement = END);
+void estimate_transition_matrix_withTwist(Thread* thread, MatrixXd& A, const movement_mode movement = END);
 
-
-
-void iterative_control_opt(vector<Thread*>& trajectory, vector<VectorXd>& controls);
-void ico_compute_massive_trans(vector<Thread*>& trajectory, SparseMatrix<double, RowMajor>& massive_mat);
+void thread_to_state(const Thread* thread, VectorXd& state);
+void thread_to_state_withTwist(const Thread* thread, VectorXd& state);
 
 
 #endif

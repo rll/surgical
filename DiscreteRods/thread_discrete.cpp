@@ -1707,6 +1707,14 @@ void Thread::restore_angle_twists()
 }
 
 
+void Thread::get_thread_data(vector<Vector3d>& points)
+{
+  points.resize(_thread_pieces.size());
+  for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
+  {
+    points[piece_ind] = _thread_pieces[piece_ind]->vertex();
+  }
+}
 
 void Thread::get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles)
 {
