@@ -4,6 +4,7 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <Eigen/Cholesky>
+#include <Eigen/Sparse>
 #include <math.h>
 #include "../DiscreteRods/thread_discrete.h"
 #include "../DiscreteRods/trajectory_reader.h"
@@ -11,6 +12,8 @@
 
 #define WEIGHT_VERTICES 1.0
 #define WEIGHT_EDGES 2.0
+
+using namespace Eigen;
 
 enum movement_mode {START, END, START_AND_END};
 
@@ -24,6 +27,10 @@ void estimate_transition_matrix(Thread* thread, MatrixXd& A, const movement_mode
 void interpolateThreads(vector<Thread*>&traj, vector<Two_Motions*>& controls);
 void simpleInterpolation(Thread* start, const Thread* goal, vector<Two_Motions*>& motions);
 
+
+
+void iterative_control_opt(vector<Thread*>& trajectory, vector<VectorXd>& controls);
+void ico_compute_massive_trans(vector<Thread*>& trajectory, SparseMatrix<double, RowMajor>& massive_mat);
 
 
 #endif

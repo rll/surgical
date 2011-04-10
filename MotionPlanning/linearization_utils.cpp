@@ -96,7 +96,7 @@ void computeDifference_maxMag(Thread* start, const Thread* goal, VectorXd& res, 
   {
     res.segment(piece_ind*3, 3) = (goal->vertex_at_ind(piece_ind) - start->vertex_at_ind(piece_ind));
   }
-  for (int piece_ind=0; piece_ind < goal->num_pieces(); piece_ind++)
+  for (int piece_ind=0; piece_ind < goal->num_edges(); piece_ind++)
   {
     res.segment(goal->num_pieces()*3 +piece_ind*3, 3) = (goal->edge_at_ind(piece_ind) - start->edge_at_ind(piece_ind));
   }
@@ -121,6 +121,7 @@ void solveLinearizedControl(Thread* start, const Thread* goal, vector<Two_Motion
 
 
   int num_pieces = start->num_pieces();
+  int num_edges = start->num_edges();
   // linearize the controls around the current thread (quasistatic, no dynamics)
   MatrixXd B(6*num_pieces,num_controls);
   estimate_transition_matrix(start, B, movement);
@@ -131,7 +132,7 @@ void solveLinearizedControl(Thread* start, const Thread* goal, vector<Two_Motion
   {
     weighting_mat(i,i) = WEIGHT_VERTICES;
   } 
-  for (int i=0; i < 3*num_pieces; i++)
+  for (int i=0; i < 3*num_edges; i++)
   {
     weighting_mat(i+3*num_pieces,i+3*num_pieces) = WEIGHT_EDGES;
   } 
@@ -171,6 +172,7 @@ void solveLinearizedControl(Thread* start, const Thread* goal, const movement_mo
 void estimate_transition_matrix(Thread* thread, MatrixXd& A, const movement_mode movement)
 {
   int num_pieces = thread->num_pieces();
+  int num_edges = thread->num_edges();
   vector<ThreadPiece*> thread_backup_pieces;
   thread->save_thread_pieces_and_resize(thread_backup_pieces);
 
@@ -187,7 +189,7 @@ void estimate_transition_matrix(Thread* thread, MatrixXd& A, const movement_mode
     {
       A.block(piece_ind*3, i, 3,1) = thread->vertex_at_ind(piece_ind);
     }
-    for (int piece_ind=0; piece_ind < num_pieces; piece_ind++)
+    for (int piece_ind=0; piece_ind < num_edges; piece_ind++)
     {
       A.block(3*num_pieces + piece_ind*3, i, 3,1) = thread->edge_at_ind(piece_ind);
     }
@@ -199,7 +201,7 @@ void estimate_transition_matrix(Thread* thread, MatrixXd& A, const movement_mode
     {
       A.block(piece_ind*3, i, 3,1) -= thread->vertex_at_ind(piece_ind);
     }
-    for (int piece_ind=0; piece_ind < num_pieces; piece_ind++)
+    for (int piece_ind=0; piece_ind < num_edges; piece_ind++)
     {
       A.block(3*num_pieces + piece_ind*3, i, 3,1) -= thread->edge_at_ind(piece_ind);
     }
@@ -345,8 +347,73 @@ void interpolateThreads(vector<Thread*>&traj, vector<Two_Motions*>& controls) {
 
 
 
+void iterative_control_opt(vector<Thread*>& trajectory, vector<VectorXd>& controls)
+{
+  const int size_each_state = 6*trajectory.front()->num_edges() + 3;
+  const int size_each_control = 12;
+  SparseMatrix<double, Eigen::RowMajor> all_trans_mat(size_each_state*(trajectory.size()-1), (trajectory.size()-2)*size_each_state + (trajectory.size()-1)*size_each_control);
+  
+  ico_compute_massive_trans(trajectory, all_trans_mat);
+
+}
+
+void ico_compute_massive_trans(vector<Thread*>& trajectory, SparseMatrix<double, RowMajor>& massive_mat)
+{
+  const int num_verts = trajectory.front()->num_pieces();
+  const int num_edges = trajectory.front()->num_edges();
+  const int size_each_state = 6*num_edges + 3;
+  const int size_each_control = 12;
+  const int cols_all_unknown_states = (trajectory.size()-2)*size_each_state;
+
+  MatrixXd trans(size_each_state, size_each_control);
+  //weight matrix for different aspects of state
+  MatrixXd state_weight_mat = MatrixXd::Identity(6*num_verts, 6*num_verts);
+  for (int i=0; i < 3*num_verts; i++)
+  {
+    state_weight_mat(i,i) = WEIGHT_VERTICES;
+  } 
+  for (int i=0; i < 3*num_edges; i++)
+  {
+    state_weight_mat(i+3*num_verts,i+3*num_verts) = WEIGHT_EDGES;
+  } 
+
+  std::cout << "size: " << massive_mat.rows() << " " << massive_mat.cols() << std::endl;
+
+  massive_mat.startFill();
+  for (int i=0; i < trajectory.size()-1; i++)
+  {
+    std::cout << "i: " << i << std::endl;
+    estimate_transition_matrix(trajectory[i], trans, START_AND_END);
+
+    int num_rows_start = i*size_each_state;
+    int num_cols_start = cols_all_unknown_states+i*size_each_control;
+    for (int r=0; r < size_each_state; r++)
+    {
+      std::cout << "r: " << r << std::endl;
+      if (i != 0)
+      {
+        std::cout << "ind: " << (num_rows_start+r) <<" " << (num_rows_start+r -size_each_state) << std::endl;
+        massive_mat.fill(num_rows_start+r,num_rows_start+r -size_each_state) = state_weight_mat(r,r);
+      }
+      if (i != trajectory.size()-2)
+      {
+        std::cout << "ind: " << (num_rows_start+r) <<" " << (num_rows_start+r) << std::endl;
+        massive_mat.fill(num_rows_start+r,num_rows_start+r) = -state_weight_mat(r,r);
+      }
+
+      for (int c=0; c < size_each_control; c++)
+      {
+        std::cout << "ind: " << (num_rows_start+r) <<" " << (num_cols_start+c) << std::endl;
+        massive_mat.fill(num_rows_start+r, num_cols_start+c) = trans(r,c);
+      }
+    }
+  }
+  massive_mat.endFill();
 
 
+  std::cout << "huge shit:\n" << massive_mat << std::endl;
+  
+}
 
 
 
