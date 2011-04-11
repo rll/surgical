@@ -455,7 +455,7 @@ void generateInterpolatedThread() {
 
   Thread* start = new Thread(*glThreads[planThread]->getThread());
   Thread* end = new Thread(*glThreads[endThread]->getThread());
-  numApprox = 25;
+  numApprox = 15;
   interpolationDemo = true; 
   vector<Thread*> traj;
   traj.resize(numApprox);
@@ -464,21 +464,23 @@ void generateInterpolatedThread() {
   vector<Two_Motions*> controls;
   cout << "calling interpolate" << endl; 
   interpolateThreads(traj, controls);
-  vector<VectorXd> zeroCtrl; 
+  vector<VectorXd> U; 
 
   for (int i = 0; i < traj.size(); i++) {
     VectorXd ctrl(12);
     ctrl.setZero();
-    zeroCtrl.push_back(ctrl); 
+    U.push_back(ctrl); 
   }
 
   Iterative_Control* ic = new Iterative_Control(traj.size(), traj.front()->num_pieces());
 
-  ic->iterative_control_opt(traj, zeroCtrl, 5);
-  cout << "iterative ctrl ret" << endl; 
+  ic->iterative_control_opt(traj, U, 5);
 
-  for (int i = 0; i < traj.size(); i++) { 
-    apprxThreads[i]->setThread(new Thread(*traj[i]));
+  apprxThreads[0]->setThread(new Thread(*traj[0]));
+  for (int i = 1; i < traj.size(); i++) { 
+    Thread* startThread = new Thread(*apprxThreads[i-1]->getThread());
+    applyControl(startThread, U[i-1], START_AND_END);
+    apprxThreads[i]->setThread(new Thread(*startThread));
     apprxThreads[i]->updateThreadPoints();
   }
 
