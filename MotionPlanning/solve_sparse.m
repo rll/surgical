@@ -7,13 +7,36 @@ A = sparse(A_data(:, 1), A_data(:, 2), A_data(:, 3), A_m, A_n);
 %A = A_data;
 
 b_data = load(b_file);
-b = sparse(b_data(:, 1), b_data(:, 2), b_data(:, 3), b_m, b_n); 
-%b = b_data;
+%b = sparse(b_data(:, 1), b_data(:, 2), b_data(:, 3), b_m, b_n); 
+b = load(b_file);
+
+weight_vector = zeros(size_each_state,1);
+for i=1:size_each_state
+  weight_vector(i) = -A(i,i);
+end
+
+b = zeros(size_each_state*(num_threads-1),1);
+b(1:size_each_state) = b_data(1:size_each_state) .* -weight_vector;
+b(end-size_each_state+1: end) = b_data(end-size_each_state+1:end) .* weight_vector;
+
+weighted_state_diff_constraint = 10;
+control_diff_constraint = 6;
 
 cvx_begin
     variable x(A_n)
-    minimize (norm(A*x - b) + 0.1*norm(x((num_threads-2)*size_each_state:end)));
+    minimize (norm(A*x - b) + 0.5*norm(x((num_threads-2)*size_each_state:end)));
+  
+    subject to
+      for thread_num=1:num_threads-2
+        norm( weight_vector.* x(size_each_state*(thread_num-1) + 1: size_each_state*(thread_num)) - weight_vector.* b_data((thread_num*size_each_state)+1 : (thread_num+1)*size_each_state)) < weighted_state_diff_constraint;
+      end
+      
+      for thread_num=1:num_threads-1
+        norm( x(size_each_state*(num_threads-2) + (thread_num-1)*size_each_control +1 : size_each_state*(num_threads-2) + (thread_num)*size_each_control)) < control_diff_constraint;
+      end
+    
 
+      
 cvx_end
 
 dlmwrite(x_file, full(x), 'precision', 10); 

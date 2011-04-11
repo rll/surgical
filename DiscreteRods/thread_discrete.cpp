@@ -1986,12 +1986,13 @@ void Thread::unviolate_total_length_constraint()
 
 void Thread::copy_data_from_vector(VectorXd& toCopy)
 {
+  /*
   for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
     std::cout << "before vertex: " << _thread_pieces[piece_ind]->vertex().transpose() << "\t\t";
     _thread_pieces[piece_ind]->set_vertex(toCopy.segment(piece_ind*3,3));
     std::cout << "after vertex: " << _thread_pieces[piece_ind]->vertex().transpose() << std::endl;
-  }
+  }*/
 
   _thread_pieces[0]->update_edge();
   _thread_pieces[1]->update_edge();
