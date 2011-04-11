@@ -455,7 +455,7 @@ void generateInterpolatedThread() {
 
   Thread* start = new Thread(*glThreads[planThread]->getThread());
   Thread* end = new Thread(*glThreads[endThread]->getThread());
-  numApprox = 3;
+  numApprox = 15;
   interpolationDemo = true; 
   vector<Thread*> traj;
   traj.resize(numApprox);

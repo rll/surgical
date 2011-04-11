@@ -1,5 +1,11 @@
 #include "iterative_control.h"
 
+#ifdef surgical2
+  #define MATLAB_INSTALL "/usr/local/bin/matlab/bin/matlab"
+#else
+  #define MATLAB_INSTALL "matlab"
+#endif
+
 
 Iterative_Control::Iterative_Control(int num_threads, int num_vertices)
 {
@@ -98,7 +104,7 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
 
 
     char matlab_command[1024];
-    sprintf(matlab_command, "matlab -nodisplay -nodesktop -nojvm -r \"solve_sparse(%d, %d, \'%s\', %d, %d, \'%s\', \'%s\', %d, %d, %d)\"", _all_trans.rows(), _all_trans.cols(), FILENAME_ALLTRANS, goal_vector.rows(), goal_vector.cols(), FILENAME_GOALVEC, FILENAME_STATEVEC, _num_threads, _size_each_state, _size_each_control);
+    sprintf(matlab_command, "%s -nodisplay -nodesktop -nojvm -r \"solve_sparse(%d, %d, \'%s\', %d, %d, \'%s\', \'%s\', %d, %d, %d)\"", MATLAB_INSTALL, _all_trans.rows(), _all_trans.cols(), FILENAME_ALLTRANS, goal_vector.rows(), goal_vector.cols(), FILENAME_GOALVEC, FILENAME_STATEVEC, _num_threads, _size_each_state, _size_each_control);
     std::cout << "command: " << matlab_command << std::endl;
 
     system(matlab_command);
