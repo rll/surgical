@@ -239,8 +239,7 @@ void Thread_Hypoth::add_possible_next_hypoths(
         vector<Thread_Hypoth*>& extra_next_hypoths)
 {
     Vector3d new_vertex_init;
-    new_vertex_init = _thread_pieces[_thread_pieces.size() - 2]->edge()
-            + _thread_pieces.back()->vertex();
+    new_vertex_init = end_edge() + end_pos();
 
     double new_angle = 0;
     if (_thread_pieces.size() > 2) {
@@ -255,6 +254,8 @@ void Thread_Hypoth::add_possible_next_hypoths(
     _thread_pieces[_thread_pieces.size() - 2]->set_next(
             (ThreadPiece_Vision*) _thread_pieces.back());
     _thread_pieces[_thread_pieces.size() - 2]->set_angle_twist(new_angle); //Since last two pieces have to have the same twist
+
+    /* Append new thread_piece by interpolation */
 
     //this could be sped up - only need to update last piece
     _thread_pieces.front()->initializeFrames();
@@ -320,9 +321,7 @@ bool Thread_Hypoth::find_next_tan_visual(vector<tangent_and_score>& tangents)
             currTangent.normalize();
 
             /* Use visual reprojection error for score. Add dot product
-             * of original tangent and new tangent to scorelface
-             *
-             *  */
+             * of original tangent and new tangent to scorelface */
             double currScore =
                             TAN_SCORE_VISUAL_COEFF
                                     * _thread_vision->scoreProjection3dPointAndTanget(
@@ -447,7 +446,8 @@ void suppress_hypoths(vector<Thread_Hypoth*>& hypoths,
     sort(hypoths.begin(), hypoths.end(), lessthan_Thread_Hypoth);
     int ind_checking;
     for (ind_checking = 0; ind_checking < hypoths.size(); ind_checking++) {
-        if (inds_to_keep.size() > 0 && hypoths[ind_checking]->score()
+        /* Have at least two hypoths */
+        if (inds_to_keep.size() >= 2 && hypoths[ind_checking]->score()
                 > hypoths.front()->score() * total_score_thresh)
             break;
 

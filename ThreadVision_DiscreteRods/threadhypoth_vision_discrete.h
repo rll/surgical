@@ -53,14 +53,12 @@ public:
     const double score(void) const
     {
         return _score;
-    }
-    ;
+    };
 
     void initializeFrames()
     {
         _thread_pieces.front()->initializeFrames();
-    }
-    ;
+    };
 
     bool lessthan_Thread_Hypoth(const Thread_Hypoth* a, const Thread_Hypoth* b);
 

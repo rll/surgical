@@ -426,8 +426,8 @@ bool Thread_Vision::generateNextSetOfHypoths() {
     if (!isDone())
     {
         suppress_hypoths(current_thread_hypoths);
+
         add_possible_next_hypoths(current_thread_hypoths);
-        cout << "Current size: " << current_thread_hypoths.size() << endl;
 
         suppress_hypoths(current_thread_hypoths);
 
@@ -454,7 +454,6 @@ bool Thread_Vision::runThreadSearch()
     while(!isDone()) {
         generateNextSetOfHypoths(); 
     }
-
     return true;
 }
 
