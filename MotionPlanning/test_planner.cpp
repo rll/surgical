@@ -473,7 +473,7 @@ void generateInterpolatedThread() {
 
   Thread* start = new Thread(*glThreads[planThread]->getThread());
   Thread* end = new Thread(*glThreads[endThread]->getThread());
-  numApprox = 15;
+  numApprox = 25;
   interpolationDemo = true; 
   vector<Thread*> traj;
   traj.resize(numApprox);
@@ -495,7 +495,6 @@ void generateInterpolatedThread() {
   ic->iterative_control_opt(traj, U, 1);
   localCurNode = new RRTNode(new Thread(*traj[0]));
   RRTNode* prevNode = localCurNode; 
-  numApprox += 1;
   apprxThreads[numApprox-1]->setThread(new Thread(*traj[0]));
   apprxThreads[numApprox-1]->updateThreadPoints();
   Thread* prevThread = apprxThreads[numApprox-1]->getThread(); 
@@ -508,8 +507,8 @@ void generateInterpolatedThread() {
     prevNode->next = node;
     prevNode = node;
     prevThread = startThread; 
-    apprxThreads[i]->setThread(new Thread(*traj[i]));
-    apprxThreads[i]->updateThreadPoints();
+    apprxThreads[i-1]->setThread(new Thread(*traj[i]));
+    apprxThreads[i-1]->updateThreadPoints();
   }
 
   glutPostRedisplay();
