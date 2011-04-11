@@ -44,6 +44,8 @@
 #define TRY_ALL false
 
 
+enum DisplayedThreads {currentThread = 0, optimizedThread = 1, justVisualErrorThread = 2};
+
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
@@ -55,6 +57,7 @@ void DrawAxes();
 void InitThread(int argc, char* argv[]);
 void updateIms(cv::Point3f& start_pt, Vector3d& start_tan, cv::Point3f& end_pt, Vector3d& end_tan);
 void findThreadInIms();
+void showThread(Thread *aThread, DisplayedThreads type = optimizedThread);
 void addThreadDebugInfo();
 void save_opengl_image();
 
@@ -83,10 +86,11 @@ float tangent_rotation_end[2];
 
 GLThread* glThreads[3];
 int totalThreads = 3;
-int curThread = 0;
-int startThread = 0;
-int optimize_thread = 1;
-int just_vis_error_thread = 2;
+//int curThread = 0;
+//int startThread = 0;
+//int optimize_thread = 1;
+//int just_vis_error_thread = 2;
+
 
 bool show_threads[3];
 
@@ -138,7 +142,7 @@ GLfloat lightFourColor[] = {0.99, 0.99, 0.99, 1.0};
 
 
 void applyControl(Thread* start, const VectorXd& u, VectorXd* res) {
-    int N = glThreads[startThread]->getThread()->num_pieces();
+    int N = glThreads[currentThread]->getThread()->num_pieces();
     res->setZero(3*N);
 
     Vector3d translation;
@@ -176,8 +180,9 @@ void computeDifference(Thread* a, Thread* b, VectorXd* res) {
 
 
 void selectThread(int inc) {
-    curThread = (curThread + inc) % totalThreads;
-    glutPostRedisplay();
+    int i = 0;
+//    curThread = (curThread + inc) % totalThreads;
+//    glutPostRedisplay();
 }
 
 void processLeft(int x, int y)
@@ -277,16 +282,14 @@ void processNormalKeys(unsigned char key, int x, int y)
         std::cout << "displaying thread " << thread_ind  << std::endl;
         if (thread_ind >= 0 && thread_ind < all_threads.size())
         {
-            glThreads[startThread]->setThread((new Thread(all_threads[thread_ind])));
-            glutPostRedisplay();
+            showThread(&all_threads[thread_ind], currentThread);
         }
     } else if (key == 'b') {
         thread_ind--;
         std::cout << "displaying thread " << thread_ind  << std::endl;
         if (thread_ind >= 0 && thread_ind < all_threads.size())
         {
-            glThreads[startThread]->setThread((new Thread(all_threads[thread_ind])));
-            glutPostRedisplay();
+            showThread(&all_threads[thread_ind], currentThread);
         }
     } else if (key == 'v') {
         findThreadInIms();
@@ -296,14 +299,7 @@ void processNormalKeys(unsigned char key, int x, int y)
         if (thread_vision.hasInit) {
             if (!thread_vision.isDone()) {
                 thread_vision.generateNextSetOfHypoths();
-                glThreads[optimize_thread]->setThread(new Thread(*thread_vision.curr_thread()));
-                glutPostRedisplay();
-
-
-                thread_vision.addThreadPointsToDebugImages(Scalar(200,0,0));
-                thread_vision.add_debug_points_to_ims();
-
-                thread_vision.saveImages(image_save_base, thread_ind+1);
+                showThread(thread_vision.curr_thread());
             }
             else {
                 cout << "Search already finished" << endl;
@@ -312,27 +308,17 @@ void processNormalKeys(unsigned char key, int x, int y)
         else {
             cout << "Thread Vision not initialized. Press 'v' to init" << endl;
         }
-    } else if (key == 'x') {
+    } else if (key == 'q') {
         cout << "Flip to prev hypoth" << endl;
         thread_vision.prev_hypoth();
-        glThreads[optimize_thread]->setThread(new Thread(*thread_vision.curr_thread()));
-        glutPostRedisplay();
-    } else if (key = 'c') {
+        showThread(thread_vision.curr_thread());
+    } else if (key = 'w') {
         cout << "Flip to next hypoth" << endl;
         thread_vision.next_hypoth();
-        glThreads[optimize_thread]->setThread(new Thread(*thread_vision.curr_thread()));
-        glutPostRedisplay();
+        showThread(thread_vision.curr_thread());
     } else if (key == '1' && key <= '3')
     {
         show_threads[((int)key-'1')] = !show_threads[((int)key-'1')];
-    } else if (key == 'q') {
-        thread_vision.prev_hypoth();
-        glThreads[optimize_thread]->setThread((new Thread(*thread_vision.curr_thread())));
-        glutPostRedisplay();
-    } else if (key == 'w') {
-        thread_vision.next_hypoth();
-        glThreads[optimize_thread]->setThread((new Thread(*thread_vision.curr_thread())));
-        glutPostRedisplay();
     } else if (key == 's') {
         /* Save current trajectory */
         cout << "Saving...\n";
@@ -344,7 +330,7 @@ void processNormalKeys(unsigned char key, int x, int y)
 
         traj_recorder.setFileName(fullPath);
 
-        Thread *newThread = glThreads[startThread]->getThread();
+        Thread *newThread = glThreads[currentThread]->getThread();
         Thread copiedThread(*newThread);
         traj_recorder.add_thread_to_list(copiedThread);
         traj_recorder.write_threads_to_file();
@@ -476,7 +462,7 @@ void DrawStuff (void)
     //change thread, if necessary
     if (move_end[0] != 0.0 || move_end[1] != 0.0 || tangent_end[0] != 0.0 || tangent_end[1] != 0.0 || tangent_rotation_end[0] != 0 || tangent_rotation_end[1] != 0)
     {
-        glThreads[curThread]->ApplyUserInput(move_end, tangent_end, tangent_rotation_end);
+        glThreads[currentThread]->ApplyUserInput(move_end, tangent_end, tangent_rotation_end);
     }
 
 
@@ -484,26 +470,26 @@ void DrawStuff (void)
     DrawAxes();
     addThreadDebugInfo();
 
-    glThreads[startThread]->updateThreadPoints();
-    Vector3d display_start_pos = glThreads[startThread]->getStartPosition();
+    glThreads[currentThread]->updateThreadPoints();
+    Vector3d display_start_pos = glThreads[currentThread]->getStartPosition();
 
 
     for(int i = 0; i < totalThreads; i++) {
         //Draw Thread
         if (!show_threads[i])
             continue;
-        if (i==startThread) {
+        if (i==currentThread) {
             glColor4f (0.8, 0.5, 0.0, 1.0);
-        } else if (i==just_vis_error_thread) {
+        } else if (i==justVisualErrorThread) {
             glColor4f (0.8, 0.0, 0.0, 1.0);
-        } else if (i==optimize_thread) {
+        } else if (i==optimizedThread) {
             glColor4f (0.0, 0.0, 0.8, 1.0);
         } else {
             glColor4f (0.5, 0.5, 0.5, 1.0);
         }
         glThreads[i]->display_start_pos = display_start_pos;
         glThreads[i]->DrawThread();
-        if (i != just_vis_error_thread)
+        if (i != justVisualErrorThread)
         {
             //glThreads[i]->DrawAxes();
         }
@@ -580,7 +566,7 @@ void InitThread(int argc, char* argv[])
         glThreads[i] = new GLThread();
         glThreads[i]->setThread(new Thread(all_threads[thread_ind]));
         glThreads[i]->updateThreadPoints();
-        if (i == just_vis_error_thread)
+        if (i == justVisualErrorThread)
             show_threads[i] = false;
         else
             show_threads[i] = true;
@@ -688,8 +674,8 @@ void InitLights() {
 //New version for search from both ends
 void updateIms(Point3f& start_pt, Vector3d& start_tan, Point3f& end_pt, Vector3d& end_tan)
 {
-    glThreads[startThread]->updateThreadPoints();
-    vector<Vector3d> points = glThreads[startThread]->points;
+    glThreads[currentThread]->updateThreadPoints();
+    vector<Vector3d> points = glThreads[currentThread]->points;
 
 #ifdef FAKEIMS
     int num_pts = 300;
@@ -748,16 +734,14 @@ void updateIms(Point3f& start_pt, Vector3d& start_tan, Point3f& end_pt, Vector3d
 
 }
 
+vector<Vector3d> points_real;
+vector<double> angle_real;
+
 void findThreadInIms()
 {
     thread_vision_searched = true;
 
-    vector<Vector3d> points_im;
-    vector<double> angle_im;
-    vector<Vector3d> points_real;
-    vector<double> angle_real;
-
-    glThreads[startThread]->getThread()->get_thread_data(points_real, angle_real);
+    glThreads[currentThread]->getThread()->get_thread_data(points_real, angle_real);
 
 
     thread_vision.set_max_length(MAX_LENGTH_VIS);
@@ -770,29 +754,46 @@ void findThreadInIms()
 
     thread_vision.initThreadSearch();
 
-//    if (thread_vision.runThreadSearch())
-//    {
-//        std::cout << "Found thread full opt" << std::endl;
-//        glThreads[optimize_thread]->setThread(new Thread(*thread_vision.curr_thread()));
-//
-//        thread_vision.addThreadPointsToDebugImages(Scalar(200,0,0));
-//        thread_vision.add_debug_points_to_ims();
-//
-//        thread_vision.saveImages(image_save_base, thread_ind+1);
-//
-//
-//        thread_vision.get_thread_data(points_im, angle_im);
-//        err_fullopt = calculate_vector_norm_avg(points_im, points_real)/points_im.size();
-//        std::cout << "Error: " << err_fullopt << std::endl;
-//
-//        twistAngle_correct = glThreads[startThread]->getThread()->end_angle();
-//        twistAngle_best = thread_vision.end_angle();
-//    }
+//    for (int i = 0; i < 11; i++)
+//        thread_vision.generateNextSetOfHypoths();
+
+    if (thread_vision.runThreadSearch())
+    {
+        std::cout << "Found thread full opt" << std::endl;
+        showThread(thread_vision.curr_thread());
+    }
+}
+
+void showThread(Thread *aThread, DisplayedThreads type)
+{
+    /* Will make a copy of the thread */
+    glThreads[type]->setThread(new Thread(*aThread));
+
+    if (thread_vision.isDone()) {
+        /* May move debug images to when 5 thread pieces have been added */
+        thread_vision.addThreadPointsToDebugImages(Scalar(200,0,0));
+        thread_vision.add_debug_points_to_ims();
+
+        thread_vision.saveImages(image_save_base, thread_ind+1);
+
+        vector<Vector3d> points_im;
+        vector<double> angle_im;
+
+        thread_vision.get_thread_data(points_im, angle_im);
+        err_fullopt = calculate_vector_norm_avg(points_im, points_real)/points_im.size();
+        std::cout << "Error: " << err_fullopt << std::endl;
+
+        twistAngle_correct = glThreads[currentThread]->getThread()->end_angle();
+        twistAngle_best = thread_vision.end_angle();
+    }
+
+    glutPostRedisplay();
+
 }
 
 void addThreadDebugInfo()
 {
-    Vector3d display_start_pos = glThreads[startThread]->getStartPosition();
+    Vector3d display_start_pos = glThreads[currentThread]->getStartPosition();
     for (int i=0; i < thread_vision.gl_display_for_debug.size(); i++)
     {
         glline_draw_params& currP = thread_vision.gl_display_for_debug[i];;
