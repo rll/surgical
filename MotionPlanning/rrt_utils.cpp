@@ -33,37 +33,46 @@ RRTNode::RRTNode(const Thread* start): prev(NULL), next(NULL), linearized(false)
   VectorXd curvature_binormal;
   start->getCurvatureBinormal(&curvature_binormal); 
 
-
-  
-
   N = positions.size() + twists.size() + 
-    gradient.size() + curvature_binormal.size();
+    gradient.size();
   data = new float[N];
   
   int currentIndex = 0; 
 
   for (int i = 0; i < positions.size(); i++) {
-    if (!isnan(positions[i]))
-        data[i + currentIndex] = (float) (5*positions[i]); 
+    if (!isnan(positions[i])) { 
+        data[i + currentIndex] = 5*((float)positions[i]);
+    } else {
+        cout << "Warning: Position NaN; Setting to 0" << endl;
+        data[i + currentIndex] = 0;
+    }
   }
   
   currentIndex += positions.size(); 
   for (int i = 0; i < twists.size(); i++) {
-    if (!isnan(twists[i]))  
-        data[i+currentIndex] = (float) (5*twists[i]);
+    if (!isnan(twists[i])) {   
+        data[i+currentIndex] = 5*((float)twists[i]);
+    } else { 
+      cout << "Warning: Twist NaN; Setting to 0" << endl; 
+      data[i+currentIndex] = 0; 
+    }
   }
 
   currentIndex += twists.size(); 
   for (int i = 0; i < gradient.size(); i++) {
-    if (!isnan(gradient[i])) 
-      data[i+currentIndex] = (float) (5*gradient[i]);
+    if (!isnan(gradient[i])) { 
+      data[i+currentIndex] = 5*((float)gradient[i]);
+    } else { 
+      cout << "Warning: Gradient NaN; Setting to 0" << endl; 
+      data[i + currentIndex] = 0; 
+    }
   }
 
-  currentIndex += gradient.size(); 
+  /*currentIndex += gradient.size(); 
   for (int i = 0; i < curvature_binormal.size(); i++) {
     if(!isnan(curvature_binormal[i])) 
-        data[i+currentIndex] = (float) (0*curvature_binormal[i]);
-  }
+        data[i+currentIndex] = 0; //(float) (0*curvature_binormal[i]);
+  }*/
 
 
 }
@@ -72,16 +81,18 @@ RRTNode::RRTNode(const Thread* start): prev(NULL), next(NULL), linearized(false)
 
 double RRTNodeUtils::distanceBetween(RRTNode* start, RRTNode* end) { 
   int N = start->N;
-
   const float* startData = start->getData();
   const float* endData = end->getData();
 
 
-  float r = 0.0;
+  double r = 0.0;
   for (int i = 0; i < N; i++) { 
-    r += (startData[i] - endData[i]) * (startData[i] - endData[i]);  
+    //cout << "Start: " << startData[i] << endl;
+    //cout << "End:" << endData[i] << endl;
+    r += pow((startData[i] - endData[i]), 2);  
+  
+    //cout << "R = " << r << endl; 
   }
-
   return r; 
 }
 

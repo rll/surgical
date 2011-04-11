@@ -1,10 +1,10 @@
 #include "iterative_control.h"
 
-#ifdef surgical2
-  #define MATLAB_INSTALL "/usr/local/bin/matlab/bin/matlab"
-#else
+//#ifdef surgical2
+//  #define MATLAB_INSTALL "/usr/local/bin/matlab/bin/matlab"
+//#else
   #define MATLAB_INSTALL "matlab"
-#endif
+//#endif
 
 
 Iterative_Control::Iterative_Control(int num_threads, int num_vertices)

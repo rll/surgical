@@ -204,7 +204,10 @@ class LshMultiTable {
         }
       }
       if (argMin == NULL) {
-        cout << "Target is buggy" << endl; 
+        cout << "Target is buggy" << endl;
+        for (int i = 0; i < dim; i++) { 
+          cout << target_value[i] << endl; 
+        }
       }
  
       return argMin; 

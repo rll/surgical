@@ -52,9 +52,7 @@ void Thread_RRT::planStep(Thread& new_sample_thread, Thread& closest_sample_thre
     next_target = getNextGoal();
     //cout << "extending to target" << endl;
     if (drand48() < 1.0) {
-      cout << "in extend" << endl; 
       newSampleDist = extendAsFarToward(next_target);
-      cout << "done extend" << endl;
     } else {
       newSampleDist = largeRotation(next_target);
     }
@@ -504,14 +502,12 @@ double Thread_RRT::extendToward(Thread* target) {
         cout << "Goal thread buggy" << endl; 
         exit(0);
       }
-      delete target;
-      cout << target << endl;
       target = generateSample(_goal_node->thread); 
       //next_thread = target;
     }
   } while (closest == NULL); 
   
-  cout << "closest node acquired" << endl; 
+  //cout << "closest node acquired" << endl; 
   
   // create a new thread based on the closest
   Thread* start = new Thread(*(closest->thread)); 
@@ -521,12 +517,12 @@ double Thread_RRT::extendToward(Thread* target) {
   //simpleInterpolation(start, target, tmpMotions);
 
   // solve and apply control to the closest thread
-  cout << "calling SLC" << endl;
+  //cout << "calling SLC" << endl;
   solveLinearizedControl(start, target, tmpMotions, START_AND_END);
-  cout << "done SLC" << endl; 
+  //cout << "done SLC" << endl; 
   //solveLinearizedControl(start, target, tmpMotions, END); 
   start->minimize_energy();
-  cout << "done minimize" << endl; 
+  //cout << "done minimize" << endl; 
 
   RRTNode* toadd = new RRTNode(start); 
   if (utils.distanceBetween(toadd, closest) < 5e-1) { 
@@ -570,7 +566,6 @@ double Thread_RRT::extendAsFarToward(Thread* target) {
   double prevScore = DBL_MAX;
   double score = DBL_MAX;
   do {
-    cout << "still improving" << endl; 
     prevScore = score; 
     score = extendToward(target);
   } while(prevScore - score > 1e-1); 
