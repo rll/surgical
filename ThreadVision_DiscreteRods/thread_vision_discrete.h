@@ -15,7 +15,7 @@
 #define TANGENT_ERROR_THRESH 1000.0
 #define DIST_FOR_SCORE_CHECK 70.0
 #define SCORE_OUT_OF_VIEW 1.0
-#define SCORE_THRESH_SET_TO_CONST 0.4  /*if this score is below this, just set it to zero*/
+#define SCORE_THRESH_SET_TO_CONST 0.5  /*if this score is below this, just set it to zero*/
 
 #define IM_VALUE_NOT_SEEN 255
 #define IM_VALUE_CHECKED_FOR_BEGIN 200

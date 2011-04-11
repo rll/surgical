@@ -8,7 +8,7 @@
 
 
 
-static double VISUAL_COEFF = 0.005;
+static double VISUAL_COEFF = 0.002;
 
 
 class Thread_Vision;
