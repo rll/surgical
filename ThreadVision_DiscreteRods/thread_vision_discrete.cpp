@@ -459,6 +459,9 @@ bool Thread_Vision::runThreadSearch()
 
 bool Thread_Vision::isDone() {
     /* TODO uses the thread hypoths from the first start point */
+    if (_thread_hypoths.size() == 0 || _thread_hypoths[0].front()->num_pieces() < 5) {
+        return false;
+    }
     return (_thread_hypoths[0].front()->num_pieces()*_rest_length >= _max_length_thread);
 }
 
