@@ -425,8 +425,6 @@ bool Thread_Vision::generateNextSetOfHypoths() {
 
     if (!isDone())
     {
-        suppress_hypoths(current_thread_hypoths);
-
         add_possible_next_hypoths(current_thread_hypoths);
 
         suppress_hypoths(current_thread_hypoths);
@@ -438,6 +436,8 @@ bool Thread_Vision::generateNextSetOfHypoths() {
             current_thread_hypoths[hypoth_ind]->minimize_energy_twist_angles();
             current_thread_hypoths[hypoth_ind]->calculate_score();
         }
+
+        suppress_hypoths(current_thread_hypoths);
 
         cout << endl;
     }
