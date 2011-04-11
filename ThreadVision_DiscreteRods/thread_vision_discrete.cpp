@@ -419,7 +419,7 @@ bool Thread_Vision::processHypothesesFromInit()
         running = false;
         /* Changed to only the first start point for efficiency */
         
-        vector<Thread_Hypoth*> current_thread_hypoths = _thread_hypoths[0];
+        vector<Thread_Hypoth*> &current_thread_hypoths = _thread_hypoths[0];
         Thread_Hypoth *test = current_thread_hypoths.front();
 
         if (current_thread_hypoths.front()->num_pieces()*_rest_length < _max_length_thread)
