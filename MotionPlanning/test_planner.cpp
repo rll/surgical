@@ -406,7 +406,7 @@ void stepTrajectoryFollower(bool forward) {
           apprxThreads[i]->setThread(curApprxThread);
           apprxThreads[i]->updateThreadPoints(); 
         }
-      }
+      } 
       if (localCurNode->prev != NULL) {
         localCurNode = localCurNode->prev;
         Thread* localCurNodeThread = new Thread(*(localCurNode->thread));
@@ -448,6 +448,24 @@ void stepTrajectoryFollower(bool forward) {
       }
     }
   }
+
+  if (interpolationDemo) {
+    if(!forward) { 
+      if (localCurNode->prev != NULL) {
+        localCurNode = localCurNode->prev;
+        Thread* localCurNodeThread = new Thread(*(localCurNode->thread));
+        apprxThreads[numApprox-1]->setThread(localCurNodeThread);
+        apprxThreads[numApprox-1]->updateThreadPoints();
+      }
+    } else { 
+      if (localCurNode->next != NULL) {
+        localCurNode = localCurNode->next;
+        Thread* localCurNodeThread = new Thread(*(localCurNode->thread));
+        apprxThreads[numApprox-1]->setThread(localCurNodeThread);
+        apprxThreads[numApprox-1]->updateThreadPoints();
+      }
+    }
+  }
   glutPostRedisplay();
 }
 
@@ -474,13 +492,23 @@ void generateInterpolatedThread() {
 
   Iterative_Control* ic = new Iterative_Control(traj.size(), traj.front()->num_pieces());
 
-  ic->iterative_control_opt(traj, U, 5);
-
-  apprxThreads[0]->setThread(new Thread(*traj[0]));
+  ic->iterative_control_opt(traj, U, 1);
+  localCurNode = new RRTNode(new Thread(*traj[0]));
+  RRTNode* prevNode = localCurNode; 
+  numApprox += 1;
+  apprxThreads[numApprox-1]->setThread(new Thread(*traj[0]));
+  apprxThreads[numApprox-1]->updateThreadPoints();
+  Thread* prevThread = apprxThreads[numApprox-1]->getThread(); 
+  
   for (int i = 1; i < traj.size(); i++) { 
-    Thread* startThread = new Thread(*apprxThreads[i-1]->getThread());
+    Thread* startThread = new Thread(*prevThread);
     applyControl(startThread, U[i-1], START_AND_END);
-    apprxThreads[i]->setThread(new Thread(*startThread));
+    RRTNode *node = new RRTNode(startThread);
+    node->prev = prevNode;
+    prevNode->next = node;
+    prevNode = node;
+    prevThread = startThread; 
+    apprxThreads[i]->setThread(new Thread(*traj[i]));
     apprxThreads[i]->updateThreadPoints();
   }
 
