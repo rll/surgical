@@ -1977,7 +1977,7 @@ void Thread::unviolate_total_length_constraint()
   entire_length_vector = pointB - pointA;
   too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
 
-  std::cout << "total length: " << entire_length_vector.norm() << std::endl;
+  //std::cout << "total length: " << entire_length_vector.norm() << std::endl;
   
 
 }

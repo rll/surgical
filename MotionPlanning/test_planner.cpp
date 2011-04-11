@@ -474,7 +474,7 @@ void generateInterpolatedThread() {
 
   Iterative_Control* ic = new Iterative_Control(traj.size(), traj.front()->num_pieces());
 
-  ic->iterative_control_opt(traj, zeroCtrl, 1);
+  ic->iterative_control_opt(traj, zeroCtrl, 10);
   cout << "iterative ctrl ret" << endl; 
 
   for (int i = 0; i < traj.size(); i++) { 
@@ -768,7 +768,7 @@ void processNormalKeys(unsigned char key, int x, int y)
     increaseDimension();
   }
   else if (key == 'n') {
-    DimensionReductionBestPath(2);
+    DimensionReductionBestPath(1);
   } 
   else if (key == '>') {
     stepTrajectoryFollower(true); 
@@ -801,7 +801,7 @@ void processKeyUp(unsigned char key, int x, int y)
 }
 
 void interruptHandler(int sig) {
-	exit(0);
+	//exit(0);
   cout << "Signal " << sig << " caught..." << endl;
   interruptEnabled = true; 
 }

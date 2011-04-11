@@ -52,7 +52,9 @@ void Thread_RRT::planStep(Thread& new_sample_thread, Thread& closest_sample_thre
     next_target = getNextGoal();
     //cout << "extending to target" << endl;
     if (drand48() < 1.0) {
+      cout << "in extend" << endl; 
       newSampleDist = extendAsFarToward(next_target);
+      cout << "done extend" << endl;
     } else {
       newSampleDist = largeRotation(next_target);
     }
@@ -305,10 +307,13 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
 
 
   Matrix3d rot;
+  rot.setZero();
   inc << Normal(0,1), Normal(0,1), Normal(0,1);
   rotation_from_euler_angles(rot, inc(0), inc(1), inc(2));
-  return new Thread(vertices, angles, rot, goal_thread->rest_length());
-
+  Thread* sample =new Thread(vertices, angles, rot, goal_thread->rest_length());
+  sample->unviolate_total_length_constraint();
+  sample->project_length_constraint();
+  return sample;
 }
 
 Thread* Thread_RRT::generateSample(int N) {
@@ -318,9 +323,8 @@ Thread* Thread_RRT::generateSample(int N) {
   
   vertices.push_back(Vector3d::Zero());
   angles.push_back(0.0);
-  int _rest_length = 3;
 
-  vertices.push_back(Vector3d::UnitX()*_rest_length);
+  vertices.push_back(Vector3d::UnitX()*DEFAULT_REST_LENGTH);
   angles.push_back(0.0);
 
   double angle;
@@ -328,7 +332,7 @@ Thread* Thread_RRT::generateSample(int N) {
   
   Vector3d goal; 
   Vector3d noise; 
-  double max_thread_length = (N-2)*_rest_length; 
+  double max_thread_length = (N-2)*DEFAULT_REST_LENGTH; 
 
   do {
     goal = (noise <<  Normal(0,1)*max_thread_length,
@@ -341,7 +345,7 @@ Thread* Thread_RRT::generateSample(int N) {
   do {
     inc << Normal(0,1), Normal(0,1), Normal(0,1);
     inc.normalize();
-    inc *= _rest_length;
+    inc *= DEFAULT_REST_LENGTH;
     angle = acos(inc.dot(goal)/(goal.norm()*inc.norm()));
   } while(abs(angle) > M_PI/2.0);
 
@@ -351,8 +355,8 @@ Thread* Thread_RRT::generateSample(int N) {
     vertices.push_back(vertices[vertices.size()-1] + inc);
     angles.push_back(0.0);
     // time to move toward the goal
-    if ((vertices[vertices.size()-1] - goal).squaredNorm() > (N-2-i-1)*(N-2-i-1)*_rest_length*_rest_length) {
-      inc = (goal - vertices[vertices.size()-1]).normalized()*_rest_length;
+    if ((vertices[vertices.size()-1] - goal).squaredNorm() > (N-2-i-1)*(N-2-i-1)*DEFAULT_REST_LENGTH*DEFAULT_REST_LENGTH) {
+      inc = (goal - vertices[vertices.size()-1]).normalized()*DEFAULT_REST_LENGTH;
       if ( acos(inc.dot(prevInc) / (prevInc.norm() * inc.norm())) > 3*M_PI/4 ) {
         inc = prevInc; 
       }
@@ -362,14 +366,14 @@ Thread* Thread_RRT::generateSample(int N) {
          do {
             inc << Normal(0,1), Normal(0,1), Normal(0,1);
             inc.normalize();
-            inc *= _rest_length;
+            inc *= DEFAULT_REST_LENGTH;
             angle = acos(inc.dot(goal) / (goal.norm()*inc.norm()));     
           } while(abs(angle) > M_PI/8.0);
         } else {
          do {
             inc << Normal(0,1), Normal(0,1), Normal(0,1);
             inc.normalize();
-            inc *= _rest_length;
+            inc *= DEFAULT_REST_LENGTH;
             angle = acos(inc.dot(prevInc) / (prevInc.norm()*inc.norm()));     
           } while(abs(angle) > M_PI/8.0);
         }
@@ -377,10 +381,9 @@ Thread* Thread_RRT::generateSample(int N) {
       }
     }
   }
-
-
+  
   Matrix3d rot = Matrix3d::Identity();
-  Thread* newSample = new Thread(vertices, angles, rot, _rest_length); 
+  Thread* newSample = new Thread(vertices, angles, rot, DEFAULT_REST_LENGTH); 
   newSample->minimize_energy();
   return newSample;
 
@@ -493,6 +496,7 @@ double Thread_RRT::extendToward(Thread* target) {
 
   RRTNode* closest; 
   do {
+
     closest = findClosestNode(target);
     if (closest == NULL) {
       cout << "Nearest neighbor returned null. Generating new target" << endl;
@@ -500,31 +504,29 @@ double Thread_RRT::extendToward(Thread* target) {
         cout << "Goal thread buggy" << endl; 
         exit(0);
       }
-      //delete target;
+      delete target;
       cout << target << endl;
       target = generateSample(_goal_node->thread); 
       //next_thread = target;
     }
   } while (closest == NULL); 
   
+  cout << "closest node acquired" << endl; 
   
   // create a new thread based on the closest
-  Thread* start = new Thread(*(closest->thread));
-  start->set_rest_length(closest->thread->rest_length());
-
-
-  Vector3d translation;
-  Matrix3d rotation;
+  Thread* start = new Thread(*(closest->thread)); 
   vector<Two_Motions*> tmpMotions;
 
   //interpolation
   //simpleInterpolation(start, target, tmpMotions);
 
   // solve and apply control to the closest thread
+  cout << "calling SLC" << endl;
   solveLinearizedControl(start, target, tmpMotions, START_AND_END);
+  cout << "done SLC" << endl; 
   //solveLinearizedControl(start, target, tmpMotions, END); 
   start->minimize_energy();
-
+  cout << "done minimize" << endl; 
 
   RRTNode* toadd = new RRTNode(start); 
   if (utils.distanceBetween(toadd, closest) < 5e-1) { 
@@ -568,6 +570,7 @@ double Thread_RRT::extendAsFarToward(Thread* target) {
   double prevScore = DBL_MAX;
   double score = DBL_MAX;
   do {
+    cout << "still improving" << endl; 
     prevScore = score; 
     score = extendToward(target);
   } while(prevScore - score > 1e-1); 

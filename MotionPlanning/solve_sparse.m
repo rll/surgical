@@ -10,6 +10,6 @@ b = sparse(b_data(:, 1), b_data(:, 2), b_data(:, 3), b_m, b_n);
 %b = b_data;
 x = A \ b; 
 
-dlmwrite(x_file, x, 'precision', 10); 
+dlmwrite(x_file, full(x), 'precision', 10); 
 end
 
