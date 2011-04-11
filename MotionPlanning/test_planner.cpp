@@ -497,7 +497,7 @@ void generateInterpolatedThread() {
 
   Iterative_Control* ic = new Iterative_Control(traj.size(), traj.front()->num_pieces());
 
-	int num_iters = 30;
+	int num_iters = 5;  
 
   ic->iterative_control_opt(traj, U, num_iters);
   vector<vector<Thread*> > thread_visualization_data;
@@ -531,9 +531,94 @@ void generateInterpolatedThread() {
 	}
   
   setThreads(thread_visualization_data);
-  glutPostRedisplay();
 
 }
+
+void interpolateAndFollow() { 
+  
+  Thread* start = new Thread(*glThreads[planThread]->getThread());
+  Thread* end = new Thread(*glThreads[endThread]->getThread());
+  numApprox = 10;
+  vector<Thread*> intp_traj;
+  intp_traj.resize(numApprox);
+  intp_traj[0] = new Thread(*start);
+  intp_traj[intp_traj.size()-1]= new Thread(*end); 
+  vector<Two_Motions*> controls;
+  cout << "calling interpolate" << endl; 
+  interpolateThreads(intp_traj, controls);
+
+  vector<vector<Two_Motions*> > intp_controls;
+  for (int i = 0; i < controls.size(); i++) {
+    vector<Two_Motions*> tmp;
+    tmp.push_back(controls[i]);
+    intp_controls.push_back(tmp);
+  }
+
+  Trajectory_Follower *pathFollower = 
+    new Trajectory_Follower(intp_traj, intp_controls, start);
+
+  pathFollower->control_to_finish(5);
+  vector<Thread*> outTraj; 
+  pathFollower->getReachedStates(outTraj);
+
+  vector<vector<Thread*> > thread_visualization_data;
+  thread_visualization_data.push_back(intp_traj);
+  thread_visualization_data.push_back(outTraj);
+
+  setThreads(thread_visualization_data);
+
+}
+
+void SQPPlanner() { 
+
+  Thread* start = new Thread(*glThreads[planThread]->getThread());
+  Thread* end = new Thread(*glThreads[endThread]->getThread());
+  numApprox = 25;
+  vector<Thread*> traj;
+  traj.resize(numApprox);
+  traj[0] = new Thread(*start);
+  traj[traj.size()-1]= new Thread(*end); 
+  vector<Two_Motions*> controls;
+  cout << "calling interpolate" << endl; 
+  interpolateThreads(traj, controls);
+  vector<VectorXd> U; 
+
+  for (int i = 0; i < traj.size(); i++) {
+    VectorXd ctrl(12);
+    ctrl.setZero();
+    U.push_back(ctrl); 
+  }
+
+  Iterative_Control* ic = new Iterative_Control(traj.size(), traj.front()->num_pieces());
+
+	int num_iters = 5;  
+  ic->iterative_control_opt(traj, U, num_iters);
+  
+ // need to apply controls that it found  
+  vector<vector<Thread*> > thread_visualization_data;
+	vector<vector<Two_Motions*> > thread_control_data;
+  for (int i = 0; i < traj.size(); i++) { 
+    //vector<Thread*> tmp;
+    //tmp.push_back(traj[i]);
+    //thread_visualization_data.push_back(tmp); 
+    vector<Two_Motions*> control_tmp;
+    control_to_TwoMotion(U[i], control_tmp);
+    thread_control_data.push_back(control_tmp);
+  }
+  Trajectory_Follower *pathFollower = 
+    new Trajectory_Follower(traj, thread_control_data, start); 
+
+  pathFollower->control_to_finish(50);
+
+  vector<Thread*> control_traj;
+  pathFollower->getReachedStates(control_traj);
+  thread_visualization_data.push_back(traj);
+  thread_visualization_data.push_back(control_traj);
+  setThreads(thread_visualization_data);
+
+}
+
+
 
 
 
@@ -797,6 +882,12 @@ void processNormalKeys(unsigned char key, int x, int y)
   }
   else if (key == 'i') {
     generateInterpolatedThread();
+  }
+  else if (key == '1') { 
+    interpolateAndFollow();
+  } 
+  else if (key == '2') { 
+    SQPPlanner();
   }
   else if (key == 'a') {
     planRRT();

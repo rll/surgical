@@ -1,0 +1,22 @@
+Experimental Plan
+
+Linearization refers to solving for control u given start x_s and goal x_g by
+x_s - x_g = Bu. 
+
+Interpolation refers to generating a trajectory x_1,x_2,..,x_T-1 given x_s and x_s by x_t = (T-t)/T * x_s + (t/T) * x_g. 
+
+1) Linearization to Goal
+Notes: Gets stuck in local energy minimum for long trajectories. 
+
+2) Interpolation + Linearization
+Notes: Not really any better than straight linearization. The interpolation acts as waypoints for the linearization, but generally there is no improvement as the algorithm gets stuck in local energy minimum. 
+
+3) SQP - Directly apply controls 
+Notes: Do not get as far as we think we do if we simply reapply the controls from SQP. 
+
+4) SQP + Linearization
+
+
+
+
+

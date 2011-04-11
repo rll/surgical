@@ -36,13 +36,17 @@ void Trajectory_Follower::Take_Step(int max_linearizations)
   for (int linearization_num=0; linearization_num < max_linearizations; linearization_num++)
   {
     vector<Two_Motions*> tmpMotions;
+    Thread* prevThread = new Thread(*next_state); 
     solveLinearizedControl(next_state, _trajectory[_curr_ind], tmpMotions, START_AND_END); 
-    for (int i = 0; i < tmpMotions.size(); i++) {
-      motionsGenerated.push_back(tmpMotions[i]);
-    }
     double error_this_linearizaton = calculate_thread_error(_trajectory[_curr_ind], next_state);
-    if (error_this_linearizaton + linearization_error_thresh > error_last_linearization) 
+    /*if (error_this_linearizaton + linearization_error_thresh > error_last_linearization) {  
+      next_state = prevThread; 
       break;
+    } else { 
+      for (int i = 0; i < tmpMotions.size(); i++) {
+        motionsGenerated.push_back(tmpMotions[i]);
+      }
+    }*/
 
     error_last_linearization = error_this_linearizaton;
   } 
@@ -62,7 +66,8 @@ bool Trajectory_Follower::is_done()
 
 void Trajectory_Follower::control_to_finish(int max_linearizations) {
   cout << "Control to finish" << endl; 
-  boost::progress_display progress(_trajectory.size() - _curr_ind); 
+  boost::progress_display progress(_trajectory.size() - _curr_ind - 1); 
+
   while(!is_done()) { 
     Take_Step(max_linearizations);
     ++progress;
@@ -82,4 +87,3 @@ double Trajectory_Follower::calculate_thread_error(Thread* start, Thread* goal)
   
   return calculate_vector_diff_norm(points_start, points_goal);
 }
-

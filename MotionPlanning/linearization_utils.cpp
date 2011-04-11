@@ -105,7 +105,7 @@ void solveLinearizedControl(Thread* start, const Thread* goal, vector<Two_Motion
   //const double MAX_STEP = 2.0;
   const double DAMPING_CONST_POINTS = 0.1;
   const double DAMPING_CONST_ANGLES = 0.4;
-  const double MAX_MAG = 3.0;
+  const double MAX_MAG = 1.0;
 
   int num_controls;
   if (movement == START_AND_END)
@@ -140,7 +140,7 @@ void solveLinearizedControl(Thread* start, const Thread* goal, vector<Two_Motion
   MatrixXd damping_mat = MatrixXd::Identity(num_controls, num_controls);
   for (int i=0; i < num_controls; i++)
   {
-    if ( (i%6) < 3)
+    if ((i%6) < 3)
       damping_mat(i,i) = DAMPING_CONST_POINTS;
     else
       damping_mat(i,i) = DAMPING_CONST_ANGLES;
