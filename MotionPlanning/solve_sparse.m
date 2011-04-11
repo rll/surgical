@@ -1,5 +1,4 @@
-function [] = solve_sparse(A_m, A_n, A_file, b_m, b_n, b_file, x_file, 
-num_threads, size_each_state, size_each_control)
+function [] = solve_sparse(A_m, A_n, A_file, b_m, b_n, b_file, x_file, num_threads, size_each_state, size_each_control) 
 % Solve Sparse is a script that loads A and B and solves for Ax = b.
 % Writes x to x_file 
 
@@ -13,7 +12,7 @@ b = sparse(b_data(:, 1), b_data(:, 2), b_data(:, 3), b_m, b_n);
 
 cvx_begin
     variable x(A_n)
-    minimize (norm(A*x - b) + norm(x((num_threads-2)*size_each_state:end));
+    minimize (norm(A*x - b));
 cvx_end
 
 dlmwrite(x_file, full(x), 'precision', 10); 
