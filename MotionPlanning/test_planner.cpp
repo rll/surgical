@@ -74,10 +74,9 @@ int endThread = 3;
 int newRRTNodeThread = 6;
 
 GLThread* apprxThreads[500]; 
-RRTNode* apprxNodes[5];
-RRTNode* curApprxNodes[5];
+RRTNode* apprxNodes[500];
+RRTNode* curApprxNodes[500];
 int numApprox = 0; 
-
 
 // double radii[NUM_PTS];
 int pressed_mouse_button;
@@ -97,7 +96,7 @@ RRTNode* curNode;
 RRTNode* localCurNode;
 
 bool interruptEnabled = false; 
-bool interpolationDemo = false; 
+bool threadSet = false; 
 
 
 /* set up a light */
@@ -150,6 +149,29 @@ void increaseDimension() {
   glutPostRedisplay();
 }
 
+void setThreads(vector<vector<Thread*> > thread_data) { 
+
+  numApprox = thread_data.size(); 
+
+  for (int i = 0; i < numApprox; i++) { 
+    apprxNodes[i] = new RRTNode(new Thread(*thread_data[i][0]));
+    apprxThreads[i]->setThread(new Thread(*thread_data[i][0]));
+    apprxThreads[i]->updateThreadPoints();
+    curApprxNodes[i] = apprxNodes[i]; 
+    RRTNode* prevNode = apprxNodes[i]; 
+    
+    for (int j = 0; j < thread_data[i].size(); j++) {
+      RRTNode* node = new RRTNode(new Thread(*thread_data[i][j]));
+      node->prev = prevNode;
+      prevNode->next = node;
+      prevNode = node; 
+    }
+  }
+
+  threadSet = true; 
+  glutPostRedisplay();
+
+}
 
 void DimensionReductionBestPath(Thread* start, Thread* target, int n, vector<Thread*>& traj, vector<vector<Two_Motions*> >& mot) 
 {
@@ -228,7 +250,7 @@ void DimensionReductionBestPath(Thread* start, Thread* target, int n, vector<Thr
 
 
 void DimensionReductionBestPath(int n) {
-
+  
   if (!initialized) { 
     Thread* start = new Thread(*glThreads[planThread]->getThread());
     Thread* end = new Thread(*glThreads[endThread]->getThread()); 
@@ -248,7 +270,6 @@ void DimensionReductionBestPath(int n) {
     DimensionReductionBestPath(start, end, n, traj, mot);  
 
     localCurNode = apprxNodes[n]; 
-
     glThreads[startThread]->setThread(new Thread(*start));
     glThreads[startThread]->updateThreadPoints();
     curNode = planner.getTree()->front();
@@ -263,8 +284,6 @@ void DimensionReductionBestPath(int n) {
   }
 
   glutPostRedisplay();
-
-
 
 }
 
@@ -399,14 +418,6 @@ void stepTrajectoryFollower() {
 void stepTrajectoryFollower(bool forward) { 
   if(initialized) {
     if (!forward) {
-      for (int i = 0; i < numApprox; i++) { 
-        if (curApprxNodes[i]->prev != NULL) { 
-          curApprxNodes[i] = curApprxNodes[i]->prev;
-          Thread* curApprxThread = new Thread(*(curApprxNodes[i]->thread));
-          apprxThreads[i]->setThread(curApprxThread);
-          apprxThreads[i]->updateThreadPoints(); 
-        }
-      } 
       if (localCurNode->prev != NULL) {
         localCurNode = localCurNode->prev;
         Thread* localCurNodeThread = new Thread(*(localCurNode->thread));
@@ -416,14 +427,6 @@ void stepTrajectoryFollower(bool forward) {
       }
     }
     else {
-      for (int i = 0; i < numApprox; i++) {
-        if (curApprxNodes[i]->next != NULL) { 
-          curApprxNodes[i] = curApprxNodes[i]->next;
-          Thread* curApprxThread = new Thread(*(curApprxNodes[i]->thread));
-          apprxThreads[i]->setThread(curApprxThread);
-          apprxThreads[i]->updateThreadPoints(); 
-        }
-      }
       if (localCurNode->next != NULL) {
         localCurNode = localCurNode->next;
         Thread* localCurNodeThread = new Thread(*(localCurNode->thread));
@@ -448,21 +451,24 @@ void stepTrajectoryFollower(bool forward) {
       }
     }
   }
-
-  if (interpolationDemo) {
-    if(!forward) { 
-      if (localCurNode->prev != NULL) {
-        localCurNode = localCurNode->prev;
-        Thread* localCurNodeThread = new Thread(*(localCurNode->thread));
-        apprxThreads[numApprox-1]->setThread(localCurNodeThread);
-        apprxThreads[numApprox-1]->updateThreadPoints();
-      }
-    } else { 
-      if (localCurNode->next != NULL) {
-        localCurNode = localCurNode->next;
-        Thread* localCurNodeThread = new Thread(*(localCurNode->thread));
-        apprxThreads[numApprox-1]->setThread(localCurNodeThread);
-        apprxThreads[numApprox-1]->updateThreadPoints();
+  if (threadSet || initialized) {
+    if(!forward) {
+      for (int i = 0; i < numApprox; i++) { 
+        if (curApprxNodes[i]->prev != NULL) { 
+          curApprxNodes[i] = curApprxNodes[i]->prev;
+          Thread* curApprxThread = new Thread(*(curApprxNodes[i]->thread));
+          apprxThreads[i]->setThread(curApprxThread);
+          apprxThreads[i]->updateThreadPoints(); 
+        }
+      } 
+    } else {
+      for (int i = 0; i < numApprox; i++) {
+        if (curApprxNodes[i]->next != NULL) { 
+          curApprxNodes[i] = curApprxNodes[i]->next;
+          Thread* curApprxThread = new Thread(*(curApprxNodes[i]->thread));
+          apprxThreads[i]->setThread(curApprxThread);
+          apprxThreads[i]->updateThreadPoints(); 
+        }
       }
     }
   }
@@ -473,8 +479,7 @@ void generateInterpolatedThread() {
 
   Thread* start = new Thread(*glThreads[planThread]->getThread());
   Thread* end = new Thread(*glThreads[endThread]->getThread());
-  numApprox = 25;
-  interpolationDemo = true; 
+  numApprox = 10;
   vector<Thread*> traj;
   traj.resize(numApprox);
   traj[0] = start;
@@ -492,25 +497,29 @@ void generateInterpolatedThread() {
 
   Iterative_Control* ic = new Iterative_Control(traj.size(), traj.front()->num_pieces());
 
+
   ic->iterative_control_opt(traj, U, 1);
-  localCurNode = new RRTNode(new Thread(*traj[0]));
-  RRTNode* prevNode = localCurNode; 
-  apprxThreads[numApprox-1]->setThread(new Thread(*traj[0]));
-  apprxThreads[numApprox-1]->updateThreadPoints();
-  Thread* prevThread = apprxThreads[numApprox-1]->getThread(); 
+  vector<vector<Thread*> > thread_visualization_data;
+  for (int i = 0; i < traj.size(); i++) { 
+    vector<Thread*> tmp;
+    tmp.push_back(traj[i]);
+    thread_visualization_data.push_back(tmp); 
+  }
+  
+  vector<Thread*> control_traj; 
+  
+  control_traj.push_back(new Thread(*glThreads[planThread]->getThread()));
+  Thread* prevThread = control_traj.front(); 
   
   for (int i = 1; i < traj.size(); i++) { 
     Thread* startThread = new Thread(*prevThread);
     applyControl(startThread, U[i-1], START_AND_END);
-    RRTNode *node = new RRTNode(startThread);
-    node->prev = prevNode;
-    prevNode->next = node;
-    prevNode = node;
+    control_traj.push_back(startThread);
     prevThread = startThread; 
-    apprxThreads[i-1]->setThread(new Thread(*traj[i]));
-    apprxThreads[i-1]->updateThreadPoints();
   }
-
+  thread_visualization_data.push_back(control_traj);
+  
+  setThreads(thread_visualization_data);
   glutPostRedisplay();
 
 }
@@ -952,7 +961,7 @@ void DrawStuff (void)
   }
 
   for(int i = 0; i < numApprox; i++) {
-    if ( !initialized && !interpolationDemo ) continue; 
+    if ( !initialized && !threadSet ) continue; 
 
     apprxThreads[i]->DrawAxes();
 
