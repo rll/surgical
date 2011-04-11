@@ -224,6 +224,8 @@ public:
     vector<Thread_Hypoth*>* best_thread_hypoths;
     int curr_hypoth_ind;
 
+    bool hasInit;
+    int stepNumber;
 
 
 

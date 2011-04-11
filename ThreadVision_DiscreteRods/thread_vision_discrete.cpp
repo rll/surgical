@@ -354,6 +354,17 @@ void Thread_Vision::initThreadSearch()
 
     /* Depends on findStartPoints() */
     best_thread_hypoths = &_thread_hypoths[0];
+
+    stepNumber = 1;
+    cout << "Thread Search Init Finished" << endl;
+
+    for (int i = 0; i < 5; i++) {
+        generateNextSetOfHypoths();
+    }
+
+    cout << "First 5 steps finished" << endl;
+
+    hasInit = true;
 }
 
 bool Thread_Vision::findStartPoints()
@@ -412,7 +423,7 @@ void Thread_Vision::get_thread_data(vector<Vector3d>& points, vector<double>& tw
 bool Thread_Vision::generateNextSetOfHypoths() {
     vector<Thread_Hypoth*> &current_thread_hypoths = _thread_hypoths[0];
 
-    if (current_thread_hypoths.front()->num_pieces()*_rest_length < _max_length_thread)
+    if (!isDone())
     {
         suppress_hypoths(current_thread_hypoths);
         add_possible_next_hypoths(current_thread_hypoths);
@@ -433,6 +444,9 @@ bool Thread_Vision::generateNextSetOfHypoths() {
 
     sort_hypoths(*best_thread_hypoths);
     curr_hypoth_ind = 0;
+
+    cout << "Finished step number: " << stepNumber << endl;
+    stepNumber++;
 }
 
 bool Thread_Vision::runThreadSearch()

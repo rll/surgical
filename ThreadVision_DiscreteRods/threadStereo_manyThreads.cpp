@@ -258,26 +258,7 @@ void processMouse(int button, int state, int x, int y)
 
 
 void processSpecialKeys(int key, int x, int y) {
-    /*if (key == GLUT_KEY_LEFT) {
- if(initialized) {
- if (curNode->prev != NULL) {
- curNode = curNode->prev;
- glThreads[7]->setThread(new Thread(curNode->x, VectorXd::Zero(curNode->N/3), Matrix3d::Identity()));
- glThreads[7]->minimize_energy();
- glutPostRedisplay();
- }
- }
- } else if (key == GLUT_KEY_RIGHT) {
- if(initialized) {
- if (curNode->next != NULL) {
- curNode = curNode->next;
- glThreads[7]->setThread(new Thread(curNode->x, VectorXd::Zero(curNode->N/3), Matrix3d::Identity()));
- glThreads[7]->minimize_energy();
- glutPostRedisplay();
- }
- }
- }
-     */
+
 }
 
 void processNormalKeys(unsigned char key, int x, int y)
@@ -309,6 +290,37 @@ void processNormalKeys(unsigned char key, int x, int y)
         }
     } else if (key == 'v') {
         findThreadInIms();
+        glutPostRedisplay();
+    } else if (key == 'z') {
+        /* Step */
+        if (thread_vision.hasInit) {
+            if (!thread_vision.isDone()) {
+                thread_vision.generateNextSetOfHypoths();
+                glThreads[optimize_thread]->setThread(new Thread(*thread_vision.curr_thread()));
+                glutPostRedisplay();
+
+
+                thread_vision.addThreadPointsToDebugImages(Scalar(200,0,0));
+                thread_vision.add_debug_points_to_ims();
+
+                thread_vision.saveImages(image_save_base, thread_ind+1);
+            }
+            else {
+                cout << "Search already finished" << endl;
+            }
+        }
+        else {
+            cout << "Thread Vision not initialized. Press 'v' to init" << endl;
+        }
+    } else if (key == 'x') {
+        cout << "Flip to prev hypoth" << endl;
+        thread_vision.prev_hypoth();
+        glThreads[optimize_thread]->setThread(new Thread(*thread_vision.curr_thread()));
+        glutPostRedisplay();
+    } else if (key = 'c') {
+        cout << "Flip to next hypoth" << endl;
+        thread_vision.next_hypoth();
+        glThreads[optimize_thread]->setThread(new Thread(*thread_vision.curr_thread()));
         glutPostRedisplay();
     } else if (key == '1' && key <= '3')
     {
@@ -758,24 +770,24 @@ void findThreadInIms()
 
     thread_vision.initThreadSearch();
 
-    if (thread_vision.runThreadSearch())
-    {
-        std::cout << "Found thread full opt" << std::endl;
-        glThreads[optimize_thread]->setThread(new Thread(*thread_vision.curr_thread()));
-
-        thread_vision.addThreadPointsToDebugImages(Scalar(200,0,0));
-        thread_vision.add_debug_points_to_ims();
-
-        thread_vision.saveImages(image_save_base, thread_ind+1);
-
-
-        thread_vision.get_thread_data(points_im, angle_im);
-        err_fullopt = calculate_vector_norm_avg(points_im, points_real)/points_im.size();
-        std::cout << "Error: " << err_fullopt << std::endl;
-
-        twistAngle_correct = glThreads[startThread]->getThread()->end_angle();
-        twistAngle_best = thread_vision.end_angle();
-    }
+//    if (thread_vision.runThreadSearch())
+//    {
+//        std::cout << "Found thread full opt" << std::endl;
+//        glThreads[optimize_thread]->setThread(new Thread(*thread_vision.curr_thread()));
+//
+//        thread_vision.addThreadPointsToDebugImages(Scalar(200,0,0));
+//        thread_vision.add_debug_points_to_ims();
+//
+//        thread_vision.saveImages(image_save_base, thread_ind+1);
+//
+//
+//        thread_vision.get_thread_data(points_im, angle_im);
+//        err_fullopt = calculate_vector_norm_avg(points_im, points_real)/points_im.size();
+//        std::cout << "Error: " << err_fullopt << std::endl;
+//
+//        twistAngle_correct = glThreads[startThread]->getThread()->end_angle();
+//        twistAngle_best = thread_vision.end_angle();
+//    }
 }
 
 void addThreadDebugInfo()
