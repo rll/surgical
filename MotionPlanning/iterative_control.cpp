@@ -120,6 +120,14 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
       
   }
 
+  //copy out control
+  controls.resize(_num_threads-1);
+  for (int i=0; i < _num_threads-1; i++)
+  {
+    controls[i] = new_states.segment(_size_each_state*(_num_threads-2) + i*_size_each_control, _size_each_control);
+  }
+
+
 
 
   return true;

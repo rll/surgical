@@ -8,8 +8,20 @@ void applyControl(Thread* start, const VectorXd& u, const movement_mode movement
 
 }
 
-void applyControl(Thread* start, const VectorXd& u, vector<Two_Motions*>& motions, const movement_mode movement) {
+void applyControl(Thread* start, const VectorXd& u, vector<Two_Motions*>& motions, const movement_mode movement) 
+{
+  control_to_TwoMotion(u, motions, movement);
+  for (int i=0; i < motions.size(); i++)
+  {
+    start->apply_motion_nearEnds(*motions[i]);
+  }
 
+  start->minimize_energy(); 
+}
+
+
+void control_to_TwoMotion(const VectorXd& u, vector<Two_Motions*>& motions, const movement_mode movement)
+{
   double max_ang;
   if (movement == START_AND_END)
   {
@@ -53,29 +65,11 @@ void applyControl(Thread* start, const VectorXd& u, vector<Two_Motions*>& motion
       toMove = new Two_Motions(Vector3d::Zero(), Matrix3d::Identity(), translation, rotation);
   }
 
-
   for (int i=0; i < number_steps; i++)
   {
-    
-    /*pos_start = start->start_pos();
-    rot_start = start->start_rot();
-    pos_end = start->end_pos();
-    rot_end = start->end_rot();
-    toMove->_start.applyMotion(pos_start, rot_start);
-    toMove->_end.applyMotion(pos_end, rot_end);
-    Vector3d pointA = pos_start+rot_start.col(0)*start->rest_length();
-    Vector3d pointB = pos_end-rot_end.col(0)*start->rest_length();
-
-    if ((pointA - pointB).norm() < start->total_length() - 2*start->rest_length()) { 
-      start->set_constraints(pos_start, rot_start, pos_end, rot_end);
-      motions.push_back(toMove);
-    }
-*/
-
-    start->apply_motion_nearEnds(*toMove);
+    motions.push_back(toMove);
   }
 
-  start->minimize_energy(); 
 }
 
   
