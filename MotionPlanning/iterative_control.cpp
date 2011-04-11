@@ -46,18 +46,7 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
     return false;
 
   //setup goal vector
-  /*
-  VectorXd goal_vector( (_num_threads-1)*_size_each_state);
-  goal_vector.setZero();
-  VectorXd state_for_ends(_size_each_state);
-  thread_to_state(trajectory.front(), state_for_ends);
-  weight_state(state_for_ends);
-  goal_vector.segment(0, _size_each_state) = -1 * state_for_ends;
-  thread_to_state(trajectory.back(), state_for_ends);
-  weight_state(state_for_ends);
-  goal_vector.segment((_num_threads-2)*_size_each_state, _size_each_state) = state_for_ends;
-  */
-  SparseMatrix<double> goal_vector( (_num_threads-1)*_size_each_state, 1);
+  /*SparseMatrix<double> goal_vector( (_num_threads-1)*_size_each_state, 1);
   VectorXd state_for_ends(_size_each_state);
   thread_to_state(trajectory.front(), state_for_ends);
   weight_state(state_for_ends);
@@ -71,9 +60,8 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
   for (int i=0; i < _size_each_state; i++)
   {
     goal_vector.fill((_num_threads-2)*_size_each_state + i,0) = state_for_ends(i);
-  }
+  }*/
 
-  Matrix_To_File(goal_vector, FILENAME_GOALVEC);
 
 
   //vector to contain the new states
@@ -85,6 +73,15 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
     add_transitions_alltrans(trajectory);
     SparseMatrix<double> all_trans_sparse(_all_trans);
     Matrix_To_File(all_trans_sparse, FILENAME_ALLTRANS);
+    //write all states out
+    VectorXd goal_vector(_size_each_state*_num_threads);
+    VectorXd state_for_file(_size_each_state);
+    for (int i=0; i < trajectory.size(); i++)
+    {
+      thread_to_state(trajectory[i], state_for_file);
+      goal_vector.segment(i*_size_each_state, _size_each_state) = state_for_file;
+    }
+    Vector_To_File(goal_vector, FILENAME_GOALVEC);
     //LU<MatrixXd> lu_factorization((MatrixXd(all_trans_sparse.transpose())*all_trans_sparse));
     //VectorXd b = DynamicSparseMatrix<double>(all_trans_sparse.transpose())*goal_vector;
     //new_states = b;
@@ -213,6 +210,7 @@ void Matrix_To_File(SparseMatrix<double> mat, const char* filename)
       toFile << (it.row()+1) << "\t" << (it.col()+1) << "\t" << it.value() <<"\n";
     }
   }
+  toFile.close();
 }
 
 void File_To_Vector(const char* filename, VectorXd& vec)
@@ -224,4 +222,11 @@ void File_To_Vector(const char* filename, VectorXd& vec)
     fromFile >> temp_holder;
     vec(i) = atof(temp_holder);
   }
+}
+
+void Vector_To_File(VectorXd& vec, const char* filename)
+{
+  ofstream toFile(filename);
+  toFile << vec << std::endl;
+  toFile.close();
 }

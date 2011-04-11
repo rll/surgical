@@ -56,5 +56,6 @@ void thread_to_state(const Thread* thread, VectorXd& state);
 void weight_state(VectorXd& state);
 void Matrix_To_File(SparseMatrix<double> mat, const char* filename);
 void File_To_Vector(const char* filename, VectorXd& vec);
+void Vector_To_File(VectorXd& vec, const char* filename);
 
 #endif
