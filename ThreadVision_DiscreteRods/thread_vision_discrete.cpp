@@ -525,7 +525,7 @@ Thread_Hypoth* Thread_Vision::mergeThreads(Thread_Hypoth* thread1, Thread_Hypoth
 
 /* Adds new hypoths based on tangents. Hypoths in current_thread_hypoths will
  * be mutated, and extra ones will be appended to the back */
-void Thread_Vision::add_possible_next_hypoths(vector<Thread_Hypoth*> current_thread_hypoths)
+void Thread_Vision::add_possible_next_hypoths(vector<Thread_Hypoth*>& current_thread_hypoths)
 {
     int curr_number_hypoths = current_thread_hypoths.size();
     vector<Thread_Hypoth*> extra_hypoths;
@@ -561,7 +561,7 @@ Thread* Thread_Vision::curr_thread()
 }
 
 
-void Thread_Vision::sort_hypoths(vector<Thread_Hypoth*> current_thread_hypoths)
+void Thread_Vision::sort_hypoths(vector<Thread_Hypoth*>& current_thread_hypoths)
 {
     sort(current_thread_hypoths.begin(), current_thread_hypoths.end(), lessthan_Thread_Hypoth);
 }

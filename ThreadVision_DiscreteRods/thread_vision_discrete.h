@@ -120,8 +120,8 @@ public:
     vector<thread_hypoth_pair>* nearbyPairsOfThreadHypoths();
     Thread_Hypoth* mergeThreads(Thread_Hypoth* thread1, Thread_Hypoth* thread2);
 
-    void add_possible_next_hypoths(vector<Thread_Hypoth*> current_thread_hypoths);
-    void sort_hypoths(vector<Thread_Hypoth*> current_thread_hypoths);
+    void add_possible_next_hypoths(vector<Thread_Hypoth*>& current_thread_hypoths);
+    void sort_hypoths(vector<Thread_Hypoth*>& current_thread_hypoths);
 
         //initialize the thread search
     void updateCanny();
