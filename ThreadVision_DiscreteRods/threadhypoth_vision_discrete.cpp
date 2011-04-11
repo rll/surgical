@@ -175,7 +175,9 @@ double Thread_Hypoth::calculate_visual_energy_only()
 
 void Thread_Hypoth::calculate_score()
 {
-    _score = calculate_visual_energy();//_previous_energy - 
+//    _score = - 1 * ( calculate_visual_energy() - _previous_energy); //
+//    cout << "Score: " << _score << endl;
+    _score = calculate_visual_energy();
 }
 
 void Thread_Hypoth::calculate_visual_gradient_vertices(
@@ -337,7 +339,6 @@ bool Thread_Hypoth::find_next_tan_visual(vector<tangent_and_score>& tangents)
                 tangent_and_score toAdd(currTangent, currScore);
                 tan_scores.push_back(toAdd);
             }
-
         }
     }
 
@@ -443,7 +444,7 @@ void suppress_hypoths(vector<Thread_Hypoth*>& hypoths,
     const double total_score_thresh = 4.0;
     inds_to_keep.resize(0);
 
-    sort(hypoths.begin(), hypoths.end(), lessthan_Thread_Hypoth);
+    sort(hypoths.begin(), hypoths.end(), lessThanThreadHypothVisualEnergy);
     int ind_checking;
     for (ind_checking = 0; ind_checking < hypoths.size(); ind_checking++) {
         /* Have at least two hypoths */
@@ -480,5 +481,10 @@ bool operator <(const Thread_Hypoth& a, const Thread_Hypoth& b)
 bool lessthan_Thread_Hypoth(const Thread_Hypoth* a, const Thread_Hypoth* b)
 {
     return a->score() < b->score();
+}
+
+bool lessThanThreadHypothVisualEnergy(Thread_Hypoth *a, Thread_Hypoth *b)
+{
+    return a->calculate_visual_energy() < b->calculate_visual_energy();
 }
 

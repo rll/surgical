@@ -60,7 +60,6 @@ public:
         _thread_pieces.front()->initializeFrames();
     };
 
-    bool lessthan_Thread_Hypoth(const Thread_Hypoth* a, const Thread_Hypoth* b);
 
     double _score; //this is not ensured to be updated!! 
     double _previous_energy;
@@ -72,5 +71,6 @@ void suppress_hypoths(vector<Thread_Hypoth*>& hypoths,
         vector<int>& inds_to_keep);
 bool operator <(const Thread_Hypoth& a, const Thread_Hypoth& b);
 bool lessthan_Thread_Hypoth(const Thread_Hypoth* a, const Thread_Hypoth* b);
+bool lessThanThreadHypothVisualEnergy(Thread_Hypoth *a, Thread_Hypoth *b);
 
 #endif

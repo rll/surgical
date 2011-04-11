@@ -841,7 +841,4 @@ void save_opengl_image()
     sprintf(im_name, "%s-%d.jpg", image_save_base_opengl, thread_ind+1);
     imwrite(im_name, img);
     waitKey(1);
-} 
-
-
-
+}
