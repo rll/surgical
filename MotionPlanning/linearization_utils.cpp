@@ -123,11 +123,11 @@ void solveLinearizedControl(Thread* start, const Thread* goal, vector<Two_Motion
   int num_pieces = start->num_pieces();
   int num_edges = start->num_edges();
   // linearize the controls around the current thread (quasistatic, no dynamics)
-  MatrixXd B(6*num_pieces,num_controls);
+  MatrixXd B(6*num_pieces-3,num_controls);
   estimate_transition_matrix(start, B, movement);
 
   //weight matrix for different aspects of state
-  MatrixXd weighting_mat = MatrixXd::Identity(6*num_pieces, 6*num_pieces);
+  MatrixXd weighting_mat = MatrixXd::Identity(6*num_pieces-3, 6*num_pieces-3);
   for (int i=0; i < 3*num_pieces; i++)
   {
     weighting_mat(i,i) = WEIGHT_VERTICES;

@@ -15,14 +15,14 @@
 
 enum movement_mode {START, END, START_AND_END};
 
-void applyControl(Thread* start, const VectorXd& u, const movement_mode movement = END);
-void applyControl(Thread* start, const VectorXd& u, vector<Two_Motions*>& motions, const movement_mode movement = END);
+void applyControl(Thread* start, const VectorXd& u, const movement_mode movement = START_AND_END);
+void applyControl(Thread* start, const VectorXd& u, vector<Two_Motions*>& motions, const movement_mode movement = START_AND_END);
 void computeDifference(Thread* start, const Thread* goal, VectorXd& res);
 void computeDifference_maxMag(Thread* start, const Thread* goal, VectorXd& res, double maxMag);
-void solveLinearizedControl(Thread* start, const Thread* goal, const movement_mode movement = END);
-void solveLinearizedControl(Thread* start, const Thread* goal, vector<Two_Motions*>& motions, const movement_mode movement = END);
-void estimate_transition_matrix(Thread* thread, MatrixXd& A, const movement_mode movement = END);
-void estimate_transition_matrix_noEdges_withTwist(Thread* thread, MatrixXd& A, const movement_mode movement = END);
+void solveLinearizedControl(Thread* start, const Thread* goal, const movement_mode movement = START_AND_END);
+void solveLinearizedControl(Thread* start, const Thread* goal, vector<Two_Motions*>& motions, const movement_mode movement = START_AND_END);
+void estimate_transition_matrix(Thread* thread, MatrixXd& A, const movement_mode movement = START_AND_END);
+void estimate_transition_matrix_noEdges_withTwist(Thread* thread, MatrixXd& A, const movement_mode movement = START_AND_END);
 void interpolateThreads(vector<Thread*>&traj, vector<Two_Motions*>& controls);
 void simpleInterpolation(Thread* start, const Thread* goal, vector<Two_Motions*>& motions);
 

@@ -393,27 +393,8 @@ int main (int argc, char * argv[])
 
 
 
-  //InitThread(argc, argv);
-  
-  vector<Thread*> traj;
-  vector<VectorXd> controls;
-  int num_threads = 4;
-  for (int i=0; i < num_threads;i++)
-  {
-    GLThread* a = new GLThread();
-    a->getThread()->minimize_energy();
-    traj.push_back(a->getThread());
-  }
-  for (int i=0; i < num_threads-1; i++)
-  {
-    controls.push_back(VectorXd(12));
-  }
-
-
-  Iterative_Control iter_control(num_threads, traj.front()->num_pieces());
-  iter_control.iterative_control_opt(traj, controls, 1);
-
-
+  InitThread(argc, argv);
+ 
   // for (int i=0; i < NUM_PTS; i++)
   // {
   //   radii[i]=THREAD_RADII;

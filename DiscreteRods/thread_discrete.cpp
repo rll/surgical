@@ -1905,6 +1905,7 @@ void Thread::apply_motion_nearEnds(Frame_Motion& motion)
   //now account for translation that occurs because of rotation
   end_pos += (vertex_at_ind(_thread_pieces.size()-2)+motion._pos_movement) - (end_pos-end_rot.col(0).normalized()*_rest_length);
   set_end_constraint(end_pos, end_rot);
+  unviolate_total_length_constraint();
   minimize_energy();
 }
 
@@ -1914,6 +1915,7 @@ void Thread::apply_motion_nearEnds(Two_Motions& motion)
   Matrix3d start_rot = this->start_rot();
   Vector3d end_pos = this->end_pos();
   Matrix3d end_rot = this->end_rot();
+
   motion._start.applyMotion(start_pos, start_rot);
   motion._end.applyMotion(end_pos, end_rot);
 
@@ -1951,7 +1953,6 @@ void Thread::apply_motion_nearEnds(Two_Motions& motion)
   too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
   std::cout << "too long by " << too_long_by << std::endl;
   */
-
 
   set_constraints(start_pos, start_rot, end_pos, end_rot);
   minimize_energy();
