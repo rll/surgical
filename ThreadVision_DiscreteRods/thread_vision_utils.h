@@ -9,7 +9,13 @@
 #include <Eigen/Geometry>
 #include "../DiscreteRods/threadutils_discrete.h"
 #include "../vision/ThreeCam.h"
+#include <time.h>
 
+#define init_timing_fence time_t startTimeXX; \
+    int timeElapsedXX;
+#define start_timing_fence startTimeXX = time(NULL);
+#define end_timing_fence(a) timeElapsedXX = difftime(time(NULL), startTimeXX); \
+    cout << "Time Elapsed for " << a << ": " << timeElapsedXX << endl;
 
 USING_PART_OF_NAMESPACE_EIGEN
 
