@@ -3,6 +3,8 @@
 
 void suppress_tangents(vector<tangent_and_score>& tangents, vector<tangent_and_score>& tangents_to_keep)
 {
+    cout << "Num Tangents Before: " << tangents.size();
+
     vector<int> inds_to_keep;
     suppress_tangents(tangents, inds_to_keep);
 
@@ -11,10 +13,13 @@ void suppress_tangents(vector<tangent_and_score>& tangents, vector<tangent_and_s
     {
         tangents_to_keep.push_back(tangents[inds_to_keep[i]]);
     }
+
+    cout << "\tNum Tangents After: " << tangents_to_keep.size() << endl;
 }
 
 void suppress_tangents(vector<tangent_and_score>& tangents, vector<int>& inds_to_keep)
 {
+
   //const double dot_prod_thresh = 0.1;
     const double dot_prod_thresh = 0.2;
     const double position_norm_thresh = 2.0;

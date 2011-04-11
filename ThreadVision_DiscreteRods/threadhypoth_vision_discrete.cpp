@@ -59,7 +59,6 @@ Thread_Hypoth::~Thread_Hypoth()
 void Thread_Hypoth::optimize_visual()
 {
     _previous_energy = calculate_visual_energy();
-    std::cout << "Optimizing Visual Energy" << std::endl;;
     double step_in_grad_dir_vertices = 1.0;
 
     /* Constants for accuracy */
@@ -297,8 +296,9 @@ void Thread_Hypoth::add_possible_next_hypoths(
 
 bool Thread_Hypoth::find_next_tan_visual(vector<tangent_and_score>& tangents)
 {
+    /* TODO Adjust Tangent Error Threshold */
     const double length_for_tan = _rest_length;
-    const double ang_to_rotate = M_PI / 60.0;
+    const double ang_to_rotate = M_PI / 60.0; //TODO Why?
     //const int num_reprojs_per_tan = 10;
 
     //rotate as in yaw, pitch, roll - no roll, since we only care about direction of tangent
@@ -319,8 +319,11 @@ bool Thread_Hypoth::find_next_tan_visual(vector<tangent_and_score>& tangents)
 
             currTangent.normalize();
 
-            double
-                    currScore =
+            /* Use visual reprojection error for score. Add dot product
+             * of original tangent and new tangent to scorelface
+             *
+             *  */
+            double currScore =
                             TAN_SCORE_VISUAL_COEFF
                                     * _thread_vision->scoreProjection3dPointAndTanget(
                                             _thread_pieces[_thread_pieces.size()
@@ -404,6 +407,7 @@ void Thread_Hypoth::restore_thread_pieces_and_resize(
 
 void suppress_hypoths(vector<Thread_Hypoth*>& hypoths)
 {
+    cout << "Num Hypoths Before: " << hypoths.size();
     vector<int> inds_to_keep;
     suppress_hypoths(hypoths, inds_to_keep);
 
@@ -419,14 +423,16 @@ void suppress_hypoths(vector<Thread_Hypoth*>& hypoths)
     }
 
     for (int i = 0; i < hypoths.size(); i++) {
-        if (hypoths[i] != NULL)
+        if (hypoths[i] != NULL) {
             delete hypoths[i];
+        }
     }
 
     hypoths.resize(num_hypoths_to_keep);
     for (int i = 0; i < num_hypoths_to_keep; i++) {
         hypoths[i] = hypoths_to_keep[i];
     }
+    cout << "\tNum Hypoths After: " << hypoths.size() << endl;
 }
 
 void suppress_hypoths(vector<Thread_Hypoth*>& hypoths,

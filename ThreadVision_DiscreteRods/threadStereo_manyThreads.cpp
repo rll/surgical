@@ -22,11 +22,12 @@
 #include "../DiscreteRods/trajectory_reader.h"
 #include "../DiscreteRods/trajectory_recorder.h"
 
+/* Entire thread state */
 #define TRAJ_BASE_NAME_NYLON "../DiscreteRods/LearnParams/config/suturenylon_processed_projected"
 #define TRAJ_BASE_NAME_PURPLE "../DiscreteRods/LearnParams/config/suturepurple_processed_projected"
 #define TRAJ_BASE_NAME_BLACK "../DiscreteRods/LearnParams/config/sutureblack_processed_projected"
 
-
+/*  */
 #define POINTFILE_NYLON "../vision/captures/suturenylon_points.txt" 
 #define POINTFILE_PURPLE "../vision/captures/suturepurple_points.txt" 
 #define POINTFILE_BLACK "../vision/captures/sutureblack_points.txt" 
@@ -757,7 +758,7 @@ void findThreadInIms()
 
     if (thread_vision.optimizeThread())
     {
-        std::cout << "found thread full opt" << std::endl;
+        std::cout << "Found thread full opt" << std::endl;
         glThreads[optimize_thread]->setThread(new Thread(*thread_vision.curr_thread()));
 
         thread_vision.addThreadPointsToDebugImages(Scalar(200,0,0));
@@ -769,7 +770,7 @@ void findThreadInIms()
 
         thread_vision.get_thread_data(points_im, angle_im);
         err_fullopt = calculate_vector_norm_avg(points_im, points_real)/points_im.size();
-        std::cout << "err: " << err_fullopt << std::endl;
+        std::cout << "Error: " << err_fullopt << std::endl;
 
         twistAngle_correct = glThreads[startThread]->getThread()->end_angle();
         twistAngle_best = thread_vision.end_angle();

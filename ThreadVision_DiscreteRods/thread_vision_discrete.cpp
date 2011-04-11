@@ -428,6 +428,8 @@ bool Thread_Vision::processHypothesesFromInit()
 
             suppress_hypoths(current_thread_hypoths);
             add_possible_next_hypoths(current_thread_hypoths);
+            cout << "Current size: " << current_thread_hypoths.size() << endl;
+
             suppress_hypoths(current_thread_hypoths);
 
             for (int hypoth_ind=0; hypoth_ind < current_thread_hypoths.size(); hypoth_ind++)
@@ -437,13 +439,15 @@ bool Thread_Vision::processHypothesesFromInit()
                 current_thread_hypoths[hypoth_ind]->minimize_energy_twist_angles();
                 current_thread_hypoths[hypoth_ind]->calculate_score();
             }
+
+            cout << endl;
         }
 
         /* Detect close segments */
-        vector<thread_hypoth_pair> *allPairs = nearbyPairsOfThreadHypoths();
-        if (allPairs->size() > 0){
-            std::cout << "Threads close: " << allPairs->size() << std::endl;
-        }
+//        vector<thread_hypoth_pair> *allPairs = nearbyPairsOfThreadHypoths();
+//        if (allPairs->size() > 0){
+//            std::cout << "Threads close: " << allPairs->size() << std::endl;
+//        }
     }
 
     /* Algorithm should grow all threads independently and not join,
