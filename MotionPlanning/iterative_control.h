@@ -13,6 +13,10 @@
 #include <math.h>
 #include "linearization_utils.h"
 #include "../DiscreteRods/thread_discrete.h"
+#include <fstream>
+
+#define FILENAME_ALLTRANS "alltrans.txt"
+#define FILENAME_GOALVEC "goalvec.txt"
 
 
 
@@ -38,14 +42,18 @@ class Iterative_Control
     void init_all_trans(); /* adds the diagonal weighting terms to _all_trans */
     void add_transitions_alltrans(vector<Thread*>& trajectory);
 
-    MatrixXd _all_trans;
+    DynamicSparseMatrix<double> _all_trans;
     int _num_threads;
     int _size_each_state;
     int _num_vertices;
-    int _num_edges;
     int _cols_all_unknown_states;
 
 
 };
+
+
+void thread_to_state(const Thread* thread, VectorXd& state);
+void weight_state(VectorXd& state);
+void Matrix_To_File(SparseMatrix<double> mat, const char* filename);
 
 #endif

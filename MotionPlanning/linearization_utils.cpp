@@ -335,10 +335,9 @@ void interpolateThreads(vector<Thread*>&traj, vector<Two_Motions*>& controls) {
 }
 
 
-void estimate_transition_matrix_withTwist(Thread* thread, MatrixXd& A, const movement_mode movement)
+void estimate_transition_matrix_noEdges_withTwist(Thread* thread, MatrixXd& A, const movement_mode movement)
 {
   const int num_pieces = thread->num_pieces();
-  const int num_edges = thread->num_edges();
   vector<ThreadPiece*> thread_backup_pieces;
   thread->save_thread_pieces_and_resize(thread_backup_pieces);
 
@@ -355,11 +354,7 @@ void estimate_transition_matrix_withTwist(Thread* thread, MatrixXd& A, const mov
     {
       A.block(piece_ind*3, i, 3,1) = thread->vertex_at_ind(piece_ind);
     }
-    for (int piece_ind=0; piece_ind < num_edges; piece_ind++)
-    {
-      A.block(3*num_pieces + piece_ind*3, i, 3,1) = thread->edge_at_ind(piece_ind);
-    }
-    A(3*(num_pieces+num_edges), i) = thread->end_angle();
+    A(3*num_pieces, i) = thread->end_angle();
 
     du(i) = -eps;
     thread->restore_thread_pieces(thread_backup_pieces);
@@ -368,61 +363,9 @@ void estimate_transition_matrix_withTwist(Thread* thread, MatrixXd& A, const mov
     {
       A.block(piece_ind*3, i, 3,1) -= thread->vertex_at_ind(piece_ind);
     }
-    for (int piece_ind=0; piece_ind < num_edges; piece_ind++)
-    {
-      A.block(3*num_pieces + piece_ind*3, i, 3,1) -= thread->edge_at_ind(piece_ind);
-    }
-    A(3*(num_pieces+num_edges), i) -= thread->end_angle();
+    A(3*num_pieces, i) -= thread->end_angle();
   }
   A /= 2.0*eps;
   thread->restore_thread_pieces(thread_backup_pieces);
 }
 
-
-void thread_to_state(const Thread* thread, VectorXd& state)
-{
-  const int num_pieces = thread->num_pieces();
-  state.resize(6*num_pieces-3);
-  for (int piece_ind=0; piece_ind < thread->num_pieces(); piece_ind++)
-  {
-    state.segment(piece_ind*3, 3) = thread->vertex_at_ind(piece_ind);
-  }
-
-  for (int piece_ind=0; piece_ind < thread->num_edges(); piece_ind++)
-  {
-    state.segment((num_pieces+piece_ind)*3, 3) = thread->edge_at_ind(piece_ind);
-  }
-}
-
-void thread_to_state_withTwist(const Thread* thread, VectorXd& state)
-{
-  const int num_pieces = thread->num_pieces();
-  state.resize(6*num_pieces-3+1);
-  for (int piece_ind=0; piece_ind < thread->num_pieces(); piece_ind++)
-  {
-    state.segment(piece_ind*3, 3) = thread->vertex_at_ind(piece_ind);
-  }
-
-  for (int piece_ind=0; piece_ind < thread->num_edges(); piece_ind++)
-  {
-    state.segment((num_pieces+piece_ind)*3, 3) = thread->edge_at_ind(piece_ind);
-  }
-  state(6*num_pieces - 3) = thread->end_angle();
-}
-
-
-void weight_state(VectorXd& state)
-{
-  const int num_pieces = (state.rows()-1+3)/6;
-  for (int piece_ind=0; piece_ind < num_pieces; piece_ind++)
-  {
-    state.segment(piece_ind*3, 3) *= WEIGHT_VERTICES;
-  }
-
-  for (int piece_ind=0; piece_ind < num_pieces-1; piece_ind++)
-  {
-    state.segment((num_pieces+piece_ind)*3, 3) *= WEIGHT_EDGES;
-  }
-  state(6*num_pieces - 3) *= WEIGHT_ANGLE;
-  
-}
