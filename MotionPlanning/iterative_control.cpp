@@ -184,7 +184,7 @@ void Iterative_Control::add_transitions_alltrans(vector<Thread*>& trajectory)
 void thread_to_state(const Thread* thread, VectorXd& state)
 {
   const int num_pieces = thread->num_pieces();
-  state.resize(6*num_pieces-3+1);
+  state.resize(3*num_pieces+1);
   for (int piece_ind=0; piece_ind < thread->num_pieces(); piece_ind++)
   {
     state.segment(piece_ind*3, 3) = thread->vertex_at_ind(piece_ind);
