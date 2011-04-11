@@ -17,7 +17,7 @@
 
 #define FILENAME_ALLTRANS "alltrans.txt"
 #define FILENAME_GOALVEC "goalvec.txt"
-
+#define FILENAME_STATEVEC "newstate.txt"
 
 
 using namespace Eigen;
@@ -55,5 +55,6 @@ class Iterative_Control
 void thread_to_state(const Thread* thread, VectorXd& state);
 void weight_state(VectorXd& state);
 void Matrix_To_File(SparseMatrix<double> mat, const char* filename);
+void File_To_Vector(const char* filename, VectorXd& vec);
 
 #endif

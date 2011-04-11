@@ -71,7 +71,7 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
 
 
   //vector to contain the new states
-  //VectorXd new_states((_num_threads-2)*_size_each_state + (_num_threads-1)*_size_each_control);
+  VectorXd new_states((_num_threads-2)*_size_each_state + (_num_threads-1)*_size_each_control);
 
 
   for (int opt_iter=0; opt_iter < num_opts; opt_iter++)
@@ -93,11 +93,18 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
 
     //std::cout << "error: " << (_all_trans*new_states - goal_vector).norm() << std::endl;
 
-
     vector<Vector3d> points(_num_vertices);
     vector<double> angles(_num_vertices);
 
-/*
+
+    char matlab_command[1024];
+    sprintf(matlab_command, "matlab -nodisplay -nodesktop -nojvm -r \"solve_sparse(%d, %d, \'%s\', %d, %d, \'%s\', \'%s\')\"", _all_trans.rows(), _all_trans.cols(), FILENAME_ALLTRANS, goal_vector.rows(), goal_vector.cols(), FILENAME_GOALVEC, FILENAME_STATEVEC);
+    std::cout << "command: " << matlab_command << std::endl;
+
+    system(matlab_command);
+
+    File_To_Vector(FILENAME_STATEVEC, new_states);
+
     for (int i=1; i < trajectory.size()-1; i++)
     {
       VectorXd to_copy = new_states.segment(_size_each_state*(i-1), _size_each_state);
@@ -106,7 +113,7 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
       trajectory[i]->project_length_constraint();
       trajectory[i]->minimize_energy();
     }
-    */
+    
       
   }
 
@@ -199,5 +206,16 @@ void Matrix_To_File(SparseMatrix<double> mat, const char* filename)
     {
       toFile << (it.row()+1) << "\t" << (it.col()+1) << "\t" << it.value() <<"\n";
     }
+  }
+}
+
+void File_To_Vector(const char* filename, VectorXd& vec)
+{
+  ifstream fromFile(filename);
+  char temp_holder[256];
+  for (int i=0; i < vec.rows(); i++)
+  {
+    fromFile >> temp_holder;
+    vec(i) = atof(temp_holder);
   }
 }
