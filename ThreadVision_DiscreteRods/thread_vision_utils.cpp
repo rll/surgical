@@ -19,8 +19,6 @@ void suppress_tangents(vector<tangent_and_score>& tangents, vector<tangent_and_s
 
 void suppress_tangents(vector<tangent_and_score>& tangents, vector<int>& inds_to_keep)
 {
-
-  //const double dot_prod_thresh = 0.1;
     const double dot_prod_thresh = 0.2;
     const double position_norm_thresh = 2.0;
     const double total_score_thresh = 4.0;
@@ -30,7 +28,7 @@ void suppress_tangents(vector<tangent_and_score>& tangents, vector<int>& inds_to
     int ind_checking;
     for (ind_checking = 0; ind_checking < tangents.size(); ind_checking++)
     {
-        if (inds_to_keep.size() > 0 && tangents[ind_checking].score > tangents.front().score * total_score_thresh)
+        if (inds_to_keep.size() > 2 && tangents[ind_checking].score > tangents.front().score * total_score_thresh)
             break;
 
         bool keep_this_ind = true;
