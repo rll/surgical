@@ -144,6 +144,7 @@ class Thread
     //debugging tools
     bool is_consistent();
     double calculate_holonomy();
+    void print_vertices();
 
     //overloaded operators
     Thread& operator=(const Thread& rhs);

@@ -1826,6 +1826,16 @@ double Thread::calculate_holonomy()
   return holonomy;
 }
 
+void Thread::print_vertices()
+{
+  std::cout << "vertices:\n";
+  for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
+  {
+    std::cout << _thread_pieces[piece_ind]->vertex().transpose() << std::endl;
+  }
+  std::cout << std::endl;
+}
+
 void Thread::set_constraints(const Vector3d& start_pos, const Matrix3d& start_rot, const Vector3d& end_pos, const Matrix3d& end_rot)
 {
   set_start_constraint(start_pos, start_rot);
@@ -1986,13 +1996,13 @@ void Thread::unviolate_total_length_constraint()
 
 void Thread::copy_data_from_vector(VectorXd& toCopy)
 {
-  /*
+  
   for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
-    std::cout << "before vertex: " << _thread_pieces[piece_ind]->vertex().transpose() << "\t\t";
+    //std::cout << "before vertex: " << _thread_pieces[piece_ind]->vertex().transpose() << "\t\t";
     _thread_pieces[piece_ind]->set_vertex(toCopy.segment(piece_ind*3,3));
-    std::cout << "after vertex: " << _thread_pieces[piece_ind]->vertex().transpose() << std::endl;
-  }*/
+    //std::cout << "after vertex: " << _thread_pieces[piece_ind]->vertex().transpose() << std::endl;
+  }
 
   _thread_pieces[0]->update_edge();
   _thread_pieces[1]->update_edge();
