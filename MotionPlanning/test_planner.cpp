@@ -497,9 +497,11 @@ void generateInterpolatedThread() {
 
   Iterative_Control* ic = new Iterative_Control(traj.size(), traj.front()->num_pieces());
 
+	int num_iters = 30;
 
-  ic->iterative_control_opt(traj, U, 1);
+  ic->iterative_control_opt(traj, U, num_iters);
   vector<vector<Thread*> > thread_visualization_data;
+	vector<vector<VectorXd> > thread_control_data;
   for (int i = 0; i < traj.size(); i++) { 
     vector<Thread*> tmp;
     tmp.push_back(traj[i]);
@@ -518,6 +520,15 @@ void generateInterpolatedThread() {
     prevThread = startThread; 
   }
   thread_visualization_data.push_back(control_traj);
+
+
+	thread_visualization_data.resize(0);
+	ic->AllFiles_To_Traj(num_iters, thread_visualization_data, thread_control_data);
+
+	for (int i=0; i < thread_visualization_data.size(); i++)
+	{
+	std::cout << "size: " << thread_visualization_data[i].size() << std::endl;
+	}
   
   setThreads(thread_visualization_data);
   glutPostRedisplay();

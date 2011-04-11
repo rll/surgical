@@ -17,7 +17,7 @@
 
 #define FILENAME_ALLTRANS "alltrans.txt"
 #define FILENAME_GOALVEC "goalvec.txt"
-#define FILENAME_STATEVEC "newstate.txt"
+#define FILENAME_STATEVEC_BASE "newstate"
 
 
 using namespace Eigen;
@@ -35,8 +35,10 @@ class Iterative_Control
 
     void resize_controller(int num_threads, int num_vertices);
 
-    bool iterative_control_opt(vector<Thread*>& trajectory, vector<VectorXd>& controls, int num_opts = 50);
-    
+    bool iterative_control_opt(vector<Thread*>& trajectory, vector<VectorXd>& controls, int num_opts = 5);
+    void AnswerFile_To_Traj(const char* filename, vector<Thread*>& trajectory, vector<VectorXd>& control);
+    void AllFiles_To_Traj(int num_iters, vector< vector<Thread*> >& trajectory, vector< vector<VectorXd> >& control);
+
 
   private:
     void init_all_trans(); /* adds the diagonal weighting terms to _all_trans */
@@ -47,6 +49,8 @@ class Iterative_Control
     int _size_each_state;
     int _num_vertices;
     int _cols_all_unknown_states;
+    Thread* _lastopt_startThread;
+    Thread* _lastopt_goalThread;
 
 
 };

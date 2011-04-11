@@ -63,6 +63,9 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
   }*/
 
 
+  //make a copy of the start and goal threads
+  _lastopt_startThread = new Thread(*trajectory.front());
+  _lastopt_goalThread = new Thread(*trajectory.back());
 
   //vector to contain the new states
   VectorXd new_states((_num_threads-2)*_size_each_state + (_num_threads-1)*_size_each_control);
@@ -99,14 +102,16 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
     vector<Vector3d> points(_num_vertices);
     vector<double> angles(_num_vertices);
 
+    char filename_statevec_thisiter[256];
+    sprintf(filename_statevec_thisiter, "%s%d.txt", FILENAME_STATEVEC_BASE, opt_iter);
 
     char matlab_command[1024];
-    sprintf(matlab_command, "%s -nodisplay -nodesktop -nojvm -r \"solve_sparse(%d, %d, \'%s\', %d, %d, \'%s\', \'%s\', %d, %d, %d)\"", MATLAB_INSTALL, _all_trans.rows(), _all_trans.cols(), FILENAME_ALLTRANS, goal_vector.rows(), goal_vector.cols(), FILENAME_GOALVEC, FILENAME_STATEVEC, _num_threads, _size_each_state, _size_each_control);
+    sprintf(matlab_command, "%s -nodisplay -nodesktop -nojvm -r \"solve_sparse(%d, %d, \'%s\', %d, %d, \'%s\', \'%s\', %d, %d, %d)\"", MATLAB_INSTALL, _all_trans.rows(), _all_trans.cols(), FILENAME_ALLTRANS, goal_vector.rows(), goal_vector.cols(), FILENAME_GOALVEC, filename_statevec_thisiter, _num_threads, _size_each_state, _size_each_control);
     std::cout << "command: " << matlab_command << std::endl;
 
     system(matlab_command);
 
-    File_To_Vector(FILENAME_STATEVEC, new_states);
+    File_To_Vector(filename_statevec_thisiter, new_states);
 
     for (int i=1; i < trajectory.size()-1; i++)
     {
@@ -126,8 +131,6 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
   {
     controls[i] = new_states.segment(_size_each_state*(_num_threads-2) + i*_size_each_control, _size_each_control);
   }
-
-
 
 
   return true;
@@ -180,6 +183,44 @@ void Iterative_Control::add_transitions_alltrans(vector<Thread*>& trajectory)
         _all_trans.coeffRef(num_rows_start+r, num_cols_start+c) = trans(r,c);
       }
     }
+  }
+}
+
+
+void Iterative_Control::AnswerFile_To_Traj(const char* filename, vector<Thread*>& trajectory, vector<VectorXd>& control)
+{
+  VectorXd new_states((_num_threads-2)*_size_each_state + (_num_threads-1)*_size_each_control);
+  File_To_Vector(filename, new_states);
+  trajectory.resize(0);
+  trajectory.push_back(new Thread(*_lastopt_startThread));
+  for (int i=1; i < _num_threads-1; i++)
+  {
+    VectorXd to_copy = new_states.segment(_size_each_state*(i-1), _size_each_state);
+    trajectory.push_back(new Thread(*trajectory.back()));
+    trajectory[i]->copy_data_from_vector(to_copy);
+    trajectory[i]->unviolate_total_length_constraint();
+    trajectory[i]->project_length_constraint();
+    trajectory[i]->minimize_energy();
+  }
+  trajectory.push_back(new Thread(*_lastopt_goalThread));
+
+  //copy out control
+  control.resize(_num_threads-1);
+  for (int i=0; i < _num_threads-1; i++)
+  {
+    control[i] = new_states.segment(_size_each_state*(_num_threads-2) + i*_size_each_control, _size_each_control);
+  }
+}
+
+void Iterative_Control::AllFiles_To_Traj(int num_iters, vector< vector<Thread*> >& trajectory, vector< vector<VectorXd> >& control)
+{
+  trajectory.resize(num_iters);
+  control.resize(num_iters);
+  for (int opt_iter=0; opt_iter < num_iters; opt_iter++)
+  {
+    char filename_statevec_thisiter[256];
+    sprintf(filename_statevec_thisiter, "%s%d.txt", FILENAME_STATEVEC_BASE, opt_iter);
+    AnswerFile_To_Traj(filename_statevec_thisiter, trajectory[opt_iter], control[opt_iter]);
   }
 }
 
@@ -238,3 +279,5 @@ void Vector_To_File(VectorXd& vec, const char* filename)
   toFile << vec << std::endl;
   toFile.close();
 }
+
+
