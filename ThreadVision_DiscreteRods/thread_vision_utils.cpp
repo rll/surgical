@@ -19,7 +19,7 @@ void suppress_tangents(vector<tangent_and_score>& tangents, vector<tangent_and_s
 
 void suppress_tangents(vector<tangent_and_score>& tangents, vector<int>& inds_to_keep)
 {
-    const double dot_prod_thresh = 0.2;
+    const double dot_prod_thresh = M_PI / 4;
     const double position_norm_thresh = 2.0;
     const double total_score_thresh = 4.0;
     inds_to_keep.resize(0);
@@ -28,14 +28,18 @@ void suppress_tangents(vector<tangent_and_score>& tangents, vector<int>& inds_to
     int ind_checking;
     for (ind_checking = 0; ind_checking < tangents.size(); ind_checking++)
     {
-        if (inds_to_keep.size() > 2 && tangents[ind_checking].score > tangents.front().score * total_score_thresh)
+        if (inds_to_keep.size() > 5 && tangents[ind_checking].score > tangents.front().score * total_score_thresh)
             break;
 
         bool keep_this_ind = true;
         for (int ind_comparing = 0; ind_comparing < inds_to_keep.size(); ind_comparing++)
         {
             double dot_prod = tangents[ind_checking].tan.dot(tangents[inds_to_keep[ind_comparing]].tan);
-            if (dot_prod > dot_prod_thresh)
+            double cosAngleBetween = dot_prod / (tangents[ind_checking].tan.norm() * tangents[inds_to_keep[ind_comparing]].tan.norm());
+            double angleBetween = acos(cosAngleBetween);
+
+            /* Assume that the angle between the two vectors can't be too big */
+            if (angleBetween < dot_prod_thresh)
             {
                 keep_this_ind = false;
             }
