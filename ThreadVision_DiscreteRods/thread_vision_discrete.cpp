@@ -44,7 +44,7 @@ Thread_Vision::Thread_Vision()
         650,  // gain
         "optimized", // optimized or measured
         107109, // camera uid
-        "/home/pabbeel/rll/code/trunk/surgical/vision/captures/suturenylon1-");
+        "../vision/captures/suturenylon1-");
     //IM_DIR_1); 
     _captures[0]->setExposure(5000);
     //_captures[0]->setExposure(11000);
@@ -55,7 +55,7 @@ Thread_Vision::Thread_Vision()
         650,  // gain
         "optimized", // optimized or measured
         107110, // camera uid
-        "/home/pabbeel/rll/code/trunk/surgical/vision/captures/suturenylon2-");
+        "../vision/captures/suturenylon2-");
     //        IM_DIR_2); 
     _captures[1]->setExposure(3000);
     //_captures[1]->setExposure(7500);
@@ -65,7 +65,7 @@ Thread_Vision::Thread_Vision()
         650,  // gain
         "optimized", // optimized or measured
         107111, // camera uid
-        "/home/pabbeel/rll/code/trunk/surgical/vision/captures/suturenylon3-");
+        "../vision/captures/suturenylon3-");
     //          IM_DIR_3); 
     _captures[2]->setExposure(3500);
 

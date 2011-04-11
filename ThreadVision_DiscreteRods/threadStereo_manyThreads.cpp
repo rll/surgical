@@ -524,22 +524,24 @@ void InitThread(int argc, char* argv[])
     _thread_type = black;
 #endif
 
-    std::cout << "thread type: " << _thread_type << std::endl;
-    string fileLocation = "";
-    cout << "Please enter file name (without extension): ";
-    getline(cin, fileLocation);
-
     if (_thread_type == nylon)
     {
         //TRAJ_BASE_NAME_NYLON
+#ifdef FAKEIMS
+        std::cout << "Thread type: " << _thread_type << std::endl;
+        string fileLocation = "";
+        cout << "Please enter file name (without extension): ";
+        getline(cin, fileLocation);
+
         if (fileLocation.length() > 0) {
             traj_reader.set_file(fileLocation.insert(0, "saved_threads/").c_str());
         }
         else {
             traj_reader.set_file("saved_threads/endsloop");
         }
-
-
+#else
+        traj_reader.set_file(TRAJ_BASE_NAME_NYLON);
+#endif
         sprintf(image_save_base, "%s%s", IMG_SAVE_BASE, "nylon");
         sprintf(image_save_base_both, "%s%s", IMG_SAVE_BASE_BOTHRES, "nylon");
         sprintf(image_save_base_vis, "%s%s", IMG_SAVE_BASE_VIS, "nylon");
