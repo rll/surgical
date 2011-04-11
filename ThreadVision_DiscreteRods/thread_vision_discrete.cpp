@@ -1117,17 +1117,22 @@ void Thread_Vision::updateCanny()
     gray_to_canny();
     precomputeDistanceScores();
 #else
+    init_timing_fence
+    start_timing_fence
     _cams->updateImagesBlocking();
     _cams->convertToGrayscale();
     _frames = _cams->frames();
     _cams->filterCanny();
     _cannyIms = _cams->cannyIms();
-    precomputeDistanceScores();
+
     if (reproj_points_fix_canny)
     {
         reproj_points_for_canny();
-        precomputeDistanceScores();
+
     }
+
+    precomputeDistanceScores();
+    end_timing_fence("canny")
 #endif
 }
 
