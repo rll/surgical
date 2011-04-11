@@ -12,7 +12,8 @@ b = sparse(b_data(:, 1), b_data(:, 2), b_data(:, 3), b_m, b_n);
 
 cvx_begin
     variable x(A_n)
-    minimize (norm(A*x - b));
+    minimize (norm(A*x - b) + 0.5*norm(x((num_threads-2)*size_each_state:end)));
+
 cvx_end
 
 dlmwrite(x_file, full(x), 'precision', 10); 
