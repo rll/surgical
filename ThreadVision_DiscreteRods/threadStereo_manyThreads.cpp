@@ -308,7 +308,6 @@ void processNormalKeys(unsigned char key, int x, int y)
             glutPostRedisplay();
         }
     } else if (key == 'v') {
-        //updateIms();
         findThreadInIms();
         glutPostRedisplay();
     } else if (key == '1' && key <= '3')
@@ -333,7 +332,6 @@ void processNormalKeys(unsigned char key, int x, int y)
 
         traj_recorder.setFileName(fullPath);
 
-        //Thread copiedThread(all_threads[thread_ind]);
         Thread *newThread = glThreads[startThread]->getThread();
         Thread copiedThread(*newThread);
         traj_recorder.add_thread_to_list(copiedThread);
@@ -758,7 +756,9 @@ void findThreadInIms()
     thread_vision.addStartData(_end_pt, _end_tan);
 
 
-    if (thread_vision.optimizeThread())
+    thread_vision.initThreadSearch();
+
+    if (thread_vision.runThreadSearch())
     {
         std::cout << "Found thread full opt" << std::endl;
         glThreads[optimize_thread]->setThread(new Thread(*thread_vision.curr_thread()));
@@ -766,7 +766,6 @@ void findThreadInIms()
         thread_vision.addThreadPointsToDebugImages(Scalar(200,0,0));
         thread_vision.add_debug_points_to_ims();
 
-        //thread_vision.display();
         thread_vision.saveImages(image_save_base, thread_ind+1);
 
 
@@ -776,11 +775,8 @@ void findThreadInIms()
 
         twistAngle_correct = glThreads[startThread]->getThread()->end_angle();
         twistAngle_best = thread_vision.end_angle();
-
     }
 }
-
-
 
 void addThreadDebugInfo()
 {

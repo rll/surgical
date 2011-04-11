@@ -113,10 +113,17 @@ public:
     Thread_Vision(char* im_base);
     ~Thread_Vision();
 
-    //Optimizations
-    bool optimizeThread(bool visualOnly=false);
+    /* Main algorithm */
+    void initThreadSearch();
 
-    bool processHypothesesFromInit();
+    bool findStartPoints();
+
+    bool runThreadSearch();
+
+    bool generateNextSetOfHypoths();
+
+    bool isDone();
+
     vector<thread_hypoth_pair>* nearbyPairsOfThreadHypoths();
     Thread_Hypoth* mergeThreads(Thread_Hypoth* thread1, Thread_Hypoth* thread2);
 
@@ -125,7 +132,6 @@ public:
 
         //initialize the thread search
     void updateCanny();
-    void initializeThreadSearch();
     bool findNextStartPoint(vector<corresponding_pts>& pts, Point3f& initPt);
     bool findNextStartPoint(vector<corresponding_pts>& pts, Point2i& initPtCenterIm);
     bool findTangent(corresponding_pts& start, Vector3d& init_tangent, vector<tangent_and_score>& tangent);
@@ -215,7 +221,7 @@ public:
 
     vector<start_data> _start_data;
     vector< vector<Thread_Hypoth*> > _thread_hypoths;
-    vector<Thread_Hypoth*> best_thread_hypoths;
+    vector<Thread_Hypoth*>* best_thread_hypoths;
     int curr_hypoth_ind;
 
 

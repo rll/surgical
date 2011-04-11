@@ -346,14 +346,19 @@ Thread_Vision::~Thread_Vision()
 
 
 
-bool Thread_Vision::optimizeThread(bool visualOnly)
+void Thread_Vision::initThreadSearch()
 {
-    std::cout << "initializing search from ims" << std::endl;
+    updateCanny();
 
-    initializeThreadSearch();
-    std::cout << "searching from ims" << std::endl;
+    findStartPoints();
 
-    /* _start_data contains each search point to search from */
+    /* Depends on findStartPoints() */
+    best_thread_hypoths = &_thread_hypoths[0];
+}
+
+bool Thread_Vision::findStartPoints()
+{
+    cout << "Finding start points" << endl;
     for (int i = 0; i < _start_data.size(); i++){
         start_data initial_pt_and_tan = _start_data[i];
         vector<corresponding_pts> start_pts;
@@ -361,10 +366,10 @@ bool Thread_Vision::optimizeThread(bool visualOnly)
 
         if (findNextStartPoint(start_pts, initial_pt_and_tan.pt))
         {
-            std::cout << "found start" << std::endl;
+            std::cout << "Found start" << std::endl;
             if (findTangent(start_pts[0], initial_pt_and_tan.tangent, start_tangents))
             {
-                std::cout << "found tan" << std::endl;
+                std::cout << "Found tan" << std::endl;
 
                 _thread_hypoths.resize(_thread_hypoths.size() + 1);
 
@@ -386,84 +391,62 @@ bool Thread_Vision::optimizeThread(bool visualOnly)
             }
         }
     }
-
-    //Run Algorithm
-    processHypothesesFromInit();
-
-    return (_thread_hypoths.size() > 0);
 }
 
 
 void Thread_Vision::get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles)
 {
-    best_thread_hypoths[curr_hypoth_ind]->get_thread_data(points, twist_angles);
+    best_thread_hypoths->at(curr_hypoth_ind)->get_thread_data(points, twist_angles);
 }
 
 void Thread_Vision::get_thread_data(vector<Vector3d>& points, vector<Matrix3d>& material_frames)
 {
-    best_thread_hypoths[curr_hypoth_ind]->get_thread_data(points, material_frames);
+    best_thread_hypoths->at(curr_hypoth_ind)->get_thread_data(points, material_frames);
 }
 
 void Thread_Vision::get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<Matrix3d>& material_frames)
 {
-    best_thread_hypoths[curr_hypoth_ind]->get_thread_data(points, twist_angles, material_frames);
+    best_thread_hypoths->at(curr_hypoth_ind)->get_thread_data(points, twist_angles, material_frames);
 }
 
+bool Thread_Vision::generateNextSetOfHypoths() {
+    vector<Thread_Hypoth*> &current_thread_hypoths = _thread_hypoths[0];
 
-bool Thread_Vision::processHypothesesFromInit()
-{
-    bool running = true;
+    if (current_thread_hypoths.front()->num_pieces()*_rest_length < _max_length_thread)
+    {
+        suppress_hypoths(current_thread_hypoths);
+        add_possible_next_hypoths(current_thread_hypoths);
+        cout << "Current size: " << current_thread_hypoths.size() << endl;
 
-    /* For all i in 1...N */
-    while(running){
-        running = false;
-        /* Changed to only the first start point for efficiency */
-        
-        vector<Thread_Hypoth*> &current_thread_hypoths = _thread_hypoths[0];
-        Thread_Hypoth *test = current_thread_hypoths.front();
+        suppress_hypoths(current_thread_hypoths);
 
-        if (current_thread_hypoths.front()->num_pieces()*_rest_length < _max_length_thread)
+        for (int hypoth_ind=0; hypoth_ind < current_thread_hypoths.size(); hypoth_ind++)
         {
-            running = true;
-
-            suppress_hypoths(current_thread_hypoths);
-            add_possible_next_hypoths(current_thread_hypoths);
-            cout << "Current size: " << current_thread_hypoths.size() << endl;
-
-            suppress_hypoths(current_thread_hypoths);
-
-            for (int hypoth_ind=0; hypoth_ind < current_thread_hypoths.size(); hypoth_ind++)
-            {
-                /* Run the optimization algorithm, using visual distance and thread energy */
-                current_thread_hypoths[hypoth_ind]->optimize_visual();
-                current_thread_hypoths[hypoth_ind]->minimize_energy_twist_angles();
-                current_thread_hypoths[hypoth_ind]->calculate_score();
-            }
-
-            cout << endl;
+            /* Run the optimization algorithm, using visual distance and thread energy */
+            current_thread_hypoths[hypoth_ind]->optimize_visual();
+            current_thread_hypoths[hypoth_ind]->minimize_energy_twist_angles();
+            current_thread_hypoths[hypoth_ind]->calculate_score();
         }
 
-        /* Detect close segments */
-//        vector<thread_hypoth_pair> *allPairs = nearbyPairsOfThreadHypoths();
-//        if (allPairs->size() > 0){
-//            std::cout << "Threads close: " << allPairs->size() << std::endl;
-//        }
+        cout << endl;
     }
 
-    /* Algorithm should grow all threads independently and not join,
-     * so I just take the first one */
-    best_thread_hypoths = _thread_hypoths[0];
-
-    if (best_thread_hypoths.size() == 0)
-    {
-        std::cout << "NO HYPOTHS LEFT" << std::endl;
-        return false;
-    }
-
-    sort_hypoths(best_thread_hypoths);
+    sort_hypoths(*best_thread_hypoths);
     curr_hypoth_ind = 0;
+}
+
+bool Thread_Vision::runThreadSearch()
+{
+    while(!isDone()) {
+        generateNextSetOfHypoths(); 
+    }
 
     return true;
+}
+
+bool Thread_Vision::isDone() {
+    /* TODO uses the thread hypoths from the first start point */
+    return (_thread_hypoths[0].front()->num_pieces()*_rest_length >= _max_length_thread);
 }
 
 vector<thread_hypoth_pair>* Thread_Vision::nearbyPairsOfThreadHypoths()
@@ -546,12 +529,12 @@ void Thread_Vision::add_possible_next_hypoths(vector<Thread_Hypoth*>& current_th
 Thread* Thread_Vision::flip_to_hypoth(int hypoth_ind)
 {
     curr_hypoth_ind = hypoth_ind;
-    return best_thread_hypoths[hypoth_ind];
+    return best_thread_hypoths->at(hypoth_ind);
 }
 
 void Thread_Vision::next_hypoth()
 {
-    curr_hypoth_ind = min(curr_hypoth_ind+1, (int)best_thread_hypoths.size()-1);
+    curr_hypoth_ind = min(curr_hypoth_ind+1, (int)best_thread_hypoths->size()-1);
 }
 
 void Thread_Vision::prev_hypoth()
@@ -561,7 +544,7 @@ void Thread_Vision::prev_hypoth()
 
 Thread* Thread_Vision::curr_thread()
 {
-    return best_thread_hypoths[curr_hypoth_ind];
+    return best_thread_hypoths->at(curr_hypoth_ind);
 }
 
 
@@ -570,10 +553,6 @@ void Thread_Vision::sort_hypoths(vector<Thread_Hypoth*>& current_thread_hypoths)
     sort(current_thread_hypoths.begin(), current_thread_hypoths.end(), lessthan_Thread_Hypoth);
 }
 
-void Thread_Vision::initializeThreadSearch()
-{
-    updateCanny();
-}
 /* Find points close to initPt, then scores and projects them onto 2d points */
 bool Thread_Vision::findNextStartPoint(vector<corresponding_pts>& pts, Point3f& initPt)
 {
@@ -1390,7 +1369,7 @@ void Thread_Vision::addThreadPointsToDebug(const Scalar& color)
 {
     Point3f currPoint;
     Point2i imPoints[NUMCAMS];
-    int numPoints = best_thread_hypoths[curr_hypoth_ind]->num_pieces();
+    int numPoints = best_thread_hypoths->at(curr_hypoth_ind)->num_pieces();
 
     gl_display_for_debug.resize(gl_display_for_debug.size()+1);
     gl_display_for_debug[gl_display_for_debug.size()-1].vertices = new Point3f[(numPoints)];
@@ -1402,7 +1381,7 @@ void Thread_Vision::addThreadPointsToDebug(const Scalar& color)
 
     vector<Vector3d> points;
     vector<double> angles;
-    best_thread_hypoths[curr_hypoth_ind]->get_thread_data(points, angles);
+    best_thread_hypoths->at(curr_hypoth_ind)->get_thread_data(points, angles);
 
     for (int ind=0; ind < numPoints; ind++)
     {
@@ -1487,7 +1466,7 @@ void Thread_Vision::addThreadPointsToDebugImages(const Scalar& color, Thread* th
 
 void Thread_Vision::addThreadPointsToDebugImages(const Scalar& color)
 {
-    addThreadPointsToDebugImages(color, best_thread_hypoths[curr_hypoth_ind]);
+    addThreadPointsToDebugImages(color, best_thread_hypoths->at(curr_hypoth_ind));
 }
 
 void Thread_Vision::add_debug_points_to_ims()
@@ -1567,17 +1546,17 @@ void Thread_Vision::saveImages(const char* image_save_base, int im_num)
 
 
 
-const Matrix3d& Thread_Vision::start_rot(void) {return best_thread_hypoths[curr_hypoth_ind]->start_rot();}
-const Matrix3d& Thread_Vision::end_rot(void) {return best_thread_hypoths[curr_hypoth_ind]->end_rot();}
-const Matrix3d& Thread_Vision::end_bishop(void) {return best_thread_hypoths[curr_hypoth_ind]->end_bishop();}
-const double Thread_Vision::end_angle(void) {return best_thread_hypoths[curr_hypoth_ind]->end_angle();}
-const double Thread_Vision::angle_at_ind(const int i) {return best_thread_hypoths[curr_hypoth_ind]->angle_at_ind(i);}
+const Matrix3d& Thread_Vision::start_rot(void) {return best_thread_hypoths->at(curr_hypoth_ind)->start_rot();}
+const Matrix3d& Thread_Vision::end_rot(void) {return best_thread_hypoths->at(curr_hypoth_ind)->end_rot();}
+const Matrix3d& Thread_Vision::end_bishop(void) {return best_thread_hypoths->at(curr_hypoth_ind)->end_bishop();}
+const double Thread_Vision::end_angle(void) {return best_thread_hypoths->at(curr_hypoth_ind)->end_angle();}
+const double Thread_Vision::angle_at_ind(const int i) {return best_thread_hypoths->at(curr_hypoth_ind)->angle_at_ind(i);}
 
-const Vector3d& Thread_Vision::start_pos(void) {return best_thread_hypoths[curr_hypoth_ind]->start_pos();}
-const Vector3d& Thread_Vision::end_pos(void) {return best_thread_hypoths[curr_hypoth_ind]->end_pos();}
+const Vector3d& Thread_Vision::start_pos(void) {return best_thread_hypoths->at(curr_hypoth_ind)->start_pos();}
+const Vector3d& Thread_Vision::end_pos(void) {return best_thread_hypoths->at(curr_hypoth_ind)->end_pos();}
 
-const Vector3d& Thread_Vision::start_edge(void) {return best_thread_hypoths[curr_hypoth_ind]->start_edge();}
-const Vector3d& Thread_Vision::end_edge(void) {return best_thread_hypoths[curr_hypoth_ind]->end_edge();}
+const Vector3d& Thread_Vision::start_edge(void) {return best_thread_hypoths->at(curr_hypoth_ind)->start_edge();}
+const Vector3d& Thread_Vision::end_edge(void) {return best_thread_hypoths->at(curr_hypoth_ind)->end_edge();}
 
 
 
