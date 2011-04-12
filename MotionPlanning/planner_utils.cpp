@@ -511,14 +511,14 @@ double Thread_RRT::extendToward(Thread* target) {
   
   // create a new thread based on the closest
   Thread* start = new Thread(*(closest->thread)); 
-  vector<Two_Motions*> tmpMotions;
-
+  //vector<Two_Motions*> tmpMotions;
+  VectorXd motion;
   //interpolation
   //simpleInterpolation(start, target, tmpMotions);
 
   // solve and apply control to the closest thread
   //cout << "calling SLC" << endl;
-  solveLinearizedControl(start, target, tmpMotions, START_AND_END);
+  solveLinearizedControl(start, target, motion, START_AND_END);
   //cout << "done SLC" << endl; 
   //solveLinearizedControl(start, target, tmpMotions, END); 
   start->minimize_energy();
@@ -536,7 +536,7 @@ double Thread_RRT::extendToward(Thread* target) {
 
   //cout << " attaching new node: " << endl;
   toadd->prev = closest;
-  toadd->lstMotions = tmpMotions;
+  toadd->motion = motion;
   insertIntoRRT(toadd);
   
   if (_tree.size() % 100 == 0) { 

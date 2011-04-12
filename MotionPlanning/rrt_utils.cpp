@@ -2,11 +2,6 @@
 #include <time.h>
 
 RRTNode::~RRTNode() {
-  for(int i = 0; i < lstMotions.size(); i++) {
-    delete lstMotions[i];
-  }
-  lstMotions.clear();
-
   delete data; 
 
   //if (thread != NULL) { delete thread; }

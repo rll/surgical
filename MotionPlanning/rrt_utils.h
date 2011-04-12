@@ -18,7 +18,8 @@ class RRTNode {
 
   RRTNode* next;
   RRTNode* prev;
-  vector<Two_Motions*> lstMotions;
+  //vector<Two_Motions*> lstMotions;
+  VectorXd motion;
   MatrixXd B;
   bool linearized;
 

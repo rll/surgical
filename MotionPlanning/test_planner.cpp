@@ -174,7 +174,7 @@ void setThreads(vector<vector<Thread*> > thread_data) {
 
 }
 
-void DimensionReductionBestPath(Thread* start, Thread* target, int n, vector<Thread*>& traj, vector<vector<Two_Motions*> >& mot) 
+void DimensionReductionBestPath(Thread* start, Thread* target, int n, vector<Thread*>& traj, vector<vector<VectorXd> >& mot) 
 {
   Thread* st = new Thread(*start);
   Thread* en = new Thread(*target); 
@@ -206,7 +206,9 @@ void DimensionReductionBestPath(Thread* start, Thread* target, int n, vector<Thr
     node = node->next;
     while (node != NULL) {
       traj.push_back(new Thread(*node->thread));
-      mot.push_back(node->lstMotions);
+      vector<VectorXd> wrapper_mot;
+      wrapper_mot.push_back(node->motion);
+      mot.push_back(wrapper_mot);
       node = node->next;
     }
 
@@ -214,7 +216,7 @@ void DimensionReductionBestPath(Thread* start, Thread* target, int n, vector<Thr
     Thread* approxStart = planner.halfDimApproximation(st);
     Thread* approxTarget = planner.halfDimApproximation(en); 
     vector<Thread*> path;
-    vector<vector<Two_Motions*> > motions; 
+    vector<vector<VectorXd> > motions; 
     DimensionReductionBestPath(approxStart, approxTarget, n-1, path, motions);
     /* use Trajectory Follower to follow the path in higher D space. */ 
     
@@ -266,7 +268,7 @@ void DimensionReductionBestPath(int n) {
     initialized = true;
     numApprox = n;
     vector<Thread*> traj;
-    vector<vector<Two_Motions*> > mot;
+    vector<vector<VectorXd> > mot;
 
     DimensionReductionBestPath(start, end, n, traj, mot);  
 
@@ -288,7 +290,7 @@ void DimensionReductionBestPath(int n) {
 
 }
 
-void DimensionReductionBestPath() {
+/*void DimensionReductionBestPath() {
 
   if(!initialized) { 
     Thread* start = glThreads[planThread]->getThread();
@@ -394,7 +396,7 @@ void DimensionReductionBestPath() {
   glThreads[7]->updateThreadPoints();
   glutPostRedisplay();
 }
-
+*/
 void stepTrajectoryFollower() { 
   if (follower == NULL) return; 
   if (follower->is_done()) {
@@ -485,7 +487,7 @@ void generateInterpolatedThread() {
   traj.resize(numApprox);
   traj[0] = start;
   traj[traj.size()-1]= end; 
-  vector<Two_Motions*> controls;
+  vector<VectorXd> controls;
   cout << "calling interpolate" << endl; 
   interpolateThreads(traj, controls);
   vector<VectorXd> U; 
@@ -544,17 +546,15 @@ void interpolateAndFollow() {
   intp_traj.resize(numApprox);
   intp_traj[0] = new Thread(*start);
   intp_traj[intp_traj.size()-1]= new Thread(*end); 
-  vector<Two_Motions*> controls;
+  vector<VectorXd> controls;
   cout << "calling interpolate" << endl; 
   interpolateThreads(intp_traj, controls);
 
-  vector<vector<Two_Motions*> > intp_controls;
+  vector<vector<VectorXd> > intp_controls;
   for (int i = 0; i < controls.size(); i++) {
-    vector<Two_Motions*> tmp;
-    VectorXd zeroCtrl(12);
-    zeroCtrl.setZero();
-    control_to_TwoMotion(zeroCtrl, tmp);
-    intp_controls.push_back(tmp);
+    vector<VectorXd> control_wrapper;
+    control_wrapper.push_back(controls[i]);
+    intp_controls.push_back(control_wrapper);
   }
 
   Trajectory_Follower *pathFollower = 
@@ -576,12 +576,12 @@ void SQPPlanner() {
 
   Thread* start = new Thread(*glThreads[planThread]->getThread());
   Thread* end = new Thread(*glThreads[endThread]->getThread());
-  numApprox = 150;
+  numApprox = 10;
   vector<Thread*> traj;
   traj.resize(numApprox);
   traj[0] = new Thread(*start);
   traj[traj.size()-1]= new Thread(*end); 
-  vector<Two_Motions*> controls;
+  vector<VectorXd> controls;
   cout << "calling interpolate" << endl; 
   interpolateThreads(traj, controls);
   vector<VectorXd> U; 
@@ -600,14 +600,14 @@ void SQPPlanner() {
   
  // need to apply controls that it found  
   vector<vector<Thread*> > thread_visualization_data;
-	vector<vector<Two_Motions*> > thread_control_data;
+	vector<vector<VectorXd> > thread_control_data;
   for (int i = 0; i < traj.size(); i++) { 
     //vector<Thread*> tmp;
     //tmp.push_back(traj[i]);
     //thread_visualization_data.push_back(tmp); 
-    vector<Two_Motions*> control_tmp;
-    control_to_TwoMotion(U[i], control_tmp);
-    thread_control_data.push_back(control_tmp);
+    vector<VectorXd> motion_wrapper;
+    motion_wrapper.push_back(U[i]);
+    thread_control_data.push_back(motion_wrapper);
   }
   Trajectory_Follower *pathFollower = 
     new Trajectory_Follower(traj, thread_control_data, start); 
@@ -626,7 +626,7 @@ void SQPSmoother() {
   Thread* start = new Thread(*glThreads[planThread]->getThread());
   Thread* end = new Thread(*glThreads[endThread]->getThread());
   vector<Thread*> traj; 
-  vector<vector<Two_Motions*> > mot; 
+  vector<vector<VectorXd> > mot; 
 
   DimensionReductionBestPath(start, end, 0, traj, mot);
   initialized = false; // set to false to prevent visualizer from segfault
@@ -660,14 +660,14 @@ void SQPSmoother() {
 
   ic->iterative_control_opt(smoothTraj, U, num_iters); 
 
-	vector<vector<Two_Motions*> > thread_control_data;
+	vector<vector<VectorXd> > thread_control_data;
   for (int i = 0; i < smoothTraj.size(); i++) { 
     //vector<Thread*> tmp;
     //tmp.push_back(traj[i]);
     //thread_visualization_data.push_back(tmp); 
-    vector<Two_Motions*> control_tmp;
-    control_to_TwoMotion(U[i], control_tmp);
-    thread_control_data.push_back(control_tmp);
+    vector<VectorXd> motion_wrapper;
+    motion_wrapper.push_back(U[i]);
+    thread_control_data.push_back(motion_wrapper);
   }
   Trajectory_Follower *pathFollower = 
     new Trajectory_Follower(smoothTraj, thread_control_data, new Thread(*start)); 

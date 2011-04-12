@@ -316,10 +316,11 @@ void interpolateThreads(vector<Thread*>&traj, vector<VectorXd>& controls) {
   
   double T = traj.size(); 
   controls.resize(T-1);
-  for (int i=0; i < T; i++)
+  for (int i=0; i < T-1; i++)
   {
     //i apologize in advance for how terrible this is...
-    VectorXd tmp = VectorXd(12);
+    // and it segfaulted
+    VectorXd tmp(12);
     tmp.setZero();
     controls[i] = tmp;
   }

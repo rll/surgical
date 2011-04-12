@@ -18,7 +18,7 @@ void interpolatePointsTrajectory(Thread* start, Thread* end, vector<Thread*>& tr
   traj.resize(NUM_INTERPOLATION);
   traj[0] = start_copy;
   traj[NUM_INTERPOLATION-1] = end_copy;
-  vector<Two_Motions*> controls;
+  vector<VectorXd> controls;
 
   //call interpolate threads and put results in traj 
   interpolateThreads(traj, controls);
@@ -51,7 +51,7 @@ void openLoopController(vector<Thread*>& traj_in, vector<VectorXd>& controls_in,
  * Closed loop controller implemented via Trajectory_Follower
  * Assumes start thread is in traj_in[0]
  */
-void closedLoopLinearizationController(vector<Thread*>& traj_in, vector<vector<Two_Motions*> >& controls_in, vector<Thread*>& traj_out)
+void closedLoopLinearizationController(vector<Thread*>& traj_in, vector<vector<VectorXd> >& controls_in, vector<Thread*>& traj_out)
 {
   // copy input trajectory 
   vector<Thread*> traj_in_copy;
@@ -70,8 +70,8 @@ void closedLoopLinearizationController(vector<Thread*>& traj_in, vector<vector<T
   //put states reached in traj_out 
   follower->getReachedStates(traj_out); 
 };
-
-void closedLoopLinearizationController(vector<Thread*>& traj_in, vector<VectorXd>& controls_in, vector<Thread*>& traj_out) 
+/*
+void closedLoopLinearizationController(vector<Thread*>& traj_in, vector<vector<VectorXd> >& controls_in, vector<Thread*>& traj_out) 
 {
   // wrap controls as Two_Motions
   vector<vector<Two_Motions*> > tm_controls;
@@ -82,6 +82,7 @@ void closedLoopLinearizationController(vector<Thread*>& traj_in, vector<VectorXd
   }
   closedLoopLinearizationController(traj_in, tm_controls, traj_out); 
 }
+*/
 /* 
  * Follow the trajectory in traj_in towards goal.
  * Start is assumed to be traj_in[0]
@@ -89,13 +90,13 @@ void closedLoopLinearizationController(vector<Thread*>& traj_in, vector<VectorXd
  */
 void linearizeViaTrajectory(vector<Thread*>& traj_in, vector<Thread*>& traj_out){
   // wrap controls as 0
-  vector<vector<Two_Motions*> > controls_in;
+  vector<vector<VectorXd> > controls_in;
   for (int i = 0; i < traj_in.size(); i++) {
     VectorXd zero_control(12);
-    zero_control.setZero(); 
-    vector<Two_Motions*> tm_zero_control;
-    control_to_TwoMotion(zero_control, tm_zero_control);
-    controls_in.push_back(tm_zero_control); 
+    zero_control.setZero();
+    vector<VectorXd> wrapper_zero_control;
+    wrapper_zero_control.push_back(zero_control);
+    controls_in.push_back(wrapper_zero_control); 
   }
   closedLoopLinearizationController(traj_in, controls_in, traj_out);
 };
@@ -144,7 +145,7 @@ void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<Vector
 /* 
  * Build an RRT from start towards end, using num_dim_reduc dimension reductions. 
  */
-void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& traj, vector<VectorXd>& mot) 
+void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& traj, vector<vector<VectorXd> >& mot) 
 {  
   Thread_RRT planner;  
   Thread* start_copy = new Thread(*start);
@@ -167,7 +168,9 @@ void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& 
     node = node->next;
     while (node != NULL) {
       traj.push_back(new Thread(*node->thread));
-      //mot.push_back(node->lstMotions);
+      vector<VectorXd> wrapper_mot;
+      wrapper_mot.push_back(node->motion);
+      mot.push_back(wrapper_mot);
       node = node->next;
     }
 
@@ -175,7 +178,7 @@ void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& 
     Thread* approxStart = planner.halfDimApproximation(start_copy);
     Thread* approxTarget = planner.halfDimApproximation(end_copy); 
     vector<Thread*> path;
-    vector<VectorXd> motions; 
+    vector<vector<VectorXd> > motions; 
     RRTPlanner(approxStart, approxTarget, num_dim_reduc-1, path, motions);
 
     // transform the path to higher D space 
