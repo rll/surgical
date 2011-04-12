@@ -305,16 +305,23 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
 
 
   Matrix3d start_rot;
-  start_rot.setZero();
-  inc << Normal(0,1), Normal(0,1), Normal(0,1);
-  rotation_from_euler_angles(start_rot, inc(0), inc(1), inc(2));
+  //start_rot.setZero();
+	start_rot.col(0) = (vertices[1]-vertices[0]).normalized();
+	Vector3d col_1 = Vector3d::UnitY();
+	make_vectors_perpendicular(start_rot.col(0), col_1);
+	col_1.normalize();
+	start_rot.col(1) = col_1;
+	start_rot.col(2) = start_rot.col(0).cross(start_rot.col(1));
+  //inc << Normal(0,1), Normal(0,1), Normal(0,1);
+  //rotation_from_euler_angles(start_rot, inc(0), inc(1), inc(2));
 
-  Matrix3d end_rot;
-  end_rot.setZero();
-  inc << Normal(0,1), Normal(0,1), Normal(0,1);
-  rotation_from_euler_angles(end_rot, inc(0), inc(1), inc(2));
+ // Matrix3d end_rot;
+//  end_rot.setZero();
+//  inc << Normal(0,1), Normal(0,1), Normal(0,1);
+  //rotation_from_euler_angles(end_rot, inc(0), inc(1), inc(2));
   Thread* sample =new Thread(vertices, angles, start_rot, goal_thread->rest_length());
-  sample->set_end_constraint(vertices[vertices.size()-1], end_rot);
+  //sample->set_end_constraint(vertices[vertices.size()-1], end_rot);
+	sample->set_end_twist(Normal(0,0.2*M_PI));
   sample->unviolate_total_length_constraint();
   sample->project_length_constraint();
   return sample;
