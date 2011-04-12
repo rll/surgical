@@ -696,7 +696,7 @@ void InitMotions()
 
 double playbackmotions(int max_linearizations)
 {
-  vector<vector<Two_Motions*> > all_motions; 
+  vector<vector<VectorXd> > all_motions; 
   vector<Thread*> saved_threads;
   saved_threads.push_back(new Thread(*glThreads[simulated]->getThread()));
   
@@ -704,18 +704,21 @@ double playbackmotions(int max_linearizations)
   //record motions
   for (int i=0; i < motions.size(); i++)
   {
-    vector<Two_Motions*> two_motions; 
-    two_motions.push_back(new Two_Motions());
-    two_motions.back()->_start.set_nomotion();
-    two_motions.back()->_end = motions[i];
+    Two_Motions tmp_motion;
+    tmp_motion._start.set_nomotion();
+    tmp_motion._end = motions[i];
 
-    all_motions.push_back(two_motions);
+    vector<VectorXd> this_motion_wrapper(1);
+    this_motion_wrapper[0].resize(12);
+    TwoMotion_to_control(&tmp_motion, this_motion_wrapper[0]);
+
+    all_motions.push_back(this_motion_wrapper);
     saved_threads.push_back(new Thread(*saved_threads.back()));
 
-    saved_threads.back()->apply_motion_nearEnds(*two_motions.back());
+    applyControl(saved_threads.back(), this_motion_wrapper[0]);
   }
 
-/*
+
   //now play them back
   double total_error = 0;
   Trajectory_Follower trajectory_follower(saved_threads, all_motions, glThreads[reality]->getThread());
@@ -738,7 +741,5 @@ double playbackmotions(int max_linearizations)
 
 
   return total_error/((double)motions.size());
-*/
-  return 0;
 
 }

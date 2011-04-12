@@ -23,8 +23,8 @@ void Trajectory_Follower::Take_Step()
   vector<VectorXd> motionsGenerated;
   Thread* next_state = new Thread(*_reached_states.back());
 
-  const double linearization_error_thresh = 1e-1;
-  const int count_no_improvement_thresh = 50; 
+  const double linearization_error_thresh = 5e-1;
+  const int count_no_improvement_thresh = 30; 
   int count_no_improvement = 0; 
 
 
