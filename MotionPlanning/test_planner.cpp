@@ -27,6 +27,7 @@
 #include "trajectory_follower.h"
 #include <boost/progress.hpp> 
 #include "iterative_control.h"
+#include "planner_lib.h"
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
