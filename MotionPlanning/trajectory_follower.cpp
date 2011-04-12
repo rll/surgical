@@ -18,13 +18,15 @@ Trajectory_Follower::~Trajectory_Follower()
 {
 }
 
-
-void Trajectory_Follower::Take_Step(int max_linearizations)
+void Trajectory_Follower::Take_Step()
 {
   vector<Two_Motions*> motionsGenerated;
   Thread* next_state = new Thread(*_reached_states.back());
 
-  const double linearization_error_thresh = 1;
+  const double linearization_error_thresh = 1e-1;
+  const int count_no_improvement_thresh = 50; 
+  int count_no_improvement = 0; 
+
 
   vector<Two_Motions*> motionLst = _motions[_curr_ind];
   for (int i = 0; i < motionLst.size(); i++) { 
@@ -33,23 +35,23 @@ void Trajectory_Follower::Take_Step(int max_linearizations)
   _curr_ind++;
 
   double error_last_linearization = calculate_thread_error(_trajectory[_curr_ind], next_state);
-  for (int linearization_num=0; linearization_num < max_linearizations; linearization_num++)
-  {
+  //for (int linearization_num=0; linearization_num < max_linearizations; linearization_num++)
+  do {
     vector<Two_Motions*> tmpMotions;
     Thread* prevThread = new Thread(*next_state); 
     solveLinearizedControl(next_state, _trajectory[_curr_ind], tmpMotions, START_AND_END); 
     double error_this_linearizaton = calculate_thread_error(_trajectory[_curr_ind], next_state);
-    /*if (error_this_linearizaton + linearization_error_thresh > error_last_linearization) {  
-      next_state = prevThread; 
-      break;
-    } else { 
-      for (int i = 0; i < tmpMotions.size(); i++) {
-        motionsGenerated.push_back(tmpMotions[i]);
-      }
-    }*/
+    if (error_this_linearizaton + linearization_error_thresh > error_last_linearization) {  
+      //next_state = prevThread; 
+      //break;
+      count_no_improvement += 1; // this count should never be reset
+    } 
+    for (int i = 0; i < tmpMotions.size(); i++) {
+      motionsGenerated.push_back(tmpMotions[i]);
+    }
 
     error_last_linearization = error_this_linearizaton;
-  } 
+  } while (count_no_improvement < count_no_improvement_thresh); 
 
   //cout << "adding to reached states " << next_state << endl; 
   _reached_states.push_back(next_state);
@@ -64,12 +66,12 @@ bool Trajectory_Follower::is_done()
 
 }
 
-void Trajectory_Follower::control_to_finish(int max_linearizations) {
+void Trajectory_Follower::control_to_finish() {
   cout << "Control to finish" << endl; 
   boost::progress_display progress(_trajectory.size() - _curr_ind - 1); 
 
   while(!is_done()) { 
-    Take_Step(max_linearizations);
+    Take_Step();
     ++progress;
   }
 }

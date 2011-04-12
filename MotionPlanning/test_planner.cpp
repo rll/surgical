@@ -231,7 +231,7 @@ void DimensionReductionBestPath(Thread* start, Thread* target, int n, vector<Thr
     Trajectory_Follower *pathFollower = 
       new Trajectory_Follower(transformed_path, motions, st);
 
-    pathFollower->control_to_finish(30*n);
+    pathFollower->control_to_finish();
     pathFollower->getReachedStates(traj);
     cout << traj.size() << endl;
     pathFollower->getMotions(mot);
@@ -351,7 +351,7 @@ void DimensionReductionBestPath() {
   RRTNode* prevNode = localCurNode;
   while (!localFollower->is_done()) {
     cout << "precomputing step" << endl;
-    localFollower->Take_Step(3);
+    localFollower->Take_Step();
     cout << "step complete" << endl; 
     RRTNode* node = new RRTNode(new Thread(*localFollower->curr_state()));
     node->prev = prevNode;
@@ -377,7 +377,7 @@ void DimensionReductionBestPath() {
   prevNode = localCurNode;
   while (!newLF->is_done()) {
     cout << "precomputing step" << endl;
-    newLF->Take_Step(5);
+    newLF->Take_Step();
     cout << "step complete" << endl; 
     RRTNode* node = new RRTNode(new Thread(*newLF->curr_state()));
     node->prev = prevNode;
@@ -405,7 +405,7 @@ void stepTrajectoryFollower() {
           START_AND_END);
   } else { 
     cout << "taking step" << endl; 
-    follower->Take_Step(1);
+    follower->Take_Step();
     cout << "done taking step" << endl;
     glThreads[startThread]->setThread(new Thread(*follower->curr_state()));
     glThreads[startThread]->updateThreadPoints();
@@ -560,7 +560,7 @@ void interpolateAndFollow() {
   Trajectory_Follower *pathFollower = 
     new Trajectory_Follower(intp_traj, intp_controls, start);
 
-  pathFollower->control_to_finish(5);
+  pathFollower->control_to_finish();
   vector<Thread*> outTraj; 
   pathFollower->getReachedStates(outTraj);
 
@@ -612,7 +612,7 @@ void SQPPlanner() {
   Trajectory_Follower *pathFollower = 
     new Trajectory_Follower(traj, thread_control_data, start); 
 
-  pathFollower->control_to_finish(50);
+  pathFollower->control_to_finish();
 
   vector<Thread*> control_traj;
   pathFollower->getReachedStates(control_traj);
@@ -672,7 +672,7 @@ void SQPSmoother() {
   Trajectory_Follower *pathFollower = 
     new Trajectory_Follower(smoothTraj, thread_control_data, new Thread(*start)); 
 
-  pathFollower->control_to_finish(50);
+  pathFollower->control_to_finish();
 
   vector<Thread*> control_traj;
   pathFollower->getReachedStates(control_traj);

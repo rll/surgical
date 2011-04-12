@@ -16,7 +16,7 @@ class Trajectory_Follower
     ~Trajectory_Follower();
 
 
-    void Take_Step(const int max_linearization = 1);
+    void Take_Step();
     bool is_done();
 
     Thread* curr_state() {return _reached_states.back();}
@@ -26,20 +26,22 @@ class Trajectory_Follower
       }
     }
     const int curr_ind() const {return _curr_ind;}
-    void getReachedStates(vector<Thread*>& traj) { 
+    void getReachedStates(vector<Thread*>& traj) {
+      traj.resize(0);
       for (int i = 0; i < _reached_states.size(); i++) {
         traj.push_back(_reached_states[i]);
       }
     }
 
-    void getMotions(vector<vector<Two_Motions *> >& motions) { 
+    void getMotions(vector<vector<Two_Motions *> >& motions) {
+      motions.resize(0);
       for (int i = 0; i < _reached_states_motions.size(); i++) {
         motions.push_back(_reached_states_motions[i]);
       }
     }
 
 
-    void control_to_finish(const int max_linearizations = 1);
+    void control_to_finish();
 
   protected:
     vector<Thread*> _trajectory;
