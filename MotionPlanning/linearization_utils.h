@@ -13,6 +13,8 @@
 #define WEIGHT_EDGES 2.0
 #define WEIGHT_ANGLE 1.0
 
+using namespace Eigen;
+
 enum movement_mode {START, END, START_AND_END};
 
 void applyControl(Thread* start, const VectorXd& u, const movement_mode movement = START_AND_END);

@@ -32,41 +32,57 @@ void control_to_TwoMotion(const VectorXd& u, vector<Two_Motions*>& motions, cons
     double max_ang = max( max(abs(u(3)), abs(u(4))), abs(u(5)));
   }
 
-  int number_steps = 1;//max ((int)ceil(max_ang / (M_PI/4.0)), 1);
-  VectorXd u_to_use = u/((double)number_steps);
+  int number_steps = max ((int)ceil(max_ang / (M_PI/4.0)), 1);
+  VectorXd u_for_translation = u; // /((double)number_steps);
 
-  Two_Motions* toMove;
+  Two_Motions base_motion;
 
   if (movement == START_AND_END)
   {
     Vector3d translation_start;
-    translation_start << u_to_use(0), u_to_use(1), u_to_use(2);
+    translation_start << u_for_translation(0), u_for_translation(1), u_for_translation(2);
     Vector3d translation_end;
-    translation_end << u_to_use(6), u_to_use(7), u_to_use(8);
+    translation_end << u_for_translation(6), u_for_translation(7), u_for_translation(8);
 
     Matrix3d rotation_start;
-    rotation_from_euler_angles(rotation_start, u_to_use(3), u_to_use(4), u_to_use(5));
+    rotation_from_euler_angles(rotation_start, u(3), u(4), u(5));
     Matrix3d rotation_end;
-    rotation_from_euler_angles(rotation_end, u_to_use(9), u_to_use(10), u_to_use(11));
+    rotation_from_euler_angles(rotation_end, u(9), u(10), u(11));
 
     // apply the control u to thread start, and return the new config in res
-    toMove = new Two_Motions(translation_start, rotation_start, translation_end, rotation_end);
+    base_motion._start._pos_movement = translation_start;
+    base_motion._start._frame_rotation = rotation_start;
+    base_motion._end._pos_movement = translation_end;
+    base_motion._end._frame_rotation = rotation_end;
   } else {
     Vector3d translation;
-    translation << u_to_use(0), u_to_use(1), u_to_use(2);
+    translation << u_for_translation(0), u_for_translation(1), u_for_translation(2);
 
     Matrix3d rotation;
-    rotation_from_euler_angles(rotation, u_to_use(3), u_to_use(4), u_to_use(5));
+    rotation_from_euler_angles(rotation, u(3), u(4), u(5));
 
     // apply the control u to thread start, and return the new config in res
     if (movement == START)
-      toMove = new Two_Motions(translation, rotation, Vector3d::Zero(), Matrix3d::Identity());
+    {
+      base_motion._end.set_nomotion();
+      base_motion._start._pos_movement = translation;
+      base_motion._start._frame_rotation = rotation;
+    }
     else
-      toMove = new Two_Motions(Vector3d::Zero(), Matrix3d::Identity(), translation, rotation);
+      base_motion._start.set_nomotion();
+      base_motion._end._pos_movement = translation;
+      base_motion._end._frame_rotation = rotation;
   }
 
+ 
+  Quaterniond quat_rotation_start(base_motion._start._frame_rotation);
+  Quaterniond quat_rotation_end(base_motion._end._frame_rotation);
   for (int i=0; i < number_steps; i++)
   {
+    Two_Motions* toMove = new Two_Motions(base_motion);
+    toMove->_start._frame_rotation = Quaterniond::Identity().slerp((double)(i+1)/(double)number_steps, quat_rotation_start) * (Quaterniond::Identity().slerp((double)(i)/(double)number_steps, quat_rotation_start)).inverse();
+    toMove->_end._frame_rotation = Quaterniond::Identity().slerp((double)(i+1)/(double)number_steps, quat_rotation_end) * (Quaterniond::Identity().slerp((double)(i)/(double)number_steps, quat_rotation_end)).inverse();
+    
     motions.push_back(toMove);
   }
 
@@ -112,8 +128,8 @@ void computeDifference_maxMag(Thread* start, const Thread* goal, VectorXd& res, 
 void solveLinearizedControl(Thread* start, const Thread* goal, vector<Two_Motions*>& motions, const movement_mode movement) {
   //const double MAX_STEP = 2.0;
   const double DAMPING_CONST_POINTS = 0.1;
-  const double DAMPING_CONST_ANGLES = 0.4;
-  const double MAX_MAG = 1.0;
+  const double DAMPING_CONST_ANGLES = 5.0;
+  const double MAX_MAG = 3.0;
 
   int num_controls;
   if (movement == START_AND_END)
