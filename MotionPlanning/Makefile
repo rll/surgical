@@ -19,7 +19,7 @@ FAKEIMS= -DFAKEIMS
 
 #target : testCanny testCapture example_capture_3cam calibrate_robots test_point_distances PositionsOnRequest PositionsOnRequest2 threadStereo
 
-target: test_linearization test_planner benchmark_planner benchmark_runner run_planner_libs
+target: test_linearization test_planner benchmark_planner benchmark_runner run_planner_libs run_sample_generator
 
 test_linearization: test_linearization.cpp clock.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o trajectory_follower.o iterative_control.o
 	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o test_linearization test_linearization.cpp clock.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o trajectory_follower.o iterative_control.o $(LIBS) $(PROFILER)
@@ -32,6 +32,9 @@ run_planner_libs: run_planner_libs.cpp threadutils_discrete.o threadpiece_discre
 
 benchmark_planner: benchmark_planner.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o clock.o glThread.o trajectory_reader.o planner_utils.o linearization_utils.o rrt_utils.o
 	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o benchmark_planner benchmark_planner.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o trajectory_recorder.o clock.o glThread.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o $(LIBS) $(PROFILER)
+
+run_sample_generator: run_sample_generator.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o clock.o glThread.o trajectory_reader.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o run_sample_generator run_sample_generator.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o trajectory_recorder.o clock.o glThread.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o $(LIBS) $(PROFILER)
 
 benchmark_runner: benchmark_runner.cpp
 	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o benchmark_runner benchmark_runner.cpp $(LIBS) $(PROFILER)

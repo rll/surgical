@@ -163,7 +163,6 @@ void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& 
         planner.planStep(goal_thread, prev_thread, next_thread);
       }
     }
-
     planner.updateBestPath();
 
     RRTNode* node = planner.getTree()->front();
@@ -205,8 +204,13 @@ void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& 
 /*
  * Subsample traj according to some method
  */
-void traj_subsampling(vector<Thread*>& traj_in, vector<Thread*>& traj_out) { 
-  assert("Not implemented yet"); 
+void traj_subsampling(vector<Thread*>& traj_in, vector<Thread*>& traj_out) {
+  
+  for (int i = 0; i < traj_in.size(); i++) {
+    if (i % 5 == 0) { 
+      traj_out.push_back(new Thread(*traj_in[i]));
+    }
+  }
 };
 
 
