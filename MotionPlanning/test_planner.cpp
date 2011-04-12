@@ -644,7 +644,7 @@ void SQPSmoother() {
     }
   }
 
-  int numGoalCopies = smoothTraj.size() / 10;
+  int numGoalCopies = smoothTraj.size() / 50;
   if (numGoalCopies == 0) numGoalCopies = 1; 
 
   for (int i = 0; i < numGoalCopies; i++) { 
@@ -687,7 +687,7 @@ void SQPSmoother() {
 // change prototype to include the return
 void generateRandomThread() {
   glThreads[curThread]->setThread(planner.generateSample(
-        (const Thread*) glThreads[curThread]->getThread()));
+        (const Thread*) glThreads[startThread]->getThread()));
   
   // minimize the energy on it
   glThreads[curThread]->minimize_energy();

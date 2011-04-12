@@ -248,7 +248,7 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
         Normal(0,1)*noise_multiplier,
         Normal(0,1)*noise_multiplier).finished();
 
-  } while(((goal+noise_goal)-(start+noise_start)).norm() > max_thread_length);
+  } while(((goal+noise_goal)-(start+noise_start)).norm() > max_thread_length/1.5);
 
   start += noise_start;
   goal += noise_goal;
@@ -304,11 +304,17 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
   }
 
 
-  Matrix3d rot;
-  rot.setZero();
+  Matrix3d start_rot;
+  start_rot.setZero();
   inc << Normal(0,1), Normal(0,1), Normal(0,1);
-  rotation_from_euler_angles(rot, inc(0), inc(1), inc(2));
-  Thread* sample =new Thread(vertices, angles, rot, goal_thread->rest_length());
+  rotation_from_euler_angles(start_rot, inc(0), inc(1), inc(2));
+
+  Matrix3d end_rot;
+  end_rot.setZero();
+  inc << Normal(0,1), Normal(0,1), Normal(0,1);
+  rotation_from_euler_angles(end_rot, inc(0), inc(1), inc(2));
+  Thread* sample =new Thread(vertices, angles, start_rot, goal_thread->rest_length());
+  sample->set_end_constraint(vertices[vertices.size()-1], end_rot);
   sample->unviolate_total_length_constraint();
   sample->project_length_constraint();
   return sample;

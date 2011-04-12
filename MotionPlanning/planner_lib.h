@@ -73,7 +73,7 @@ void closedLoopLinearizationController(vector<Thread*>& traj_in, vector<vector<V
   follower->getReachedStates(traj_out); 
 };
 /*
-void closedLoopLinearizationController(vector<Thread*>& traj_in, vector<vector<VectorXd> >& controls_in, vector<Thread*>& traj_out) 
+void closedLoopLinearizationCT-1ontroller(vector<Thread*>& traj_in, vector<vector<VectorXd> >& controls_in, vector<Thread*>& traj_out) 
 {
   // wrap controls as Two_Motions
   vector<vector<Two_Motions*> > tm_controls;
@@ -193,12 +193,12 @@ void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& 
     }
 
     // follow the trajectory of the transformed approximation
-    //Trajectory_Follower *pathFollower = 
-    //  new Trajectory_Follower(transformed_path, motions, start_copy);
+    Trajectory_Follower *pathFollower = 
+      new Trajectory_Follower(transformed_path, motions, start_copy);
 
-    //pathFollower->control_to_finish();
-    //pathFollower->getReachedStates(traj);
-    //pathFollower->getMotions(mot);
+    pathFollower->control_to_finish();
+    pathFollower->getReachedStates(traj);
+    pathFollower->getMotions(mot);
   }
 };
 
