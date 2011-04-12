@@ -5,6 +5,8 @@
 #include "linearization_utils.h"
 #include "trajectory_follower.h" 
 #include "iterative_control.h"
+#include <boost/progress.hpp> 
+
 
 /* 
  * Interpolates points and start/end constraints using quaternion interpolation

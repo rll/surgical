@@ -19,6 +19,19 @@ void Trajectory_Recorder::add_thread_to_list(const Thread& thread)
 	//_threads.back() = thread;
 }
 
+void Trajectory_Recorder::add_thread_to_list(const Thread* thread)
+{
+  _threads.push_back(*thread);
+}
+
+void Trajectory_Recorder::add_threads_to_list(vector<Thread*> threads)
+{
+  for (int i=0; i < threads.size(); i++)
+  {
+    _threads.push_back(*threads[i]);
+  }
+}
+
 void Trajectory_Recorder::clear_threads()
 {
 	_threads.resize(0);

@@ -37,6 +37,8 @@ class Trajectory_Recorder
 		void add_motion_to_list(Vector3d& pos_mov, Matrix3d& tan_rot);
 		void add_motion_to_list(Thread_Motion& motion);*/
 		void add_thread_to_list(const Thread& thread);
+    void add_thread_to_list(const Thread* thread);
+    void add_threads_to_list(vector<Thread*> threads);
 
 		//void write_motions_to_file();
 		void write_threads_to_file();
