@@ -2,7 +2,7 @@
 #include <boost/progress.hpp>
 
 
-Trajectory_Follower::Trajectory_Follower(vector<Thread*>& trajectory, vector<vector<Two_Motions*> >& motions, Thread* start_thread) :
+Trajectory_Follower::Trajectory_Follower(vector<Thread*>& trajectory, vector<vector<VectorXd> >& motions, Thread* start_thread) :
   _curr_ind(0)
 {
   _trajectory = trajectory;
@@ -20,7 +20,7 @@ Trajectory_Follower::~Trajectory_Follower()
 
 void Trajectory_Follower::Take_Step()
 {
-  vector<Two_Motions*> motionsGenerated;
+  vector<VectorXd> motionsGenerated;
   Thread* next_state = new Thread(*_reached_states.back());
 
   const double linearization_error_thresh = 1e-1;
@@ -28,27 +28,27 @@ void Trajectory_Follower::Take_Step()
   int count_no_improvement = 0; 
 
 
-  vector<Two_Motions*> motionLst = _motions[_curr_ind];
+  vector<VectorXd> motionLst = _motions[_curr_ind];
   for (int i = 0; i < motionLst.size(); i++) { 
-    next_state->apply_motion_nearEnds(*motionLst[i]);
+		applyControl(next_state, motionLst[i]);
   }
   _curr_ind++;
+
+
 
   double error_last_linearization = calculate_thread_error(_trajectory[_curr_ind], next_state);
   //for (int linearization_num=0; linearization_num < max_linearizations; linearization_num++)
   do {
-    vector<Two_Motions*> tmpMotions;
-    Thread* prevThread = new Thread(*next_state); 
-    solveLinearizedControl(next_state, _trajectory[_curr_ind], tmpMotions, START_AND_END); 
+    VectorXd tmpMotion;
+    solveLinearizedControl(next_state, _trajectory[_curr_ind], tmpMotion, START_AND_END); 
     double error_this_linearizaton = calculate_thread_error(_trajectory[_curr_ind], next_state);
     if (error_this_linearizaton + linearization_error_thresh > error_last_linearization) {  
       //next_state = prevThread; 
       //break;
       count_no_improvement += 1; // this count should never be reset
     } 
-    for (int i = 0; i < tmpMotions.size(); i++) {
-      motionsGenerated.push_back(tmpMotions[i]);
-    }
+
+		motionsGenerated.push_back(tmpMotion);
 
     error_last_linearization = error_this_linearizaton;
   } while (count_no_improvement < count_no_improvement_thresh); 

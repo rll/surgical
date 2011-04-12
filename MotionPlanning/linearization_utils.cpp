@@ -3,11 +3,18 @@
 
 
 void applyControl(Thread* start, const VectorXd& u, const movement_mode movement) { 
-  vector<Two_Motions*> tmp;
-  applyControl(start, u, tmp, movement);
+  vector<Two_Motions*> motions;
 
+  control_to_TwoMotion(u, motions, movement);
+  for (int i=0; i < motions.size(); i++)
+  {
+    start->apply_motion_nearEnds(*motions[i]);
+  }
+
+  start->minimize_energy(); 
 }
 
+/*
 void applyControl(Thread* start, const VectorXd& u, vector<Two_Motions*>& motions, const movement_mode movement) 
 {
   control_to_TwoMotion(u, motions, movement);
@@ -17,7 +24,7 @@ void applyControl(Thread* start, const VectorXd& u, vector<Two_Motions*>& motion
   }
 
   start->minimize_energy(); 
-}
+}*/
 
 
 void control_to_TwoMotion(const VectorXd& u, vector<Two_Motions*>& motions, const movement_mode movement)
@@ -33,9 +40,9 @@ void control_to_TwoMotion(const VectorXd& u, vector<Two_Motions*>& motions, cons
   }
 
   int number_steps = max ((int)ceil(max_ang / (M_PI/4.0)), 1);
-  VectorXd u_for_translation = u; // /((double)number_steps);
+  VectorXd u_for_translation = u/((double)number_steps);
 
-  Two_Motions base_motion;
+  Two_Motions* to_Move = new Two_Motions();
 
   if (movement == START_AND_END)
   {
@@ -43,17 +50,20 @@ void control_to_TwoMotion(const VectorXd& u, vector<Two_Motions*>& motions, cons
     translation_start << u_for_translation(0), u_for_translation(1), u_for_translation(2);
     Vector3d translation_end;
     translation_end << u_for_translation(6), u_for_translation(7), u_for_translation(8);
+    to_Move->_start._pos_movement = translation_start;
+    to_Move->_end._pos_movement = translation_end;
 
     Matrix3d rotation_start;
     rotation_from_euler_angles(rotation_start, u(3), u(4), u(5));
     Matrix3d rotation_end;
     rotation_from_euler_angles(rotation_end, u(9), u(10), u(11));
 
-    // apply the control u to thread start, and return the new config in res
-    base_motion._start._pos_movement = translation_start;
-    base_motion._start._frame_rotation = rotation_start;
-    base_motion._end._pos_movement = translation_end;
-    base_motion._end._frame_rotation = rotation_end;
+    Quaterniond quat_rotation_start(rotation_start);
+    Quaterniond quat_rotation_end(rotation_end);
+
+    to_Move->_start._frame_rotation = Quaterniond::Identity().slerp(1.0/(double)number_steps, quat_rotation_start);
+    to_Move->_end._frame_rotation = Quaterniond::Identity().slerp(1.0/(double)number_steps, quat_rotation_end);
+
   } else {
     Vector3d translation;
     translation << u_for_translation(0), u_for_translation(1), u_for_translation(2);
@@ -61,29 +71,29 @@ void control_to_TwoMotion(const VectorXd& u, vector<Two_Motions*>& motions, cons
     Matrix3d rotation;
     rotation_from_euler_angles(rotation, u(3), u(4), u(5));
 
+    Quaterniond quat_rotation(rotation);
+
+    Matrix3d rotation_slerped;
+    rotation_slerped = Quaterniond::Identity().slerp(1.0/(double)number_steps, quat_rotation);
+
+
     // apply the control u to thread start, and return the new config in res
     if (movement == START)
     {
-      base_motion._end.set_nomotion();
-      base_motion._start._pos_movement = translation;
-      base_motion._start._frame_rotation = rotation;
+      to_Move->_end.set_nomotion();
+      to_Move->_start._pos_movement = translation;
+      to_Move->_start._frame_rotation = rotation_slerped;
     }
     else
-      base_motion._start.set_nomotion();
-      base_motion._end._pos_movement = translation;
-      base_motion._end._frame_rotation = rotation;
+      to_Move->_start.set_nomotion();
+      to_Move->_end._pos_movement = translation;
+      to_Move->_end._frame_rotation = rotation_slerped;
   }
 
  
-  Quaterniond quat_rotation_start(base_motion._start._frame_rotation);
-  Quaterniond quat_rotation_end(base_motion._end._frame_rotation);
   for (int i=0; i < number_steps; i++)
   {
-    Two_Motions* toMove = new Two_Motions(base_motion);
-    toMove->_start._frame_rotation = Quaterniond::Identity().slerp((double)(i+1)/(double)number_steps, quat_rotation_start) * (Quaterniond::Identity().slerp((double)(i)/(double)number_steps, quat_rotation_start)).inverse();
-    toMove->_end._frame_rotation = Quaterniond::Identity().slerp((double)(i+1)/(double)number_steps, quat_rotation_end) * (Quaterniond::Identity().slerp((double)(i)/(double)number_steps, quat_rotation_end)).inverse();
-    
-    motions.push_back(toMove);
+    motions.push_back(to_Move);
   }
 
 }
@@ -94,6 +104,25 @@ void TwoMotion_to_control(const Two_Motions* motion, VectorXd& u)
   u.segment(6,3) = motion->_end._pos_movement;
   euler_angles_from_rotation(motion->_start._frame_rotation, u(3), u(4), u(5));
   euler_angles_from_rotation(motion->_end._frame_rotation, u(9), u(10), u(11));
+}
+
+void TwoMotion_to_control(vector<Two_Motions*>& motions, VectorXd& u)
+{
+  if (motions.size() == 0)
+  {
+    u.setZero();
+    return;
+  }
+
+
+  Two_Motions base(*(motions.front()));
+
+  for (int i=1; i < motions.size(); i++)
+  {
+    base = *motions[i] + base;
+  }
+
+  TwoMotion_to_control(&base, u);
 }
 
   
@@ -125,7 +154,7 @@ void computeDifference_maxMag(Thread* start, const Thread* goal, VectorXd& res, 
 
 }
 
-void solveLinearizedControl(Thread* start, const Thread* goal, vector<Two_Motions*>& motions, const movement_mode movement) {
+void solveLinearizedControl(Thread* start, const Thread* goal, VectorXd& u, const movement_mode movement) {
   //const double MAX_STEP = 2.0;
   const double DAMPING_CONST_POINTS = 0.1;
   const double DAMPING_CONST_ANGLES = 0.4;
@@ -158,7 +187,7 @@ void solveLinearizedControl(Thread* start, const Thread* goal, vector<Two_Motion
   // solve the least-squares problem
   VectorXd dx(num_pieces*6);
   computeDifference_maxMag(start, goal, dx, MAX_MAG);
-  VectorXd u(num_controls);
+  //u.resize(12);
   u = B.transpose()*weighting_mat*dx;
 
   MatrixXd damping_mat = MatrixXd::Identity(num_controls, num_controls);
@@ -177,11 +206,11 @@ void solveLinearizedControl(Thread* start, const Thread* goal, vector<Two_Motion
   //u /= (u_norm > MAX_STEP ? u_norm/MAX_STEP : 1);
 
   // apply the given control
-  applyControl(start, u, motions, movement);
+  applyControl(start, u, movement);
 }
 
 void solveLinearizedControl(Thread* start, const Thread* goal, const movement_mode movement) {
-  vector<Two_Motions*> tmp;
+  VectorXd tmp;
   solveLinearizedControl(start, goal, tmp, movement);
 }
 
@@ -229,7 +258,7 @@ void estimate_transition_matrix(Thread* thread, MatrixXd& A, const movement_mode
 }
 
 
-void simpleInterpolation(Thread* start, Thread* goal, vector<Two_Motions*>& motions) {
+void simpleInterpolation(Thread* start, Thread* goal, VectorXd& control) {
 
   double step = 1; 
 
@@ -276,17 +305,24 @@ void simpleInterpolation(Thread* start, Thread* goal, vector<Two_Motions*>& moti
     interpolated_end_pos *= step;
   }
 
-  Two_Motions* interpMotion = new Two_Motions(interpolated_start_pos, interpolated_start_rotation, interpolated_end_pos, interpolated_end_rotation);
-
-  motions.push_back(interpMotion);
-  start->apply_motion_nearEnds(*interpMotion);
-
+  Two_Motions interpMotion(interpolated_start_pos, interpolated_start_rotation, interpolated_end_pos, interpolated_end_rotation);
+  
+  TwoMotion_to_control(&interpMotion, control);
+  
+  start->apply_motion_nearEnds(interpMotion);
 }
 
-void interpolateThreads(vector<Thread*>&traj, vector<Two_Motions*>& controls) {
+void interpolateThreads(vector<Thread*>&traj, vector<VectorXd>& controls) {
   
   double T = traj.size(); 
   controls.resize(T-1);
+  for (int i=0; i < T; i++)
+  {
+    //i apologize in advance for how terrible this is...
+    VectorXd tmp = VectorXd(12);
+    tmp.setZero();
+    controls[i] = tmp;
+  }
 
   Thread* start = traj.front();
   Thread* end = traj[T-1];

@@ -11,7 +11,7 @@
 class Trajectory_Follower
 {
   public:
-    Trajectory_Follower(vector<Thread*>& trajectory, vector<vector<Two_Motions*> >& motions, Thread* start_thread);
+    Trajectory_Follower(vector<Thread*>& trajectory, vector<vector<VectorXd> >& motions, Thread* start_thread);
 
     ~Trajectory_Follower();
 
@@ -33,7 +33,7 @@ class Trajectory_Follower
       }
     }
 
-    void getMotions(vector<vector<Two_Motions *> >& motions) {
+    void getMotions(vector<vector<VectorXd> >& motions) {
       motions.resize(0);
       for (int i = 0; i < _reached_states_motions.size(); i++) {
         motions.push_back(_reached_states_motions[i]);
@@ -46,8 +46,8 @@ class Trajectory_Follower
   protected:
     vector<Thread*> _trajectory;
     vector<Thread*> _reached_states;
-    vector<vector<Two_Motions*> > _reached_states_motions; 
-    vector<vector<Two_Motions*> > _motions;
+    vector<vector<VectorXd> > _reached_states_motions; 
+    vector<vector<VectorXd> > _motions;
     int _curr_ind;
 
 

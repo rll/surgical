@@ -85,6 +85,8 @@ struct Two_Motions
   
   Two_Motions(const Vector3d& pos_movement_start, const Matrix3d& frame_rotation_start,const Vector3d& pos_movement_end, const Matrix3d& frame_rotation_end);
 
+  void set_nomotion(){_start.set_nomotion(); _end.set_nomotion();};
+
 	Two_Motions& operator=(const Two_Motions& rhs);
 
 };

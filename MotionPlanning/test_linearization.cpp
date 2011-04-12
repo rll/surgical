@@ -391,9 +391,65 @@ int main (int argc, char * argv[])
   InitLights();
   InitStuff ();
 
+  vector<Two_Motions*> motions;
+  VectorXd controls(12);
+  double max_trans = 5;
+  double max_angle = 2*M_PI;
+  for (int i=0; i < 12; i++)
+  {
+    if (i % 6 < 3)
+      controls(i) = ((double)(rand() % 10000))/(10000.0)*max_trans;
+    else
+      controls(i) = ((double)(rand() % 10000))/(10000.0)*max_angle;
+  }
 
+  std::cout << "controls:\n" << controls.transpose() << std::endl;
+
+  VectorXd controls_after(12);
+  control_to_TwoMotion(controls, motions);
+  std::cout << "num motiosn: " << motions.size() << std::endl;
+  TwoMotion_to_control(motions, controls_after);
+  std::cout << "controls after:\n" << controls_after.transpose() << std::endl;
 
   InitThread(argc, argv);
+
+  Matrix3d start_rotation_oldcontrol = Matrix3d::Identity();
+  Matrix3d start_rotation_newcontrol = Matrix3d::Identity();
+
+  Two_Motions old_summed;
+  old_summed.set_nomotion();
+  Two_Motions new_summed;
+  new_summed.set_nomotion();
+
+  vector<Two_Motions*> old_motions;
+  vector<Two_Motions*> new_motions;
+
+  control_to_TwoMotion(controls, old_motions);
+  control_to_TwoMotion(controls_after, new_motions);
+
+  std::cout << "old rotations:\n";
+  for (int i=0; i < old_motions.size(); i++)
+  {
+    std::cout << old_motions[i]->_start._frame_rotation << std::endl << std::endl;
+    start_rotation_oldcontrol *= old_motions[i]->_start._frame_rotation;
+    old_summed = *old_motions[i] + old_summed;
+  }
+  std::cout << "\n\nnew rotations:\n";
+  for (int i=0; i < new_motions.size(); i++)
+  {
+    std::cout << new_motions[i]->_start._frame_rotation << std::endl << std::endl;
+    start_rotation_newcontrol *= new_motions[i]->_start._frame_rotation;
+    new_summed = *new_motions[i] + new_summed;
+  }
+  std::cout << std::endl;
+
+  Matrix3d expected_rotation;
+  rotation_from_euler_angles(expected_rotation, controls(3), controls(4), controls(5));
+
+  std::cout << "old end rotation:\n" << start_rotation_oldcontrol << "\nnew end rotation:\n" << start_rotation_newcontrol << "\nexpected:\n" << expected_rotation << std::endl;
+
+  std::cout << "old end summed:\n" << old_summed._start._frame_rotation << std::endl;
+  std::cout << "enw end summed:\n" << new_summed._start._frame_rotation << std::endl;
  
   // for (int i=0; i < NUM_PTS; i++)
   // {
@@ -659,7 +715,7 @@ double playbackmotions(int max_linearizations)
     saved_threads.back()->apply_motion_nearEnds(*two_motions.back());
   }
 
-
+/*
   //now play them back
   double total_error = 0;
   Trajectory_Follower trajectory_follower(saved_threads, all_motions, glThreads[reality]->getThread());
@@ -682,6 +738,7 @@ double playbackmotions(int max_linearizations)
 
 
   return total_error/((double)motions.size());
-
+*/
+  return 0;
 
 }
