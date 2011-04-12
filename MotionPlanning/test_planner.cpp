@@ -76,7 +76,6 @@ int newRRTNodeThread = 6;
 GLThread* apprxThreads[500]; 
 RRTNode* apprxNodes[500];
 RRTNode* curApprxNodes[500];
-bool displayThreads[500];
 int numApprox = 0; 
 
 // double radii[NUM_PTS];
@@ -231,7 +230,7 @@ void DimensionReductionBestPath(Thread* start, Thread* target, int n, vector<Thr
     Trajectory_Follower *pathFollower = 
       new Trajectory_Follower(transformed_path, motions, st);
 
-    pathFollower->control_to_finish(3*n);
+    pathFollower->control_to_finish(30*n);
     pathFollower->getReachedStates(traj);
     cout << traj.size() << endl;
     pathFollower->getMotions(mot);
@@ -539,7 +538,7 @@ void interpolateAndFollow() {
   
   Thread* start = new Thread(*glThreads[planThread]->getThread());
   Thread* end = new Thread(*glThreads[endThread]->getThread());
-  numApprox = 10;
+  numApprox = 100;
   vector<Thread*> intp_traj;
   intp_traj.resize(numApprox);
   intp_traj[0] = new Thread(*start);
@@ -551,7 +550,9 @@ void interpolateAndFollow() {
   vector<vector<Two_Motions*> > intp_controls;
   for (int i = 0; i < controls.size(); i++) {
     vector<Two_Motions*> tmp;
-    tmp.push_back(controls[i]);
+    VectorXd zeroCtrl(12);
+    zeroCtrl.setZero();
+    control_to_TwoMotion(zeroCtrl, tmp);
     intp_controls.push_back(tmp);
   }
 
@@ -574,7 +575,7 @@ void SQPPlanner() {
 
   Thread* start = new Thread(*glThreads[planThread]->getThread());
   Thread* end = new Thread(*glThreads[endThread]->getThread());
-  numApprox = 25;
+  numApprox = 40;
   vector<Thread*> traj;
   traj.resize(numApprox);
   traj[0] = new Thread(*start);
@@ -592,7 +593,8 @@ void SQPPlanner() {
 
   Iterative_Control* ic = new Iterative_Control(traj.size(), traj.front()->num_pieces());
 
-	int num_iters = 5;  
+	int num_iters = 2; 
+  cout << "calling SQP" << endl; 
   ic->iterative_control_opt(traj, U, num_iters);
   
  // need to apply controls that it found  
@@ -619,10 +621,67 @@ void SQPPlanner() {
 
 }
 
+void SQPSmoother() { 
+  Thread* start = new Thread(*glThreads[planThread]->getThread());
+  Thread* end = new Thread(*glThreads[endThread]->getThread());
+  vector<Thread*> traj; 
+  vector<vector<Two_Motions*> > mot; 
 
+  DimensionReductionBestPath(start, end, 0, traj, mot);
+  initialized = false; // set to false to prevent visualizer from segfault
+  
+  vector<VectorXd> U;
+  vector<Thread*> smoothTraj;
+  vector<Thread*> downSampledTraj; 
+  for (int i = 0; i < traj.size(); i++) {
+    if ( i % 5 == 0) { 
+      VectorXd ctrl(12);
+      ctrl.setZero();
+      U.push_back(ctrl); 
+      smoothTraj.push_back(new Thread(*traj[i]));
+      downSampledTraj.push_back(new Thread(*traj[i]));
+    }
+  }
 
+  int numGoalCopies = smoothTraj.size() / 10;
+  if (numGoalCopies == 0) numGoalCopies = 1; 
 
+  for (int i = 0; i < numGoalCopies; i++) { 
+    smoothTraj.push_back(new Thread(*end));
+    VectorXd ctrl(12);
+    ctrl.setZero();
+    U.push_back(ctrl); 
+  }
+  
+  Iterative_Control* ic = new Iterative_Control(smoothTraj.size(), smoothTraj.front()->num_pieces());
 
+  int num_iters = 2; 
+
+  ic->iterative_control_opt(smoothTraj, U, num_iters); 
+
+	vector<vector<Two_Motions*> > thread_control_data;
+  for (int i = 0; i < smoothTraj.size(); i++) { 
+    //vector<Thread*> tmp;
+    //tmp.push_back(traj[i]);
+    //thread_visualization_data.push_back(tmp); 
+    vector<Two_Motions*> control_tmp;
+    control_to_TwoMotion(U[i], control_tmp);
+    thread_control_data.push_back(control_tmp);
+  }
+  Trajectory_Follower *pathFollower = 
+    new Trajectory_Follower(smoothTraj, thread_control_data, new Thread(*start)); 
+
+  pathFollower->control_to_finish(50);
+
+  vector<Thread*> control_traj;
+  pathFollower->getReachedStates(control_traj);
+  vector<vector<Thread*> > thread_visualization_data;
+  thread_visualization_data.push_back(downSampledTraj);
+  thread_visualization_data.push_back(smoothTraj);
+  thread_visualization_data.push_back(control_traj);
+  setThreads(thread_visualization_data);
+
+}
 
 // change prototype to include the return
 void generateRandomThread() {
@@ -890,6 +949,9 @@ void processNormalKeys(unsigned char key, int x, int y)
   else if (key == '2') { 
     SQPPlanner();
   }
+  else if (key == '3') { 
+    SQPSmoother();
+  }
   else if (key == 'a') {
     planRRT();
   } 
@@ -916,8 +978,8 @@ void processNormalKeys(unsigned char key, int x, int y)
   } 
   else if (key == '<') {
     stepTrajectoryFollower(false); 
-  } 
-	else if (key == 27)
+  }
+  else if (key == 27)
   {
     exit(0);
   }
@@ -960,8 +1022,7 @@ int main (int argc, char * argv[])
 
   //srand(time(NULL));
   //srand((unsigned int)time((time_t *)NULL));
-
-
+  
   printf("Instructions:\n"
       "Hold down the left mouse button to rotate image: \n"
       "\n"
@@ -974,17 +1035,7 @@ int main (int argc, char * argv[])
   InitGLUT(argc, argv);
   InitLights();
   InitStuff ();
-
-
-
   InitThread(argc, argv);
-
-
-  // for (int i=0; i < NUM_PTS; i++)
-  // {
-  //   radii[i]=THREAD_RADII;
-  // }
-
 
   signal(SIGINT, &interruptHandler);
   cout << "Running with CPU Threads = " << NUM_CPU_THREADS << endl; 
@@ -1102,10 +1153,6 @@ void InitThread(int argc, char* argv[])
     for(int i = 0; i < 500; i ++) {
       apprxThreads[i] = new GLThread();
     }
-		for (int i=0; i < 500; i++) {
-			displayThreads[i] = true;
-		}
-
 
   } else {
     Trajectory_Reader start_reader(argv[1]);
@@ -1192,8 +1239,7 @@ void InitGLUT(int argc, char * argv[]) {
   glutInit (&argc, argv); //can i do that?
   glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   glutInitWindowSize(900,900);
-  glutCreateWindow ("Thread")
-;
+  glutCreateWindow ("Thread");
   glutDisplayFunc (DrawStuff);
   glutMotionFunc (MouseMotion);
   glutMouseFunc (processMouse);

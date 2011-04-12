@@ -128,8 +128,8 @@ void computeDifference_maxMag(Thread* start, const Thread* goal, VectorXd& res, 
 void solveLinearizedControl(Thread* start, const Thread* goal, vector<Two_Motions*>& motions, const movement_mode movement) {
   //const double MAX_STEP = 2.0;
   const double DAMPING_CONST_POINTS = 0.1;
-  const double DAMPING_CONST_ANGLES = 5.0;
-  const double MAX_MAG = 3.0;
+  const double DAMPING_CONST_ANGLES = 0.4;
+  const double MAX_MAG = 1.0;
 
   int num_controls;
   if (movement == START_AND_END)

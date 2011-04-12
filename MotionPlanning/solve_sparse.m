@@ -16,15 +16,19 @@ for i=1:size_each_state
 end
 
 b = zeros(size_each_state*(num_threads-1),1);
+goal_state = b(end-size_each_state+1: end);
+goal_state = repmat(goal_state, num_threads-2, 1);
 b(1:size_each_state) = b_data(1:size_each_state) .* -weight_vector;
 b(end-size_each_state+1: end) = b_data(end-size_each_state+1:end) .* weight_vector;
 
-weighted_state_diff_constraint = 10;
-control_diff_constraint = 6;
+weighted_state_diff_constraint = 50;
+control_diff_constraint = 1;
+
+cvx_solver sdpt3
 
 cvx_begin
     variable x(A_n)
-    minimize (norm(A*x - b) + 0.5*norm(x((num_threads-2)*size_each_state:end)));
+    minimize (norm(A*x - b) + 0.1*norm(x((num_threads-2)*size_each_state:end)) + 0*norm(goal_state-x(1:length(goal_state))));
   
     subject to
       for thread_num=1:num_threads-2

@@ -1,4 +1,5 @@
 #include "iterative_control.h"
+#include <boost/progress.hpp>
 
 //#ifdef surgical2
 //  #define MATLAB_INSTALL "/usr/local/bin/matlab/bin/matlab"
@@ -110,9 +111,11 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
     std::cout << "command: " << matlab_command << std::endl;
 
     system(matlab_command);
-
     File_To_Vector(filename_statevec_thisiter, new_states);
+    
 
+    cout << "Minimizing Threads returned from MATLAB" << endl; 
+    boost::progress_display progress(trajectory.size()-2); 
     for (int i=1; i < trajectory.size()-1; i++)
     {
       VectorXd to_copy = new_states.segment(_size_each_state*(i-1), _size_each_state);
@@ -120,6 +123,7 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
       trajectory[i]->unviolate_total_length_constraint();
       trajectory[i]->project_length_constraint();
       trajectory[i]->minimize_energy();
+      ++progress;
     }
     
       
