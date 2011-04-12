@@ -76,6 +76,7 @@ int newRRTNodeThread = 6;
 GLThread* apprxThreads[500]; 
 RRTNode* apprxNodes[500];
 RRTNode* curApprxNodes[500];
+bool displayThreads[500];
 int numApprox = 0; 
 
 // double radii[NUM_PTS];
@@ -915,8 +916,8 @@ void processNormalKeys(unsigned char key, int x, int y)
   } 
   else if (key == '<') {
     stepTrajectoryFollower(false); 
-  }
-  else if (key == 27)
+  } 
+	else if (key == 27)
   {
     exit(0);
   }
@@ -1101,6 +1102,10 @@ void InitThread(int argc, char* argv[])
     for(int i = 0; i < 500; i ++) {
       apprxThreads[i] = new GLThread();
     }
+		for (int i=0; i < 500; i++) {
+			displayThreads[i] = true;
+		}
+
 
   } else {
     Trajectory_Reader start_reader(argv[1]);

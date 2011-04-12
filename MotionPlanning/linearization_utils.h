@@ -18,6 +18,7 @@ enum movement_mode {START, END, START_AND_END};
 void applyControl(Thread* start, const VectorXd& u, const movement_mode movement = START_AND_END);
 void applyControl(Thread* start, const VectorXd& u, vector<Two_Motions*>& motions, const movement_mode movement = START_AND_END);
 void control_to_TwoMotion(const VectorXd& u, vector<Two_Motions*>& motions, const movement_mode movement = START_AND_END);
+void TwoMotion_to_control(const Two_Motions* motion, VectorXd& u);
 void computeDifference(Thread* start, const Thread* goal, VectorXd& res);
 void computeDifference_maxMag(Thread* start, const Thread* goal, VectorXd& res, double maxMag);
 void solveLinearizedControl(Thread* start, const Thread* goal, const movement_mode movement = START_AND_END);

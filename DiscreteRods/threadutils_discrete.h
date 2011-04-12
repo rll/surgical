@@ -42,6 +42,7 @@ double calculate_vector_diff_norm(vector<Vector3d>& pts1, vector<Vector3d>& pts2
 double calculate_vector_norm_avg(vector<Vector3d>& pts1, vector<Vector3d>& pts2);
 double angle_between(const Vector3d& tan1, const Vector3d& tan2);
 void rotation_from_euler_angles(Matrix3d& rotation, double angZ, double angY, double angX);
+void euler_angles_from_rotation(const Matrix3d& rotation, double& angZ, double& angY, double& angX);
 
 void writeParams(std::string file, double* towrite);
 void readParams(std::string file, double* out);
@@ -66,6 +67,9 @@ struct Frame_Motion
 
 };
 
+//applies rhs then lhs
+Frame_Motion operator+(const Frame_Motion& lhs, const Frame_Motion& rhs);
+
 struct Two_Motions
 {
   Frame_Motion _start;
@@ -85,6 +89,8 @@ struct Two_Motions
 
 };
 
+//applies rhs then lhs
+Two_Motions operator+(const Two_Motions& lhs, const Two_Motions& rhs);
 
 
 

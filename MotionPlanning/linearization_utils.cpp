@@ -32,7 +32,7 @@ void control_to_TwoMotion(const VectorXd& u, vector<Two_Motions*>& motions, cons
     double max_ang = max( max(abs(u(3)), abs(u(4))), abs(u(5)));
   }
 
-  int number_steps = max ((int)ceil(max_ang / (M_PI/4.0)), 1);
+  int number_steps = 1;//max ((int)ceil(max_ang / (M_PI/4.0)), 1);
   VectorXd u_to_use = u/((double)number_steps);
 
   Two_Motions* toMove;
@@ -70,6 +70,14 @@ void control_to_TwoMotion(const VectorXd& u, vector<Two_Motions*>& motions, cons
     motions.push_back(toMove);
   }
 
+}
+
+void TwoMotion_to_control(const Two_Motions* motion, VectorXd& u)
+{
+  u.segment(0,3) = motion->_start._pos_movement;
+  u.segment(6,3) = motion->_end._pos_movement;
+  euler_angles_from_rotation(motion->_start._frame_rotation, u(3), u(4), u(5));
+  euler_angles_from_rotation(motion->_end._frame_rotation, u(9), u(10), u(11));
 }
 
   

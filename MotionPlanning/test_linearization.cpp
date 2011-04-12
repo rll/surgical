@@ -391,6 +391,65 @@ int main (int argc, char * argv[])
   InitLights();
   InitStuff ();
 
+  vector<Two_Motions*> motions;
+  VectorXd controls(12);
+  double max_trans = 5;
+  double max_angle = M_PI;
+  for (int i=0; i < 12; i++)
+  {
+    if (i % 6 < 3)
+      controls(i) = ((double)(rand() % 10000))/(10000.0)*max_trans;
+    else
+      controls(i) = ((double)(rand() % 10000))/(10000.0)*max_angle;
+  }
+
+  std::cout << "controls:\n" << controls.transpose() << std::endl;
+
+  VectorXd controls_after(12);
+  control_to_TwoMotion(controls, motions);
+  std::cout << "num motiosn: " << motions.size() << std::endl;
+  Two_Motions summed;
+  summed._start.set_nomotion();
+  summed._end.set_nomotion();
+  for (int i=0; i < motions.size(); i++)
+  {
+    summed = summed + *(motions[i]);
+  }
+  TwoMotion_to_control(&summed, controls_after);
+  std::cout << "controls after:\n" << controls_after.transpose() << std::endl;
+
+  std::cout << "diff angles:\n" << std::endl;
+  for (int i=0; i < 12; i++)
+  {
+    if (i % 6 < 3)
+      continue;
+    else
+      std::cout << angle_diff(controls(i), controls_after(i)) << " ";
+  }
+  std::cout << std::endl;
+
+  std::cout << "summed rotation:\n" << summed._start._frame_rotation << std::endl;
+  Matrix3d eulers_at_once;
+  rotation_from_euler_angles(eulers_at_once, controls(3), controls(4), controls(5));
+  std::cout << "eulers at once:\n" << eulers_at_once << std::endl;
+
+
+  Two_Motions t;
+  Two_Motions t2;
+  t._start.set_nomotion();
+  t._end.set_nomotion();
+  t2._start.set_nomotion();
+  t2._end.set_nomotion();
+
+  rotation_from_euler_angles(t._start._frame_rotation, M_PI/12.0, M_PI/12.0, M_PI/12.0);
+  rotation_from_euler_angles(t2._start._frame_rotation, M_PI/12.0, M_PI/12.0, M_PI/12.0);
+
+  Matrix3d at_once_rot;
+  rotation_from_euler_angles(at_once_rot, M_PI/6.0, M_PI/6.0, M_PI/6.0);
+  
+
+ // std::cout << "summed rotation:\n" << (t+t2)._start._frame_rotation << std::endl;
+ // std::cout << "at once:\n" << at_once_rot << std::endl;
 
 
   InitThread(argc, argv);
