@@ -23,8 +23,8 @@ int main(int argc, char* argv[]) {
 
   char start_threads_filename[256];
   char goal_threads_filename[256];
-  sprintf(start_threads_filename, "%s_%d.txt" BASENAME_STARTTHREADS, num_links);
-  sprintf(goal_threads_filename, "%s_%d.txt", BASENAME_GOALTHREADS, num_links);
+  sprintf(start_threads_filename, "%s/%s_%d.txt", BASEFOLDER_INITDATA, BASENAME_STARTTHREADS, num_links);
+  sprintf(goal_threads_filename, "%s/%s_%d.txt", BASEFOLDER_INITDATA, BASENAME_GOALTHREADS, num_links);
 
   Trajectory_Reader start_threads_reader(start_threads_filename);
   Trajectory_Reader goal_threads_reader(goal_threads_filename);

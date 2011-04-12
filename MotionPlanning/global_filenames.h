@@ -1,7 +1,8 @@
 #define BASENAME_STARTTHREADS "saved_starts"
 #define BASENAME_GOALTHREADS "saved_goals"
+#define BASEFOLDER_INITDATA "benchmark_data/init_data"
 
-#define BASEFOLDER "saved_planner_data"
+#define BASEFOLDER "benchmark_data/saved_planner_data"
 
 #define BASENAME_LINEARIZE_ONLY "linearizeOnly"
 #define BASENAME_INTERPOLATE_ENDS_AND_LINEARIZE "interpolateEndsAndLinearize"
