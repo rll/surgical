@@ -575,7 +575,7 @@ void SQPPlanner() {
 
   Thread* start = new Thread(*glThreads[planThread]->getThread());
   Thread* end = new Thread(*glThreads[endThread]->getThread());
-  numApprox = 40;
+  numApprox = 150;
   vector<Thread*> traj;
   traj.resize(numApprox);
   traj[0] = new Thread(*start);
