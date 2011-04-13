@@ -210,6 +210,7 @@ void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& 
 void traj_subsampling(vector<Thread*>& traj_in, vector<Thread*>& traj_out) {
   
   int rate = (int)(traj_in.size())/SUBSAMPLE_TO_THIS_NUMBER;
+  if (rate == 0) rate = 1;
 
   for (int i = 0; i < traj_in.size(); i++) {
     if (i % rate == 0) { 
