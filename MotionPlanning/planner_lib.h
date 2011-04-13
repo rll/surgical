@@ -59,7 +59,6 @@ void openLoopController(vector<Thread*>& traj_in, vector<VectorXd>& controls_in,
 void closedLoopLinearizationController(vector<Thread*>& traj_in, vector<vector<VectorXd> >& controls_in, vector<Thread*>& traj_out)
 {
   // copy input trajectory 
-  assert("Not implemented yet"); 
   vector<Thread*> traj_in_copy;
   traj_in_copy.resize(traj_in.size()-1); 
   for (int i = 1; i < traj_in.size(); i++) {
@@ -121,17 +120,13 @@ void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<Vector
   
   // Wrap controls and put threads in traj_out as copies 
   traj_out.resize(traj_in.size());
-  vector<VectorXd> U;
   for (int i = 0; i < traj_in.size(); i++) {
     traj_out[i] = new Thread(*traj_in[i]);
-    VectorXd ctrl(12);
-    ctrl.setZero();
-    U.push_back(ctrl);
   }
   
   Iterative_Control* ic = 
     new Iterative_Control(traj_out.size(), traj_out[0]->num_pieces());
-  ic->iterative_control_opt(traj_out, U, num_iters);
+  ic->iterative_control_opt(traj_out, control_out, num_iters);
 
 };
 
