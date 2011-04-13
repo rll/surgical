@@ -26,6 +26,8 @@
 #include "planner_lib.h"
 
 
+
+
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
@@ -85,7 +87,6 @@ int RRT_SQP_openloop_ind = 7;
 int RRT_SQP_closedloop_ind = 8;
 int RRT_SQP_closedloop_onlylast_ind = 9;
 
-
 int curThread = 1;
 
 
@@ -108,6 +109,9 @@ char RRT_filename[256];
 char RRT_SQP_openloop_filename[256];
 char RRT_SQP_closedloop_filename[256];
 char RRT_SQP_closedloop_onlylast_filename[256];
+
+
+
 
 vector<vector< Thread> > all_trajs(NUM_THREADS-2);
 
@@ -623,6 +627,32 @@ void Load_Init_Data()
 	{
 		display_thread[i] = true;
 	}
+
+	glThreads[init_start]->setName("Start");
+	glThreads[init_goal]->setName("Goal");
+	glThreads[linearize_only_ind]->setName("Linearize Only");
+	glThreads[interpolate_point_and_linearize_ind]->setName("Interpolate and Linearize");
+	glThreads[sqp_openloop_ind]->setName("SQP Openloop");
+	glThreads[sqp_closedloop_ind]->setName("SQP Closedloop");
+	glThreads[RRT_ind]->setName("RRT");
+	glThreads[RRT_SQP_openloop_ind]->setName("RRT + SQP Openloop");
+	glThreads[RRT_SQP_closedloop_ind]->setName("RRT + SQP Closedloop");
+	glThreads[RRT_SQP_closedloop_onlylast_ind]->setName("RRT + SQP Finish");
+
+	/*
+int init_start = 0;
+int init_goal = 1;
+int linearize_only_ind = 2;
+int interpolate_point_and_linearize_ind = 3;
+int sqp_openloop_ind = 4;
+int sqp_closedloop_ind =5;
+int RRT_ind = 6;
+int RRT_SQP_openloop_ind = 7;
+int RRT_SQP_closedloop_ind = 8;
+int RRT_SQP_closedloop_onlylast_ind = 9;
+*/
+	
+
 
 	Load_Traj_Data();
 	//display_thread[interpolate_end_and_linear_ind] = false;

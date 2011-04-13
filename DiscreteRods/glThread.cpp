@@ -82,6 +82,7 @@ GLThread::GLThread() {
 #endif
 
   InitContour();
+  strcpy(_display_name, "");
 }
 
 GLThread::GLThread(Thread* _thread) {
@@ -484,18 +485,22 @@ void GLThread::DrawName()
 
 
   double winX, winY, winZ;
-  gluProject(points[1](0)-display_start_pos(0), points[1](1)-display_start_pos(1), points[1](2)-display_start_pos(2)-100, model_view, projection, viewport, &winX, &winY, &winZ);
+  double coordX, coordY, coordZ;
+  coordX = points[1](0)-display_start_pos(0);
+  coordY = points[1](1)-display_start_pos(1);
+  coordZ = points[1](2)-display_start_pos(2);
+  gluProject(coordX, coordY, coordZ, model_view, projection, viewport, &winX, &winY, &winZ);
 
-  char* txt = "test123456741232131";
-  for (int i=0; i < 10; i++)
+  
+
+  for (int i=0; i < strlen(_display_name); i++)
   {
-    double x_add = (double)i;
-    double y_add = 0;
+    double x_add = 5.0*(double)i;
+    double y_add = 15.0;
     //glRasterPos2f(winX+x_add, winY+y_add);
-    std::cout << winX << " " <<  winY << " " << winZ << std::endl;
-    glRasterPos3f(points[1](0)-display_start_pos(0)+x_add, points[1](1)-display_start_pos(1)+y_add, points[1](2)-display_start_pos(2));
-    //p
-    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, txt[i]);
+    gluUnProject(winX+x_add, winY+y_add, winZ, model_view, projection, viewport, &coordX, &coordY, &coordZ);
+    glRasterPos3f(coordX, coordY, coordZ);
+    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, _display_name[i]);
   }
 
 

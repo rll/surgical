@@ -13,6 +13,8 @@
 #include <GL/gle.h>
 #endif
 
+#include <string.h>
+
 
 using namespace std;
 
@@ -70,6 +72,11 @@ class GLThread {
 #endif
   }
 
+  void setName(const char* name)
+  {
+    strcpy(_display_name, name);
+  }
+
   void printThreadData();
 
   //Vector3d getEndPosition() { return positions[1]; }
@@ -92,6 +99,7 @@ class GLThread {
 
 // protected:
   Thread* _thread;
+  char _display_name[256];
 
   Vector3d positions[2];
   Vector3d tangents[2];
