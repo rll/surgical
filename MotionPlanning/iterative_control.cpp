@@ -73,10 +73,10 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
 
 
   char filename_goalvec[256];
-    sprintf(filename_goalvec, "%s_%s", _namestring, FILENAME_GOALVEC);
+    sprintf(filename_goalvec, "%s/%s_%s", SQP_BASE_FOLDER, _namestring, FILENAME_GOALVEC);
 
   char filename_alltrans[256];
-    sprintf(filename_alltrans, "%s_%s", _namestring, FILENAME_ALLTRANS);
+    sprintf(filename_alltrans, "%s/%s_%s", SQP_BASE_FOLDER, _namestring, FILENAME_ALLTRANS);
 
 
   for (int opt_iter=0; opt_iter < num_opts; opt_iter++)
@@ -111,7 +111,7 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
     vector<double> angles(_num_vertices);
 
     char filename_statevec_thisiter[256];
-    sprintf(filename_statevec_thisiter, "%s_%s%d.txt", _namestring, FILENAME_STATEVEC_BASE, opt_iter);
+    sprintf(filename_statevec_thisiter, "%s/%s_%s%d.txt", SQP_BASE_FOLDER, _namestring, FILENAME_STATEVEC_BASE, opt_iter);
 
     char matlab_command[1024];
     sprintf(matlab_command, "%s -nodisplay -nodesktop -nojvm -r \"solve_sparse(%d, %d, \'%s\', %d, %d, \'%s\', \'%s\', %d, %d, %d)\"", MATLAB_INSTALL, _all_trans.rows(), _all_trans.cols(), filename_alltrans, goal_vector.rows(), goal_vector.cols(), filename_goalvec, filename_statevec_thisiter, _num_threads, _size_each_state, _size_each_control);
@@ -230,7 +230,7 @@ void Iterative_Control::AllFiles_To_Traj(int num_iters, vector< vector<Thread*> 
   for (int opt_iter=0; opt_iter < num_iters; opt_iter++)
   {
     char filename_statevec_thisiter[256];
-    sprintf(filename_statevec_thisiter, "%s%d.txt", FILENAME_STATEVEC_BASE, opt_iter);
+    sprintf(filename_statevec_thisiter, "%s/%s%d.txt", SQP_BASE_FOLDER, FILENAME_STATEVEC_BASE, opt_iter);
     AnswerFile_To_Traj(filename_statevec_thisiter, trajectory[opt_iter], control[opt_iter]);
   }
 }

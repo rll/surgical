@@ -15,6 +15,7 @@
 #include <fstream>
 #include <string.h>
 
+#define SQP_BASE_FOLDER "SQP_DATA"
 #define FILENAME_ALLTRANS "alltrans.txt"
 #define FILENAME_GOALVEC "goalvec.txt"
 #define FILENAME_STATEVEC_BASE "newstate"
