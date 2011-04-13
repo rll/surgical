@@ -620,6 +620,7 @@ void SQPPlanner() {
   thread_visualization_data.push_back(control_traj);
   setThreads(thread_visualization_data);
 
+
 }
 
 void SQPSmoother() { 
@@ -1082,12 +1083,9 @@ void DrawStuff (void)
   if(drawTree) {
     DrawRRT();
   }
-
-
+  
   //Draw Axes
   DrawAxes();
-
-
 
   for(int i = 0; i < totalThreads; i++) {
     if ( !initialized && i != planThread  && i != endThread ) continue; 
