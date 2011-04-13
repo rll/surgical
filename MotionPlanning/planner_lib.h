@@ -2,9 +2,9 @@
 #define _planner_lib_h_
 
 #define NUM_INTERPOLATION 100
-#define NUM_NODES 50000
+#define NUM_NODES 30000
 #define RRT_L2_POINTS_THRESHOLD 2.0
-#define NUM_ITERS_SQP 4
+#define NUM_ITERS_SQP 10
 #define SUBSAMPLE_TO_THIS_NUMBER 100
 
 #include "planner_utils.h"
@@ -12,7 +12,9 @@
 #include "trajectory_follower.h" 
 #include "iterative_control.h"
 #include <boost/progress.hpp> 
+#include <sys/time.h>
 
+Thread_RRT util_planner; 
 
 /* 
  * Interpolates points and start/end constraints using quaternion interpolation
@@ -21,8 +23,6 @@ void interpolatePointsTrajectory(Thread* start, Thread* end, vector<Thread*>& tr
 {
   Thread* start_copy = new Thread(*start);
   Thread* end_copy = new Thread(*end); 
-
-  
   // wrap threads and controls
   traj.resize(NUM_INTERPOLATION);
   traj[0] = start_copy;
@@ -141,7 +141,6 @@ void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<Vector
  */
 void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& traj, vector<vector<VectorXd> >& mot) 
 {  
-  assert("Not implemented yet"); 
   Thread_RRT planner;  
   Thread* start_copy = new Thread(*start);
   Thread* end_copy = new Thread(*end); 
@@ -216,6 +215,30 @@ void traj_subsampling(vector<Thread*>& traj_in, vector<Thread*>& traj_out) {
       traj_out.push_back(new Thread(*traj_in[i]));
     }
   }
+};
+
+double cost_metric(Thread* u, Thread* v) {
+  return util_planner.l2PointsDifference(u,v);
+}
+
+class Timer {
+  public: 
+    Timer() {
+      gettimeofday(&start_tv, NULL); 
+    }
+    void restart() {
+      gettimeofday(&start_tv, NULL);
+    }
+    double elapsed() {
+      gettimeofday(&tv, NULL); 
+      return  (tv.tv_sec - start_tv.tv_sec) +
+        (tv.tv_usec - start_tv.tv_usec) / 1000000.0;
+    }
+
+  private:
+    struct timeval tv;
+    struct timeval start_tv;
+
 };
 
 

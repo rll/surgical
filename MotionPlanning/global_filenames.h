@@ -5,6 +5,7 @@
 #define BASENAME_GOALTHREADS "saved_goals"
 #define BASEFOLDER_INITDATA "benchmark_data/init_data"
 
+#define BASEFOLDER_RESULTS "benchmark_data/results"
 #define BASEFOLDER "benchmark_data/saved_planner_data"
 
 #define BASENAME_LINEARIZE_ONLY "linearizeOnly"
