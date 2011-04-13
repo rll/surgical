@@ -83,7 +83,7 @@ int main(int argc, char* argv[]) {
 
     interpolateEndsTrajectory(&start_threads[thread_ind], &goal_threads[thread_ind], interpolated_ends);
     interpolatePointsTrajectory(&start_threads[thread_ind], &goal_threads[thread_ind], interpolated_points);
-  
+  /*
     //linearize only
     linearizeToGoal(&start_threads[thread_ind], &goal_threads[thread_ind], current_traj);
     linearize_only_recorder.add_threads_to_list(current_traj);
@@ -91,16 +91,16 @@ int main(int argc, char* argv[]) {
 
     
     //interpolate ends and follow
-    /*linearizeViaTrajectory(interpolated_ends, current_traj);
-    interpolate_end_and_linear_recorder.add_threads_to_list(current_traj);
-    deleteAllThreads(current_traj);
-    */
+    //linearizeViaTrajectory(interpolated_ends, current_traj);
+    //interpolate_end_and_linear_recorder.add_threads_to_list(current_traj);
+    //deleteAllThreads(current_traj);
+    
 
     //interpolate points and follow
     linearizeViaTrajectory(interpolated_points, current_traj);
     interpolate_point_and_linearize_recorder.add_threads_to_list(current_traj);
     deleteAllThreads(current_traj);
-
+*/
 
     //generate SQP data
     vector<Thread*> sqp_points;

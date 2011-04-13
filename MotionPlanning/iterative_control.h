@@ -2,7 +2,6 @@
 #define _iterative_control_h
 
 
-#define EIGEN_UMFPACK_SUPPORT
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <Eigen/Cholesky>

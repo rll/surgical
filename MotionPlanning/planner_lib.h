@@ -61,12 +61,12 @@ void closedLoopLinearizationController(vector<Thread*>& traj_in, vector<vector<V
   // copy input trajectory 
   assert("Not implemented yet"); 
   vector<Thread*> traj_in_copy;
-  traj_in_copy.resize(traj_in.size()); 
-  for (int i = 0; i < traj_in.size(); i++) {
+  traj_in_copy.resize(traj_in.size()-1); 
+  for (int i = 1; i < traj_in.size(); i++) {
     traj_in_copy[i] = new Thread(*traj_in[i]);
   }
 
-  Thread* start_copy = new Thread(*traj_in_copy[0]);
+  Thread* start_copy = new Thread(*traj_in[0]);
 
   // follow using trajectory follower
   Trajectory_Follower *follower = 
@@ -117,7 +117,7 @@ void linearizeToGoal(Thread* start, Thread* end, vector<Thread*>& traj)
  */
 void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<VectorXd>& control_out)
 {
-  int num_iters = 4; 
+  int num_iters = 1; 
   
   // Wrap controls and put threads in traj_out as copies 
   traj_out.resize(traj_in.size());
