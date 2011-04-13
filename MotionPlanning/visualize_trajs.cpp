@@ -37,6 +37,7 @@ void DrawAxes();
 
 void Load_Init_Data();
 void Load_Traj_Data();
+void Update_Thread_Displays();
 
 
 double calculate_thread_error(Thread* start, Thread* goal);
@@ -47,7 +48,7 @@ double calculate_thread_error(Thread* start, Thread* goal);
 #define ROTATE_TAN_CONST 0.2
 
 
-#define NUM_THREADS 2
+#define NUM_THREADS 10
 
 enum key_code {NONE, MOVEPOS, MOVETAN, ROTATETAN, MOVEPOSSTART, MOVETANSTART, ROTATETANSTART};
 
@@ -72,8 +73,19 @@ Vector3d zero_location;
 double zero_angle;
 
 GLThread* glThreads[NUM_THREADS];
+bool display_thread[NUM_THREADS];
 int init_start = 0;
 int init_goal = 1;
+int linearize_only_ind = 2;
+int interpolate_point_and_linearize_ind = 3;
+int sqp_openloop_ind = 4;
+int sqp_closedloop_ind =5;
+int RRT_ind = 6;
+int RRT_SQP_openloop_ind = 7;
+int RRT_SQP_closedloop_ind = 8;
+int RRT_SQP_closedloop_onlylast_ind = 9;
+
+
 int curThread = 1;
 
 
@@ -97,6 +109,18 @@ char RRT_SQP_openloop_filename[256];
 char RRT_SQP_closedloop_filename[256];
 char RRT_SQP_closedloop_onlylast_filename[256];
 
+vector<vector< Thread> > all_trajs(NUM_THREADS-2);
+
+/*vector<Thread*> linearize_only_traj(0);
+//vector<Thread*> interpolate_end_and_linear_traj;
+vector<Thread*> interpolate_point_and_linearize_traj(0);
+vector<Thread*> sqp_openloop_traj(0);
+vector<Thread*> sqp_closedloop_traj(0);
+vector<Thread*> RRT_traj(0);
+vector<Thread*> RRT_SQP_openloop_traj(0);
+vector<Thread*> RRT_SQP_closedloop_traj(0);
+vector<Thread*> RRT_SQP_closedloop_onlylast_traj(0);
+*/
 
 
 
@@ -301,21 +325,26 @@ void processNormalKeys(unsigned char key, int x, int y)
     key_pressed = ROTATETANSTART;
   } else if ((key == 'n' || key == 'N') && curr_thread_ind < start_threads.size()-1) {
     curr_thread_ind++;
-		glThreads[init_start]->setThread((new Thread(start_threads[curr_thread_ind])));
-		glThreads[init_goal]->setThread((new Thread(goal_threads[curr_thread_ind])));
-		glutPostRedisplay();
+		Load_Traj_Data();
 	} else if ((key == 'b' || key == 'B') && curr_thread_ind > 0) {
 		curr_thread_ind--;
-		glThreads[init_start]->setThread((new Thread(start_threads[curr_thread_ind])));
-		glThreads[init_goal]->setThread((new Thread(goal_threads[curr_thread_ind])));
-		glutPostRedisplay();
-  } else if (key == 27) {
+		Load_Traj_Data();
+  } else if (key == '>') {
+		curr_trajectory_ind++;
+		Update_Thread_Displays();
+	} else if (key == '<') {
+		curr_trajectory_ind--;
+		Update_Thread_Displays();
+	}
+	
+	else if (key == 27) {
     exit(0);
   }
 
-		std::cout << "curr ind: " << curr_thread_ind << std::endl;
+		std::cout << "thread_ind ind: " << curr_thread_ind << "  traj ind: " << curr_trajectory_ind << std::endl;
   lastx_R = x;
   lasty_R = y;
+	glutPostRedisplay();
 }
 
 void processKeyUp(unsigned char key, int x, int y)
@@ -427,6 +456,8 @@ void DrawStuff (void)
   Vector3d display_start_pos = glThreads[init_start]->getStartPosition();
 
 	for(int i = 0; i < NUM_THREADS; i++) {
+		if (!display_thread[i])
+			continue;
 
     //Draw Thread
     if (i==init_start) {
@@ -563,18 +594,84 @@ void Load_Init_Data()
 	
 	for (int thread_ind=0; thread_ind < NUM_THREADS; thread_ind++)
 	{
-		std::cout << "thraed ind: " << thread_ind << std::endl;
 		glThreads[thread_ind] = new GLThread();
 		glThreads[thread_ind]->setThread(new Thread(start_threads[curr_thread_ind]));
 	}
 
 	glThreads[init_start]->setThread(new Thread(start_threads[curr_thread_ind]));
 	glThreads[init_goal]->setThread(new Thread(goal_threads[curr_thread_ind]));
+
+
+	for (int i=0; i < NUM_THREADS; i++)
+	{
+		display_thread[i] = true;
+	}
+
+	Load_Traj_Data();
+	//display_thread[interpolate_end_and_linear_ind] = false;
+
 }
 
 
 void Load_Traj_Data()
 {
+	glThreads[init_start]->setThread((new Thread(start_threads[curr_thread_ind])));
+	glThreads[init_goal]->setThread((new Thread(goal_threads[curr_thread_ind])));
+
+	sprintf(linearize_only_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_LINEARIZE_ONLY, curr_thread_ind);
+	//sprintf(interpolate_end_and_linear_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_INTERPOLATE_ENDS_AND_LINEARIZE, curr_thread_ind);
+	sprintf(interpolate_point_and_linearize_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_INTERPOLATE_POINT_AND_LINEARIZE, curr_thread_ind);
+	sprintf(sqp_openloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_SQP_OPENLOOP, curr_thread_ind);
+	sprintf(sqp_closedloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_SQP_CLOSEDLOOP, curr_thread_ind);
+	sprintf(RRT_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT, curr_thread_ind);
+	sprintf(RRT_SQP_openloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_SQP_OPENLOOP, curr_thread_ind);
+	sprintf(RRT_SQP_closedloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_SQP_CLOSEDLOOP, curr_thread_ind);
+	sprintf(RRT_SQP_closedloop_onlylast_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_SQP_CLOSEDLOOP_ONLYLAST, curr_thread_ind);
+
+
+	Trajectory_Reader linearize_only_reader(linearize_only_filename);
+	//Trajectory_Reader interpolate_end_and_linear_reader(interpolate_end_and_linear_filename);
+	Trajectory_Reader interpolate_point_and_linearize_reader(interpolate_point_and_linearize_filename);
+	Trajectory_Reader sqp_openloop_reader(sqp_openloop_filename);
+	Trajectory_Reader sqp_closedloop_reader(sqp_closedloop_filename);
+	Trajectory_Reader RRT_reader(RRT_filename);
+	Trajectory_Reader RRT_SQP_openloop_reader(RRT_SQP_openloop_filename);
+	Trajectory_Reader RRT_SQP_closedloop_reader(RRT_SQP_closedloop_filename);
+	Trajectory_Reader RRT_SQP_closedloop_onlylast_reader(RRT_SQP_closedloop_onlylast_filename);
+
+	linearize_only_reader.read_threads_from_file();
+	interpolate_point_and_linearize_reader.read_threads_from_file();
+	sqp_openloop_reader.read_threads_from_file();
+	sqp_closedloop_reader.read_threads_from_file();
+	RRT_reader.read_threads_from_file();
+	RRT_SQP_openloop_reader.read_threads_from_file();
+	RRT_SQP_closedloop_reader.read_threads_from_file();
+	RRT_SQP_closedloop_onlylast_reader.read_threads_from_file();
+
+	all_trajs[linearize_only_ind-2] = linearize_only_reader.get_all_threads();
+	all_trajs[interpolate_point_and_linearize_ind-2] = interpolate_point_and_linearize_reader.get_all_threads();
+	all_trajs[sqp_openloop_ind-2] = sqp_openloop_reader.get_all_threads();
+	all_trajs[sqp_closedloop_ind-2] = sqp_closedloop_reader.get_all_threads();
+	all_trajs[RRT_ind-2] = RRT_reader.get_all_threads();
+	all_trajs[RRT_SQP_openloop_ind-2] = RRT_SQP_openloop_reader.get_all_threads();
+	all_trajs[RRT_SQP_closedloop_ind-2] = RRT_SQP_closedloop_reader.get_all_threads();
+	all_trajs[RRT_SQP_closedloop_onlylast_ind-2] = RRT_SQP_closedloop_onlylast_reader.get_all_threads();
+
+
+	curr_trajectory_ind = 0;
+	Update_Thread_Displays();
+}
+
+
+void Update_Thread_Displays()
+{
+	for (int i=2; i < NUM_THREADS; i++)
+	{
+		if (curr_trajectory_ind < all_trajs[i-2].size())
+		{
+			glThreads[i]->setThread(new Thread(all_trajs[i-2][curr_trajectory_ind]));
+		}
+	}
 
 }
 
