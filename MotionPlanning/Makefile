@@ -95,5 +95,5 @@ iterative_control.o : iterative_control.cpp iterative_control.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c iterative_control.cpp $(PROFILER)
 
 clean:
-	rm *.o *.gch test_linearization test_planner benchmark_runner benchmark_planner run_planner_libs visualize_trajs
+	rm *.o *.gch test_linearization test_planner benchmark_runner benchmark_planner run_planner_libs visualize_trajs run_sample_generator
 
