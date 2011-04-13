@@ -56,6 +56,7 @@ void openLoopController(vector<Thread*>& traj_in, vector<VectorXd>& controls_in,
 void closedLoopLinearizationController(vector<Thread*>& traj_in, vector<vector<VectorXd> >& controls_in, vector<Thread*>& traj_out)
 {
   // copy input trajectory 
+  assert("Not implemented yet"); 
   vector<Thread*> traj_in_copy;
   traj_in_copy.resize(traj_in.size()); 
   for (int i = 0; i < traj_in.size(); i++) {
@@ -72,19 +73,6 @@ void closedLoopLinearizationController(vector<Thread*>& traj_in, vector<vector<V
   //put states reached in traj_out 
   follower->getReachedStates(traj_out); 
 };
-/*
-void closedLoopLinearizationCT-1ontroller(vector<Thread*>& traj_in, vector<vector<VectorXd> >& controls_in, vector<Thread*>& traj_out) 
-{
-  // wrap controls as Two_Motions
-  vector<vector<Two_Motions*> > tm_controls;
-  for (int i = 0; i < controls_in.size(); i++) {
-    vector<Two_Motions*> ctrl;
-    control_to_TwoMotion(controls_in[i], ctrl);
-    tm_controls.push_back(ctrl); 
-  }
-  closedLoopLinearizationController(traj_in, tm_controls, traj_out); 
-}
-*/
 /* 
  * Follow the trajectory in traj_in towards goal.
  * Start is assumed to be traj_in[0]
@@ -149,6 +137,7 @@ void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<Vector
  */
 void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& traj, vector<vector<VectorXd> >& mot) 
 {  
+  assert("Not implemented yet"); 
   Thread_RRT planner;  
   Thread* start_copy = new Thread(*start);
   Thread* end_copy = new Thread(*end); 

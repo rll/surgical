@@ -321,7 +321,7 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
   //rotation_from_euler_angles(end_rot, inc(0), inc(1), inc(2));
   Thread* sample =new Thread(vertices, angles, start_rot, goal_thread->rest_length());
   //sample->set_end_constraint(vertices[vertices.size()-1], end_rot);
-	sample->set_end_twist(Normal(0,0.2*M_PI));
+	sample->set_end_twist(drand48()*4*M_PI - 2*M_PI);
   sample->unviolate_total_length_constraint();
   sample->project_length_constraint();
   return sample;
