@@ -37,10 +37,11 @@ int main(int argc, char* argv[]) {
 
   Thread_RRT planner;
   Thread* reference = (new GLThread())->getThread();
+  reference->minimize_energy();
 
   int num_links = reference->num_pieces(); 
-  vector<Thread*> start_samples;
-  vector<Thread*> end_samples; 
+  vector<Thread*> start_samples(num_pairs);
+  vector<Thread*> end_samples(num_pairs); 
 
   boost::progress_display progress(num_pairs);
 
@@ -48,10 +49,10 @@ int main(int argc, char* argv[]) {
   for (int i = 0; i < num_pairs; i++) { 
     Thread* start_sample = planner.generateSample(reference);
     start_sample->minimize_energy(20000, 1e-10, 0.2, 1e-11);
-    start_samples.push_back(start_sample);
+    start_samples[i] = start_sample;
     Thread* end_sample = planner.generateSample(reference);
     end_sample->minimize_energy(20000, 1e-10, 0.2, 1e-11);
-    end_samples.push_back(end_sample);
+    end_samples[i] = end_sample;
     ++progress;
   }
 

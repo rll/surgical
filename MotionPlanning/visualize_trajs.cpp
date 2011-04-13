@@ -312,6 +312,8 @@ void processNormalKeys(unsigned char key, int x, int y)
   } else if (key == 27) {
     exit(0);
   }
+
+		std::cout << "curr ind: " << curr_thread_ind << std::endl;
   lastx_R = x;
   lasty_R = y;
 }
@@ -341,7 +343,7 @@ int main (int argc, char * argv[])
 
 	if (argc < 3)
 	{
-		std::cerr << "please provide arguments: start_ind    end_ind   dimension" << std::endl;
+		std::cerr << "please provide arguments: start_ind   dimension" << std::endl;
 	}
 
 	srand(0);
@@ -349,10 +351,8 @@ int main (int argc, char * argv[])
 
   curr_thread_ind = atoi (argv[1]);
   num_links = atoi (argv[2]);
-  vector<Thread> start_threads;
-  vector<Thread> goal_threads;
 
-
+	std::cout << "curThread: " << curr_thread_ind << " " << num_links << std::endl;
 
 
   printf("Instructions:\n"
@@ -563,6 +563,7 @@ void Load_Init_Data()
 	
 	for (int thread_ind=0; thread_ind < NUM_THREADS; thread_ind++)
 	{
+		std::cout << "thraed ind: " << thread_ind << std::endl;
 		glThreads[thread_ind] = new GLThread();
 		glThreads[thread_ind]->setThread(new Thread(start_threads[curr_thread_ind]));
 	}
