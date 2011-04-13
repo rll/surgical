@@ -16,6 +16,8 @@
 #include "../DiscreteRods/glThread.h"
 
 
+bool hasnan(Thread* tocheck);
+
 namespace po = boost::program_options;
 int main(int argc, char* argv[]) {
 
@@ -47,11 +49,17 @@ int main(int argc, char* argv[]) {
 
   #pragma omp parallel for num_threads(NUM_CPU_THREADS)
   for (int i = 0; i < num_pairs; i++) { 
-    Thread* start_sample = planner.generateSample(reference);
-    start_sample->minimize_energy(20000, 1e-10, 0.2, 1e-11);
+    Thread* start_sample;
+    do {
+      start_sample = planner.generateSample(reference);
+      start_sample->minimize_energy(20000, 1e-10, 0.2, 1e-11);
+    } while (hasnan(start_sample));
     start_samples[i] = start_sample;
-    Thread* end_sample = planner.generateSample(reference);
-    end_sample->minimize_energy(20000, 1e-10, 0.2, 1e-11);
+    Thread* end_sample;
+    do {
+      end_sample = planner.generateSample(reference);
+      end_sample->minimize_energy(20000, 1e-10, 0.2, 1e-11);
+    } while (hasnan(end_sample));
     end_samples[i] = end_sample;
     ++progress;
   }
@@ -74,4 +82,21 @@ int main(int argc, char* argv[]) {
 
   exit(0);
 
+}
+
+
+bool hasnan(Thread* tocheck)
+{
+  vector<Vector3d> points;
+  vector<double> twist_angles;
+  tocheck->get_thread_data(points, twist_angles);
+
+  //write each point for each thread
+  for (int i=0; i < points.size(); i++)
+  {
+    if (isnan(points[i].norm()))
+      return true;
+  }
+
+  return false;
 }

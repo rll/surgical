@@ -64,8 +64,8 @@ void Trajectory_Reader::read_threads_from_file()
     Thread nextThread(points, twist_angles, start_rot);
     _each_thread.push_back(nextThread);
 		//_each_thread.back() = nextThread;
-  }
 
+  }
 
   //last read thread is garbage data
   if (_each_thread.size() > 0)
