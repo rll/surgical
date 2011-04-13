@@ -85,7 +85,7 @@ linearization_utils.o: linearization_utils.cpp linearization_utils.h
 rrt_utils.o : rrt_utils.cpp rrt_utils.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c rrt_utils.cpp $(PROFILER)
 
-planner_utils.o : planner_utils.cpp planner_utils.h
+planner_utils.o : planner_utils.cpp planner_utils.h planner_lib.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c planner_utils.cpp $(PROFILER)
 
 trajectory_follower.o : trajectory_follower.cpp trajectory_follower.h

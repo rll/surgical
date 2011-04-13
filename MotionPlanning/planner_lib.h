@@ -4,6 +4,8 @@
 #define NUM_INTERPOLATION 100
 #define NUM_NODES 50000
 #define RRT_L2_POINTS_THRESHOLD 2.0
+#define NUM_ITERS_SQP 4
+#define SUBSAMPLE_TO_THIS_NUMBER 150
 
 #include "planner_utils.h"
 #include "linearization_utils.h"
@@ -19,6 +21,7 @@ void interpolatePointsTrajectory(Thread* start, Thread* end, vector<Thread*>& tr
 {
   Thread* start_copy = new Thread(*start);
   Thread* end_copy = new Thread(*end); 
+
   
   // wrap threads and controls
   traj.resize(NUM_INTERPOLATION);
@@ -63,7 +66,7 @@ void closedLoopLinearizationController(vector<Thread*>& traj_in, vector<vector<V
   vector<Thread*> traj_in_copy;
   traj_in_copy.resize(traj_in.size()-1); 
   for (int i = 1; i < traj_in.size(); i++) {
-    traj_in_copy[i] = new Thread(*traj_in[i]);
+    traj_in_copy[i-1] = new Thread(*traj_in[i]);
   }
 
   Thread* start_copy = new Thread(*traj_in[0]);
@@ -84,12 +87,13 @@ void closedLoopLinearizationController(vector<Thread*>& traj_in, vector<vector<V
 void linearizeViaTrajectory(vector<Thread*>& traj_in, vector<Thread*>& traj_out){
   // wrap controls as 0
   vector<vector<VectorXd> > controls_in;
-  for (int i = 0; i < traj_in.size(); i++) {
+  for (int i = 0; i < traj_in.size()-1; i++) {
     VectorXd zero_control(12);
     zero_control.setZero();
     vector<VectorXd> wrapper_zero_control;
     wrapper_zero_control.push_back(zero_control);
     controls_in.push_back(wrapper_zero_control); 
+    traj_in[i]->print_vertices();
   }
   closedLoopLinearizationController(traj_in, controls_in, traj_out);
 };
@@ -100,9 +104,11 @@ void linearizeViaTrajectory(vector<Thread*>& traj_in, vector<Thread*>& traj_out)
  */
 void linearizeToGoal(Thread* start, Thread* end, vector<Thread*>& traj) 
 {
+
   // wrap trajectory
   Thread* start_copy = new Thread(*start);
   Thread* end_copy = new Thread(*end); 
+
   vector<Thread*> traj_in;
   traj_in.push_back(start_copy); 
   traj_in.push_back(end_copy);
@@ -117,7 +123,7 @@ void linearizeToGoal(Thread* start, Thread* end, vector<Thread*>& traj)
  */
 void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<VectorXd>& control_out)
 {
-  int num_iters = 1; 
+  int num_iters = NUM_ITERS_SQP; 
   
   // Wrap controls and put threads in traj_out as copies 
   traj_out.resize(traj_in.size());
@@ -204,8 +210,10 @@ void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& 
  */
 void traj_subsampling(vector<Thread*>& traj_in, vector<Thread*>& traj_out) {
   
+  int rate = (int)(traj_in.size())/SUBSAMPLE_TO_THIS_NUMBER;
+
   for (int i = 0; i < traj_in.size(); i++) {
-    if (i % 5 == 0) { 
+    if (i % rate == 0) { 
       traj_out.push_back(new Thread(*traj_in[i]));
     }
   }
