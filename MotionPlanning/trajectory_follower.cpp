@@ -27,7 +27,6 @@ void Trajectory_Follower::Take_Step()
   const int count_no_improvement_thresh = 30; 
   int count_no_improvement = 0; 
 
-
   vector<VectorXd> motionLst = _motions[_curr_ind];
   for (int i = 0; i < motionLst.size(); i++) { 
 		applyControl(next_state, motionLst[i]);

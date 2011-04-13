@@ -3,6 +3,8 @@
 
 #define NUM_INTERPOLATION 100
 #define NUM_NODES 50000
+#define NUM_ITERS_SQP 4
+#define SUBSAMPLE_TO_THIS_NUMBER 150
 
 #include "planner_utils.h"
 #include "linearization_utils.h"
@@ -116,7 +118,7 @@ void linearizeToGoal(Thread* start, Thread* end, vector<Thread*>& traj)
  */
 void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<VectorXd>& control_out)
 {
-  int num_iters = 1; 
+  int num_iters = NUM_ITERS_SQP; 
   
   // Wrap controls and put threads in traj_out as copies 
   traj_out.resize(traj_in.size());
@@ -193,8 +195,10 @@ void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& 
  */
 void traj_subsampling(vector<Thread*>& traj_in, vector<Thread*>& traj_out) {
   
+  int rate = (int)(traj_in.size())/SUBSAMPLE_TO_THIS_NUMBER;
+
   for (int i = 0; i < traj_in.size(); i++) {
-    if (i % 5 == 0) { 
+    if (i % rate == 0) { 
       traj_out.push_back(new Thread(*traj_in[i]));
     }
   }
