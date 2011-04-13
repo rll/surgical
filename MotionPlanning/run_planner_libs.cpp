@@ -50,6 +50,10 @@ int main(int argc, char* argv[]) {
     //for now, dont call interpolate ends
     //after running rrt, also call linearizetogoal
 
+    char sqp_namestring[256];
+    sprintf(sqp_namestring, "%d_%d", num_links, thread_ind);
+
+
     char results_filename[256]; 
     char linearize_only_filename[256];
     char interpolate_end_and_linear_filename[256];
@@ -138,7 +142,7 @@ int main(int argc, char* argv[]) {
     vector<Thread*> sqp_points;
     vector<VectorXd> sqp_controls;
     vector<vector<VectorXd> > sqp_controls_wrapped;
-    solveSQP(interpolated_points, sqp_points, sqp_controls);
+    solveSQP(interpolated_points, sqp_points, sqp_controls, sqp_namestring);
     double SQP_SOLVER_TIME = timer.elapsed();
     wrap_controls_extra_vector(sqp_controls, sqp_controls_wrapped);
 
@@ -191,7 +195,7 @@ int main(int argc, char* argv[]) {
     vector<Thread*> rrt_sqp_traj;
     vector<VectorXd> rrt_sqp_controls;
     vector<vector<VectorXd> > rrt_sqp_controls_wrapped;
-    solveSQP(RRT_traj_togoal, rrt_sqp_traj, rrt_sqp_controls);
+    solveSQP(RRT_traj_togoal, rrt_sqp_traj, rrt_sqp_controls, sqp_namestring);
     wrap_controls_extra_vector(rrt_sqp_controls, rrt_sqp_controls_wrapped);
     double RRT_SQP_SMOOTHING_TIME = timer.elapsed(); 
 
@@ -226,7 +230,7 @@ int main(int argc, char* argv[]) {
     vector<VectorXd> rrt_endtogoal_sqp_controls;
     vector<vector<VectorXd> > rrt_endtogoal_sqp_controls_wrapped;
     interpolatePointsTrajectory(RRT_traj.back(), goal_threads[thread_ind], rrt_endtogoal_interpolate);
-    solveSQP(rrt_endtogoal_interpolate, rrt_endtogoal_sqp_traj, rrt_endtogoal_sqp_controls);
+    solveSQP(rrt_endtogoal_interpolate, rrt_endtogoal_sqp_traj, rrt_endtogoal_sqp_controls, sqp_namestring);
     wrap_controls_extra_vector(rrt_endtogoal_sqp_controls, rrt_endtogoal_sqp_controls_wrapped);
     closedLoopLinearizationController(rrt_endtogoal_sqp_traj, rrt_endtogoal_sqp_controls_wrapped, RRT_SQP_closedloop_onlylast_traj);
     RRT_SQP_closedloop_onlylast_recorder.add_threads_to_list(RRT_traj);

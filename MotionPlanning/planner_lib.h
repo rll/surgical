@@ -120,7 +120,7 @@ void linearizeToGoal(Thread* start, Thread* end, vector<Thread*>& traj)
 /*
  * Use SQP solver given traj_in. Puts results in traj_out and control_out
  */
-void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<VectorXd>& control_out)
+void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<VectorXd>& control_out, const char* namestring)
 {
   int num_iters = NUM_ITERS_SQP; 
   
@@ -132,6 +132,7 @@ void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<Vector
   
   Iterative_Control* ic = 
     new Iterative_Control(traj_out.size(), traj_out[0]->num_pieces());
+  ic->set_namestring(namestring);
   ic->iterative_control_opt(traj_out, control_out, num_iters);
 
 };

@@ -13,6 +13,7 @@
 #include "linearization_utils.h"
 #include "../DiscreteRods/thread_discrete.h"
 #include <fstream>
+#include <string.h>
 
 #define FILENAME_ALLTRANS "alltrans.txt"
 #define FILENAME_GOALVEC "goalvec.txt"
@@ -38,6 +39,11 @@ class Iterative_Control
     void AnswerFile_To_Traj(const char* filename, vector<Thread*>& trajectory, vector<VectorXd>& control);
     void AllFiles_To_Traj(int num_iters, vector< vector<Thread*> >& trajectory, vector< vector<VectorXd> >& control);
 
+    void set_namestring(const char* str)
+    {
+      strcpy(_namestring, str);
+    };
+    
 
   private:
     void init_all_trans(); /* adds the diagonal weighting terms to _all_trans */
@@ -51,6 +57,7 @@ class Iterative_Control
     Thread* _lastopt_startThread;
     Thread* _lastopt_goalThread;
 
+    char _namestring[256];
 
 };
 

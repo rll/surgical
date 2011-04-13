@@ -13,6 +13,7 @@
 #include <GL/gle.h>
 #endif
 
+
 using namespace std;
 
 //CONTOUR STUFF
@@ -41,6 +42,7 @@ class GLThread {
   //void GetConfiguration(int* size, double* pts_cpy[][], double* twist_cpy[]);
   void DrawThread();
   void DrawAxes();
+  void DrawName();
   void minimize_energy();
   void updateThreadPoints();
   void ApplyUserInput(float move_end[], float tangent_end[], float tangent_rotation_end[]);

@@ -13,7 +13,7 @@ Iterative_Control::Iterative_Control(int num_threads, int num_vertices)
   _num_threads = 0;
   _num_vertices = 0;
   resize_controller(num_threads, num_vertices);
-
+  strcpy(_namestring, "");
 }
 
 Iterative_Control::~Iterative_Control()
@@ -72,11 +72,18 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
   VectorXd new_states((_num_threads-2)*_size_each_state + (_num_threads-1)*_size_each_control);
 
 
+  char filename_goalvec[256];
+    sprintf(filename_goalvec, "%s_%s", _namestring, FILENAME_GOALVEC);
+
+  char filename_alltrans[256];
+    sprintf(filename_alltrans, "%s_%s", _namestring, FILENAME_ALLTRANS);
+
+
   for (int opt_iter=0; opt_iter < num_opts; opt_iter++)
   {
     add_transitions_alltrans(trajectory);
     SparseMatrix<double> all_trans_sparse(_all_trans);
-    Matrix_To_File(all_trans_sparse, FILENAME_ALLTRANS);
+    Matrix_To_File(all_trans_sparse, filename_alltrans);
     //write all states out
     VectorXd goal_vector(_size_each_state*_num_threads);
     VectorXd state_for_file(_size_each_state);
@@ -85,7 +92,7 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
       thread_to_state(trajectory[i], state_for_file);
       goal_vector.segment(i*_size_each_state, _size_each_state) = state_for_file;
     }
-    Vector_To_File(goal_vector, FILENAME_GOALVEC);
+    Vector_To_File(goal_vector, filename_goalvec);
     //LU<MatrixXd> lu_factorization((MatrixXd(all_trans_sparse.transpose())*all_trans_sparse));
     //VectorXd b = DynamicSparseMatrix<double>(all_trans_sparse.transpose())*goal_vector;
     //new_states = b;
@@ -104,10 +111,10 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
     vector<double> angles(_num_vertices);
 
     char filename_statevec_thisiter[256];
-    sprintf(filename_statevec_thisiter, "%s%d.txt", FILENAME_STATEVEC_BASE, opt_iter);
+    sprintf(filename_statevec_thisiter, "%s_%s%d.txt", _namestring, FILENAME_STATEVEC_BASE, opt_iter);
 
     char matlab_command[1024];
-    sprintf(matlab_command, "%s -nodisplay -nodesktop -nojvm -r \"solve_sparse(%d, %d, \'%s\', %d, %d, \'%s\', \'%s\', %d, %d, %d)\"", MATLAB_INSTALL, _all_trans.rows(), _all_trans.cols(), FILENAME_ALLTRANS, goal_vector.rows(), goal_vector.cols(), FILENAME_GOALVEC, filename_statevec_thisiter, _num_threads, _size_each_state, _size_each_control);
+    sprintf(matlab_command, "%s -nodisplay -nodesktop -nojvm -r \"solve_sparse(%d, %d, \'%s\', %d, %d, \'%s\', \'%s\', %d, %d, %d)\"", MATLAB_INSTALL, _all_trans.rows(), _all_trans.cols(), filename_alltrans, goal_vector.rows(), goal_vector.cols(), filename_goalvec, filename_statevec_thisiter, _num_threads, _size_each_state, _size_each_control);
     std::cout << "command: " << matlab_command << std::endl;
 
     system(matlab_command);

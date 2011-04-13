@@ -438,7 +438,7 @@ void DrawStuff (void)
   glPushMatrix ();
 
   /* set up some matrices so that the object spins with the mouse */
-  glTranslatef (0.0,0.0,-170.0);
+  glTranslatef (0.0,0.0,-110.0);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
 
@@ -461,16 +461,33 @@ void DrawStuff (void)
 
     //Draw Thread
     if (i==init_start) {
-      glColor4f (0.8, 0.5, 0.0, 0.9);
+      glColor4f (0.99, 0.48, 0.1, 0.9); //gold
     } else if (i==init_goal) {
-      glColor4f (0.1, 0.1, 0.8, 0.9);
-    } else {
+      glColor4f (0.1, 0.1, 0.8, 0.9); //blue
+    } else if (i == linearize_only_ind) {
+      glColor4f (0.2, 0.8, 0.2, 0.9); //green
+		} else if (i== interpolate_point_and_linearize_ind) {
+      glColor4f (0.4, 0.8, 0.55, 0.9); //aquamarine
+		} else if (i == sqp_openloop_ind) {
+      glColor4f (0.5, 0.4, 0.99, 0.9); //light purple
+		} else if (i == sqp_closedloop_ind) {
+      glColor4f (0.5, 0.2, 0.9, 0.9); //blueviolet
+		} else if (i == RRT_ind) {
+      glColor4f (0.8, 0.1, 0.1, 0.9); //red
+		} else if (i == RRT_SQP_openloop_ind) {
+      glColor4f (0.9, 0.4, 0.1, 0.9); //orange
+		} else if (i == RRT_SQP_closedloop_ind) {
+      glColor4f (0.7, 0.6, 0.05, 0.9); //yellow
+		} else if (i == RRT_SQP_closedloop_onlylast_ind) {
+      glColor4f (0.7, 0.99, 0.25, 0.9); //yellow-green
+		}	else {
       glColor4f (0.5, 0.5, 0.5, 0.9);
 		}
 
 		glThreads[i]->display_start_pos = display_start_pos;
     glThreads[i]->DrawThread();
-		glThreads[i]->DrawAxes();
+		glThreads[i]->DrawName();
+		//glThreads[i]->DrawAxes();
   }
 
   glPopMatrix ();

@@ -470,6 +470,38 @@ void GLThread::InitContour ()
 
 }
 
+void GLThread::DrawName()
+{
+  GLdouble model_view[16];
+  glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
+
+  GLdouble projection[16];
+  glGetDoublev(GL_PROJECTION_MATRIX, projection);
+
+  GLint viewport[4];
+  glGetIntegerv(GL_VIEWPORT, viewport);
+
+
+
+  double winX, winY, winZ;
+  gluProject(points[1](0)-display_start_pos(0), points[1](1)-display_start_pos(1), points[1](2)-display_start_pos(2)-100, model_view, projection, viewport, &winX, &winY, &winZ);
+
+  char* txt = "test123456741232131";
+  for (int i=0; i < 10; i++)
+  {
+    double x_add = (double)i;
+    double y_add = 0;
+    //glRasterPos2f(winX+x_add, winY+y_add);
+    std::cout << winX << " " <<  winY << " " << winZ << std::endl;
+    glRasterPos3f(points[1](0)-display_start_pos(0)+x_add, points[1](1)-display_start_pos(1)+y_add, points[1](2)-display_start_pos(2));
+    //p
+    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, txt[i]);
+  }
+
+
+
+
+}
 
 void GLThread::set_end_constraint(Vector3d end_pos, Matrix3d end_rot) {
   _thread->set_end_constraint(end_pos, end_rot);
