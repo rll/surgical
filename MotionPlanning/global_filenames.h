@@ -1,6 +1,9 @@
+#ifndef _global_filenames_h
+#define _global_filenames_h
+
 #define BASENAME_STARTTHREADS "saved_starts"
 #define BASENAME_GOALTHREADS "saved_goals"
-#define BASEFOLDER_INITDATA "benchmark_data/init_data"
+#define BASEFOLDER_INITDATA "./benchmark_data/init_data"
 
 #define BASEFOLDER "benchmark_data/saved_planner_data"
 
@@ -13,3 +16,6 @@
 #define BASENAME_RRT_SQP_OPENLOOP "RRTwithSQPOpen"
 #define BASENAME_RRT_SQP_CLOSEDLOOP "RRTwithSQPClosed"
 #define BASENAME_RRT_SQP_CLOSEDLOOP_ONLYLAST "RRTwithSQPClosedOnlyLast"
+
+
+#endif

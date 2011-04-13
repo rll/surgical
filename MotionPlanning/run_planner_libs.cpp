@@ -14,6 +14,9 @@ int main(int argc, char* argv[]) {
     std::cerr << "please provide arguments: start_ind    end_ind   dimension" << std::endl;
  }
 
+ srand(0);
+ srand48(0);
+
   int trajs_start_ind = atoi (argv[1]);
   int trajs_end_ind = atoi (argv[2]);
   int num_links = atoi (argv[3]);
@@ -23,8 +26,8 @@ int main(int argc, char* argv[]) {
 
   char start_threads_filename[256];
   char goal_threads_filename[256];
-  sprintf(start_threads_filename, "%s/%s_%d.txt", BASEFOLDER_INITDATA, BASENAME_STARTTHREADS, num_links);
-  sprintf(goal_threads_filename, "%s/%s_%d.txt", BASEFOLDER_INITDATA, BASENAME_GOALTHREADS, num_links);
+  sprintf(start_threads_filename, "%s/%s_%d", BASEFOLDER_INITDATA, BASENAME_STARTTHREADS, num_links);
+  sprintf(goal_threads_filename, "%s/%s_%d", BASEFOLDER_INITDATA, BASENAME_GOALTHREADS, num_links);
 
   Trajectory_Reader start_threads_reader(start_threads_filename);
   Trajectory_Reader goal_threads_reader(goal_threads_filename);
@@ -53,7 +56,7 @@ int main(int argc, char* argv[]) {
 
     
     sprintf(linearize_only_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_LINEARIZE_ONLY, thread_ind);
-    sprintf(interpolate_end_and_linear_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_INTERPOLATE_ENDS_AND_LINEARIZE, thread_ind);
+    //sprintf(interpolate_end_and_linear_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_INTERPOLATE_ENDS_AND_LINEARIZE, thread_ind);
     sprintf(interpolate_point_and_linearize_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_INTERPOLATE_POINT_AND_LINEARIZE, thread_ind);
     sprintf(sqp_openloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_SQP_OPENLOOP, thread_ind);
     sprintf(sqp_closedloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_SQP_CLOSEDLOOP, thread_ind);
@@ -64,7 +67,7 @@ int main(int argc, char* argv[]) {
 
 
     Trajectory_Recorder linearize_only_recorder(linearize_only_filename);
-    Trajectory_Recorder interpolate_end_and_linear_recorder(interpolate_end_and_linear_filename);
+    //Trajectory_Recorder interpolate_end_and_linear_recorder(interpolate_end_and_linear_filename);
     Trajectory_Recorder interpolate_point_and_linearize_recorder(interpolate_point_and_linearize_filename);
     Trajectory_Recorder sqp_openloop_recorder(sqp_openloop_filename);
     Trajectory_Recorder sqp_closedloop_recorder(sqp_closedloop_filename);
@@ -88,9 +91,10 @@ int main(int argc, char* argv[]) {
 
     
     //interpolate ends and follow
-    linearizeViaTrajectory(interpolated_ends, current_traj);
+    /*linearizeViaTrajectory(interpolated_ends, current_traj);
     interpolate_end_and_linear_recorder.add_threads_to_list(current_traj);
     deleteAllThreads(current_traj);
+    */
 
     //interpolate points and follow
     linearizeViaTrajectory(interpolated_points, current_traj);
@@ -159,7 +163,7 @@ int main(int argc, char* argv[]) {
 
     
     //delete unneeded?
-    deleteAllThreads(interpolated_ends);
+    //deleteAllThreads(interpolated_ends);
     deleteAllThreads(interpolated_points);
     deleteAllThreads(sqp_points);
     deleteAllThreads(rrt_sqp_traj);
@@ -168,7 +172,7 @@ int main(int argc, char* argv[]) {
 
 
     linearize_only_recorder.write_threads_to_file();
-    interpolate_end_and_linear_recorder.write_threads_to_file();
+    //interpolate_end_and_linear_recorder.write_threads_to_file();
     interpolate_point_and_linearize_recorder.write_threads_to_file();
     sqp_openloop_recorder.write_threads_to_file();
     sqp_closedloop_recorder.write_threads_to_file();

@@ -1,3 +1,6 @@
+#ifndef _planner_lib_h_
+#define _planner_lib_h_
+
 #define NUM_INTERPOLATION 100
 #define NUM_NODES 50000
 
@@ -204,3 +207,4 @@ void traj_subsampling(vector<Thread*>& traj_in, vector<Thread*>& traj_out) {
 
 
 
+#endif

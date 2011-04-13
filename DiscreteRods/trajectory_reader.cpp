@@ -37,7 +37,7 @@ void Trajectory_Reader::read_threads_from_file()
   int num = 0;
   while (!threads_playback.eof())
   {
-    
+
     for (int r=0; r < 3; r++)
     {
       for (int c=0; c < 3; c++)
