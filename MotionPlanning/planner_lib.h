@@ -5,7 +5,7 @@
 #define NUM_NODES 50000
 #define RRT_L2_POINTS_THRESHOLD 2.0
 #define NUM_ITERS_SQP 4
-#define SUBSAMPLE_TO_THIS_NUMBER 150
+#define SUBSAMPLE_TO_THIS_NUMBER 100
 
 #include "planner_utils.h"
 #include "linearization_utils.h"
@@ -93,7 +93,6 @@ void linearizeViaTrajectory(vector<Thread*>& traj_in, vector<Thread*>& traj_out)
     vector<VectorXd> wrapper_zero_control;
     wrapper_zero_control.push_back(zero_control);
     controls_in.push_back(wrapper_zero_control); 
-    traj_in[i]->print_vertices();
   }
   closedLoopLinearizationController(traj_in, controls_in, traj_out);
 };
