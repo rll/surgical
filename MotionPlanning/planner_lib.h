@@ -3,6 +3,7 @@
 
 #define NUM_INTERPOLATION 100
 #define NUM_NODES 50000
+#define RRT_L2_POINTS_THRESHOLD 2.0
 
 #include "planner_utils.h"
 #include "linearization_utils.h"
@@ -143,14 +144,24 @@ void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& 
   if (num_dim_reduc == 0) {
     planner.initialize(new Thread(*start_copy), new Thread(*end_copy));
 
-    Thread goal_thread; Thread prev_thread; Thread next_thread; 
-    while(planner.getTree()->size() < NUM_NODES) {
-      #pragma omp parallel for num_threads(NUM_CPU_THREADS)
-      for (int i = 0; i < 24; i++) {
+    Thread goal_thread; Thread prev_thread; Thread next_thread;
+    double bestScore = DBL_MAX;
+    while(planner.getTree()->size() < NUM_NODES && 
+        bestScore > RRT_L2_POINTS_THRESHOLD) {
+      //#pragma omp parallel for num_threads(NUM_CPU_THREADS)
+      //for (int i = 0; i < 24; i++) {
         planner.planStep(goal_thread, prev_thread, next_thread);
+      //}
+
+      planner.updateBestPath();
+      
+      RRTNode* node = planner.getTree()->front();
+      while (node->next != NULL) {
+        node = node->next;
       }
+      bestScore = planner.l2PointsDifference(node->thread, end); 
+      
     }
-    planner.updateBestPath();
 
     RRTNode* node = planner.getTree()->front();
     node = node->next;

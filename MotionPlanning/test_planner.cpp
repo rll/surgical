@@ -576,7 +576,7 @@ void SQPPlanner() {
 
   Thread* start = new Thread(*glThreads[planThread]->getThread());
   Thread* end = new Thread(*glThreads[endThread]->getThread());
-  numApprox = 10;
+  numApprox = 50;
   vector<Thread*> traj;
   traj.resize(numApprox);
   traj[0] = new Thread(*start);
@@ -594,7 +594,7 @@ void SQPPlanner() {
 
   Iterative_Control* ic = new Iterative_Control(traj.size(), traj.front()->num_pieces());
 
-	int num_iters = 2; 
+	int num_iters = 25; 
   cout << "calling SQP" << endl; 
   ic->iterative_control_opt(traj, U, num_iters);
   

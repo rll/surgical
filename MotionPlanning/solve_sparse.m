@@ -21,26 +21,30 @@ goal_state = repmat(goal_state, num_threads-2, 1);
 b(1:size_each_state) = b_data(1:size_each_state) .* -weight_vector;
 b(end-size_each_state+1: end) = b_data(end-size_each_state+1:end) .* weight_vector;
 
-weighted_state_diff_constraint = 50;
-control_diff_constraint = 1;
+weighted_state_diff_constraint = 3;
+control_diff_constraint = 2;
 
 cvx_solver sdpt3
 
 cvx_begin
     variable x(A_n)
-    minimize (norm(A*x - b) + 0.1*norm(x((num_threads-2)*size_each_state:end)) + 0*norm(goal_state-x(1:length(goal_state))));
+    variable w((num_threads-1))
+    %minimize (square_pos(norm(A*x - b)) + 2*sum(sum(reshape(x((num_threads-2)*size_each_state+1:end), num_threads-1, size_each_control).^2,2)));
   
+    minimize(norm(A*x -b) + 0.05*sum(w))
     subject to
       for thread_num=1:num_threads-2
         norm( weight_vector.* x(size_each_state*(thread_num-1) + 1: size_each_state*(thread_num)) - weight_vector.* b_data((thread_num*size_each_state)+1 : (thread_num+1)*size_each_state)) < weighted_state_diff_constraint;
       end
       
+      %for thread_num=1:num_threads-1
+       % norm( x(size_each_state*(num_threads-2) + (thread_num-1)*size_each_control +1 : size_each_state*(num_threads-2) + (thread_num)*size_each_control)) < control_diff_constraint;
+      %end
       for thread_num=1:num_threads-1
-        norm( x(size_each_state*(num_threads-2) + (thread_num-1)*size_each_control +1 : size_each_state*(num_threads-2) + (thread_num)*size_each_control)) < control_diff_constraint;
+        w(thread_num) >= norm( x(size_each_state*(num_threads-2) + (thread_num-1)*size_each_control +1 : size_each_state*(num_threads-2) + (thread_num)*size_each_control))
       end
-    
 
-      
+      w(1:end) < control_diff_constraint
 cvx_end
 
 dlmwrite(x_file, full(x), 'precision', 10); 
