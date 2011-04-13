@@ -6,6 +6,8 @@ PARAM_LINK_NUM = sys.argv[3]
 
 COMMAND = "./run_planner_libs"
 
+raw_input("Have you done git pull + make yet? Hit enter to proceed")
+
 for index in range(PARAM_START_IND, PARAM_END_IND+1):
   run_command = "%s %d %d %s" % (COMMAND, index, index, PARAM_LINK_NUM)
   print run_command
