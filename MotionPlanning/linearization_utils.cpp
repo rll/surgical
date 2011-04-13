@@ -185,7 +185,7 @@ void solveLinearizedControl(Thread* start, const Thread* goal, VectorXd& u, cons
   } 
 
   // solve the least-squares problem
-  VectorXd dx(num_pieces*6);
+  VectorXd dx(num_pieces*6-3);
   computeDifference_maxMag(start, goal, dx, MAX_MAG);
   //u.resize(12);
   u = B.transpose()*weighting_mat*dx;
@@ -375,7 +375,8 @@ void interpolateThreads(vector<Thread*>&traj, vector<VectorXd>& controls) {
     //ctrl_start_rot = (interp_start_q*start_startq.inverse()).toRotationMatrix();
     //ctrl_end_rot = (interp_end_q*start_endq.inverse()).toRotationMatrix(); 
 
-    Thread* interpolated_thread = new Thread(interpolated_pts, interpolated_angles, start_rot, end_rot);
+    Thread* interpolated_thread = new Thread(interpolated_pts, interpolated_angles, start_rot, start->rest_length());
+    interpolated_thread->set_end_constraint(interpolated_pts.back(), end_rot);
     traj[t] = interpolated_thread;
 
     //prevPts =interpolated_pts; 

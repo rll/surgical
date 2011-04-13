@@ -20,6 +20,7 @@ void interpolatePointsTrajectory(Thread* start, Thread* end, vector<Thread*>& tr
 {
   Thread* start_copy = new Thread(*start);
   Thread* end_copy = new Thread(*end); 
+
   
   // wrap threads and controls
   traj.resize(NUM_INTERPOLATION);
@@ -64,7 +65,7 @@ void closedLoopLinearizationController(vector<Thread*>& traj_in, vector<vector<V
   vector<Thread*> traj_in_copy;
   traj_in_copy.resize(traj_in.size()-1); 
   for (int i = 1; i < traj_in.size(); i++) {
-    traj_in_copy[i] = new Thread(*traj_in[i]);
+    traj_in_copy[i-1] = new Thread(*traj_in[i]);
   }
 
   Thread* start_copy = new Thread(*traj_in[0]);
@@ -85,12 +86,13 @@ void closedLoopLinearizationController(vector<Thread*>& traj_in, vector<vector<V
 void linearizeViaTrajectory(vector<Thread*>& traj_in, vector<Thread*>& traj_out){
   // wrap controls as 0
   vector<vector<VectorXd> > controls_in;
-  for (int i = 0; i < traj_in.size(); i++) {
+  for (int i = 0; i < traj_in.size()-1; i++) {
     VectorXd zero_control(12);
     zero_control.setZero();
     vector<VectorXd> wrapper_zero_control;
     wrapper_zero_control.push_back(zero_control);
     controls_in.push_back(wrapper_zero_control); 
+    traj_in[i]->print_vertices();
   }
   closedLoopLinearizationController(traj_in, controls_in, traj_out);
 };
@@ -101,9 +103,11 @@ void linearizeViaTrajectory(vector<Thread*>& traj_in, vector<Thread*>& traj_out)
  */
 void linearizeToGoal(Thread* start, Thread* end, vector<Thread*>& traj) 
 {
+
   // wrap trajectory
   Thread* start_copy = new Thread(*start);
   Thread* end_copy = new Thread(*end); 
+
   vector<Thread*> traj_in;
   traj_in.push_back(start_copy); 
   traj_in.push_back(end_copy);

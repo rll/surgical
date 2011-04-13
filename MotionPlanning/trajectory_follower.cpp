@@ -6,11 +6,25 @@ Trajectory_Follower::Trajectory_Follower(vector<Thread*>& trajectory, vector<vec
   _curr_ind(0)
 {
   _trajectory = trajectory;
-  _motions = motions;
+  //_motions = motions;
+	for (int i=0; i < motions.size(); i++)
+	{
+		vector<VectorXd> copy_vec_motions;
+		for (int j=0; j < motions[i].size(); j++)
+		{
+			copy_vec_motions.push_back(motions[i][j]);
+		}
+		_motions.push_back(copy_vec_motions);
+	}
 
   _reached_states.resize(1);
   _reached_states[0] = new Thread(*start_thread);
-  _reached_states_motions.resize(1); 
+	VectorXd zero_control(12);
+	zero_control.setZero();
+	vector<VectorXd> wrapper_zero_control;
+	wrapper_zero_control.push_back(zero_control);
+	_reached_states_motions.push_back(wrapper_zero_control); 
+
 
 }
 
@@ -55,7 +69,6 @@ void Trajectory_Follower::Take_Step()
   //cout << "adding to reached states " << next_state << endl; 
   _reached_states.push_back(next_state);
   _reached_states_motions.push_back(motionsGenerated);
-  //cout << "reached states size: " << _reached_states.size() << endl ; 
   
 }
 
