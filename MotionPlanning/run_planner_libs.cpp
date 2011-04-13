@@ -112,12 +112,12 @@ int main(int argc, char* argv[]) {
     //sqp open loop
     openLoopController(sqp_points, sqp_controls, current_traj);
     sqp_openloop_recorder.add_threads_to_list(current_traj);
-    deleteAllThreads(current_traj);
+    //deleteAllThreads(current_traj);
 
     //sqp closed loop
     closedLoopLinearizationController(sqp_points, sqp_controls_wrapped, current_traj);
     sqp_closedloop_recorder.add_threads_to_list(current_traj);
-    deleteAllThreads(current_traj);
+    //deleteAllThreads(current_traj);
 
     
     //generate RRT

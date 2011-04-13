@@ -51,7 +51,8 @@ class Thread_RRT
   typedef Repeat<HyperPlaneLsh> HASH; 
 
   Thread* halfDimApproximation(const Thread* target);
-  Thread* doubleDimApproximation(const Thread* target); 
+  Thread* doubleDimApproximation(const Thread* target);
+  bool hasnan(Thread* tocheck);
 
  private:
   vector<RRTNode*> _tree;

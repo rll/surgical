@@ -13,6 +13,25 @@ Thread_RRT::~Thread_RRT()
 {
 }
 
+
+
+bool Thread_RRT::hasnan(Thread* tocheck)
+{
+  vector<Vector3d> points;
+  vector<double> twist_angles;
+  tocheck->get_thread_data(points, twist_angles);
+
+  //write each point for each thread
+  for (int i=0; i < points.size(); i++)
+  {
+    if (isnan(points[i].norm()))
+      return true;
+  }
+
+  return false;
+}
+
+
 void Thread_RRT::initialize(const Thread* start, const Thread* goal)
 {
 
@@ -324,6 +343,11 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
 	sample->set_end_twist(drand48()*4*M_PI - 2*M_PI);
   sample->unviolate_total_length_constraint();
   sample->project_length_constraint();
+
+  if(hasnan(sample)) {
+    return generateSample(goal_thread);
+  }
+
   return sample;
 }
 
