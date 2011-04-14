@@ -83,17 +83,17 @@ int main(int argc, char* argv[]) {
     sprintf(sqp_closedloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_SQP_CLOSEDLOOP, thread_ind);
     sprintf(RRT_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT, thread_ind);
     sprintf(RRT_SQP_openloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_SQP_OPENLOOP, thread_ind);
-    sprintf(RRT_SQP_closedloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_SQP_CLOSEDLOOP, thread_ind);
+    sprintf(RRT_SQP_closedloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_SQP_CLOSEDLOOP, thread_ind);
     sprintf(RRT_SQP_closedloop_onlylast_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_SQP_CLOSEDLOOP_ONLYLAST, thread_ind);
     
     sprintf(RRT_dim1_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim1, thread_ind);
     sprintf(RRT_dim1_SQP_openloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim1_SQP_OPENLOOP, thread_ind);
-    sprintf(RRT_dim1_SQP_closedloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_SQP_CLOSEDLOOP, thread_ind);
+    sprintf(RRT_dim1_SQP_closedloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim1_SQP_CLOSEDLOOP, thread_ind);
     sprintf(RRT_dim1_SQP_closedloop_onlylast_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim1_SQP_CLOSEDLOOP_ONLYLAST, thread_ind);
 
     sprintf(RRT_dim2_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim2, thread_ind);
     sprintf(RRT_dim2_SQP_openloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim2_SQP_OPENLOOP, thread_ind);
-    sprintf(RRT_dim2_SQP_closedloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_SQP_CLOSEDLOOP, thread_ind);
+    sprintf(RRT_dim2_SQP_closedloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim2_SQP_CLOSEDLOOP, thread_ind);
     sprintf(RRT_dim2_SQP_closedloop_onlylast_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim2_SQP_CLOSEDLOOP_ONLYLAST, thread_ind);
 
 
@@ -361,6 +361,8 @@ int main(int argc, char* argv[]) {
       << endl;
 
 
+if (start_threads[thread_ind]->num_pieces() > 15)
+{
 
 /***********************************************
  * DIM REDUCE 2
@@ -436,6 +438,7 @@ int main(int argc, char* argv[]) {
       << RRT_dim2_PLANNER_TIME + timer.elapsed()
       << endl;
 
+}
 
 
     
