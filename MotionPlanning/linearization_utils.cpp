@@ -389,7 +389,7 @@ void interpolateThreads(vector<Thread*>&traj, vector<VectorXd>& controls) {
 
   #pragma omp parallel for num_threads(NUM_CPU_THREADS) 
   for (int t = 1; t < traj.size()-1; t++) { 
-    traj[t]->minimize_energy(100000); 
+    traj[t]->minimize_energy(); 
     ++progress; 
   }
 }
