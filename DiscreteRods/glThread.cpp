@@ -495,12 +495,12 @@ void GLThread::DrawName()
 
   for (int i=0; i < strlen(_display_name); i++)
   {
-    double x_add = 5.0*(double)i;
+    double x_add = 7.0*(double)i;
     double y_add = 15.0;
     //glRasterPos2f(winX+x_add, winY+y_add);
     gluUnProject(winX+x_add, winY+y_add, winZ, model_view, projection, viewport, &coordX, &coordY, &coordZ);
     glRasterPos3f(coordX, coordY, coordZ);
-    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, _display_name[i]);
+    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, _display_name[i]);
   }
 
 

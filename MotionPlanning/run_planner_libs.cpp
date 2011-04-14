@@ -64,14 +64,6 @@ int main(int argc, char* argv[]) {
     char RRT_SQP_openloop_filename[256];
     char RRT_SQP_closedloop_filename[256];
     char RRT_SQP_closedloop_onlylast_filename[256];
-    char RRT_dim1_filename[256];
-    char RRT_dim1_SQP_openloop_filename[256];
-    char RRT_dim1_SQP_closedloop_filename[256];
-    char RRT_dim1_SQP_closedloop_onlylast_filename[256];
-    char RRT_dim2_filename[256];
-    char RRT_dim2_SQP_openloop_filename[256];
-    char RRT_dim2_SQP_closedloop_filename[256];
-    char RRT_dim2_SQP_closedloop_onlylast_filename[256];
   
   
   
@@ -85,17 +77,6 @@ int main(int argc, char* argv[]) {
     sprintf(RRT_SQP_openloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_SQP_OPENLOOP, thread_ind);
     sprintf(RRT_SQP_closedloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_SQP_CLOSEDLOOP, thread_ind);
     sprintf(RRT_SQP_closedloop_onlylast_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_SQP_CLOSEDLOOP_ONLYLAST, thread_ind);
-    
-    sprintf(RRT_dim1_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim1, thread_ind);
-    sprintf(RRT_dim1_SQP_openloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim1_SQP_OPENLOOP, thread_ind);
-    sprintf(RRT_dim1_SQP_closedloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim1_SQP_CLOSEDLOOP, thread_ind);
-    sprintf(RRT_dim1_SQP_closedloop_onlylast_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim1_SQP_CLOSEDLOOP_ONLYLAST, thread_ind);
-
-    sprintf(RRT_dim2_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim2, thread_ind);
-    sprintf(RRT_dim2_SQP_openloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim2_SQP_OPENLOOP, thread_ind);
-    sprintf(RRT_dim2_SQP_closedloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim2_SQP_CLOSEDLOOP, thread_ind);
-    sprintf(RRT_dim2_SQP_closedloop_onlylast_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim2_SQP_CLOSEDLOOP_ONLYLAST, thread_ind);
-
 
     Timer timer; 
     ofstream results_file;
@@ -112,15 +93,6 @@ int main(int argc, char* argv[]) {
     Trajectory_Recorder RRT_SQP_closedloop_recorder(RRT_SQP_closedloop_filename);
     Trajectory_Recorder RRT_SQP_closedloop_onlylast_recorder(RRT_SQP_closedloop_onlylast_filename);
     
-    Trajectory_Recorder RRT_dim1_recorder(RRT_dim1_filename);
-    Trajectory_Recorder RRT_dim1_SQP_openloop_recorder(RRT_dim1_SQP_openloop_filename);
-    Trajectory_Recorder RRT_dim1_SQP_closedloop_recorder(RRT_dim1_SQP_closedloop_filename);
-    Trajectory_Recorder RRT_dim1_SQP_closedloop_onlylast_recorder(RRT_dim1_SQP_closedloop_onlylast_filename);
-    Trajectory_Recorder RRT_dim2_recorder(RRT_dim2_filename);
-    Trajectory_Recorder RRT_dim2_SQP_openloop_recorder(RRT_dim2_SQP_openloop_filename);
-    Trajectory_Recorder RRT_dim2_SQP_closedloop_recorder(RRT_dim2_SQP_closedloop_filename);
-    Trajectory_Recorder RRT_dim2_SQP_closedloop_onlylast_recorder(RRT_dim2_SQP_closedloop_onlylast_filename);
-
 
 
 
@@ -134,15 +106,6 @@ int main(int argc, char* argv[]) {
     vector<Thread*> RRT_SQP_closedloop_traj(0);
     vector<Thread*> RRT_SQP_closedloop_onlylast_traj(0);
 
-    vector<Thread*> RRT_dim1_traj(0);
-    vector<Thread*> RRT_dim1_SQP_openloop_traj(0);
-    vector<Thread*> RRT_dim1_SQP_closedloop_traj(0);
-    vector<Thread*> RRT_dim1_SQP_closedloop_onlylast_traj(0);
-
-    vector<Thread*> RRT_dim2_traj(0);
-    vector<Thread*> RRT_dim2_SQP_openloop_traj(0);
-    vector<Thread*> RRT_dim2_SQP_closedloop_traj(0);
-    vector<Thread*> RRT_dim2_SQP_closedloop_onlylast_traj(0);
 
     vector<Thread*> interpolated_points;
     vector<Thread*> interpolated_ends;
@@ -285,162 +248,6 @@ int main(int argc, char* argv[]) {
       << endl;
 
 
-/***********************************************
- * DIM REDUCE 1
-***********************************************/ 
-
-    timer.restart();
-    //generate RRT
-    vector<vector<VectorXd> > RRT_dim1_controls;
-    RRTPlanner(start_threads[thread_ind], goal_threads[thread_ind], 1, RRT_dim1_traj, RRT_dim1_controls);
-    RRT_dim1_recorder.add_threads_to_list(RRT_dim1_traj);
-    double RRT_dim1_PLANNER_TIME = timer.elapsed(); 
-    results_file << "RRT_dim1_PLANNER," 
-      << cost_metric(RRT_dim1_traj.back(), goal_threads[thread_ind])
-      << ","
-      << RRT_dim1_PLANNER_TIME
-      << endl;
-
-    
-    //add goal to RRT_dim1 for sqp
-    vector<Thread*> RRT_dim1_traj_togoal;
-    traj_subsampling(RRT_dim1_traj, RRT_dim1_traj_togoal);
-    RRT_dim1_traj_togoal.push_back(new Thread(*goal_threads[thread_ind]));
-  
-    timer.restart();
-    //smooth with SQP, openloop
-    vector<Thread*> rrt_dim1_sqp_traj;
-    vector<VectorXd> rrt_dim1_sqp_controls;
-    vector<vector<VectorXd> > rrt_dim1_sqp_controls_wrapped;
-    solveSQP(RRT_dim1_traj_togoal, rrt_dim1_sqp_traj, rrt_dim1_sqp_controls, sqp_namestring);
-    wrap_controls_extra_vector(rrt_dim1_sqp_controls, rrt_dim1_sqp_controls_wrapped);
-    double RRT_dim1_SQP_SMOOTHING_TIME = timer.elapsed(); 
-
-    timer.restart();
-    //playback sqp openloop
-    openLoopController(rrt_dim1_sqp_traj, rrt_dim1_sqp_controls, RRT_dim1_SQP_openloop_traj);
-    RRT_dim1_SQP_openloop_recorder.add_threads_to_list(RRT_dim1_SQP_openloop_traj);
-
-    results_file << "RRT_dim1_PLANNER_SQP_OPENLOOP_SMOOTHER," 
-      << cost_metric(RRT_dim1_SQP_openloop_traj.back(), goal_threads[thread_ind])
-      << ","
-      << RRT_dim1_PLANNER_TIME + RRT_dim1_SQP_SMOOTHING_TIME + timer.elapsed()
-      << endl;
-    //deleteAllThreads(current_traj);
-
-    timer.restart(); 
-    //playback sqp closedloop
-    closedLoopLinearizationController(rrt_dim1_sqp_traj, rrt_dim1_sqp_controls_wrapped, RRT_dim1_SQP_closedloop_traj);
-    RRT_dim1_SQP_closedloop_recorder.add_threads_to_list(RRT_dim1_SQP_closedloop_traj);
-    //deleteAllThreads(current_traj);
-
-    results_file << "RRT_dim1_PLANNER_SQP_CLOSEDLOOP_SMOOTHER," 
-      << cost_metric(RRT_dim1_SQP_closedloop_traj.back(), goal_threads[thread_ind])
-      << ","
-      << RRT_dim1_PLANNER_TIME + RRT_dim1_SQP_SMOOTHING_TIME + timer.elapsed()
-      << endl;
-
-    timer.restart(); 
-    //solve sqp from end of rrt_dim1
-    vector<Thread*> rrt_dim1_endtogoal_interpolate;
-    vector<Thread*> rrt_dim1_endtogoal_sqp_traj;
-    vector<VectorXd> rrt_dim1_endtogoal_sqp_controls;
-    vector<vector<VectorXd> > rrt_dim1_endtogoal_sqp_controls_wrapped;
-    interpolatePointsTrajectory(RRT_dim1_traj.back(), goal_threads[thread_ind], rrt_dim1_endtogoal_interpolate);
-    solveSQP(rrt_dim1_endtogoal_interpolate, rrt_dim1_endtogoal_sqp_traj, rrt_dim1_endtogoal_sqp_controls, sqp_namestring);
-    wrap_controls_extra_vector(rrt_dim1_endtogoal_sqp_controls, rrt_dim1_endtogoal_sqp_controls_wrapped);
-    closedLoopLinearizationController(rrt_dim1_endtogoal_sqp_traj, rrt_dim1_endtogoal_sqp_controls_wrapped, RRT_dim1_SQP_closedloop_onlylast_traj);
-    RRT_dim1_SQP_closedloop_onlylast_recorder.add_threads_to_list(RRT_dim1_traj);
-    RRT_dim1_SQP_closedloop_onlylast_recorder.add_threads_to_list(RRT_dim1_SQP_closedloop_onlylast_traj);
-    //deleteAllThreads(current_traj);
-
-    results_file << "RRT_dim1_PLANNER_SQP_CLOSEDLOOP_ONLY_LAST," 
-      << cost_metric(RRT_dim1_SQP_closedloop_onlylast_traj.back(), goal_threads[thread_ind])
-      << ","
-      << RRT_dim1_PLANNER_TIME + timer.elapsed()
-      << endl;
-
-
-if (start_threads[thread_ind]->num_pieces() > 15)
-{
-
-/***********************************************
- * DIM REDUCE 2
-***********************************************/ 
-    timer.restart(); 
-    //generate RRT_dim2
-    vector<vector<VectorXd> > RRT_dim2_controls;
-    RRTPlanner(start_threads[thread_ind], goal_threads[thread_ind], 2, RRT_dim2_traj, RRT_dim2_controls);
-    RRT_dim2_recorder.add_threads_to_list(RRT_dim2_traj);
-    double RRT_dim2_PLANNER_TIME = timer.elapsed(); 
-    results_file << "RRT_dim2_PLANNER," 
-      << cost_metric(RRT_dim2_traj.back(), goal_threads[thread_ind])
-      << ","
-      << RRT_dim2_PLANNER_TIME
-      << endl;
-
-    
-    //add goal to RRT_dim2 for sqp
-    vector<Thread*> RRT_dim2_traj_togoal;
-    traj_subsampling(RRT_dim2_traj, RRT_dim2_traj_togoal);
-    RRT_dim2_traj_togoal.push_back(new Thread(*goal_threads[thread_ind]));
-  
-    timer.restart();
-    //smooth with SQP, openloop
-    vector<Thread*> rrt_dim2_sqp_traj;
-    vector<VectorXd> rrt_dim2_sqp_controls;
-    vector<vector<VectorXd> > rrt_dim2_sqp_controls_wrapped;
-    solveSQP(RRT_dim2_traj_togoal, rrt_dim2_sqp_traj, rrt_dim2_sqp_controls, sqp_namestring);
-    wrap_controls_extra_vector(rrt_dim2_sqp_controls, rrt_dim2_sqp_controls_wrapped);
-    double RRT_dim2_SQP_SMOOTHING_TIME = timer.elapsed(); 
-
-    timer.restart();
-    //playback sqp openloop
-    openLoopController(rrt_dim2_sqp_traj, rrt_dim2_sqp_controls, RRT_dim2_SQP_openloop_traj);
-    RRT_dim2_SQP_openloop_recorder.add_threads_to_list(RRT_dim2_SQP_openloop_traj);
-
-    results_file << "RRT_dim2_PLANNER_SQP_OPENLOOP_SMOOTHER," 
-      << cost_metric(RRT_dim2_SQP_openloop_traj.back(), goal_threads[thread_ind])
-      << ","
-      << RRT_dim2_PLANNER_TIME + RRT_dim2_SQP_SMOOTHING_TIME + timer.elapsed()
-      << endl;
-    //deleteAllThreads(current_traj);
-
-    timer.restart(); 
-    //playback sqp closedloop
-    closedLoopLinearizationController(rrt_dim2_sqp_traj, rrt_dim2_sqp_controls_wrapped, RRT_dim2_SQP_closedloop_traj);
-    RRT_dim2_SQP_closedloop_recorder.add_threads_to_list(RRT_dim2_SQP_closedloop_traj);
-    //deleteAllThreads(current_traj);
-
-    results_file << "RRT_dim2_PLANNER_SQP_CLOSEDLOOP_SMOOTHER," 
-      << cost_metric(RRT_dim2_SQP_closedloop_traj.back(), goal_threads[thread_ind])
-      << ","
-      << RRT_dim2_PLANNER_TIME + RRT_dim2_SQP_SMOOTHING_TIME + timer.elapsed()
-      << endl;
-
-    timer.restart(); 
-    //solve sqp from end of rrt_dim2
-    vector<Thread*> rrt_dim2_endtogoal_interpolate;
-    vector<Thread*> rrt_dim2_endtogoal_sqp_traj;
-    vector<VectorXd> rrt_dim2_endtogoal_sqp_controls;
-    vector<vector<VectorXd> > rrt_dim2_endtogoal_sqp_controls_wrapped;
-    interpolatePointsTrajectory(RRT_dim2_traj.back(), goal_threads[thread_ind], rrt_dim2_endtogoal_interpolate);
-    solveSQP(rrt_dim2_endtogoal_interpolate, rrt_dim2_endtogoal_sqp_traj, rrt_dim2_endtogoal_sqp_controls, sqp_namestring);
-    wrap_controls_extra_vector(rrt_dim2_endtogoal_sqp_controls, rrt_dim2_endtogoal_sqp_controls_wrapped);
-    closedLoopLinearizationController(rrt_dim2_endtogoal_sqp_traj, rrt_dim2_endtogoal_sqp_controls_wrapped, RRT_dim2_SQP_closedloop_onlylast_traj);
-    RRT_dim2_SQP_closedloop_onlylast_recorder.add_threads_to_list(RRT_dim2_traj);
-    RRT_dim2_SQP_closedloop_onlylast_recorder.add_threads_to_list(RRT_dim2_SQP_closedloop_onlylast_traj);
-    //deleteAllThreads(current_traj);
-
-    results_file << "RRT_dim2_PLANNER_SQP_CLOSEDLOOP_ONLY_LAST," 
-      << cost_metric(RRT_dim2_SQP_closedloop_onlylast_traj.back(), goal_threads[thread_ind])
-      << ","
-      << RRT_dim2_PLANNER_TIME + timer.elapsed()
-      << endl;
-
-}
-
-
     
   
 
@@ -464,14 +271,6 @@ if (start_threads[thread_ind]->num_pieces() > 15)
     RRT_SQP_openloop_recorder.write_threads_to_file();
     RRT_SQP_closedloop_recorder.write_threads_to_file();
     RRT_SQP_closedloop_onlylast_recorder.write_threads_to_file();
-    RRT_dim1_recorder.write_threads_to_file();
-    RRT_dim1_SQP_openloop_recorder.write_threads_to_file();
-    RRT_dim1_SQP_closedloop_recorder.write_threads_to_file();
-    RRT_dim1_SQP_closedloop_onlylast_recorder.write_threads_to_file();
-    RRT_dim2_recorder.write_threads_to_file();
-    RRT_dim2_SQP_openloop_recorder.write_threads_to_file();
-    RRT_dim2_SQP_closedloop_recorder.write_threads_to_file();
-    RRT_dim2_SQP_closedloop_onlylast_recorder.write_threads_to_file();
 
 
   
