@@ -1,6 +1,6 @@
 #include "glThread.h"
 //default 23 links
-#define NUM_POINTS 11
+#define NUM_POINTS 19
 
 
 GLThread::GLThread() {

@@ -19,8 +19,8 @@
     #define MIN_MOVEMENT_VERTICES 1e-4 //speedy at 1e-4
     #define MIN_ROTATION_TWIST (M_PI/1000.0)
     
-    #define ENERGY_FOR_CONVERGENCE 1e-5 //speedy at 1e-5
-    #define NUM_MAX_ITERS 8000 //speedy at 6000
+    #define ENERGY_FOR_CONVERGENCE 1e-6 //speedy at 1e-5
+    #define NUM_MAX_ITERS 1000 //speedy at 6000
 
 #else
 
@@ -36,7 +36,7 @@
 
 #endif
 
-#define DEFAULT_REST_LENGTH 6 /*default rest length for each threadpiece*/
+#define DEFAULT_REST_LENGTH 3 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
 //#define NUM_THREADS_PARALLEL_FOR 2
