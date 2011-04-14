@@ -52,13 +52,13 @@ int main(int argc, char* argv[]) {
     Thread* start_sample;
     do {
       start_sample = planner.generateSample(reference);
-      start_sample->minimize_energy(20000, 1e-10, 0.2, 1e-11);
+      start_sample->minimize_energy(500000, 1e-10, 0.2, 1e-11);
     } while (hasnan(start_sample));
     start_samples[i] = start_sample;
     Thread* end_sample;
     do {
       end_sample = planner.generateSample(reference);
-      end_sample->minimize_energy(20000, 1e-10, 0.2, 1e-11);
+      end_sample->minimize_energy(500000, 1e-10, 0.2, 1e-11);
     } while (hasnan(end_sample));
     end_samples[i] = end_sample;
     ++progress;
