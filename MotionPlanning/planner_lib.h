@@ -164,6 +164,7 @@ void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& 
       while (node->next != NULL) {
         node = node->next;
       }
+
       bestScore = planner.l2PointsDifference(node->thread, end); 
       
     }

@@ -11,7 +11,7 @@ void applyControl(Thread* start, const VectorXd& u, const movement_mode movement
     start->apply_motion_nearEnds(*motions[i]);
   }
 
-  start->minimize_energy(); 
+ // start->minimize_energy(); 
 }
 
 /*
@@ -166,6 +166,7 @@ void solveLinearizedControl(Thread* start, const Thread* goal, VectorXd& u, cons
   else
     num_controls = 6;
 
+  start->minimize_energy(100000000);
 
   int num_pieces = start->num_pieces();
   int num_edges = start->num_edges();
@@ -205,8 +206,11 @@ void solveLinearizedControl(Thread* start, const Thread* goal, VectorXd& u, cons
   //u *= min(10.0/u_norm, u_norm/10.0);
   //u /= (u_norm > MAX_STEP ? u_norm/MAX_STEP : 1);
 
+
   // apply the given control
   applyControl(start, u, movement);
+
+  start->minimize_energy(100000000);
 }
 
 void solveLinearizedControl(Thread* start, const Thread* goal, const movement_mode movement) {

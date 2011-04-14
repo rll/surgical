@@ -19,9 +19,8 @@
     #define MIN_MOVEMENT_VERTICES 1e-4 //speedy at 1e-4
     #define MIN_ROTATION_TWIST (M_PI/1000.0)
     
-    #define ENERGY_FOR_CONVERGENCE 1e-6 //speedy at 1e-5
-    #define NUM_MAX_ITERS 1000 //speedy at 6000
-
+    #define ENERGY_FOR_CONVERGENCE 2e-6 //speedy at 1e-5
+    #define NUM_MAX_ITERS 1500 //speedy at 6000
 #else
 
     #define MAX_MOVEMENT_VERTICES 0.2

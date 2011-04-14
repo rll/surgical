@@ -129,7 +129,7 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
       trajectory[i]->copy_data_from_vector(to_copy);
       trajectory[i]->unviolate_total_length_constraint();
       trajectory[i]->project_length_constraint();
-      trajectory[i]->minimize_energy();
+      trajectory[i]->minimize_energy(100000);
       ++progress;
     }
     
