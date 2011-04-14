@@ -17,6 +17,14 @@
 #define BASENAME_RRT_SQP_OPENLOOP "RRTwithSQPOpen"
 #define BASENAME_RRT_SQP_CLOSEDLOOP "RRTwithSQPClosed"
 #define BASENAME_RRT_SQP_CLOSEDLOOP_ONLYLAST "RRTwithSQPClosedOnlyLast"
+#define BASENAME_RRT_dim1 "RRT_dim1"
+#define BASENAME_RRT_dim1_SQP_OPENLOOP "RRT_dim1withSQPOpen"
+#define BASENAME_RRT_dim1_SQP_CLOSEDLOOP "RRT_dim1withSQPClosed"
+#define BASENAME_RRT_dim1_SQP_CLOSEDLOOP_ONLYLAST "RRT_dim1withSQPClosedOnlyLast"
+#define BASENAME_RRT_dim2 "RRT_dim2"
+#define BASENAME_RRT_dim2_SQP_OPENLOOP "RRT_dim2withSQPOpen"
+#define BASENAME_RRT_dim2_SQP_CLOSEDLOOP "RRT_dim2withSQPClosed"
+#define BASENAME_RRT_dim2_SQP_CLOSEDLOOP_ONLYLAST "RRT_dim2withSQPClosedOnlyLast"
 
 
 #endif

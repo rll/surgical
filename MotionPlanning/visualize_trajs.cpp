@@ -50,7 +50,8 @@ double calculate_thread_error(Thread* start, Thread* goal);
 #define ROTATE_TAN_CONST 0.2
 
 
-#define NUM_THREADS 10
+//#define NUM_THREADS 10
+#define NUM_THREADS 18
 
 enum key_code {NONE, MOVEPOS, MOVETAN, ROTATETAN, MOVEPOSSTART, MOVETANSTART, ROTATETANSTART};
 
@@ -86,6 +87,14 @@ int RRT_ind = 6;
 int RRT_SQP_openloop_ind = 7;
 int RRT_SQP_closedloop_ind = 8;
 int RRT_SQP_closedloop_onlylast_ind = 9;
+int RRT_dim1_ind = 10;
+int RRT_dim1_SQP_openloop_ind = 11;
+int RRT_dim1_SQP_closedloop_ind = 12;
+int RRT_dim1_SQP_closedloop_onlylast_ind = 13;
+int RRT_dim2_ind = 14;
+int RRT_dim2_SQP_openloop_ind = 15;
+int RRT_dim2_SQP_closedloop_ind = 16; 
+int RRT_dim2_SQP_closedloop_onlylast_ind = 17;
 
 int curThread = 1;
 
@@ -109,7 +118,14 @@ char RRT_filename[256];
 char RRT_SQP_openloop_filename[256];
 char RRT_SQP_closedloop_filename[256];
 char RRT_SQP_closedloop_onlylast_filename[256];
-
+char RRT_dim1_filename[256];
+char RRT_dim1_SQP_openloop_filename[256];
+char RRT_dim1_SQP_closedloop_filename[256];
+char RRT_dim1_SQP_closedloop_onlylast_filename[256];
+char RRT_dim2_filename[256];
+char RRT_dim2_SQP_openloop_filename[256];
+char RRT_dim2_SQP_closedloop_filename[256];
+char RRT_dim2_SQP_closedloop_onlylast_filename[256];
 
 
 
@@ -638,7 +654,16 @@ void Load_Init_Data()
 	glThreads[RRT_SQP_openloop_ind]->setName("RRT + SQP Openloop");
 	glThreads[RRT_SQP_closedloop_ind]->setName("RRT + SQP Closedloop");
 	glThreads[RRT_SQP_closedloop_onlylast_ind]->setName("RRT + SQP Finish");
-
+#if NUM_THREADS > 10
+	glThreads[RRT_dim1_ind]->setName("RRT_dim1");
+	glThreads[RRT_dim1_SQP_openloop_ind]->setName("RRT_dim1 + SQP Openloop");
+	glThreads[RRT_dim1_SQP_closedloop_ind]->setName("RRT_dim1 + SQP Closedloop");
+	glThreads[RRT_dim1_SQP_closedloop_onlylast_ind]->setName("RRT_dim1 + SQP Finish");
+	glThreads[RRT_dim2_ind]->setName("RRT_dim2");
+	glThreads[RRT_dim2_SQP_openloop_ind]->setName("RRT_dim2 + SQP Openloop");
+	glThreads[RRT_dim2_SQP_closedloop_ind]->setName("RRT_dim2 + SQP Closedloop");
+	glThreads[RRT_dim2_SQP_closedloop_onlylast_ind]->setName("RRT_dim2 + SQP Finish");
+#endif
 	/*
 int init_start = 0;
 int init_goal = 1;
@@ -674,7 +699,14 @@ void Load_Traj_Data()
 	sprintf(RRT_SQP_openloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_SQP_OPENLOOP, curr_thread_ind);
 	sprintf(RRT_SQP_closedloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_SQP_CLOSEDLOOP, curr_thread_ind);
 	sprintf(RRT_SQP_closedloop_onlylast_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_SQP_CLOSEDLOOP_ONLYLAST, curr_thread_ind);
-
+	sprintf(RRT_dim1_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim1, curr_thread_ind);
+	sprintf(RRT_dim1_SQP_openloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim1_SQP_OPENLOOP, curr_thread_ind);
+	sprintf(RRT_dim1_SQP_closedloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_SQP_CLOSEDLOOP, curr_thread_ind);
+	sprintf(RRT_dim1_SQP_closedloop_onlylast_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim1_SQP_CLOSEDLOOP_ONLYLAST, curr_thread_ind);
+	sprintf(RRT_dim2_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim2, curr_thread_ind);
+	sprintf(RRT_dim2_SQP_openloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim2_SQP_OPENLOOP, curr_thread_ind);
+	sprintf(RRT_dim2_SQP_closedloop_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_SQP_CLOSEDLOOP, curr_thread_ind);
+	sprintf(RRT_dim2_SQP_closedloop_onlylast_filename, "%s/%d_%s_%d",  BASEFOLDER, num_links, BASENAME_RRT_dim2_SQP_CLOSEDLOOP_ONLYLAST, curr_thread_ind);
 
 	Trajectory_Reader linearize_only_reader(linearize_only_filename);
 	//Trajectory_Reader interpolate_end_and_linear_reader(interpolate_end_and_linear_filename);
@@ -685,6 +717,16 @@ void Load_Traj_Data()
 	Trajectory_Reader RRT_SQP_openloop_reader(RRT_SQP_openloop_filename);
 	Trajectory_Reader RRT_SQP_closedloop_reader(RRT_SQP_closedloop_filename);
 	Trajectory_Reader RRT_SQP_closedloop_onlylast_reader(RRT_SQP_closedloop_onlylast_filename);
+#if NUM_THREADS > 10
+		Trajectory_Reader RRT_dim1_reader(RRT_dim1_filename);
+		Trajectory_Reader RRT_dim1_SQP_openloop_reader(RRT_dim1_SQP_openloop_filename);
+		Trajectory_Reader RRT_dim1_SQP_closedloop_reader(RRT_dim1_SQP_closedloop_filename);
+		Trajectory_Reader RRT_dim1_SQP_closedloop_onlylast_reader(RRT_dim1_SQP_closedloop_onlylast_filename);
+		Trajectory_Reader RRT_dim2_reader(RRT_dim2_filename);
+		Trajectory_Reader RRT_dim2_SQP_openloop_reader(RRT_dim2_SQP_openloop_filename);
+		Trajectory_Reader RRT_dim2_SQP_closedloop_reader(RRT_dim2_SQP_closedloop_filename);
+		Trajectory_Reader RRT_dim2_SQP_closedloop_onlylast_reader(RRT_dim2_SQP_closedloop_onlylast_filename);
+#endif
 
 	linearize_only_reader.read_threads_from_file();
 	interpolate_point_and_linearize_reader.read_threads_from_file();
@@ -703,6 +745,17 @@ void Load_Traj_Data()
 	all_trajs[RRT_SQP_openloop_ind-2] = RRT_SQP_openloop_reader.get_all_threads();
 	all_trajs[RRT_SQP_closedloop_ind-2] = RRT_SQP_closedloop_reader.get_all_threads();
 	all_trajs[RRT_SQP_closedloop_onlylast_ind-2] = RRT_SQP_closedloop_onlylast_reader.get_all_threads();
+
+#if NUM_THREADS > 10
+		all_trajs[RRT_dim1_ind-2] = RRT_dim1_reader.get_all_threads();
+		all_trajs[RRT_dim1_SQP_openloop_ind-2] = RRT_dim1_SQP_openloop_reader.get_all_threads();
+		all_trajs[RRT_dim1_SQP_closedloop_ind-2] = RRT_dim1_SQP_closedloop_reader.get_all_threads();
+		all_trajs[RRT_dim1_SQP_closedloop_onlylast_ind-2] = RRT_dim1_SQP_closedloop_onlylast_reader.get_all_threads();
+		all_trajs[RRT_dim2_ind-2] = RRT_dim2_reader.get_all_threads();
+		all_trajs[RRT_dim2_SQP_openloop_ind-2] = RRT_dim2_SQP_openloop_reader.get_all_threads();
+		all_trajs[RRT_dim2_SQP_closedloop_ind-2] = RRT_dim2_SQP_closedloop_reader.get_all_threads();
+		all_trajs[RRT_dim2_SQP_closedloop_onlylast_ind-2] = RRT_dim2_SQP_closedloop_onlylast_reader.get_all_threads();
+#endif
 
 
 	curr_trajectory_ind = 0;
