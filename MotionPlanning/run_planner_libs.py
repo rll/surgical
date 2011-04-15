@@ -10,7 +10,7 @@ COMMAND_BIN = "./run_planner_libs"
 COMMAND_BIN1 = "./run_planner_libs_dim1"
 COMMAND_BIN2 = "./run_planner_libs_dim2"
 
-for index in range(PARAM_START_IND, PARAM_END_IND+1):
+for index in range(PARAM_START_IND+256, PARAM_END_IND+1+256):
   run_command = "%s %d %d %s" % (COMMAND_BIN, index, index, PARAM_LINK_NUM)
   run_command1 = "%s %d %d %s" % (COMMAND_BIN1, index, index, PARAM_LINK_NUM)
   print run_command
