@@ -240,6 +240,7 @@ void Thread_Hypoth::project_length_constraint()
 void Thread_Hypoth::add_possible_next_hypoths(
         vector<Thread_Hypoth*>& extra_next_hypoths)
 {
+    /* Append new thread_piece by interpolation */
     Vector3d new_vertex_init;
     new_vertex_init = end_edge() + end_pos();
 
@@ -257,7 +258,6 @@ void Thread_Hypoth::add_possible_next_hypoths(
             (ThreadPiece_Vision*) _thread_pieces.back());
     _thread_pieces[_thread_pieces.size() - 2]->set_angle_twist(new_angle); //Since last two pieces have to have the same twist
 
-    /* Append new thread_piece by interpolation */
 
     //this could be sped up - only need to update last piece
     _thread_pieces.front()->initializeFrames();

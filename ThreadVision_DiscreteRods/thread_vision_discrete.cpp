@@ -420,7 +420,8 @@ void Thread_Vision::get_thread_data(vector<Vector3d>& points, vector<double>& tw
     best_thread_hypoths->at(curr_hypoth_ind)->get_thread_data(points, twist_angles, material_frames);
 }
 
-bool Thread_Vision::generateNextSetOfHypoths() {
+bool Thread_Vision::generateNextSetOfHypoths()
+{
     vector<Thread_Hypoth*> &current_thread_hypoths = _thread_hypoths[0];
 
     if (!isDone())
@@ -438,14 +439,12 @@ bool Thread_Vision::generateNextSetOfHypoths() {
         }
 
         suppress_hypoths(current_thread_hypoths);
-
-        cout << endl;
     }
 
     sort_hypoths(*best_thread_hypoths);
     curr_hypoth_ind = 0;
 
-    cout << "Finished step number: " << stepNumber << endl;
+    cout << "Finished step number: " << stepNumber << endl << endl;
     stepNumber++;
 }
 
@@ -457,7 +456,8 @@ bool Thread_Vision::runThreadSearch()
     return true;
 }
 
-bool Thread_Vision::isDone() {
+bool Thread_Vision::isDone()
+{
     /* TODO uses the thread hypoths from the first start point */
     if (_thread_hypoths.size() == 0 || _thread_hypoths[0].front()->num_pieces() < 5) {
         return false;
@@ -1247,26 +1247,34 @@ void Thread_Vision::reproj_points_for_canny()
 
 void Thread_Vision::precomputeDistanceScores()
 {
+    /* For each camera */
     for (int camNum=0; camNum < NUMCAMS; camNum++)
     {
         _cannyDistanceScores[camNum].clear();
         queue<location_and_distance_for_queue> loc_and_dist_to_add;
 
-        for( int y = 0; y < _cannyIms[camNum].rows; y++)
+        /* For each row in the image */
+        for(int y = 0; y < _cannyIms[camNum].rows; y++)
         {
             uchar* Uptr = _cannyIms[camNum].ptr<uchar>(y);
-            for( int x = 0; x < _cannyIms[camNum].cols; x++ )
+
+            /* For each col in the image */
+            for(int x = 0; x < _cannyIms[camNum].cols; x++ )
             {
                 if (Uptr[x] == (uchar)255)
                 {
+                    /* Detected a white pixel */
                     location_and_distance toAdd(y,x,0.0);
                     _cannyDistanceScores[camNum][keyForHashMap(camNum, y, x)] = toAdd;
 
 
-                    //add to queue
-                    for (int xadd=-1; xadd <= 1; xadd++)
+                    /* Add to queue
+                     * TODO What exactly does this do
+                     * TODO What is that for queue business */
+
+                    for (int xadd = -1; xadd <= 1; xadd++)
                     {
-                        int x_next = x+xadd;
+                        int x_next = x + xadd;
                         if (x_next >= 0 && x_next < cols[camNum])
                         {
                             for (int yadd=-1; yadd <= 1; yadd++)
@@ -1291,7 +1299,7 @@ void Thread_Vision::precomputeDistanceScores()
         }
 
 
-        //process queue
+        /* Process queue */
         while (!loc_and_dist_to_add.empty())
         {
             location_and_distance_for_queue fromQueue = loc_and_dist_to_add.front();
@@ -1349,14 +1357,9 @@ void Thread_Vision::precomputeDistanceScores()
                         }
                     }
                 }
-
-
             }
-
         }
-
     }
-
 }
 
 
@@ -1371,20 +1374,10 @@ void Thread_Vision::clickOnPoints(Point2i* clickPoints)
     _cams->getClickedPoints(clickPoints);
 }
 
-
 void Thread_Vision::clickOnPoints(Point3f& clickPoints)
 {
     _cams->getClickedPoints(clickPoints);
 }
-
-
-
-
-
-
-
-
-
 
 void Thread_Vision::addThreadPointsToDebug(const Scalar& color)
 {
@@ -1482,8 +1475,6 @@ void Thread_Vision::addThreadPointsToDebugImages(const Scalar& color, Thread* th
 
 
 }
-
-
 
 void Thread_Vision::addThreadPointsToDebugImages(const Scalar& color)
 {
