@@ -44,8 +44,8 @@ public:
     void restore_thread_pieces_and_resize(vector<ThreadPiece*>& to_restore);
     void save_thread_pieces_and_resize(vector<ThreadPiece*>& to_save);
 
+    double calculate_total_energy();
     double calculate_visual_energy();
-    double calculate_visual_energy_only();
     void calculate_score();
     void calculate_visual_gradient_vertices(vector<Vector3d>& vertex_gradients);
     void project_length_constraint();
@@ -64,6 +64,9 @@ public:
     double _score; //this is not ensured to be updated!! 
     double _previous_energy;
     Thread_Vision* _thread_vision;
+
+private:
+    void init();
 };
 
 void suppress_hypoths(vector<Thread_Hypoth*>& hypoths);
