@@ -1109,6 +1109,9 @@ bool Thread_Vision::isEndPiece(const int camNum, const Point2i pt)
 
 void Thread_Vision::updateCanny()
 {
+    init_timing_fence
+    start_timing_fence
+    
     //FOR DEBUG - don't undistort
 #ifdef FAKEIMS
     _cams->updateImagesBlockingNoUndistort();
@@ -1117,10 +1120,7 @@ void Thread_Vision::updateCanny()
     //_cams->filterCanny();
     //_cannyIms = _cams->cannyIms();
     gray_to_canny();
-    precomputeDistanceScores();
 #else
-    init_timing_fence
-    start_timing_fence
     _cams->updateImagesBlocking();
     _cams->convertToGrayscale();
     _frames = _cams->frames();
@@ -1130,12 +1130,11 @@ void Thread_Vision::updateCanny()
     if (reproj_points_fix_canny)
     {
         reproj_points_for_canny();
-
     }
+#endif
 
     precomputeDistanceScores();
     end_timing_fence("canny")
-#endif
 }
 
 
