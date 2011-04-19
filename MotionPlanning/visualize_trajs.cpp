@@ -629,6 +629,35 @@ void Load_Init_Data()
 	goal_threads = goal_threads_reader.get_all_threads();
 
 	
+
+///////write out thread energies to file
+/*
+char init_start_energies_filename[256];
+char init_goal_energies_filename[256];
+
+sprintf(init_start_energies_filename, "./benchmark_data/init_data/%s_%d.txt", "start_energies", num_links);
+sprintf(init_goal_energies_filename, "./benchmark_data/init_data/%s_%d.txt", "goal_energies", num_links);
+
+
+ofstream init_start_energies(init_start_energies_filename);
+ofstream init_goal_energies(init_goal_energies_filename);
+
+	for (int thread_ind=0; thread_ind < start_threads.size(); thread_ind++)
+	{
+		init_start_energies << start_threads[thread_ind].calculate_energy() << "\n";
+		init_goal_energies << goal_threads[thread_ind].calculate_energy() << "\n";
+	}
+
+		init_start_energies << "\n";
+		init_goal_energies <<  "\n";
+
+init_start_energies.close();
+init_goal_energies.close();
+
+*/
+
+////////////////////////////////////////////
+
 	for (int thread_ind=0; thread_ind < NUM_THREADS; thread_ind++)
 	{
 		glThreads[thread_ind] = new GLThread();
