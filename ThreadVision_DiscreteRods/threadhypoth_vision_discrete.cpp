@@ -6,6 +6,7 @@ using namespace cv;
 Thread_Hypoth::Thread_Hypoth(Thread_Vision* thread_vision) :
     Thread(), _thread_vision(thread_vision)
 {
+    init();
 }
 
 Thread_Hypoth::Thread_Hypoth(const Thread_Hypoth& rhs) :
@@ -49,16 +50,24 @@ Thread_Hypoth::Thread_Hypoth(const Thread_Hypoth& rhs) :
 
     _thread_pieces.front()->initializeFrames();
 
-    //project_length_constraint();
+    init();
+}
+
+void Thread_Hypoth::init()
+{
+    _previous_energy = -1;
 }
 
 Thread_Hypoth::~Thread_Hypoth()
 {
 }
 
+/* Uses total energy (includes visual error) */
 void Thread_Hypoth::optimize_visual()
 {
-    _previous_energy = calculate_visual_energy();
+    /* Store energy for score
+     * Doesn't include visual error */
+    _previous_energy = calculate_energy();
     double step_in_grad_dir_vertices = 1.0;
 
     /* Constants for accuracy */
@@ -82,42 +91,44 @@ void Thread_Hypoth::optimize_visual()
     double next_energy;
 
     for (opt_iter = 0; opt_iter < num_opt_iters; opt_iter++) {
-        curr_energy = calculate_visual_energy();
+        curr_energy = calculate_total_energy();
         next_energy = 0.0;
 
         save_thread_pieces();
         if (recalc_vertex_grad) {
             calculate_visual_gradient_vertices( vertex_gradients);
             make_max_norm_one_allPieces(vertex_gradients);
-            curr_energy = calculate_visual_energy();
+            curr_energy = calculate_total_energy();
         }
 
         step_in_grad_dir_vertices = max_movement_vertices;
         apply_vertex_offsets(vertex_gradients, false,
                 -step_in_grad_dir_vertices);
+
+        /* TODO Why? */
 #ifndef ISOTROPIC
         minimize_energy_twist_angles();
 #endif
+
         while (step_in_grad_dir_vertices > MIN_MOVEMENT_VERTICES_VISION) {
-            next_energy = calculate_visual_energy();
+            next_energy = calculate_total_energy();
             if (next_energy < curr_energy)
                 break;
 
-            //energy didn't improve, take a step in pos direction
+            /* Energy didn't improve, take a step in pos direction */
             step_in_grad_dir_vertices /= 2.0;
             apply_vertex_offsets(vertex_gradients, false,
                     step_in_grad_dir_vertices);
         }
 
         minimize_energy_twist_angles();
-        double energy_before_projection = calculate_visual_energy();
+
+        double energy_before_projection = calculate_total_energy();
         project_length_constraint();
+
         minimize_energy_twist_angles();
 
-        next_energy = calculate_visual_energy();
-
-        //   std::cout << "curr energy: " << curr_energy << "   next energy: " << next_energy << "  before projection: " << energy_before_projection << "  last step: " << step_in_grad_dir_vertices <<   std::endl;
-
+        next_energy = calculate_total_energy();
 
         recalc_vertex_grad = true;
         if (next_energy + energy_error_for_convergence > curr_energy) {
@@ -133,20 +144,18 @@ void Thread_Hypoth::optimize_visual()
         } else {
             max_movement_vertices = min(step_in_grad_dir_vertices * 2.0,
                     MAX_MOVEMENT_VERTICES_VISION);
-            //max_movement_vertices = MAX_MOVEMENT_VERTICES_VISION;
         }
     }
 
-    curr_energy = calculate_visual_energy();
+    curr_energy = calculate_total_energy();
 
     project_length_constraint();
     minimize_energy_twist_angles();
-
-    next_energy = calculate_visual_energy();
-    double energy_no_vis = calculate_energy();
 }
 
-/* Uses bend energy, gravitational energy, and visual reprojection error */
+/* Uses bend energy, gravitational energy, and visual reprojection error
+ * Doesn't use twist energy */
+/*
 double Thread_Hypoth::calculate_visual_energy()
 {
     double energy = 0.0;
@@ -159,25 +168,34 @@ double Thread_Hypoth::calculate_visual_energy()
 
     return energy;
 }
+*/
+/* Has twist, bend, grav, and visual error */
+double Thread_Hypoth::calculate_total_energy()
+{
+    return calculate_visual_energy() + calculate_energy();
+}
 
 /* Uses visual reprojection error */
-double Thread_Hypoth::calculate_visual_energy_only()
+double Thread_Hypoth::calculate_visual_energy()
 {
     double energy = 0.0;
-    //std::cout << "energy from thread: " << energy << std::endl;
     for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++) {
-        energy
-                += ((ThreadPiece_Vision*) _thread_pieces[piece_ind])->energy_dist();
+        energy += ((ThreadPiece_Vision*) _thread_pieces[piece_ind])->energy_dist();
     }
-    //std::cout << "visual energy: " << energy << std::endl;
     return energy;
 }
 
 void Thread_Hypoth::calculate_score()
 {
-//    _score = - 1 * ( calculate_visual_energy() - _previous_energy); //
-//    cout << "Score: " << _score << endl;
-    _score = calculate_visual_energy();
+    /* If no change in energy yet */
+    if (_previous_energy < 0) {
+        _score = 0;
+    }
+    else {
+        _score = - 1 * ( calculate_energy() - _previous_energy); //
+    }
+    cout << "Score: " << _score << endl;
+//    _score = calculate_visual_energy();
 }
 
 void Thread_Hypoth::calculate_visual_gradient_vertices(
