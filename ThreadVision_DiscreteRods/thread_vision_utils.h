@@ -53,6 +53,8 @@ bool isEqualUnordered(thread_hypoth_pair pair1, thread_hypoth_pair pair2);
 MatchingEnds matchingEndsForThreads(Thread_Hypoth* thread1, Thread_Hypoth* thread2, double distanceThreshold);
 
 void adjacentPoints(Point2i &aPoint, vector<Point2i> &adjacentPoints, int maxX, int maxY);
+double distance(Point2f aPoint, Vector2d aVector, Point2i vectorStartPoint);
+double distance(Point2f a, Point2f b);
 
 class Timer
 {
