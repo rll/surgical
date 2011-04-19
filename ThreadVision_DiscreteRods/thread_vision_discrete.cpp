@@ -1011,7 +1011,14 @@ double Thread_Vision::scoreProjection3dPointAndTanget(const Vector3d& startpt3d,
 
 double Thread_Vision::score2dPoint(const Point2f& pt, int camNum)
 {
-    double thisMinScore = DIST_FOR_SCORE_CHECK;
+    static double totalTime = 0.0;
+
+    Timer aTimer;
+
+    /* Since we used the square of the distance when
+     * checking if we should add more pixels to the queue */
+    double thisMinScore = sqrt(DIST_FOR_SCORE_CHECK);
+
     Point2i rounded = Point2i(floor(pt.x + 0.5), floor(pt.y + 0.5));
 
     if (_captures[camNum]->inRange(rounded.y, rounded.x))
@@ -1020,10 +1027,19 @@ double Thread_Vision::score2dPoint(const Point2f& pt, int camNum)
         if (_cannyDistanceScores[camNum].count(key) > 0)
         {
             location_and_distance* curr = &_cannyDistanceScores[camNum][key];
+            /*
             while (curr != NULL)
             {
                 thisMinScore = min(thisMinScore, sqrt((double)(pow(pt.x-(float)curr->col,2) + pow(pt.y-(float)curr->row,2))));
                 curr = curr->next;
+            }*/
+
+            while (curr != NULL)
+            {
+                vector<Vector2d> unitVectors;
+                Point2i thePoint(curr->col, curr->row);
+                unitVectorsForPixel(thePoint, camNum, unitVectors);
+            
             }
         }
     } else {
@@ -1033,7 +1049,34 @@ double Thread_Vision::score2dPoint(const Point2f& pt, int camNum)
     if (thisMinScore < SCORE_THRESH_SET_TO_CONST)
         thisMinScore = SCORE_THRESH_SET_TO_CONST;
 
+    totalTime += aTimer.elapsed();
+    //cout << "Total Time: " << totalTime << endl;
+
     return thisMinScore;
+}
+void Thread_Vision::unitVectorsForPixel(Point2i& pt, int camNum, vector<Vector2d> unitVectors) {
+    vector<Point2i> adjPoints;
+    adjacentPoints(pt, adjPoints, cols[camNum], rows[camNum]);
+
+    for (int i = 0; i < adjPoints.size(); i++) {
+        Point2i &aPoint = adjPoints[i];
+        int key = keyForHashMap(camNum, aPoint.y, aPoint.x);
+
+        if (_cannyDistanceScores[camNum].count(key) > 0) {
+            location_and_distance* curr = &(_cannyDistanceScores[camNum][key]);
+            int test = curr->dist;
+
+            if (curr->dist == 0) {
+                Vector2d aUnitVector(aPoint.x - pt.x, aPoint.y - pt.y);
+                aUnitVector.normalize();
+                unitVectors.push_back(aUnitVector);
+            }
+        }
+    }
+
+//    for (int i = 0; i < unitVectors.size(); i++) {
+//        cout << "X: " << unitVectors[i][0] << "\tY: " << unitVectors[i][1] << endl;
+//    }
 }
 
 
@@ -1109,8 +1152,6 @@ bool Thread_Vision::isEndPiece(const int camNum, const Point2i pt)
 
 void Thread_Vision::updateCanny()
 {
-    init_timing_fence
-    start_timing_fence
     
     //FOR DEBUG - don't undistort
 #ifdef FAKEIMS
@@ -1134,7 +1175,6 @@ void Thread_Vision::updateCanny()
 #endif
 
     precomputeDistanceScores();
-    end_timing_fence("canny")
 }
 
 
@@ -1267,10 +1307,6 @@ void Thread_Vision::precomputeDistanceScores()
                     _cannyDistanceScores[camNum][keyForHashMap(camNum, y, x)] = toAdd;
 
 
-                    /* Add to queue
-                     * TODO What exactly does this do
-                     * TODO What is that for queue business */
-
                     for (int xadd = -1; xadd <= 1; xadd++)
                     {
                         int x_next = x + xadd;
@@ -1283,6 +1319,8 @@ void Thread_Vision::precomputeDistanceScores()
                                 {
                                     if (!(xadd == 0 && yadd == 0))
                                     {
+                                        /* For all points around detected pixel (x,y) */
+                                        /* TODO Why isn't it sqrt? */
                                         location_and_distance forQueue(y, x, (xadd*xadd + yadd*yadd));
                                         location_and_distance_for_queue toAddToQueue(y_next,x_next,forQueue);
                                         loc_and_dist_to_add.push(toAddToQueue);
@@ -1291,8 +1329,6 @@ void Thread_Vision::precomputeDistanceScores()
                             }
                         }
                     }
-
-
                 }
             }
         }
@@ -1305,15 +1341,20 @@ void Thread_Vision::precomputeDistanceScores()
             location_and_distance ldFromQueue = fromQueue.ld;
             loc_and_dist_to_add.pop();
 
+            /* Get current location */
             int key = keyForHashMap(camNum, fromQueue.rowCheck, fromQueue.colCheck);
             //if we need to replace/add another thread distance
             bool toProcess = false;
 
             if (_cannyDistanceScores[camNum].count(key) == 0 || ldFromQueue.dist < _cannyDistanceScores[camNum][key].dist)
             {
+                /* The pixel from the queue is closer than anything we have found */
+
                 _cannyDistanceScores[camNum][key] = ldFromQueue;
-                toProcess=true;
+                toProcess = true;
             } else if (ldFromQueue.dist == _cannyDistanceScores[camNum][key].dist) {
+                /* The pixel from the queue is equidistance from something we have found */
+
                 location_and_distance* curr = &(_cannyDistanceScores[camNum][key]);
                 toProcess = true;
                 while (curr->next != NULL)

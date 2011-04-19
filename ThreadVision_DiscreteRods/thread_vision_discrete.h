@@ -142,6 +142,8 @@ public:
     double scoreProjection3dPoint(const Point3f& pt3d, double* scores=NULL);
     double scoreProjection3dPointAndTanget(const Vector3d& startpt3d, const Vector3d& tan, double* scores=NULL);
     double score2dPoint(const Point2f& pt, int camNum);
+    void unitVectorsForPixel(Point2i& pt, int camNum, vector<Vector2d> unitVectors);
+
     bool isEndPiece(const Point3f pt);
     bool isEndPiece(const int camNum, const Point2i pt);
     void precomputeDistanceScores();
