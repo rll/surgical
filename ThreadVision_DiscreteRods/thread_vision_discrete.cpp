@@ -1026,40 +1026,50 @@ double Thread_Vision::score2dPoint(const Point2f& pt, int camNum)
         int key = keyForHashMap(camNum, rounded.y, rounded.x);
         if (_cannyDistanceScores[camNum].count(key) > 0)
         {
+            /* curr: nearby white pixels */
             location_and_distance* curr = &_cannyDistanceScores[camNum][key];
-            /*
-            while (curr != NULL)
-            {
-                thisMinScore = min(thisMinScore, sqrt((double)(pow(pt.x-(float)curr->col,2) + pow(pt.y-(float)curr->row,2))));
-                curr = curr->next;
-            }*/
+
+//            while (curr != NULL)
+//            {
+//                thisMinScore = min(thisMinScore, sqrt((double)(pow(pt.x-(float)curr->col,2) + pow(pt.y-(float)curr->row,2))));
+//                curr = curr->next;
+//            }
 
             while (curr != NULL)
             {
-                vector<Vector2d> unitVectors;
+                vector<Vector2d> vectors;
                 Point2i thePoint(curr->col, curr->row);
-                unitVectorsForPixel(thePoint, camNum, unitVectors);
-            
+                vectorsForPixel(thePoint, camNum, vectors);
+
+                for (int i = 0; i < vectors.size(); i++) {
+                    Vector2d currentVector = vectors[i];
+                    Point2f newPoint(pt.x, pt.y);
+                    thisMinScore = min(thisMinScore, distance(newPoint, currentVector, thePoint));
+                }
+                curr = curr->next;
             }
         }
     } else {
         thisMinScore = SCORE_OUT_OF_VIEW;
     }
 
-    if (thisMinScore < SCORE_THRESH_SET_TO_CONST)
-        thisMinScore = SCORE_THRESH_SET_TO_CONST;
+//    if (thisMinScore < SCORE_THRESH_SET_TO_CONST)
+//        thisMinScore = SCORE_THRESH_SET_TO_CONST;
 
     totalTime += aTimer.elapsed();
     //cout << "Total Time: " << totalTime << endl;
 
+    //cout << "This Min Score: " << thisMinScore << endl;
+
     return thisMinScore;
 }
-void Thread_Vision::unitVectorsForPixel(Point2i& pt, int camNum, vector<Vector2d> unitVectors) {
+void Thread_Vision::vectorsForPixel(Point2i& pt, int camNum, vector<Vector2d>& vectors) {
     vector<Point2i> adjPoints;
     adjacentPoints(pt, adjPoints, cols[camNum], rows[camNum]);
 
     for (int i = 0; i < adjPoints.size(); i++) {
         Point2i &aPoint = adjPoints[i];
+
         int key = keyForHashMap(camNum, aPoint.y, aPoint.x);
 
         if (_cannyDistanceScores[camNum].count(key) > 0) {
@@ -1067,9 +1077,8 @@ void Thread_Vision::unitVectorsForPixel(Point2i& pt, int camNum, vector<Vector2d
             int test = curr->dist;
 
             if (curr->dist == 0) {
-                Vector2d aUnitVector(aPoint.x - pt.x, aPoint.y - pt.y);
-                aUnitVector.normalize();
-                unitVectors.push_back(aUnitVector);
+                Vector2d vector(aPoint.x - pt.x, aPoint.y - pt.y);
+                vectors.push_back(vector);
             }
         }
     }
