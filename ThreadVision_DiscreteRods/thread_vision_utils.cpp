@@ -78,3 +78,27 @@ MatchingEnds matchingEndsForThreads(Thread_Hypoth* thread1, Thread_Hypoth* threa
 
     return MatchingNone;
 }
+
+
+void adjacentPoints(Point2i &aPoint, vector<Point2i> &adjacentPoints, int maxX, int maxY)
+{
+    adjacentPoints.clear();
+    for (int xadd = -1; xadd <= 1; xadd++)
+    {
+        int x_next = aPoint.x + xadd;
+        if (x_next >= 0 && x_next < maxX)
+        {
+            for (int yadd=-1; yadd <= 1; yadd++)
+            {
+                int y_next = aPoint.y + yadd;
+                if (y_next >= 0 && y_next < maxY)
+                {
+                    if (!(xadd == 0 && yadd == 0))
+                    {
+                        adjacentPoints.push_back(Point2i(x_next, y_next));
+                    }
+                }
+            }
+        }
+    }
+}

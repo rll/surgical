@@ -9,13 +9,7 @@
 #include <Eigen/Geometry>
 #include "../DiscreteRods/threadutils_discrete.h"
 #include "../vision/ThreeCam.h"
-#include <time.h>
-
-#define init_timing_fence time_t startTimeXX; \
-    int timeElapsedXX;
-#define start_timing_fence startTimeXX = time(NULL);
-#define end_timing_fence(a) timeElapsedXX = difftime(time(NULL), startTimeXX); \
-    cout << "Time Elapsed for " << a << ": " << timeElapsedXX << endl;
+#include <sys/time.h>
 
 USING_PART_OF_NAMESPACE_EIGEN
 
@@ -58,4 +52,26 @@ void suppress_tangents(vector<tangent_and_score>& tangents, vector<int>& inds_to
 bool isEqualUnordered(thread_hypoth_pair pair1, thread_hypoth_pair pair2);
 MatchingEnds matchingEndsForThreads(Thread_Hypoth* thread1, Thread_Hypoth* thread2, double distanceThreshold);
 
+void adjacentPoints(Point2i &aPoint, vector<Point2i> &adjacentPoints, int maxX, int maxY);
+
+class Timer
+{
+  public:
+    Timer() {
+      gettimeofday(&start_tv, NULL);
+    }
+    void restart() {
+      gettimeofday(&start_tv, NULL);
+    }
+    double elapsed() {
+      gettimeofday(&tv, NULL);
+      return  (tv.tv_sec - start_tv.tv_sec) +
+        (tv.tv_usec - start_tv.tv_usec) / 1000000.0;
+    }
+
+  private:
+    struct timeval tv;
+    struct timeval start_tv;
+
+};
 #endif
