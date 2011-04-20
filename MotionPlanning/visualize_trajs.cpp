@@ -42,7 +42,7 @@ void DrawAxes();
 void Load_Init_Data();
 void Load_Traj_Data();
 void Update_Thread_Displays();
-void save_opengl_image();
+void save_opengl_image(int num);
 
 
 double calculate_thread_error(Thread* start, Thread* goal);
@@ -117,6 +117,7 @@ char goal_threads_filename[256];
   
 
 int curr_trajectory_ind;
+int curr_plan_ind = 0; 
 char linearize_only_filename[256];
 char interpolate_end_and_linear_filename[256];
 char interpolate_point_and_linearize_filename[256];
@@ -364,9 +365,28 @@ void processNormalKeys(unsigned char key, int x, int y)
 		curr_trajectory_ind--;
 		Update_Thread_Displays();
 	} else if (key == 's') {
-    save_opengl_image();
+    for (int j = 0; j < all_trajs[curr_plan_ind-2].size(); j++) {
+      curr_trajectory_ind = j; 
+      Update_Thread_Displays();
+      cout << curr_trajectory_ind << endl; 
+      for (int i = 0; i < NUM_THREADS; i++) { 
+        if (i != curr_plan_ind && i != init_start && i != init_goal) {
+          display_thread[i] = false; 
+        }
+      }
+      DrawStuff();
+      glutPostRedisplay();
+      save_opengl_image(curr_plan_ind);
+    }
+  } else if (key == '+' || key == '=') {
+    curr_plan_ind++;
+    cout << "Select plan at ind: " << curr_plan_ind << endl; 
+		Update_Thread_Displays();
+  } else if (key == '-' || key == '_') {
+    curr_plan_ind--;
+    cout << "Select plan at ind: " << curr_plan_ind << endl; 
+		Update_Thread_Displays();
   }
-	
 	else if (key == 27) {
     exit(0);
   }
@@ -514,13 +534,17 @@ void DrawStuff (void)
       glColor4f (0.7, 0.6, 0.05, 0.9); //yellow
 		} else if (i == RRT_SQP_closedloop_onlylast_ind) {
       glColor4f (0.7, 0.99, 0.25, 0.9); //yellow-green
-		}	else {
+    } else {
       glColor4f (0.5, 0.5, 0.5, 0.9);
 		}
+    if (i == curr_plan_ind) { 
+      glColor4f (0.33, 0.44, 0.55, 0.9);
+    } 
+
 
 		glThreads[i]->display_start_pos = display_start_pos;
     glThreads[i]->DrawThread();
-		glThreads[i]->DrawName();
+		//glThreads[i]->DrawName();
 		//glThreads[i]->DrawAxes();
   }
 
@@ -822,7 +846,7 @@ void Update_Thread_Displays()
 }
 
 
-void save_opengl_image()
+void save_opengl_image(int traj_type)
 {
     const int IMG_COLS_TOTAL = 900;
     const int IMG_ROWS_TOTAL = 900;
@@ -856,7 +880,7 @@ void save_opengl_image()
     flip(img, img, 0);
 
     char im_name[256];
-    sprintf(im_name, "%s-%d.png", image_save_base_opengl, curr_trajectory_ind);
+    sprintf(im_name, "%s-%d-%d.png", image_save_base_opengl, traj_type, curr_trajectory_ind);
     std::cout << "write to " << im_name << std::endl;
     im_save_ind++;
     imwrite(im_name, img, p);
