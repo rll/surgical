@@ -22,10 +22,12 @@
 #include "iterative_control.h"
 #include "trajectory_follower.h"
 #include "../../utils/clock.h"
+#include <opencv/cv.h>
+#include <opencv/highgui.h>
 
 #include "planner_lib.h"
 
-
+using namespace cv;
 
 
 // import most common Eigen types
@@ -40,6 +42,7 @@ void DrawAxes();
 void Load_Init_Data();
 void Load_Traj_Data();
 void Update_Thread_Displays();
+void save_opengl_image();
 
 
 double calculate_thread_error(Thread* start, Thread* goal);
@@ -48,6 +51,11 @@ double calculate_thread_error(Thread* start, Thread* goal);
 #define MOVE_POS_CONST 1.0
 #define MOVE_TAN_CONST 0.2
 #define ROTATE_TAN_CONST 0.2
+
+#define IMAGE_BASE_NAME "./ims_for_vids/"
+char image_save_base_opengl [256];
+int im_save_ind = 1;
+
 
 
 //#define NUM_THREADS 10
@@ -355,7 +363,9 @@ void processNormalKeys(unsigned char key, int x, int y)
 	} else if (key == '<') {
 		curr_trajectory_ind--;
 		Update_Thread_Displays();
-	}
+	} else if (key == 's') {
+    save_opengl_image();
+  }
 	
 	else if (key == 27) {
     exit(0);
@@ -418,6 +428,10 @@ int main (int argc, char * argv[])
   InitStuff ();
 
 
+	sprintf(image_save_base_opengl, "%s_%d", IMAGE_BASE_NAME,num_links);
+
+
+  
 
 
 
@@ -807,5 +821,47 @@ void Update_Thread_Displays()
 
 }
 
+
+void save_opengl_image()
+{
+    const int IMG_COLS_TOTAL = 900;
+    const int IMG_ROWS_TOTAL = 900;
+  //playback and save images
+    Mat img(900, 900, CV_8UC3);
+    vector<Mat> img_planes;
+    split(img, img_planes);
+
+    uchar tmp_data[3][900*900];
+
+    GLenum read_formats[3];
+    read_formats[0] = GL_BLUE;
+    read_formats[1] = GL_GREEN;
+    read_formats[2] = GL_RED;
+
+    for (int i=0; i < 3; i++)
+    {
+        glReadPixels(0, 0, IMG_COLS_TOTAL, IMG_ROWS_TOTAL, read_formats[i], GL_UNSIGNED_BYTE, tmp_data[i]);
+        img_planes[i].data = tmp_data[i];
+    }
+
+
+    vector<int> p(3);
+
+    p[0] = CV_IMWRITE_PNG_COMPRESSION;
+    p[1] = 20;
+    p[2] = 0;
+
+
+    merge(img_planes, img);
+    flip(img, img, 0);
+
+    char im_name[256];
+    sprintf(im_name, "%s-%d.png", image_save_base_opengl, curr_trajectory_ind);
+    std::cout << "write to " << im_name << std::endl;
+    im_save_ind++;
+    imwrite(im_name, img, p);
+    waitKey(1);
+  //sleep(0);
+} 
 
 

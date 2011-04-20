@@ -22,11 +22,13 @@
 #include "iterative_control.h"
 #include "trajectory_follower.h"
 #include "../../utils/clock.h"
+#include <opencv/cv.h>
+#include <opencv/highgui.h>
 
 #include "planner_lib.h"
 
 
-
+using namespace cv;
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
@@ -425,11 +427,6 @@ int main (int argc, char * argv[])
   InitLights();
   InitStuff ();
 
-
-
-#define IMAGE_BASE_NAME "../saved_ims/glim"
-	char image_save_base_opengl [256];;
-	int im_save_ind = 1;
 
 	sprintf(image_save_base_opengl, "%s_%d_%d", IMAGE_BASE_NAME, num_links);
 
@@ -856,9 +853,7 @@ void Update_Thread_Displays()
 
 
 }
-
 /*
-
 void save_opengl_image()
 {
     const int IMG_COLS_TOTAL = 900;
@@ -898,9 +893,7 @@ void save_opengl_image()
     imwrite(im_name, img, p);
     waitKey(1);
   //sleep(0);
-
-
 } 
 
-
 */
+
