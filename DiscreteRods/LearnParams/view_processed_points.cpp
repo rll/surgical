@@ -106,6 +106,11 @@ string _orig_display_names[NUMCAMS];
 Mat* _frames;
 ThreeCam* _cams;
 
+
+vector<Point2i> points2d_file[NUMCAMS];
+vector<Point3f> points3d_file;
+
+
 int rows[NUMCAMS];
 int cols[NUMCAMS];
 
@@ -729,7 +734,7 @@ void DrawStuff (void)
 
 void updateThreadPoints()
 {
-  thread = &all_threads[58];
+  thread = &all_threads[thread_ind];
   thread->get_thread_data(points, twist_angles, material_frames);
   positions[0] = points.front();
   positions[1] = points.back();
@@ -769,6 +774,67 @@ void updateThreadPoints()
   minimized_rotations[0] = minimized_thread->start_rot();
   minimized_rotations[1] = minimized_thread->end_rot();
 #endif
+
+
+
+
+
+
+
+  const int NUM_POINTS_FILE = 34;
+
+  ifstream data_file;
+  data_file.open("../../vision/captures/suturepurple_points_reversed.txt");
+
+  int start_ind;
+  double start_angle;
+
+  do
+  {
+
+  data_file >> start_ind;
+  std::cout << "start ind: " << start_ind << std::endl;
+  data_file >> start_angle;
+  std::cout << "start ang: " << start_angle << std::endl;
+  
+    points3d_file.resize(0);
+    
+    for (int i = 0; i < NUM_POINTS_FILE; i++)
+    {
+      Point3f to_add;
+      data_file >> to_add.x;
+      data_file >> to_add.y;
+      data_file >> to_add.z;
+      points3d_file.push_back(to_add);
+    }
+
+    for (int c=0; c < NUMCAMS; c++)
+    {
+      points2d_file[c].resize(0);
+      for (int i = 0; i < NUM_POINTS_FILE; i++)
+      {
+        Point2i to_add;
+        data_file >> to_add.x;
+        data_file >> to_add.y;
+        points2d_file[c].push_back(to_add);
+      }
+    }
+
+  } while (start_ind < thread_ind+1);
+  
+  for (int i=0; i < points3d_file.size(); i++)
+  {
+    std::cout << points3d_file[i] << "\n";
+  }
+    std::cout << "\n";
+  
+
+
+  
+  
+
+
+
 
 }
 
@@ -901,12 +967,14 @@ void display_ims()
 	Scalar y_diff_color(0, 0, 255);
 	Point2i x_diff; x_diff.x=5;x_diff.y=0;
 	Scalar x_diff_color(0, 0, 255);
-	for (int point_ind=0; point_ind < points.size(); point_ind++)
+	for (int point_ind=0; point_ind < min((int)points.size(),3); point_ind++)
 	{
-		EigenToOpencv(points[point_ind], point3d);
-		_cams->project3dPoint(point3d, points2d);
+		//EigenToOpencv(points[point_ind], point3d);
+		_cams->project3dPoint(points3d_file[point_ind], points2d);
 		for (int camNum=0; camNum < NUMCAMS; camNum++)
 		{
+
+      //points2d[camNum] = points2d_file[camNum][2*point_ind];
       cv::line(_frames[camNum], points2d[camNum]-x_diff, points2d[camNum]+x_diff, x_diff_color);
       cv::line(_frames[camNum], points2d[camNum]-y_diff, points2d[camNum]+y_diff, y_diff_color);
 		}
@@ -914,6 +982,7 @@ void display_ims()
 	}
 
 
+/*
 	//project frames
 	Scalar axis_colors[3];
   axis_colors[0] = Scalar(0,0,255);
@@ -928,12 +997,7 @@ void display_ims()
 	{
 		int data_ind;
 		double frame_length = 10;
-/*
-		if (frame_ind == 0)
-			data_ind = 0;
-		else
-			data_ind = points.size()-1;
-*/
+
         data_ind = frame_ind;
 		axis_points_eigen[0] = points[data_ind];
 		axis_points_eigen[1] = axis_points_eigen[0] + frame_length*material_frames[data_ind].col(0);
@@ -955,17 +1019,12 @@ void display_ims()
 		}
 
 	}
+  */
 
 
   for (int camNum=0; camNum < NUMCAMS; camNum++)
   {
-/*    for (int disp_ind = 0; disp_ind < display_for_debug[i].size(); disp_ind++)
-    {
-      const Point* pt[] = {display_for_debug[i][disp_ind].pts};
 
-      cv::polylines(_frames[i], pt, &display_for_debug[i][disp_ind].size, 1, false, display_for_debug[i][disp_ind].color, 2);
-
-    }*/
 
 
 
