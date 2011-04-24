@@ -73,7 +73,7 @@ twist_and_score(){}
 
 //helper structs for precomputing distances to canny detected pixels
 struct location_and_distance {
-    //row and col are the location of thread, dist is the distance
+    /* Row and col are the location of thread, dist is the distance */
     int row;
     int col;
     int dist;
@@ -97,6 +97,11 @@ struct location_and_distance_for_queue {
     rowCheck(rowIn), colCheck(colIn), ld(ldIn) {}
 
     location_and_distance_for_queue(){}
+};
+
+struct Line_Segment {
+    int row1, col1;
+    int row2, col2;
 };
 
 //Other Structs
@@ -130,7 +135,7 @@ public:
     void add_possible_next_hypoths(vector<Thread_Hypoth*>& current_thread_hypoths);
     void sort_hypoths(vector<Thread_Hypoth*>& current_thread_hypoths);
 
-        //initialize the thread search
+    /* Initialize the thread search */
     void updateCanny();
     bool findNextStartPoint(vector<corresponding_pts>& pts, Point3f& initPt);
     bool findNextStartPoint(vector<corresponding_pts>& pts, Point2i& initPtCenterIm);
@@ -138,7 +143,7 @@ public:
     bool find_next_tan_visual(vector<tangent_and_score>& tangents);
     bool findCorrespondingPointsOtherIms(vector<corresponding_pts>& pts, Point2i initPt, int camWithPt);
 
-    //during optimizations
+    /* During optimizations */
     double scoreProjection3dPoint(const Point3f& pt3d, double* scores=NULL);
     double scoreProjection3dPointAndTanget(const Vector3d& startpt3d, const Vector3d& tan, double* scores=NULL);
     double score2dPoint(const Point2f& pt, int camNum);
@@ -146,20 +151,25 @@ public:
 
     bool isEndPiece(const Point3f pt);
     bool isEndPiece(const int camNum, const Point2i pt);
-    void precomputeDistanceScores();
-    int keyForHashMap(int camNum, int row, int col){return col+cols[camNum]*row;}
-    map<int,location_and_distance> _cannyDistanceScores[NUMCAMS];
 
-        //stereo on clicks
+    /* Canny Scores */
+    void precomputeDistanceScores();
+    void precomputeSegments();
+    int keyForHashMap(int camNum, int row, int col){return col+cols[camNum]*row;}
+
+    map<int,location_and_distance> _cannyDistanceScores[NUMCAMS];
+    map<int,vector<Line_Segment*>*> _cannySegments[NUMCAMS];
+
+    /* Stereo on clicks */
     void initializeOnClicks();
     void clickOnPoints(Point2i* clickPoints);
     void clickOnPoints(Point3f& clickPoint);
 
-    //initialize optimization
-        //void setInitPtFromClicks(){clickOnPoints(_initPtSaved);};
+    /* Initialize optimization */
+    //void setInitPtFromClicks(){clickOnPoints(_initPtSaved);};
     //void setInitPt(Point3f& init){_initPtSaved = init;};
-        //void setEndPt(Point3f& end){_endPtSaved = end;};
-        //void setInitTan(Vector3d& init){_initTanSaved = init.normalized();};
+    //void setEndPt(Point3f& end){_endPtSaved = end;};
+    //void setInitTan(Vector3d& init){_initTanSaved = init.normalized();};
 
     void addStartData(Point3f& pt, Vector3d& tan){
         start_data tmp = {pt, tan.normalized()};
@@ -168,7 +178,7 @@ public:
 
     void set_max_length(double max){_max_length_thread = max;}
 
-        //random helpers
+    /* Random helpers */
     void gray_to_canny();
     void addThreadPointsToDebug(const Scalar& color);
     void addThreadPointsToDebugImages(const Scalar& color);

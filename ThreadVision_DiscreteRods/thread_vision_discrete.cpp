@@ -422,6 +422,8 @@ void Thread_Vision::get_thread_data(vector<Vector3d>& points, vector<double>& tw
 
 bool Thread_Vision::generateNextSetOfHypoths()
 {
+    cout << "Begin step number: " << stepNumber << endl;
+
     vector<Thread_Hypoth*> &current_thread_hypoths = _thread_hypoths[0];
 
     if (!isDone())
@@ -436,11 +438,13 @@ bool Thread_Vision::generateNextSetOfHypoths()
             current_thread_hypoths[hypoth_ind]->optimize_visual();
             current_thread_hypoths[hypoth_ind]->minimize_energy_twist_angles();
             current_thread_hypoths[hypoth_ind]->calculate_score();
+            cout << "Hypoth " << hypoth_ind << " twist:" << current_thread_hypoths[hypoth_ind]->end_angle() << endl;
         }
 
         suppress_hypoths(current_thread_hypoths);
     }
 
+    /* Ranks based on change in energy */
     sort_hypoths(*best_thread_hypoths);
     curr_hypoth_ind = 0;
 
@@ -1024,10 +1028,16 @@ double Thread_Vision::score2dPoint(const Point2f& pt, int camNum)
     if (_captures[camNum]->inRange(rounded.y, rounded.x))
     {
         int key = keyForHashMap(camNum, rounded.y, rounded.x);
-        if (_cannyDistanceScores[camNum].count(key) > 0)
+        if (_cannySegments[camNum].count(key) > 0)
         {
+            vector<Line_Segment *>* segments = _cannySegments[camNum][key];
+            for (int i = 0; i < segments->size(); i++) {
+                Point2f newPoint(pt.x, pt.y);
+                Point2i startPoint(segments->at(i)->col1, segments->at(i)->row1);
+                Vector2d segmentVector(segments->at(i)->col2 - segments->at(i)->col1, segments->at(i)->row2 - segments->at(i)->row1);
+                thisMinScore = min(thisMinScore, distance(newPoint, segmentVector, startPoint));
+            }
             /* curr: nearby white pixels */
-            location_and_distance* curr = &_cannyDistanceScores[camNum][key];
 
 //            while (curr != NULL)
 //            {
@@ -1035,19 +1045,6 @@ double Thread_Vision::score2dPoint(const Point2f& pt, int camNum)
 //                curr = curr->next;
 //            }
 
-            while (curr != NULL)
-            {
-                vector<Vector2d> vectors;
-                Point2i thePoint(curr->col, curr->row);
-                vectorsForPixel(thePoint, camNum, vectors);
-
-                for (int i = 0; i < vectors.size(); i++) {
-                    Vector2d currentVector = vectors[i];
-                    Point2f newPoint(pt.x, pt.y);
-                    thisMinScore = min(thisMinScore, distance(newPoint, currentVector, thePoint));
-                }
-                curr = curr->next;
-            }
         }
     } else {
         thisMinScore = SCORE_OUT_OF_VIEW;
@@ -1063,7 +1060,9 @@ double Thread_Vision::score2dPoint(const Point2f& pt, int camNum)
 
     return thisMinScore;
 }
-void Thread_Vision::vectorsForPixel(Point2i& pt, int camNum, vector<Vector2d>& vectors) {
+
+void Thread_Vision::vectorsForPixel(Point2i& pt, int camNum, vector<Vector2d>& vectors)
+{
     vector<Point2i> adjPoints;
     adjacentPoints(pt, adjPoints, cols[camNum], rows[camNum]);
 
@@ -1295,6 +1294,7 @@ void Thread_Vision::reproj_points_for_canny()
 
 void Thread_Vision::precomputeDistanceScores()
 {
+    Timer t;
     /* For each camera */
     for (int camNum=0; camNum < NUMCAMS; camNum++)
     {
@@ -1409,8 +1409,49 @@ void Thread_Vision::precomputeDistanceScores()
             }
         }
     }
+
+    cout << "Precompute Points: " << t.elapsed() << endl;
+    precomputeSegments();
 }
 
+void Thread_Vision::precomputeSegments()
+{
+    Timer t;
+    for (int camNum = 0; camNum < NUMCAMS; camNum++) {
+        map<int, location_and_distance> &pointMap = _cannyDistanceScores[camNum];
+        map<int, vector<Line_Segment *>*> &segmentMap = _cannySegments[camNum];
+
+        for (int row = 0; row < rows[camNum]; row++) {
+            for (int col = 0; col < cols[camNum]; col++) {
+                /* For every pixel */
+                int key = keyForHashMap(camNum, row, col);
+                location_and_distance *current = &pointMap[key];
+
+                vector<Line_Segment *>* lineSegments = new vector<Line_Segment *>();
+                while (current != NULL) {
+                    /* For every potential closest pixel */
+                    vector<Vector2d> vectors;
+                    Point2i thePoint(current->col, current->row);
+                    vectorsForPixel(thePoint, camNum, vectors);
+                    
+                    for (int i = 0; i < vectors.size(); i++) {
+                        Line_Segment* seg = (Line_Segment *) malloc(sizeof(Line_Segment));
+                        seg->row1 = current->row;
+                        seg->col1 = current->col;
+                        seg->row2 = current->row + vectors[i][1];
+                        seg->col2 = current->col + vectors[i][0];
+                        lineSegments->push_back(seg);
+                    }
+
+                    current = current->next;
+                }
+                segmentMap[key] = lineSegments;
+            }
+        }
+    }
+
+    cout << "Precompute Segments Time: " << t.elapsed() << endl;
+}
 
 
 void Thread_Vision::initializeOnClicks()
