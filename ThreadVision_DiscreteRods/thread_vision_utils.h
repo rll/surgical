@@ -55,6 +55,7 @@ MatchingEnds matchingEndsForThreads(Thread_Hypoth* thread1, Thread_Hypoth* threa
 void adjacentPoints(Point2i &aPoint, vector<Point2i> &adjacentPoints, int maxX, int maxY);
 double distance(Point2f aPoint, Vector2d aVector, Point2i vectorStartPoint);
 double distance(Point2f a, Point2f b);
+double distance(double x1, double y1, double x2, double y2);
 
 class Timer
 {
