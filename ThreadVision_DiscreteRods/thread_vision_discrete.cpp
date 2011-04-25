@@ -1434,17 +1434,36 @@ void Thread_Vision::precomputeSegments()
                     Point2i thePoint(current->col, current->row);
                     vectorsForPixel(thePoint, camNum, vectors);
                     
+                    bool addedSegment = false;
                     for (int i = 0; i < vectors.size(); i++) {
                         Line_Segment* seg = (Line_Segment *) malloc(sizeof(Line_Segment));
                         seg->row1 = current->row;
                         seg->col1 = current->col;
                         seg->row2 = current->row + vectors[i][1];
                         seg->col2 = current->col + vectors[i][0];
-                        lineSegments->push_back(seg);
+                        
+                        bool isDuplicate = false;
+                        for (int j = 0; j < lineSegments->size(); j++) {
+                            Line_Segment *segCompare = lineSegments->at(j);
+                            if (segCompare->row1 == seg->row1 && segCompare->row2 == seg->row2 &&
+                                    segCompare->col1 == seg->col1 && segCompare->col2 == seg->col2){
+                                isDuplicate = true;
+                            }
+
+                            if (segCompare->row1 == seg->row2 && segCompare->row2 == seg->row1 &&
+                                    segCompare->col1 == seg->col2 && segCompare->col2 == seg->col1){
+                                isDuplicate = true;
+                            }
+                        }
+                        if (!isDuplicate) {
+                            lineSegments->push_back(seg);
+                            addedSegment = true;
+                        }
                     }
 
                     current = current->next;
                 }
+
                 segmentMap[key] = lineSegments;
             }
         }
