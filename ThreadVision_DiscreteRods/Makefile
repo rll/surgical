@@ -23,11 +23,11 @@ FAKEIMS= -DFAKEIMS
 
 target: threadStereo threadStereo_fake
 
-threadStereo: threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o
-	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o threadStereo threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o $(LIBS) $(PROFILER)
+threadStereo: threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o CannyWriter.o
+	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o threadStereo threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o CannyWriter.o $(LIBS) $(PROFILER)
 
-threadStereo_fake: threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete_fake.o trajectory_recorder.o trajectory_reader.o glThread.o
-	$(LD) $(ISOTROPIC) $(FAKEIMS) $(INCLUDES) $(DEBUG) -o threadStereo_fake threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete_fake.o trajectory_recorder.o trajectory_reader.o glThread.o $(LIBS) $(PROFILER)
+threadStereo_fake: threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete_fake.o trajectory_recorder.o trajectory_reader.o glThread.o CannyWriter.o
+	$(LD) $(ISOTROPIC) $(FAKEIMS) $(INCLUDES) $(DEBUG) -o threadStereo_fake threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete_fake.o trajectory_recorder.o trajectory_reader.o glThread.o CannyWriter.o $(LIBS) $(PROFILER)
 
 estimate_twists: estimate_twists.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o
 	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o estimate_twists estimate_twists.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o $(LIBS) $(PROFILER)
@@ -104,6 +104,9 @@ threadpiece_vision_discrete.o: threadpiece_vision_discrete.cpp threadpiece_visio
 
 thread_vision_utils.o: thread_vision_utils.cpp thread_vision_utils.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c thread_vision_utils.cpp $(PROFILER)
+
+CannyWriter.o: CannyWriter.h CannyWriter.cpp
+	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c CannyWriter.cpp $(PROFILER)
 
 
 clean:

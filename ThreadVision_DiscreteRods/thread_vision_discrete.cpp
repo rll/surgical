@@ -1,4 +1,5 @@
 #include "thread_vision_discrete.h"
+#include "CannyWriter.h"
 #define _USE_MATH_DEFINES
 
 Thread_Vision::Thread_Vision()
@@ -1197,7 +1198,10 @@ void Thread_Vision::updateCanny()
     }
 #endif
 
-    precomputeDistanceScores();
+    /* Check if precomputed file exists */
+   CannyWriter *writer = new CannyWriter("testcanny.txt");
+   writer->writeToFile();
+   precomputeDistanceScores();
 }
 
 
