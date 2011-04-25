@@ -1016,18 +1016,21 @@ double Thread_Vision::scoreProjection3dPointAndTanget(const Vector3d& startpt3d,
 double Thread_Vision::score2dPoint(const Point2f& pt, int camNum)
 {
     static double totalTime = 0.0;
+    static int lastPrinted = 0;
 
     Timer aTimer;
 
     /* Since we used the square of the distance when
      * checking if we should add more pixels to the queue */
     double thisMinScore = sqrt(DIST_FOR_SCORE_CHECK);
+    double verifyMinScore = thisMinScore;
 
     Point2i rounded = Point2i(floor(pt.x + 0.5), floor(pt.y + 0.5));
 
     if (_captures[camNum]->inRange(rounded.y, rounded.x))
     {
         int key = keyForHashMap(camNum, rounded.y, rounded.x);
+        
         if (_cannySegments[camNum].count(key) > 0)
         {
             vector<Line_Segment *>* segments = _cannySegments[camNum][key];
@@ -1037,26 +1040,38 @@ double Thread_Vision::score2dPoint(const Point2f& pt, int camNum)
                 Vector2d segmentVector(segments->at(i)->col2 - segments->at(i)->col1, segments->at(i)->row2 - segments->at(i)->row1);
                 thisMinScore = min(thisMinScore, distance(newPoint, segmentVector, startPoint));
             }
-            /* curr: nearby white pixels */
-
-//            while (curr != NULL)
-//            {
-//                thisMinScore = min(thisMinScore, sqrt((double)(pow(pt.x-(float)curr->col,2) + pow(pt.y-(float)curr->row,2))));
-//                curr = curr->next;
-//            }
-
         }
+
+/*
+ *        location_and_distance* curr = &_cannyDistanceScores[camNum][key];
+ *        while (curr != NULL)
+ *        {
+ *            vector<Vector2d> vectors;
+ *            Point2i thePoint(curr->col, curr->row);
+ *            vectorsForPixel(thePoint, camNum, vectors);
+ *
+ *            for (int i = 0; i < vectors.size(); i++) {
+ *                Vector2d currentVector = vectors[i];
+ *                Point2f newPoint(pt.x, pt.y);
+ *                verifyMinScore = min(verifyMinScore, distance(newPoint, currentVector, thePoint));
+ *            }
+ *            curr = curr->next;
+ *        }
+ *
+ *        if (abs(thisMinScore - verifyMinScore) > 0.001) {
+ *            cout << "ERROR: " << thisMinScore << "\t" << verifyMinScore << endl;
+ *            assert(false);
+ *        }
+ */
     } else {
         thisMinScore = SCORE_OUT_OF_VIEW;
     }
 
-//    if (thisMinScore < SCORE_THRESH_SET_TO_CONST)
-//        thisMinScore = SCORE_THRESH_SET_TO_CONST;
-
     totalTime += aTimer.elapsed();
-    //cout << "Total Time: " << totalTime << endl;
-
-    //cout << "This Min Score: " << thisMinScore << endl;
+    if ((int) totalTime > lastPrinted) {
+        cout << "Total Time: " << totalTime << endl;
+        lastPrinted = totalTime;
+    }
 
     return thisMinScore;
 }
@@ -1692,7 +1707,6 @@ location_and_distance::~location_and_distance()
         delete next;
         next = NULL;
     }
-
 }
 
 
