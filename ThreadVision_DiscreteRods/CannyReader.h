@@ -18,16 +18,14 @@
 #include "thread_vision_discrete.h"
 
 
-class CannyWriter
+class CannyReader
 {
 	public:
-		CannyWriter(const char* outFile);
-		void writeToFile();
-		std::string jsonString();
-
+		CannyReader() {};
+		CannyReader(const char* inFile);
+		bool readFromFile();
 		std::map<int, vector<Line_Segment *>*>* precomputedCannySegments;
-		int numCams;
 	private:
-		char dstFile[256];
+		char srcFile[256];
 };
 

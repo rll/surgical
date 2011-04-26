@@ -1,5 +1,7 @@
 #include "thread_vision_discrete.h"
 #include "CannyWriter.h"
+#include "CannyReader.h"
+#include <json/json.h>
 #define _USE_MATH_DEFINES
 
 Thread_Vision::Thread_Vision()
@@ -1176,32 +1178,48 @@ bool Thread_Vision::isEndPiece(const int camNum, const Point2i pt)
 
 void Thread_Vision::updateCanny()
 {
-    
-    //FOR DEBUG - don't undistort
-#ifdef FAKEIMS
-    _cams->updateImagesBlockingNoUndistort();
-    _cams->convertToGrayscale();
-    //_frames = _cams->frames();
-    //_cams->filterCanny();
-    //_cannyIms = _cams->cannyIms();
-    gray_to_canny();
-#else
-    _cams->updateImagesBlocking();
-    _cams->convertToGrayscale();
-    _frames = _cams->frames();
-    _cams->filterCanny();
-    _cannyIms = _cams->cannyIms();
-
-    if (reproj_points_fix_canny)
-    {
-        reproj_points_for_canny();
-    }
-#endif
 
     /* Check if precomputed file exists */
-   CannyWriter *writer = new CannyWriter("testcanny.txt");
-   writer->writeToFile();
-   precomputeDistanceScores();
+    string imageName = string(_captures[0]->baseImageName);
+    imageName = imageName.substr(imageName.find_last_of("/") + 1);
+    std::stringstream ss;
+    ss << _captures[0]->imageNumber;
+    string filePath = string("PrecomputedCanny/precomputed_") + imageName + ss.str();
+    
+    CannyReader reader(filePath.c_str());
+    reader.precomputedCannySegments = _cannySegments;
+    bool precomputedCannySegments = reader.readFromFile();
+    if (precomputedCannySegments) {
+        cout << "Found precomputedCannySegments";
+    }
+    else {
+        //FOR DEBUG - don't undistort
+#ifdef FAKEIMS
+        _cams->updateImagesBlockingNoUndistort();
+        _cams->convertToGrayscale();
+        //_frames = _cams->frames();
+        //_cams->filterCanny();
+        //_cannyIms = _cams->cannyIms();
+        gray_to_canny();
+#else
+        _cams->updateImagesBlocking();
+        _cams->convertToGrayscale();
+        _frames = _cams->frames();
+        _cams->filterCanny();
+        _cannyIms = _cams->cannyIms();
+
+        if (reproj_points_fix_canny)
+        {
+            reproj_points_for_canny();
+        }
+#endif
+        precomputeDistanceScores();
+        /* Save precomputed segments */
+        CannyWriter writer(filePath.c_str());
+        writer.precomputedCannySegments = _cannySegments;
+        writer.numCams = 3;
+        writer.writeToFile();
+    }
 }
 
 
