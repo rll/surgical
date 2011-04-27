@@ -743,6 +743,8 @@ void findThreadInIms()
 
     glThreads[currentThread]->getThread()->get_thread_data(points_real, angle_real);
 
+	cout << "Real End Twist: " << glThreads[currentThread]->getThread()->end_angle() << endl;
+
 
     thread_vision.set_max_length(MAX_LENGTH_VIS);
     thread_vision.clear_display();
@@ -757,11 +759,11 @@ void findThreadInIms()
 //    for (int i = 0; i < 11; i++)
 //        thread_vision.generateNextSetOfHypoths();
 
-    if (thread_vision.runThreadSearch())
-    {
-        std::cout << "Found thread full opt" << std::endl;
-        showThread(thread_vision.curr_thread());
-    }
+//    if (thread_vision.runThreadSearch())
+//    {
+//        std::cout << "Found thread full opt" << std::endl;
+//        showThread(thread_vision.curr_thread());
+//    }
 }
 
 void showThread(Thread *aThread, DisplayedThreads type)

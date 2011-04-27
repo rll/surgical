@@ -14,7 +14,7 @@
 #define TAN_SCORE_VISUAL_COEFF 1.0
 #define TAN_SCORE_DOT_PROD_COEFF 0.0
 
-#define NUM_HYPOTHS_MAX 10
+#define NUM_HYPOTHS_MAX 5
 
 class Thread_Vision;
 
@@ -28,6 +28,9 @@ public:
     void add_first_threadpieces(corresponding_pts& start_pt, tangent_and_score& start_tan);
     void add_first_threadpieces(corresponding_pts& start_pt, tangent_and_score& start_tan, double startTwist);
     void optimize_visual();
+    void optimize_energy_only();
+    void optimize_visual(double (Thread_Hypoth::*energyFunc)());
+    void minimize_energy_and_save(vector<Thread_Hypoth *>& intermediateHypoths, int num_opt_iters=6000, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence=1e-5);
 
     /* Add next piece based on visual reprojection only. If this hypoth splits,
      * new hypoths are added to extra_next_hypoths */
@@ -64,16 +67,17 @@ public:
     double _score; //this is not ensured to be updated!! 
     double _previous_energy;
     Thread_Vision* _thread_vision;
+	int threadID;
 
 private:
     void init();
 };
 
-void suppress_hypoths(vector<Thread_Hypoth*>& hypoths);
+void suppress_hypoths(vector<Thread_Hypoth*>& hypoths, bool (*compFunc)(Thread_Hypoth *a, Thread_Hypoth * b));
 void suppress_hypoths(vector<Thread_Hypoth*>& hypoths,
-        vector<int>& inds_to_keep);
+        vector<int>& inds_to_keep, bool (*compFunc)(Thread_Hypoth *a, Thread_Hypoth * b));
 bool operator <(const Thread_Hypoth& a, const Thread_Hypoth& b);
-bool lessthan_Thread_Hypoth(const Thread_Hypoth* a, const Thread_Hypoth* b);
+bool lessthan_Thread_Hypoth(Thread_Hypoth* a, Thread_Hypoth* b);
 bool lessThanThreadHypothVisualEnergy(Thread_Hypoth *a, Thread_Hypoth *b);
 
 #endif

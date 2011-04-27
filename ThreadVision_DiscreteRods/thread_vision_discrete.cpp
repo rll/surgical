@@ -151,15 +151,9 @@ Thread_Vision::Thread_Vision()
 
 
 
-    _captures[0]->init("./calib_params/");
-    _captures[1]->init("./calib_params/");
-    _captures[2]->init("./calib_params/");
-    /*
-    _captures[0]->init("./calib_params/2010_9_15/");
-    _captures[1]->init("./calib_params/2010_9_15/");
-    _captures[2]->init("./calib_params/2010_9_15/");
-    */
-
+    _captures[0]->init("./calib_params/backup_2011_4_20/");
+    _captures[1]->init("./calib_params/backup_2011_4_20/");
+    _captures[2]->init("./calib_params/backup_2011_4_20/");
     cvWaitKey(1000);							// segfaulted without this
 
 
@@ -361,7 +355,7 @@ void Thread_Vision::initThreadSearch()
     stepNumber = 1;
     cout << "Thread Search Init Finished" << endl;
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 2; i++) {
         generateNextSetOfHypoths();
     }
 
@@ -388,20 +382,23 @@ bool Thread_Vision::findStartPoints()
                 _thread_hypoths.resize(_thread_hypoths.size() + 1);
 
                 vector<Thread_Hypoth*>& current_thread_hypoths = _thread_hypoths.back();
-                current_thread_hypoths.resize(start_tangents.size());
+                current_thread_hypoths.clear();
 
-                for (int hypoth_ind = 0; hypoth_ind < start_tangents.size(); hypoth_ind++)
-                {
+                //for (int hypoth_ind = 0; hypoth_ind < start_tangents.size(); hypoth_ind++)
+                //{
                     /* Generate possible twists from -2pi/maxlength to 2pi/maxlength */
-                    int twistIncrements = 10;
+                    int twistIncrements = 20;
                     for (int j = 0; j < twistIncrements; j++) {
                         int numThreadPieces = _max_length_thread / _rest_length;
-                        double baseTwist = 2.0 * M_PI / _rest_length;
+                        double baseTwist = 2.0 * M_PI / numThreadPieces;
                         double startTwist = -1 * baseTwist + j * (baseTwist * 2 / twistIncrements);
-                        current_thread_hypoths[hypoth_ind] = new Thread_Hypoth(this);
-                        current_thread_hypoths[hypoth_ind]->add_first_threadpieces(start_pts[0], start_tangents[hypoth_ind], startTwist);
+                        cout << startTwist << " ";
+                        Thread_Hypoth *newThreadHypoth = new Thread_Hypoth(this);
+                        newThreadHypoth->add_first_threadpieces(start_pts[0], start_tangents[0], startTwist);
+                        current_thread_hypoths.push_back(newThreadHypoth);
+
                     }
-                }
+                //}
             }
         }
     }
@@ -431,20 +428,59 @@ bool Thread_Vision::generateNextSetOfHypoths()
 
     if (!isDone())
     {
+        bool shouldRestore;
+        bool (*compFunc)(Thread_Hypoth *a, Thread_Hypoth * b);
+
         add_possible_next_hypoths(current_thread_hypoths);
 
-        suppress_hypoths(current_thread_hypoths);
+        suppress_hypoths(current_thread_hypoths, lessThanThreadHypothVisualEnergy);
 
-        for (int hypoth_ind=0; hypoth_ind < current_thread_hypoths.size(); hypoth_ind++)
+        for (int hypoth_ind = 0; hypoth_ind < current_thread_hypoths.size(); hypoth_ind++)
         {
             /* Run the optimization algorithm, using visual distance and thread energy */
-            current_thread_hypoths[hypoth_ind]->optimize_visual();
-            current_thread_hypoths[hypoth_ind]->minimize_energy_twist_angles();
-            current_thread_hypoths[hypoth_ind]->calculate_score();
-            cout << "Hypoth " << hypoth_ind << " twist:" << current_thread_hypoths[hypoth_ind]->end_angle() << endl;
+            Thread_Hypoth *currentHypoth = current_thread_hypoths[hypoth_ind];
+
+            cout << "Thread ID:" << currentHypoth->threadID << endl;
+            cout << "Old Hypoth " << hypoth_ind << " Twist:" << currentHypoth->end_angle() << endl;
+
+            if (currentHypoth->num_pieces() < 5) {
+                currentHypoth->optimize_visual();
+
+                currentHypoth->minimize_energy_twist_angles();
+                currentHypoth->calculate_score();
+            }
+            else {
+                vector<Thread_Hypoth*> intermediateHypoths;
+                currentHypoth->minimize_energy_and_save(intermediateHypoths);
+                double minEnergy = intermediateHypoths.back()->calculate_energy();
+
+                for (int i = 0; i < intermediateHypoths.size(); i++) {
+                    double energyDistanceFromMin = abs(intermediateHypoths[i]->calculate_energy() - minEnergy);
+                    double visualReprojectionError = intermediateHypoths[i]->calculate_visual_energy();
+
+                    double totalScore = visualReprojectionError + ENERGY_DISTANCE_CONST * energyDistanceFromMin;
+
+                    intermediateHypoths[i]->_score = totalScore;
+                }
+
+                partial_sort (intermediateHypoths.begin(), intermediateHypoths.begin()+1, intermediateHypoths.end(), lessthan_Thread_Hypoth);
+
+                currentHypoth->restore_thread_pieces_and_resize(intermediateHypoths.front()->_thread_pieces);
+                currentHypoth->_score = intermediateHypoths.front()->_score;
+
+                for (int i = 0; i < intermediateHypoths.size(); i++) {
+                    delete intermediateHypoths[i];
+                }
+            }
+
+            int totalNumThreadPieces = _max_length_thread / _rest_length;
+            double projectedTwist = currentHypoth->end_angle() / currentHypoth->num_pieces() * totalNumThreadPieces;
+            cout << "Hypoth " << hypoth_ind << " Twist:" << currentHypoth->end_angle() << endl;
+            cout << "Hypoth " << hypoth_ind << " Projected Twist:" << projectedTwist << endl;
+            cout << endl;
         }
 
-        suppress_hypoths(current_thread_hypoths);
+        //suppress_hypoths(current_thread_hypoths);
     }
 
     /* Ranks based on change in energy */
@@ -453,6 +489,31 @@ bool Thread_Vision::generateNextSetOfHypoths()
 
     cout << "Finished step number: " << stepNumber << endl << endl;
     stepNumber++;
+}
+
+bool Thread_Vision::shouldUseEnergyDistance()
+{
+    if (stepNumber > 10) {
+        return true;
+    }
+    return false;
+}
+
+vector<double>* Thread_Vision::findTwist(Thread_Hypoth *hypoth)
+{
+    int twistIncrements = 20;
+    for (int j = 0; j < twistIncrements; j++) {
+        int numThreadPieces = _max_length_thread / _rest_length;
+        double baseTwist = 2.0 * M_PI / numThreadPieces;
+        double startTwist = -1 * baseTwist + j * (baseTwist * 2 / twistIncrements);
+        double endTwist = startTwist * hypoth->num_pieces();
+        
+        hypoth->_thread_pieces[hypoth->num_pieces() - 2]->set_angle_twist(endTwist);
+        
+        hypoth->minimize_energy_twist_angles();
+
+        //
+    }
 }
 
 bool Thread_Vision::runThreadSearch()
@@ -1021,7 +1082,13 @@ double Thread_Vision::score2dPoint(const Point2f& pt, int camNum)
     static double totalTime = 0.0;
     static int lastPrinted = 0;
 
+    int memoX = pt.x * 1000;
+    int memoY = pt.y * 1000;
+    int memoKey = memoX + 1000 * memoY * cols[camNum];
+
+
     Timer aTimer;
+
 
     /* Since we used the square of the distance when
      * checking if we should add more pixels to the queue */
@@ -1029,11 +1096,9 @@ double Thread_Vision::score2dPoint(const Point2f& pt, int camNum)
     double verifyMinScore = thisMinScore;
 
     Point2i rounded = Point2i(floor(pt.x + 0.5), floor(pt.y + 0.5));
-
     if (_captures[camNum]->inRange(rounded.y, rounded.x))
     {
         int key = keyForHashMap(camNum, rounded.y, rounded.x);
-        
         if (_cannySegments[camNum].count(key) > 0)
         {
             vector<Line_Segment *>* segments = _cannySegments[camNum][key];
@@ -1072,7 +1137,7 @@ double Thread_Vision::score2dPoint(const Point2f& pt, int camNum)
 
     totalTime += aTimer.elapsed();
     if ((int) totalTime > lastPrinted) {
-        cout << "Total Time: " << totalTime << endl;
+        //cout << "Total Time: " << totalTime << endl;
         lastPrinted = totalTime;
     }
 
