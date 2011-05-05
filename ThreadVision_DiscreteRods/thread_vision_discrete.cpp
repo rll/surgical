@@ -1,7 +1,7 @@
 #include "thread_vision_discrete.h"
-#include "CannyWriter.h"
-#include "CannyReader.h"
-#include <json/json.h>
+//#include "CannyWriter.h"
+//#include "CannyReader.h"
+//#include <json/json.h>
 #define _USE_MATH_DEFINES
 
 Thread_Vision::Thread_Vision()
@@ -538,13 +538,16 @@ bool Thread_Vision::runThreadSearch()
 //starting with old hypoths, run new thread search
 void Thread_Vision::runThreadSearch_nextIms()
 {
+  return;
+
+  /*
   updateCanny();
 
   vector<Thread_Hypoth*> &current_thread_hypoths = _thread_hypoths[0];
 
   for (int hypoth_ind=0; hypoth_ind < current_thread_hypoths.size(); hypoth_ind++)
   {
-    /* Run the optimization algorithm, using visual distance and thread energy */
+    // Run the optimization algorithm, using visual distance and thread energy 
     current_thread_hypoths[hypoth_ind]->optimize_visual();
     current_thread_hypoths[hypoth_ind]->minimize_energy_twist_angles();
     current_thread_hypoths[hypoth_ind]->calculate_score();
@@ -553,14 +556,14 @@ void Thread_Vision::runThreadSearch_nextIms()
 
   suppress_hypoths(current_thread_hypoths);
 
-/* Ranks based on change in energy */
+// Ranks based on change in energy //
 sort_hypoths(*best_thread_hypoths);
 curr_hypoth_ind = 0;
 
 
+*/
 
 }
-
 
 bool Thread_Vision::isDone()
 {
@@ -1283,7 +1286,7 @@ void Thread_Vision::updateCanny()
 {
 
     /* Check if precomputed file exists */
-    string imageName = string(_captures[0]->baseImageName);
+/*    string imageName = string(_captures[0]->baseImageName);
     imageName = imageName.substr(imageName.find_last_of("/") + 1);
     std::stringstream ss;
     ss << _captures[0]->imageNumber;
@@ -1296,6 +1299,7 @@ void Thread_Vision::updateCanny()
         cout << "Found precomputedCannySegments";
     }
     else {
+    */
         //FOR DEBUG - don't undistort
 #ifdef FAKEIMS
         _cams->updateImagesBlockingNoUndistort();
@@ -1318,11 +1322,11 @@ void Thread_Vision::updateCanny()
 #endif
         precomputeDistanceScores();
         /* Save precomputed segments */
-        CannyWriter writer(filePath.c_str());
-        writer.precomputedCannySegments = _cannySegments;
-        writer.numCams = 3;
-        writer.writeToFile();
-    }
+        //CannyWriter writer(filePath.c_str());
+        //writer.precomputedCannySegments = _cannySegments;
+        //writer.numCams = 3;
+        //writer.writeToFile();
+    //}
 }
 
 
