@@ -148,7 +148,7 @@ public:
     void subtractImageNumber(){imageNumber--;};
     int getImageNumber() { return imageNumber; };
 
-private:
+//private:
     static int camsActive;
 
     int idInternal;

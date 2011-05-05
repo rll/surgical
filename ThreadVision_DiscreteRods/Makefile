@@ -3,7 +3,7 @@ MESSAGING_DIR = /home/pabbeel/code/master-slave/slaves/
 SOCKET_DIR = /home/pabbeel/code/master-slave/
 THREAD_DIR = ../DiscreteRods/
 VISION_DIR = ../vision/
-LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lPvAPI -lrt -lglut -lgle
+LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm -ljson_linux-gcc-4.4.5_libmt -L/usr/lib/  -lPvAPI -lrt -lglut -lgle
 #OPTLIBS = -L/usr/local/lib/ -lopt -lnewmat -L/usr/lib/ -lglut -lgle
 #FLIBS =  -L/usr/lib/gcc/x86_64-linux-gnu/4.4.1 -L/usr/lib/gcc/x86_64-linux-gnu/4.4.1/../../../../lib -L/lib/../lib -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/4.4.1/../../.. -L/usr/lib/x86_64-linux-gnu -lgfortranbegin -lgfortran
 INCLUDES = -I/usr/local/include/ -I/usr/local/include/opencv/ -I/usr/local/include/libPvAPI -I $(UTILS_DIR)  -I/usr/include/eigen2
@@ -23,8 +23,8 @@ FAKEIMS= -DFAKEIMS
 
 target: threadStereo_continuousSet_noTruth threadStereo_fake_continuousSet_noTruth
 
-threadStereo: threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o
-	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o threadStereo threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o $(LIBS) $(PROFILER)
+threadStereo: threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o CannyWriter.o CannyReader.o
+	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o threadStereo threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o CannyWriter.o CannyReader.o $(LIBS) $(PROFILER)
 
 threadStereo_continuousSet_noTruth: threadStereo_continuousSet_noTruth.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o
 	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o threadStereo_continuousSet_noTruth threadStereo_continuousSet_noTruth.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o $(LIBS) $(PROFILER)
@@ -114,8 +114,11 @@ threadpiece_vision_discrete.o: threadpiece_vision_discrete.cpp threadpiece_visio
 thread_vision_utils.o: thread_vision_utils.cpp thread_vision_utils.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c thread_vision_utils.cpp $(PROFILER)
 
+CannyWriter.o: CannyWriter.h CannyWriter.cpp
+	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c CannyWriter.cpp $(PROFILER)
+
+CannyReader.o: CannyReader.h CannyReader.cpp
+	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c CannyReader.cpp $(PROFILER)
 
 clean:
 	rm *.o *.gch threadStereo threadStereo_fake estimate_twists
-
-

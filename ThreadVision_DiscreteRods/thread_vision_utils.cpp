@@ -43,7 +43,6 @@ void suppress_tangents(vector<tangent_and_score>& tangents, vector<int>& inds_to
         if (keep_this_ind)
             inds_to_keep.push_back(ind_checking);
     }
-
 }
 
 
