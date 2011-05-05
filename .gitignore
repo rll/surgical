@@ -6,5 +6,6 @@ ThreadVision_DiscreteRods/stereo_test/*
 ThreadVision_DiscreteRods/PrecomputedCanny/*
 tags
 vision/captures/*
-
+*.png
+*.avi
 
