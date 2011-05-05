@@ -357,8 +357,8 @@ int main (int argc, char * argv[])
 	saveImages_gravity();
 	saveImages_bending();
 	saveImages_twist();
-	saveImages_propogateBishop();
-	saveImages_movement();
+	//saveImages_propogateBishop();
+	//saveImages_movement();
 
 
   // for (int i=0; i < NUM_PTS; i++)

@@ -291,8 +291,14 @@ void processNormalKeys(unsigned char key, int x, int y)
   }
   else if (key == 'r') {
     key_pressed = ROTATETAN;
-  } else if (key == 's') {
-		save_opengl_image();
+	} else if (key == 's') {
+		for (int i=0; i < params_to_try.size(); i++)
+		{
+			InitThread(NULL, NULL);
+			saveImages_params(i);
+		}
+
+
 	} else if (key == 27) {
     exit(0);
   }
@@ -365,6 +371,7 @@ int main (int argc, char * argv[])
 	{
 		InitThread(argc, argv);
 		saveImages_params(i);
+		break;
 	}
 
  	//saveImages_slowMini(IMG_SAVE_BENDING_MINIMIZE);
@@ -394,6 +401,7 @@ void InitStuff (void)
   glutSolidSphere(0.5,16,16);
 
   glEndList();
+
 }
 
 /* draw the helix shape */
@@ -507,12 +515,10 @@ void saveImages_params(int param_ind)
 	
 	while (!glThreads[startThread]->getThread()->minimize_energy(1000, MIN_MOVEMENT_VERTICES*1e-2, MAX_MOVEMENT_VERTICES, 1e-7))
 	{
-		glutPostRedisplay();
 		DrawStuff();
 		save_opengl_image(imbase);
 	}
 
-		glutPostRedisplay();
 	DrawStuff();
 	save_opengl_image(imbase);
 
@@ -533,9 +539,6 @@ void saveImages_params(int param_ind)
 	score /= points.size();
 
 	std::cout << "params: " << bend << " " << twist << " " << grav << "\t\t score: " << score << std::endl;
-
-	
-
 
 
 
