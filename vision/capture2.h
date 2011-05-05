@@ -7,8 +7,8 @@
 #include <ctype.h>
 #include <string>
 
-#include "UavQuaternion.h"
-#include "TMatrix.h"
+#include "../../utils/UavQuaternion.h"
+#include "../../utils/TMatrix.h"
 
 //#include "blocked.h"
 #include "util2.h"

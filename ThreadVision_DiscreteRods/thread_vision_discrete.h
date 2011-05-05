@@ -13,7 +13,7 @@
 #define CENTER_IM_IND 0
 #define CORRESPONDING_PTS_ERROR_THRESH 4.0
 #define TANGENT_ERROR_THRESH 1000.0
-#define DIST_FOR_SCORE_CHECK 40.0
+#define DIST_FOR_SCORE_CHECK 70.0
 #define SCORE_OUT_OF_VIEW 1.0
 #define SCORE_THRESH_SET_TO_CONST 0.5  /*if this score is below this, just set it to zero*/
 
@@ -117,6 +117,7 @@ public:
     Thread_Vision();
     Thread_Vision(char* im_base);
     ~Thread_Vision();
+    void clear_thread_hypoths();
 
     /* Main algorithm */
     void initThreadSearch();
@@ -124,6 +125,7 @@ public:
     bool findStartPoints();
 
     bool runThreadSearch();
+    void runThreadSearch_nextIms();
 
     bool generateNextSetOfHypoths();
 
@@ -175,6 +177,11 @@ public:
         start_data tmp = {pt, tan.normalized()};
         _start_data.push_back(tmp);
     }
+
+    void clearStartData(){
+        _start_data.clear();
+    }
+
 
     void set_max_length(double max){_max_length_thread = max;}
 

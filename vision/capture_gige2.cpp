@@ -408,6 +408,7 @@ Capture::~Capture()
 bool Capture::grabFrame(void) {
     if(mFromFileFlag){
         sprintf(imageNum, "%s%d.tif", baseImageName, imageNumber);
+        std::cout << "from file, im: "<< imageNum << std::endl;
         std::cout << "loading: " << imageNum << std::endl;
         mFrame = imread(imageNum, -1);
         width = mFrame.cols;

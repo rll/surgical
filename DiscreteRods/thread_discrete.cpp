@@ -360,7 +360,7 @@ double Thread::calculate_energy()
 }
 
 
-void Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
+bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
 {
   double step_in_grad_dir_vertices = 1.0;
 
@@ -460,6 +460,7 @@ void Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
     recalc_vertex_grad = true;
     if (next_energy + energy_error_for_convergence > curr_energy)
     {
+			opt_iter--;
       if (next_energy >= curr_energy) {
         restore_thread_pieces();
         recalc_vertex_grad = false;
@@ -484,6 +485,9 @@ void Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
   minimize_energy_twist_angles();
 
   next_energy = calculate_energy();
+
+
+	return (opt_iter != num_opt_iters);
 
   //std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
 }
@@ -1717,7 +1721,9 @@ void Thread::rotate_end_by(double degrees)
 {
 #ifdef ISOTROPIC
   _thread_pieces[_thread_pieces.size()-2]->offset_angle_twist(degrees);
-  _thread_pieces.front()->initializeFrames();
+  _thread_pieces[_thread_pieces.size()-2]->update_material_frame();
+	set_end_constraint(this->end_pos(), this->end_rot());
+ // _thread_pieces.front()->initializeFrames();
 #else
   Matrix3d new_end_rot = (Eigen::AngleAxisd(degrees, this->end_rot().col(0).normalized()))*this->end_rot();
   set_end_constraint(this->end_pos(), new_end_rot);

@@ -144,6 +144,15 @@ void rotation_from_euler_angles(Matrix3d& rotation, double angZ, double angY, do
   rotation = Eigen::AngleAxisd(angX, axis3)*rot2;
 }
 
+void euler_angles_from_rotation(const Matrix3d& transform, double& angZ, double& angY, double& angX)
+{
+  angZ = atan2(transform(1,0), transform(0,0));
+  angY = atan2(-transform(2,0), sqrt(transform(2,1)*transform(2,1) + transform(2,2)*transform(2,2)));
+  angX = atan2(transform(2,1), transform(2,2));
+}
+
+
+
 
 Frame_Motion::Frame_Motion(const Vector3d& pos_movement, const Matrix3d& frame_rotation)
   :_pos_movement(pos_movement), _frame_rotation(frame_rotation)

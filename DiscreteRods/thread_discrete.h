@@ -15,7 +15,7 @@
     #define MAX_ROTATION_TWIST (M_PI/30.0)
     #define MOMENTUM_CONSTANT 0.0 /*how much of the last gradient do we use*/
 
-    #define MIN_MOVEMENT_VERTICES 1e-4
+    #define MIN_MOVEMENT_VERTICES 1e-5
     #define MIN_ROTATION_TWIST (M_PI/1000.0)
 #else
 
@@ -57,7 +57,7 @@ class Thread
     //energy minimization
     //
 #ifdef ISOTROPIC
-    void minimize_energy(int num_opt_iters=6000, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence=1e-5);
+    bool minimize_energy(int num_opt_iters=8000, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence=1e-5);
     void minimize_energy_hessian(int num_opt_iters=6000, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence=1e-5);
 #else
     void minimize_energy(int num_opt_iters=16000, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence =1e-20);
@@ -87,6 +87,9 @@ class Thread
     const double end_angle(void) const {return _thread_pieces[_thread_pieces.size()-2]->angle_twist();}
     const double angle_at_ind(int i) const {return _thread_pieces[i]->angle_twist();}
     const Vector3d& vertex_at_ind(int i) const {return _thread_pieces[i]->vertex();}
+    const Vector3d& edge_at_ind(int i) const {return _thread_pieces[i]->edge();}
+    const Matrix3d& bishop_at_ind(int i) const {return _thread_pieces[i]->bishop_frame();}
+    const Matrix3d& material_at_ind(int i) const {return _thread_pieces[i]->material_frame();}
 
     const Vector3d& start_pos(void) const {return _thread_pieces.front()->vertex();}
     const Vector3d& end_pos(void) const {return _thread_pieces.back()->vertex();}

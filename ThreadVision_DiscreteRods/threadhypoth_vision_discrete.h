@@ -14,7 +14,7 @@
 #define TAN_SCORE_VISUAL_COEFF 1.0
 #define TAN_SCORE_DOT_PROD_COEFF 0.0
 
-#define NUM_HYPOTHS_MAX 10
+#define NUM_HYPOTHS_MAX 20
 
 class Thread_Vision;
 

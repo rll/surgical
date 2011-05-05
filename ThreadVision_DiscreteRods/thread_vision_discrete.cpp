@@ -276,14 +276,14 @@ Thread_Vision::Thread_Vision(char* im_base)
     }
 
 
-/*
+
 _captures[0]->init("./calib_params/");
 _captures[1]->init("./calib_params/");
 _captures[2]->init("./calib_params/");
-*/
-_captures[0]->init("./calib_params/2010_9_15/");
-_captures[1]->init("./calib_params/2010_9_15/");
-_captures[2]->init("./calib_params/2010_9_15/");
+
+//_captures[0]->init("./calib_params/2010_9_15/");
+//_captures[1]->init("./calib_params/2010_9_15/");
+//_captures[2]->init("./calib_params/2010_9_15/");
 
 cvWaitKey(1000);							// segfaulted without this
 
@@ -303,8 +303,8 @@ _cams = new ThreeCam(_captures);
 float width[] = {1.50, 1.50, 1.50};
 float edge_sigma[] = {0.50, 0.50, 0.50};
 float blur_sigma[] = {1.5, 1.5, 1.5};
-double thresh1[] = {4.0, 4.0, 4.0};
-double thresh2[] = {80.0, 80.0, 80.0};
+double thresh1[] = {2.0, 2.0, 2.0};
+double thresh2[] = {15.0, 15.0, 15.0};
 
 _cams->initializeCanny(width, edge_sigma, blur_sigma, thresh1, thresh2);
 
@@ -334,20 +334,29 @@ Thread_Vision::~Thread_Vision()
         delete _captures[i];
     }
 
-    for (int i = 0; i < _thread_hypoths.size(); i++){
-        vector<Thread_Hypoth*> current_thread_hypoths = _thread_hypoths[i];
-        for (int hypoth_ind=0; hypoth_ind < current_thread_hypoths.size(); hypoth_ind++)
-        {
-            delete current_thread_hypoths[hypoth_ind];
-        }
-        _thread_hypoths.clear();
-    }
+    clear_thread_hypoths();
 }
 
+
+void Thread_Vision::clear_thread_hypoths()
+{
+  for (int i = 0; i < _thread_hypoths.size(); i++){
+    vector<Thread_Hypoth*> current_thread_hypoths = _thread_hypoths[i];
+    for (int hypoth_ind=0; hypoth_ind < current_thread_hypoths.size(); hypoth_ind++)
+    {
+      delete current_thread_hypoths[hypoth_ind];
+    }
+    _thread_hypoths.clear();
+  }
+
+}
 
 
 void Thread_Vision::initThreadSearch()
 {
+  //incase we ran this before and updated Images
+  clear_thread_hypoths();
+
     updateCanny();
 
     findStartPoints();
@@ -459,6 +468,35 @@ bool Thread_Vision::runThreadSearch()
     }
     return true;
 }
+
+
+
+//starting with old hypoths, run new thread search
+void Thread_Vision::runThreadSearch_nextIms()
+{
+  updateCanny();
+
+  vector<Thread_Hypoth*> &current_thread_hypoths = _thread_hypoths[0];
+
+  for (int hypoth_ind=0; hypoth_ind < current_thread_hypoths.size(); hypoth_ind++)
+  {
+    /* Run the optimization algorithm, using visual distance and thread energy */
+    current_thread_hypoths[hypoth_ind]->optimize_visual();
+    current_thread_hypoths[hypoth_ind]->minimize_energy_twist_angles();
+    current_thread_hypoths[hypoth_ind]->calculate_score();
+    cout << "Hypoth " << hypoth_ind << " twist:" << current_thread_hypoths[hypoth_ind]->end_angle() << endl;
+  }
+
+  suppress_hypoths(current_thread_hypoths);
+
+/* Ranks based on change in energy */
+sort_hypoths(*best_thread_hypoths);
+curr_hypoth_ind = 0;
+
+
+
+}
+
 
 bool Thread_Vision::isDone()
 {
@@ -1668,11 +1706,11 @@ void Thread_Vision::saveImages(const char* image_save_base, int im_num)
     char filename[256];
     for (int camNum=0; camNum < NUMCAMS; camNum++)
     { 
-        sprintf(filename, "%s%d-%d.jpg", image_save_base, (camNum+1), im_num);
+        sprintf(filename, "%s%d-%d.png", image_save_base, (camNum+1), im_num);
         imwrite(filename, _frames[camNum]);
-        sprintf(filename, "%s_canny%d-%d.jpg", image_save_base, (camNum+1), im_num);
+        sprintf(filename, "%s_canny%d-%d.png", image_save_base, (camNum+1), im_num);
         imwrite(filename, _cannyIms[camNum]);
-        sprintf(filename, "%s_cannyDisplay%d-%d.jpg", image_save_base, (camNum+1), im_num);
+        sprintf(filename, "%s_cannyDisplay%d-%d.png", image_save_base, (camNum+1), im_num);
         imwrite(filename, _cannyIms_display[camNum]);
     }
 }

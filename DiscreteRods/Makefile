@@ -26,7 +26,7 @@ DEBUG = -ggdb
 PROFILER =
 ISOTROPIC=-DISOTROPIC
 
-target: testThreadDiscrete saveThreadTrajectory
+target: testThreadDiscrete visualizeFrames visualizeEnergyParams
 
 testThreadDiscrete: testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o
 	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o $(LIBS) $(PROFILER)
@@ -45,6 +45,12 @@ planThreadTrajectory: planThreadTrajectory.cpp threadutils_discrete.o threadpiec
 
 thread_visualize_and_save: thread_visualize_and_save.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o
 	$(LD) $(ISOTROPIC) $(INCLUDES) $(VISION_INCLUDES) $(DEBUG) -o thread_visualize_and_save thread_visualize_and_save.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o $(LIBS) $(VISION_LIBS) $(PROFILER)
+
+visualizeFrames: visualizeFrames.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread_stripe.o text3d.o
+	$(LD) $(ISOTROPIC) $(INCLUDES) $(VISION_INCLUDES) $(DEBUG) -o visualizeFrames visualizeFrames.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread_stripe.o text3d.o $(LIBS) $(VISION_LIBS) $(PROFILER)
+
+visualizeEnergyParams: visualizeEnergyParams.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread_stripe.o text3d.o
+	$(LD) $(ISOTROPIC) $(INCLUDES) $(VISION_INCLUDES) $(DEBUG) -o visualizeEnergyParams visualizeEnergyParams.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread_stripe.o text3d.o $(LIBS) $(VISION_LIBS) $(PROFILER)
 
 thread_visualize_and_save_noniso: thread_visualize_and_save.cpp threadutils_discrete.o threadpiece_discrete_noniso.o thread_discrete_noniso.o trajectory_recorder.o trajectory_reader.o glThread_noniso.o
 	$(LD) $(INCLUDES) $(VISION_INCLUDES) $(DEBUG) -o thread_visualize_and_save_noniso thread_visualize_and_save.cpp threadutils_discrete.o threadpiece_discrete_noniso.o thread_discrete_noniso.o trajectory_recorder.o trajectory_reader.o glThread_noniso.o $(LIBS) $(VISION_LIBS) $(PROFILER)
@@ -92,8 +98,15 @@ glThread.o : glThread.cpp glThread.h
 glThread_noniso.o : glThread.cpp glThread.h
 	$(CC) $(INCLUDES) $(DEBUG) -c glThread.cpp -o glThread_noniso.o $(PROFILER)
 
+glThread_stripe.o : glThread_stripe.cpp glThread_stripe.h
+	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c glThread_stripe.cpp $(PROFILER)
+
 thread_discrete_RRT.o : thread_discrete_RRT.cpp thread_discrete_RRT.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c thread_discrete_RRT.cpp $(PROFILER)
+
+text3d.o: text3d.cpp text3d.h
+	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c text3d.cpp $(PROFILER)
+
 
 
 clean:

@@ -21,16 +21,25 @@ FAKEIMS= -DFAKEIMS
 
 #target : testCanny testCapture example_capture_3cam calibrate_robots test_point_distances PositionsOnRequest PositionsOnRequest2 threadStereo
 
-target: threadStereo threadStereo_fake
+target: threadStereo_continuousSet_noTruth threadStereo_fake_continuousSet_noTruth
 
 threadStereo: threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o
 	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o threadStereo threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o $(LIBS) $(PROFILER)
+
+threadStereo_continuousSet_noTruth: threadStereo_continuousSet_noTruth.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o
+	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o threadStereo_continuousSet_noTruth threadStereo_continuousSet_noTruth.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o $(LIBS) $(PROFILER)
+
+threadStereo_fake_continuousSet_noTruth: threadStereo_continuousSet_noTruth.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete_fake.o trajectory_recorder.o trajectory_reader.o glThread.o
+	$(LD) $(ISOTROPIC) $(FAKEIMS) $(INCLUDES) $(DEBUG) -o threadStereo_fake_continuousSet_noTruth threadStereo_continuousSet_noTruth.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete_fake.o trajectory_recorder.o trajectory_reader.o glThread.o $(LIBS) $(PROFILER)
 
 threadStereo_fake: threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete_fake.o trajectory_recorder.o trajectory_reader.o glThread.o
 	$(LD) $(ISOTROPIC) $(FAKEIMS) $(INCLUDES) $(DEBUG) -o threadStereo_fake threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete_fake.o trajectory_recorder.o trajectory_reader.o glThread.o $(LIBS) $(PROFILER)
 
 estimate_twists: estimate_twists.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o
 	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o estimate_twists estimate_twists.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o $(LIBS) $(PROFILER)
+
+threadStereo_manyIms: threadStereo_manyIms_noTruth.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o
+	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o threadStereo_manyIms threadStereo_manyIms_noTruth.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o $(LIBS) $(PROFILER)
 
 
 ################################################

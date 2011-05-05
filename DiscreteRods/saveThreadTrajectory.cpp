@@ -11,7 +11,7 @@
 
 
 
-#define TRAJ_BASE_NAME "rot1"
+#define TRAJ_BASE_NAME "../ThreadVision_DiscreteRods/for_stereo_fakeims"
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
@@ -585,16 +585,17 @@ void updateThreadPoints()
 
 void initThread()
 {
-  int numInit = 15;
+  int numInit = 10;
   double noise_factor = 0.0;
 
   vector<Vector3d> vertices;
   vector<double> angles;
 
-  vertices.push_back(Vector3d::Zero());
+  Vector3d start_vert(10.0, 10.0, 40.0);
+  vertices.push_back(start_vert);
   angles.push_back(0.0);
   //push back unitx so first tangent matches start_frame
-  vertices.push_back(Vector3d::UnitX()*_rest_length);
+  vertices.push_back(Vector3d::UnitX()*_rest_length + vertices.front());
   angles.push_back(0.0);
 
   Vector3d direction;
