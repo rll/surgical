@@ -24,8 +24,8 @@
 #include <opencv/cxcore.h>
 #include "text3d.h"
 
-#define GL_WIDTH_PIX 1200
-#define GL_HEIGHT_PIX 1200
+#define GL_WIDTH_PIX 1000
+#define GL_HEIGHT_PIX 1000
 
 #define IMG_SAVE_OPENGL "savedIms/opengl_"
 #define IMG_SAVE_BENDING "savedIms/bending/opengl_"
@@ -140,7 +140,7 @@ GLfloat lightEightPosition[] = {0.0, 0.0, 200.0, 0.0};
 GLfloat lightEightColor[] = {0.99, 0.99, 0.99, 1.0};
 
 
-
+/*
 void applyControl(Thread* start, const VectorXd& u, VectorXd* res) {
   int N = glThreads[startThread]->getThread()->num_pieces();
   res->setZero(3*N);
@@ -177,6 +177,7 @@ void computeDifference(Thread* a, Thread* b, VectorXd* res) {
 
   (*res) = avec - bvec;
 }
+*/
 
 
 void selectThread(int inc) {
@@ -343,6 +344,8 @@ int main (int argc, char * argv[])
   InitLights();
   InitStuff ();
 
+	t3dInit();
+
 
 
   InitThread(argc, argv);
@@ -357,8 +360,9 @@ int main (int argc, char * argv[])
 	saveImages_gravity();
 	saveImages_bending();
 	saveImages_twist();
-	//saveImages_propogateBishop();
-	//saveImages_movement();
+	saveImages_propogateBishop();
+	saveImages_movement();
+  exit(0);
 
 
   // for (int i=0; i < NUM_PTS; i++)
@@ -518,7 +522,6 @@ void handleResize(int w, int h) {
 
 void saveImages_gravity()
 {
-	t3dInit();
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glPushMatrix ();
 	saveImages_setLoc();
@@ -532,7 +535,7 @@ void saveImages_gravity()
 	glThreads[startThread]->DrawThread();
 	glThreads[startThread]->DrawAxes();
 	glThreads[startThread]->DrawSpheresAtLinks();
-	for (int i=1; i < glThreads[startThread]->getThread()->num_pieces()-1; i++)
+	for (int i=0; i < glThreads[startThread]->getThread()->num_pieces(); i++)
 		glThreads[startThread]->DrawDownvecAtInd(i);
 
 	string str = "Gravity";
@@ -608,15 +611,15 @@ void saveImages_twist()
 
 void saveImages_propogateBishop()
 {
-	const int num_ims_each_seg = 30;
-	const int num_ims_each_bishop_update = 22;
-	const int num_ims_each_rot = 22;
-	const double move_per_ind = 1.5;
-	const int start_moving_at_ind = 2;
+	const int num_ims_each_seg = 40;
+	const int num_ims_each_bishop_update = 40;
+	const int num_ims_each_rot = 40;
+	const double move_per_ind = 1.4;
+	const int start_moving_at_ind = 1;
 
 	const int pause_at_ind = 0;
-	const int pause_frames_bishop = 22;
-	const int pause_frames_angle = 100;
+	const int pause_frames_bishop = 140;
+	const int pause_frames_angle = 140;
 
 	const int sum_weights_move = num_ims_each_seg + num_ims_each_bishop_update + num_ims_each_rot;
 
@@ -963,16 +966,16 @@ void saveImages_movement()
 	vector<int> num_ims_per;
 
 	Frame_Motion tocpy;
-	tocpy._pos_movement << -0.15, -0.05, 0.0;
+	tocpy._pos_movement << -0.14, -0.045, 0.0;
 	tocpy._frame_rotation = Matrix3d::Identity();
 	motions.push_back(tocpy);
-	num_ims_per.push_back(60);
+	num_ims_per.push_back(75);
 
 
 	tocpy._pos_movement.setZero();
-	tocpy._frame_rotation = Eigen::AngleAxisd(0.11, Vector3d::UnitX());
+	tocpy._frame_rotation = Eigen::AngleAxisd(0.10, Vector3d::UnitX());
 	motions.push_back(tocpy);
-	num_ims_per.push_back(60);
+	num_ims_per.push_back(75);
 
 
 	for (int mot_ind=0; mot_ind < motions.size(); mot_ind++)
@@ -1180,6 +1183,9 @@ void InitLights() {
 
 void save_opengl_image(const char* img_base_name)
 {
+    const int top_to_ignore = 20;
+    const int bottom_to_ignore = 260;
+
   //playback and save images
   Mat img(GL_HEIGHT_PIX, GL_WIDTH_PIX, CV_8UC3);
   vector<Mat> img_planes;
@@ -1201,14 +1207,46 @@ void save_opengl_image(const char* img_base_name)
 
   merge(img_planes, img);
   flip(img, img, 0);
+  //img.adjustROI(-20,260,0,0);
+  
+  Range ranges[2];
+  ranges[0] = Range(top_to_ignore, GL_HEIGHT_PIX-bottom_to_ignore);
+  ranges[1] = Range(0, 1000);
+  Mat img_toWrite(img,ranges[0], ranges[1]);
+
+  /*Mat img_toWrite(GL_HEIGHT_PIX-(top_to_ignore+bottom_to_ignore), GL_WIDTH_PIX,img.type()); 
+  for (int r=top_to_ignore; r < GL_HEIGHT_PIX-bottom_to_ignore; r++)
+  {
+    img_toWrite.row(r) = img.row(r-top_to_ignore);
+  } 
+
+/*  Mat mask(1000,1000, CV_8UC1);
+  for (int r=0; r < GL_HEIGHT_PIX;  r++)
+  {
+      for (int c=0; c < GL_WIDTH_PIX; c++)
+      {
+        if (r < 20 || r > 740)
+            mask.at<char>(r,c) = 0.0;
+        else
+            mask.at<char>(r,c) = 1.0;
+      }
+  }
+*/
+
+  //Mat img_toWrite();
+  //img.copyTo(img_toWrite, mask);
+  //Size wholesize;
+  //Pint offset;
 
   char im_name[256];
   sprintf(im_name, "%s%d.png", img_base_name, image_ind+1);
 	image_ind++;
-  imwrite(im_name, img);
+  imwrite(im_name, img_toWrite);
+  //imwrite(im_name, img);
   waitKey(1);
   //sleep(0);
 }
+
 
 
 

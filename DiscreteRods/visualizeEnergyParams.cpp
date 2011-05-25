@@ -24,10 +24,12 @@
 #include <opencv/cxcore.h>
 #include "text3d.h"
 
-#define GL_WIDTH_PIX 1200
-#define GL_HEIGHT_PIX 1200
+#define GL_WIDTH_PIX 1000
+#define GL_HEIGHT_PIX 1000
 
 #define IMG_SAVE_OPENGL "savedIms/params/opengl_"
+#define IMG_SAVE_ALLDIFF_OPENGL "savedIms/params/alldiff_opengl_"
+#define IMG_SAVE_MOTION_OPENGL "savedIms/params/motion_opengl_"
 
 #define TRAJ_BASE_NAME "../DiscreteRods/LearnParams/config/suturepurple_processed_projected"
 Trajectory_Reader traj_reader(TRAJ_BASE_NAME);
@@ -46,8 +48,11 @@ void InitLights();
 void InitGLUT(int argc, char * argv[]);
 void InitStuff();
 void DrawStuff();
+void DrawStuff2();
 void saveImages_setLoc();
 void saveImages_params(int param_ind);
+void saveImages_params_motion(int param_ind);
+void saveImages_params_allDiff();
 void saveImages_slowMini(const char* base_im_name);
 void saveImages_setDefaultColor();
 void DrawAxes();
@@ -57,7 +62,7 @@ void InitThread(int argc, char* argv[]);
 void save_opengl_image(const char* img_base_name = IMG_SAVE_OPENGL);
 void update_all_threads();
 void handleResize(int w, int h);
-
+void makeAllVids();
 
 
 
@@ -70,11 +75,13 @@ void handleResize(int w, int h);
 
 enum key_code {NONE, MOVEPOS, MOVETAN, ROTATETAN};
 
-#define NUMBER_THREADS 2
+#define NUMBER_THREADS 3
 GLThread* glThreads[NUMBER_THREADS];
+bool showThreads[NUMBER_THREADS];
 int curThread = 0;
 int startThread = 0;
 int truthThread = 1;
+int truthThread_aftermotion = 2;
 
 //params for each of the threads EXCEPT start thread
 //these are set in InitThread
@@ -137,7 +144,7 @@ GLfloat lightEightPosition[] = {0.0, 0.0, 200.0, 0.0};
 GLfloat lightEightColor[] = {0.99, 0.99, 0.99, 1.0};
 
 
-
+/*
 void applyControl(Thread* start, const VectorXd& u, VectorXd* res) {
   int N = glThreads[startThread]->getThread()->num_pieces();
   res->setZero(3*N);
@@ -165,6 +172,8 @@ void applyControl(Thread* start, const VectorXd& u, VectorXd* res) {
 
   start->toVector(res);
 }
+
+*/
 
 void computeDifference(Thread* a, Thread* b, VectorXd* res) {
   VectorXd avec;
@@ -297,8 +306,8 @@ void processNormalKeys(unsigned char key, int x, int y)
 			InitThread(NULL, NULL);
 			saveImages_params(i);
 		}
-
-
+  } else if (key == 'p') {
+    makeAllVids();
 	} else if (key == 27) {
     exit(0);
   }
@@ -367,12 +376,9 @@ int main (int argc, char * argv[])
 
 	//glDisable(GL_LIGHTING);
 
-	for (int i=0; i < params_to_try.size(); i++)
-	{
-		InitThread(argc, argv);
-		saveImages_params(i);
-		break;
-	}
+  InitThread(argc, argv);
+  makeAllVids();
+
 
  	//saveImages_slowMini(IMG_SAVE_BENDING_MINIMIZE);
 
@@ -385,6 +391,30 @@ int main (int argc, char * argv[])
 }
 
 
+
+void makeAllVids()
+{
+	for (int i=0; i < params_to_try.size(); i++)
+	{
+      break;
+		InitThread(NULL, NULL);
+		saveImages_params(i);
+	}
+
+	for (int i=0; i < params_to_try.size(); i++)
+	{
+      break;
+		InitThread(NULL, NULL);
+		saveImages_params_motion(i);
+	}
+
+
+  saveImages_params_allDiff();
+
+  exit(0);
+}
+
+
 GLuint sphereList;
 void InitStuff (void)
 {
@@ -392,7 +422,7 @@ void InitStuff (void)
   //glClearColor(.05f, 0.05f, 0.05f, 0.0f);
   glEnable(GL_BLEND);
   glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	rotate_frame[0] = 175.0;
+	rotate_frame[0] = 145.0;
 	rotate_frame[1] = -105.0;
 	glutReshapeFunc(handleResize);
 
@@ -417,40 +447,104 @@ void DrawStuff (void)
   /* set up some matrices so that the object spins with the mouse */
 
 	saveImages_setLoc();
-	saveImages_setDefaultColor();
+	//saveImages_setDefaultColor();
 
   //change thread, if necessary
-  if (move_end[0] != 0.0 || move_end[1] != 0.0 || tangent_end[0] != 0.0 || tangent_end[1] != 0.0 || tangent_rotation_end[0] != 0 || tangent_rotation_end[1] != 0)
+  /*if (move_end[0] != 0.0 || move_end[1] != 0.0 || tangent_end[0] != 0.0 || tangent_end[1] != 0.0 || tangent_rotation_end[0] != 0 || tangent_rotation_end[1] != 0)
   {
     glThreads[startThread]->ApplyUserInput(move_end, tangent_end, tangent_rotation_end);
 	for (int i=0; i < NUMBER_THREADS; i++)
 	{
-		glThreads[i]->setThread((new Thread(*glThreads[startThread]->getThread())));
+		//glThreads[i]->setThread((new Thread(*glThreads[startThread]->getThread())));
 	}
 
   }
-
+*/
 
   //Draw Axes
   DrawAxes();
 
-  glThreads[startThread]->updateThreadPoints();
-  Vector3d display_start_pos = glThreads[startThread]->getStartPosition();
+  glThreads[truthThread]->updateThreadPoints();
+  Vector3d display_start_pos = glThreads[truthThread]->getStartPosition();
 
 
   for(int i = 0; i < NUMBER_THREADS; i++) {
     //Draw Thread
 		//colors are R, G, B, Opacity
+    if (!showThreads[i])
+        continue;
 		glColor4f (1.0, 1.0, 1.0, 0.9);
 
 		if (i == startThread)
+			glColor4f (0.0, 0.6, 0.6, 0.9);
+		else if (i == truthThread_aftermotion)
+			glColor4f (0.9, 0.3, 0.0, 0.9);
+    else if (i == truthThread)
 			glColor4f (0.9, 0.9, 0.0, 0.9);
-		else
-			glColor4f (0.9, 0.1, 0.1, 0.9);
     
 		glThreads[i]->display_start_pos = display_start_pos;
+    glThreads[i]->updateThreadPoints();
     glThreads[i]->DrawThread(true);
     glThreads[i]->DrawSpheresAtLinks();
+    glThreads[i]->DrawAxes();
+
+  }
+
+  glPopMatrix ();
+  glutSwapBuffers ();
+}
+
+void DrawStuff2 (void)
+{
+	//saveImages_bending();
+	//return;
+  glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  //glColor3f (0.8, 0.3, 0.6);
+
+  glPushMatrix ();
+
+  /* set up some matrices so that the object spins with the mouse */
+
+	saveImages_setLoc();
+	//saveImages_setDefaultColor();
+
+  //change thread, if necessary
+  /*if (move_end[0] != 0.0 || move_end[1] != 0.0 || tangent_end[0] != 0.0 || tangent_end[1] != 0.0 || tangent_rotation_end[0] != 0 || tangent_rotation_end[1] != 0)
+  {
+    glThreads[startThread]->ApplyUserInput(move_end, tangent_end, tangent_rotation_end);
+	for (int i=0; i < NUMBER_THREADS; i++)
+	{
+		//glThreads[i]->setThread((new Thread(*glThreads[startThread]->getThread())));
+	}
+
+  }
+*/
+
+  //Draw Axes
+  DrawAxes();
+
+  glThreads[truthThread]->updateThreadPoints();
+  Vector3d display_start_pos = glThreads[truthThread]->getStartPosition();
+
+
+  for(int i = 0; i < NUMBER_THREADS; i++) {
+    //Draw Thread
+		//colors are R, G, B, Opacity
+    if (!showThreads[i])
+        continue;
+		glColor4f (1.0, 1.0, 1.0, 0.9);
+
+		if (i == startThread)
+			glColor4f (0.8, 0.1, 0.1, 0.9);
+		else if (i == truthThread_aftermotion)
+			glColor4f (0.1, 0.8, 0.1, 0.9);
+    else if (i == truthThread)
+			glColor4f (0.1, 0.1, 0.8, 0.9);
+    
+		glThreads[i]->display_start_pos = display_start_pos;
+    glThreads[i]->updateThreadPoints();
+    glThreads[i]->DrawThread(true);
+    //glThreads[i]->DrawSpheresAtLinks();
     glThreads[i]->DrawAxes();
 
   }
@@ -512,6 +606,12 @@ void saveImages_params(int param_ind)
 	//saveImages_setLoc();
 
 //	saveImages_setDefaultColor();
+
+  showThreads[truthThread_aftermotion] = false;
+  showThreads[startThread] = false;
+  DrawStuff();
+  save_opengl_image(imbase);
+  showThreads[startThread] = true;
 	
 	while (!glThreads[startThread]->getThread()->minimize_energy(1000, MIN_MOVEMENT_VERTICES*1e-2, MAX_MOVEMENT_VERTICES, 1e-7))
 	{
@@ -543,6 +643,131 @@ void saveImages_params(int param_ind)
 
 
 }
+
+void saveImages_params_motion(int param_ind)
+{
+	char imbase[256];
+	sprintf(imbase, "%s%d_", IMG_SAVE_MOTION_OPENGL, param_ind);
+	image_ind = 0;
+
+	double grav = params_to_try[param_ind](2);
+	double bend = pow(2, params_to_try[param_ind](0));
+	double twist = bend*pow(2, params_to_try[param_ind](1));
+	glThreads[startThread]->getThread()->set_coeffs_normalized(bend, twist, grav);
+
+
+	//saveImages_setLoc();
+
+//	saveImages_setDefaultColor();
+
+  showThreads[truthThread_aftermotion] = true;
+  showThreads[startThread] = false;
+  DrawStuff();
+  save_opengl_image(imbase);
+  showThreads[startThread] = true;
+
+  vector<Thread*> intermediates;
+
+  glThreads[truthThread]->getThread()->match_start_and_end_constraints(*glThreads[truthThread_aftermotion]->getThread(), 15, INT_MAX, intermediates);
+  InitThread(NULL, NULL);
+	
+  for (int i=0; i < intermediates.size(); i++)
+  {
+    glThreads[startThread]->setThread(new Thread(*intermediates[i]));
+		DrawStuff();
+		save_opengl_image(imbase);
+	}
+
+
+	vector<Vector3d> points;
+	vector<double> twist_angles;
+	vector<Vector3d> points_after;
+	vector<double> twist_angles_after;
+
+	glThreads[truthThread_aftermotion]->getThread()->get_thread_data(points, twist_angles);
+	glThreads[startThread]->getThread()->get_thread_data(points_after, twist_angles_after);
+
+	double score = 0;
+	for (int j=0; j < points.size(); j++)
+	{
+		score += (points[j] - points_after[j]).norm();
+	}
+	score /= points.size();
+
+	std::cout << "params: " << bend << " " << twist << " " << grav << "\t\t score: " << score << std::endl;
+
+
+
+}
+
+void saveImages_params_allDiff()
+{
+	char imbase[256];
+	sprintf(imbase, "%s_", IMG_SAVE_ALLDIFF_OPENGL);
+	image_ind = 0;
+
+	double grav = 0.0001;
+	double bend = 1;
+	double twist = 2;
+	glThreads[startThread]->getThread()->set_coeffs_normalized(bend, twist, grav);
+	glThreads[startThread]->getThread()->minimize_energy();
+
+  glThreads[truthThread]->setThread(new Thread(*glThreads[startThread]->getThread()));
+  glThreads[truthThread_aftermotion]->setThread(new Thread(*glThreads[startThread]->getThread()));
+
+  glThreads[startThread]->getThread()->set_coeffs_normalized(1, 10, 0.0001);
+  glThreads[truthThread]->getThread()->set_coeffs_normalized(1, 100, 0.0001);
+  glThreads[truthThread_aftermotion]->getThread()->set_coeffs_normalized(1000, 1, 0.0001);
+
+  
+
+  showThreads[truthThread_aftermotion] = true;
+  showThreads[truthThread] = true;
+  showThreads[startThread] = true;
+  DrawStuff2();
+  save_opengl_image(imbase);
+  showThreads[startThread] = true;
+	
+  int iters_per = 10000;
+  while (true)
+	{
+      bool done = true;
+      done = done & glThreads[startThread]->getThread()->minimize_energy(iters_per, MIN_MOVEMENT_VERTICES*1e-2, MAX_MOVEMENT_VERTICES, 1e-7);
+      done = done & glThreads[truthThread]->getThread()->minimize_energy(iters_per, MIN_MOVEMENT_VERTICES*1e-2, MAX_MOVEMENT_VERTICES, 1e-7);
+      done = done & glThreads[truthThread_aftermotion]->getThread()->minimize_energy(iters_per, MIN_MOVEMENT_VERTICES*1e-2, MAX_MOVEMENT_VERTICES, 1e-7);
+		DrawStuff2();
+		save_opengl_image(imbase);
+
+    if (done)
+        break;
+	}
+
+	DrawStuff2();
+	save_opengl_image(imbase);
+
+
+	vector<Vector3d> points;
+	vector<double> twist_angles;
+	vector<Vector3d> points_after;
+	vector<double> twist_angles_after;
+
+	glThreads[truthThread]->getThread()->get_thread_data(points, twist_angles);
+	glThreads[startThread]->getThread()->get_thread_data(points_after, twist_angles_after);
+
+	double score = 0;
+	for (int j=0; j < points.size(); j++)
+	{
+		score += (points[j] - points_after[j]).norm();
+	}
+	score /= points.size();
+
+	std::cout << "params: " << bend << " " << twist << " " << grav << "\t\t score: " << score << std::endl;
+
+
+
+}
+
+
 
 void saveImages_slowMini(const char* base_im_name)
 {
@@ -588,7 +813,7 @@ void saveImages_setLoc()
 	rotate_frame[0] = -45.0;
 	rotate_frame[1] = -75.0;
 	*/
-  glTranslatef (-20.0,-10.0,-85.0);
+  glTranslatef (-20.0,-15.0,-85.0);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
 }
@@ -611,7 +836,12 @@ void InitThread(int argc, char* argv[])
     glThreads[i]->updateThreadPoints();
 		glThreads[i]->setThread(new Thread(traj_threads[traj_ind]));
 		glThreads[i]->updateThreadPoints();
+    showThreads[i] = true;
   }
+
+  glThreads[truthThread_aftermotion]->setThread(new Thread(traj_threads[traj_ind+2]));
+  glThreads[truthThread_aftermotion]->updateThreadPoints();
+
 
 
 

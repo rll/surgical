@@ -21,7 +21,7 @@
 #define IM_VALUE_CHECKED_FOR_BEGIN 200
 #define IM_VALUE_USED_IN_THREAD 127
 
-#define ENERGY_DISTANCE_CONST 1
+#define ENERGY_DISTANCE_CONST 0
 //#define INIT_LENGTH_THREAD_EACH_PIECE 86.9/24.0
 //#define MAX_LENGTH_THREAD 87.0   //in mm
 //#define TOTAL_LENGTH_INIT -1.0
@@ -167,6 +167,8 @@ public:
     map<int,location_and_distance> _cannyDistanceScores[NUMCAMS];
     map<int,vector<Line_Segment*>*> _cannySegments[NUMCAMS];
 
+    const int num_pieces ();
+
     /* Stereo on clicks */
     void initializeOnClicks();
     void clickOnPoints(Point2i* clickPoints);
@@ -247,6 +249,7 @@ public:
     vector< vector<Thread_Hypoth*> > _thread_hypoths;
     vector<Thread_Hypoth*>* best_thread_hypoths;
     int curr_hypoth_ind;
+
 
     bool hasInit;
     int stepNumber;

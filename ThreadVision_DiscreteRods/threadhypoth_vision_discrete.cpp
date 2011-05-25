@@ -98,8 +98,8 @@ void Thread_Hypoth::optimize_visual(double (Thread_Hypoth::*energyFunc)())
     double step_in_grad_dir_vertices = 1.0;
 
     /* Constants for accuracy */
-    const int num_opt_iters = 1000;
-    const double energy_error_for_convergence = 1e-5;
+    const int num_opt_iters = 3000;
+    const double energy_error_for_convergence = 1e-7;
 
     vector < Vector3d > vertex_gradients(_thread_pieces.size());
     for (int piece_ind = 0; piece_ind < vertex_gradients.size(); piece_ind++) {
@@ -345,7 +345,7 @@ void Thread_Hypoth::calculate_score()
     //else {
         //_score = - 1 * ( calculate_energy() - _previous_energy); //
     //}
-    _score = calculate_visual_energy();
+    _score = calculate_total_energy();
     cout << "Score: " << _score << endl;
 }
 
@@ -610,8 +610,8 @@ void suppress_hypoths(vector<Thread_Hypoth*>& hypoths,
     //const double dot_prod_thresh = 0.1;
     const double dot_prod_thresh = 0.2;
     const double position_norm_thresh = 2.0;
-    const double total_score_thresh = 4.0;
-    const double twist_error_thresh = 3.14 / 30; /* Change to consider length of hypoth */
+    const double total_score_thresh = 400.0;
+    const double twist_error_thresh = 3000.14 / 30; /* Change to consider length of hypoth */
     inds_to_keep.resize(0);
 
     sort(hypoths.begin(), hypoths.end(), compFunc);

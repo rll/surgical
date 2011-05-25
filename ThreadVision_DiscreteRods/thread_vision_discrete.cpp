@@ -364,11 +364,11 @@ void Thread_Vision::initThreadSearch()
     stepNumber = 1;
     cout << "Thread Search Init Finished" << endl;
 
-    for (int i = 0; i < 2; i++) {
-        generateNextSetOfHypoths();
-    }
+   // for (int i = 0; i < 2; i++) {
+    //    generateNextSetOfHypoths();
+   // }
 
-    cout << "First 5 steps finished" << endl;
+   // cout << "First 5 steps finished" << endl;
 
     hasInit = true;
 }
@@ -441,8 +441,12 @@ bool Thread_Vision::generateNextSetOfHypoths()
         bool (*compFunc)(Thread_Hypoth *a, Thread_Hypoth * b);
 
         add_possible_next_hypoths(current_thread_hypoths);
+        for (int i=0; i < current_thread_hypoths.size(); i++)
+        {
+            current_thread_hypoths[i]->calculate_score();
+        }
 
-        suppress_hypoths(current_thread_hypoths, lessThanThreadHypothVisualEnergy);
+        suppress_hypoths(current_thread_hypoths, lessthan_Thread_Hypoth);
 
         for (int hypoth_ind = 0; hypoth_ind < current_thread_hypoths.size(); hypoth_ind++)
         {
@@ -452,22 +456,24 @@ bool Thread_Vision::generateNextSetOfHypoths()
             cout << "Thread ID:" << currentHypoth->threadID << endl;
             cout << "Old Hypoth " << hypoth_ind << " Twist:" << currentHypoth->end_angle() << endl;
 
-            if (currentHypoth->num_pieces() < 5) {
+  //          if (currentHypoth->num_pieces() < 5) {
                 currentHypoth->optimize_visual();
 
-                currentHypoth->minimize_energy_twist_angles();
+                //currentHypoth->minimize_energy_twist_angles();
+                currentHypoth->set_all_angles_zero();
                 currentHypoth->calculate_score();
-            }
+ /*           }
             else {
                 vector<Thread_Hypoth*> intermediateHypoths;
                 currentHypoth->minimize_energy_and_save(intermediateHypoths);
                 double minEnergy = intermediateHypoths.back()->calculate_energy();
 
                 for (int i = 0; i < intermediateHypoths.size(); i++) {
-                    double energyDistanceFromMin = abs(intermediateHypoths[i]->calculate_energy() - minEnergy);
-                    double visualReprojectionError = intermediateHypoths[i]->calculate_visual_energy();
+                    //double energyDistanceFromMin = abs(intermediateHypoths[i]->calculate_energy() - minEnergy);
+                    //double visualReprojectionError = intermediateHypoths[i]->calculate_visual_energy();
 
-                    double totalScore = visualReprojectionError + ENERGY_DISTANCE_CONST * energyDistanceFromMin;
+                    //double totalScore = visualReprojectionError + ENERGY_DISTANCE_CONST * energyDistanceFromMin;
+                    double totalScore = intermediateHypoths[i]->calculate_total_energy();
 
                     intermediateHypoths[i]->_score = totalScore;
                 }
@@ -486,14 +492,14 @@ bool Thread_Vision::generateNextSetOfHypoths()
             double projectedTwist = currentHypoth->end_angle() / currentHypoth->num_pieces() * totalNumThreadPieces;
             cout << "Hypoth " << hypoth_ind << " Twist:" << currentHypoth->end_angle() << endl;
             cout << "Hypoth " << hypoth_ind << " Projected Twist:" << projectedTwist << endl;
-            cout << endl;
+            cout << endl;*/
         }
 
         //suppress_hypoths(current_thread_hypoths);
     }
 
     /* Ranks based on change in energy */
-    sort_hypoths(*best_thread_hypoths);
+    sort_hypoths(current_thread_hypoths);
     curr_hypoth_ind = 0;
 
     cout << "Finished step number: " << stepNumber << endl << endl;
@@ -1825,8 +1831,8 @@ const Vector3d& Thread_Vision::end_edge(void) {return best_thread_hypoths->at(cu
 
 
 
-
-
+const int Thread_Vision::num_pieces()
+{return _thread_hypoths[0].front()->num_pieces();}
 
 
 location_and_distance::~location_and_distance()

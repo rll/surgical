@@ -53,6 +53,7 @@ class Thread
     void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles);
     void get_thread_data(vector<Vector3d>& points, vector<Matrix3d>& material_frames);
     void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<Matrix3d>& material_frames);
+    void set_all_angles_zero();
 
     //energy minimization
     //
@@ -68,6 +69,7 @@ class Thread
     void one_step_project(double step_size = 0.1, bool normalize_gradient = true);
     double one_step_grad_change(double step_size);
     void match_start_and_end_constraints(Thread& to_match, int num_steps, int num_steps_break = INT_MAX);
+    void match_start_and_end_constraints(Thread& to_match, int num_steps, int num_steps_break, vector<Thread*>& intermediates);
 
 
     //setting end constraints

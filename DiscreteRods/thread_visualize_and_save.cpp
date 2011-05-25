@@ -123,7 +123,7 @@ GLfloat lightThreeColor[] = {0.99, 0.99, 0.99, 1.0};
 GLfloat lightFourPosition[] = {-140.0, 0.0, -200.0, 0.0};
 GLfloat lightFourColor[] = {0.99, 0.99, 0.99, 1.0};
 
-
+/*
 void applyControl(Thread* start, const VectorXd& u, VectorXd* res) {
   int N = glThreads[startThread]->getThread()->num_pieces();
   res->setZero(3*N);
@@ -151,6 +151,7 @@ void applyControl(Thread* start, const VectorXd& u, VectorXd* res) {
 
   start->toVector(res);
 }
+*/
 
 void computeDifference(Thread* a, Thread* b, VectorXd* res) {
   VectorXd avec;

@@ -1,4 +1,5 @@
 #include "glThread_stripe.h"
+#include "text3d.h"
 
 GLThread::GLThread() {
 /*

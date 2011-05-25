@@ -19,7 +19,8 @@
 #include <math.h>
 #include "../DiscreteRods/thread_discrete.h"
 #include "../DiscreteRods/trajectory_reader.h"
-#include "../DiscreteRods/glThread.h"
+#include "../DiscreteRods/trajectory_recorder.h"
+#include "../DiscreteRods/glThread_stripe.h"
 #include "thread_vision_discrete.h"
 
 
@@ -60,12 +61,21 @@ thread_type _thread_type = black;
 
 
 
+
 #define IMG_SAVE_BASE "saved_results/sutureset_single/"
+#define IMG_SAVE_BASE_EACH "saved_results/sutureset_single/each_"
+#define IMG_SAVE_BASE_HYPOTH "saved_results/sutureset_single/hypoth_"
 #define IMG_SAVE_BASE_BOTHRES "saved_results/sutureset_single/both_"
 #define IMG_SAVE_BASE_VIS "saved_results/sutureset_single/visonly_"
 #define POINTS_ERR_SAVE_BASE "saved_results/sutureset_single/points_"
 
 #define IMG_SAVE_OPENGL "saved_results/sutureset_single/opengl_"
+#define IMG_SAVE_OPENGL_EACH "saved_results/sutureset_single/each_opengl_"
+
+#define IMG_SAVE_OPENGL_HYPOTH "saved_results/sutureset_single/hypoth_opengl_"
+#define IMG_SAVE_OPENGL_HYPOTH "saved_results/sutureset_single/hypoth_opengl_"
+
+#define HYPOTH_TRAJ_BASE_NAME "saved_results/sutureset_single/hypoths"
 
 
 
@@ -90,7 +100,9 @@ void DrawAxes();
 void InitThread(int argc, char* argv[]);
 void updateIms(cv::Point3f& start_pt, Vector3d& start_tan);;
 void findThreadInIms();
+void findThreadInIms_eachPiece();
 void showThread(Thread *aThread, int type = optimize_thread);
+void showThread_Hypoths(Thread *aThread, int type = optimize_thread);
 void addThreadDebugInfo();
 void save_opengl_image();
 
@@ -124,11 +136,13 @@ int curr_im_ind = 1;
 Thread_Vision thread_vision(IMAGES_TO_READ_BASE);
 bool thread_vision_searched = false;
 char image_save_base[256];
+char image_save_base_each[256];
 char image_save_base_both[256];
 char image_save_base_vis[256];
 char image_save_base_opengl[256];;
+char image_save_base_opengl_each[256];;
 
-int thread_ind = 0;
+int thread_ind = 25;
 
 
 // double radii[NUM_PTS];
@@ -151,7 +165,7 @@ GLfloat lightThreeColor[] = {0.99, 0.99, 0.99, 1.0};
 GLfloat lightFourPosition[] = {-140.0, 0.0, -200.0, 0.0};
 GLfloat lightFourColor[] = {0.99, 0.99, 0.99, 1.0};
 
-
+/*
 void applyControl(Thread* start, const VectorXd& u, VectorXd* res) {
   int N = glThreads[startThread]->getThread()->num_pieces();
   res->setZero(3*N);
@@ -179,6 +193,7 @@ void applyControl(Thread* start, const VectorXd& u, VectorXd* res) {
 
   start->toVector(res);
 }
+*/
 
 void computeDifference(Thread* a, Thread* b, VectorXd* res) {
   VectorXd avec;
@@ -314,7 +329,7 @@ void processNormalKeys(unsigned char key, int x, int y)
     std::cout << "displaying thread " << thread_ind  << std::endl;
   } else if (key == 'v') {
     //updateIms();
-    findThreadInIms();
+    findThreadInIms_eachPiece();
     //if (!TRY_ALL)
       glutPostRedisplay();
   } else if (key == 27) {
@@ -410,7 +425,7 @@ void InitStuff (void)
   glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   //gleSetJoinStyle (TUBE_NORM_PATH_EDGE | TUBE_JN_ANGLE );
   rotate_frame[0] = 30.0;
-  rotate_frame[1] = -75.0;
+  rotate_frame[1] = -60.0;
 
   sphereList = glGenLists(1);
   glNewList(sphereList, GL_COMPILE);
@@ -427,7 +442,7 @@ void DrawStuff (void)
   glPushMatrix ();
 
   /* set up some matrices so that the object spins with the mouse */
-  glTranslatef (0.0,0.0,-120.0);
+  glTranslatef (-15.0,-15.0,-95.0);
 //  glRotatef (180.0, 0.0, 1.0, 0.0);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
@@ -440,7 +455,7 @@ void DrawStuff (void)
       */
 
   //Draw Axes
-  DrawAxes();
+  //DrawAxes();
   addThreadDebugInfo();
 
   glThreads[startThread]->updateThreadPoints();
@@ -461,23 +476,27 @@ void DrawStuff (void)
     } else {
       glColor4f (0.5, 0.5, 0.5, 1.0);
     }
+
+
+    glColor4f (0.8, 0.5, 0.0, 1.0);
     if (i != startThread)
     {
       glThreads[i]->display_start_pos = display_start_pos;
-      glThreads[i]->DrawThread();
+      glThreads[i]->DrawThread(true);
+      glThreads[i]->DrawSpheresAtLinks();
     }
     if (i != just_vis_error_thread)
     {
       //glThreads[i]->DrawAxes();
     }
   }
-
+/*
   if (thread_vision_searched)
   {
     thread_vision.display();
     save_opengl_image();
   }
-
+*/
 
   glPopMatrix ();
   glutSwapBuffers ();
@@ -496,16 +515,22 @@ void InitThread(int argc, char* argv[])
     sprintf(image_save_base_both, "%s%s", IMG_SAVE_BASE_BOTHRES, "nylon");
     sprintf(image_save_base_vis, "%s%s", IMG_SAVE_BASE_VIS, "nylon");
     sprintf(image_save_base_opengl, "%s%s", IMG_SAVE_OPENGL, "nylon");
+    sprintf(image_save_base_each, "%s%s", IMG_SAVE_BASE_EACH, "nylon");
+    sprintf(image_save_base_opengl_each, "%s%s", IMG_SAVE_OPENGL_EACH, "nylon");
   } else if (_thread_type == purple) {
     sprintf(image_save_base, "%s%s", IMG_SAVE_BASE, "purple");
     sprintf(image_save_base_both, "%s%s", IMG_SAVE_BASE_BOTHRES, "purple");
     sprintf(image_save_base_vis, "%s%s", IMG_SAVE_BASE_VIS, "purple");
     sprintf(image_save_base_opengl, "%s%s", IMG_SAVE_OPENGL, "purple");
+    sprintf(image_save_base_each, "%s%s", IMG_SAVE_BASE_EACH, "purple");
+    sprintf(image_save_base_opengl_each, "%s%s", IMG_SAVE_OPENGL_EACH, "purple");
   } else if (_thread_type == black) {
     sprintf(image_save_base, "%s%s", IMG_SAVE_BASE, "black");
     sprintf(image_save_base_both, "%s%s", IMG_SAVE_BASE_BOTHRES, "black");
     sprintf(image_save_base_vis, "%s%s", IMG_SAVE_BASE_VIS, "black");
     sprintf(image_save_base_opengl, "%s%s", IMG_SAVE_OPENGL, "black");
+    sprintf(image_save_base_each, "%s%s", IMG_SAVE_BASE_EACH, "black");
+    sprintf(image_save_base_opengl_each, "%s%s", IMG_SAVE_OPENGL_EACH, "black");
   }
 
 
@@ -701,34 +726,126 @@ void findThreadInIms()
   if (thread_vision.runThreadSearch())
   {
 
+  thread_vision.updateCanny();
     std::cout << "Found thread full opt" << std::endl;
     showThread(thread_vision.curr_thread());
   }
 }
 
+void findThreadInIms_eachPiece()
+{
+  thread_vision_searched = true;
+
+  thread_vision.set_max_length(MAX_LENGTH_VIS);
+  thread_vision.clear_display();
+
+  updateIms(_start_pt, _start_tan);
+  thread_vision.addStartData(_start_pt, _start_tan);
+
+  thread_vision.initThreadSearch();
+  showThread(thread_vision.curr_thread());
+
+
+  while (!thread_vision.isDone())
+  {
+  thread_vision.clear_display();
+  updateIms(_start_pt, _start_tan);
+      thread_vision.generateNextSetOfHypoths();
+      showThread(thread_vision.curr_thread());
+  }
+
+    showThread(thread_vision.curr_thread());
+
+    char hypoth_traj_name[256];
+    sprintf(hypoth_traj_name, "%s%d", HYPOTH_TRAJ_BASE_NAME,thread_ind);
+    Trajectory_Recorder traj_recorder(hypoth_traj_name);
+    for (int i=0; i < thread_vision.best_thread_hypoths->size(); i++)
+    {
+  thread_vision.clear_display();
+  updateIms(_start_pt, _start_tan);
+        thread_vision.flip_to_hypoth(i);
+        showThread_Hypoths(thread_vision.curr_thread());
+        traj_recorder.add_thread_to_list(*thread_vision.curr_thread());
+    }
+    traj_recorder.write_threads_to_file();
+}
+
+
+
 void showThread(Thread *aThread, int type)
 {
     /* Will make a copy of the thread */
     glThreads[type]->setThread(new Thread(*aThread));
+    glThreads[type]->getThread()->set_all_angles_zero();
 
-    if (thread_vision.isDone()) {
+    //if (thread_vision.isDone()) {
         /* May move debug images to when 5 thread pieces have been added */
         thread_vision.addThreadPointsToDebugImages(Scalar(200,0,0));
         thread_vision.add_debug_points_to_ims();
 
+
+        glutPostRedisplay();
+        DrawStuff();
         glutPostRedisplay();
 
-        thread_vision.saveImages(image_save_base, thread_ind+1);
+        //if (!thread_vision.isDone())
+        if (true)
+        {
+            sprintf(image_save_base_each, "%s%s_%d_", IMG_SAVE_BASE_EACH, "black", thread_vision.num_pieces());
+            sprintf(image_save_base_opengl, "%s%s_%d", IMG_SAVE_OPENGL_EACH, "black", thread_vision.num_pieces());
+
+            
+            thread_vision.saveImages(image_save_base_each, thread_ind+1);
+            save_opengl_image();
+        } else {
+
+
+            sprintf(image_save_base_opengl, "%s%s", IMG_SAVE_OPENGL_EACH, "black");
+
+            thread_vision.saveImages(image_save_base, thread_ind+1);
+            save_opengl_image();
+        }
+
+            vector<Vector3d> points_im;
+            vector<double> angle_im;
+
+            thread_vision.get_thread_data(points_im, angle_im);
+    //}
+
+}
+
+void showThread_Hypoths(Thread *aThread, int type)
+{
+    /* Will make a copy of the thread */
+    glThreads[type]->setThread(new Thread(*aThread));
+    glThreads[type]->getThread()->set_all_angles_zero();
+
+    //if (thread_vision.isDone()) {
+        /* May move debug images to when 5 thread pieces have been added */
+        //thread_vision.addThreadPointsToDebugImages(Scalar(200,0,0));
+        thread_vision.add_debug_points_to_ims();
+
+
+        glutPostRedisplay();
+        DrawStuff();
+        glutPostRedisplay();
+
+
+        sprintf(image_save_base_each, "%s%s_%d_", IMG_SAVE_BASE_HYPOTH, "black", thread_vision.curr_hypoth_ind);
+        sprintf(image_save_base_opengl, "%s%s_%d", IMG_SAVE_OPENGL_HYPOTH, "black", thread_vision.curr_hypoth_ind);
+
+
+        thread_vision.saveImages(image_save_base_each, thread_ind+1);
         save_opengl_image();
 
         vector<Vector3d> points_im;
         vector<double> angle_im;
 
         thread_vision.get_thread_data(points_im, angle_im);
-    }
-
+        //}
 
 }
+
 
 
 
@@ -782,6 +899,7 @@ void save_opengl_image()
   sprintf(im_name, "%s-%d.png", image_save_base_opengl, thread_ind+1);
   imwrite(im_name, img);
   waitKey(1);
+
   //sleep(0);
 
 

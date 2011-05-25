@@ -15,14 +15,14 @@ FOPENMP = -fopenmp
 CC = g++ $(OPT_COMP) $(COMPILEFLAG)
 LD = g++ $(OPT_COMP) $(LDFLAG)
 # DEBUG = -ggdb
-DEBUG = -ggdb -O0
+DEBUG = -ggdb
 PROFILER =
 ISOTROPIC=-DISOTROPIC
 FAKEIMS= -DFAKEIMS
 
 #target : testCanny testCapture example_capture_3cam calibrate_robots test_point_distances PositionsOnRequest PositionsOnRequest2 threadStereo
 
-target: threadStereo_continuousSet_noTruth threadStereo_fake_continuousSet_noTruth
+target: threadStereo_manyIms
 
 threadStereo: threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o CannyWriter.o CannyReader.o
 	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o threadStereo threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o CannyWriter.o CannyReader.o $(LIBS) $(PROFILER)
@@ -39,8 +39,8 @@ threadStereo_fake: threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o
 estimate_twists: estimate_twists.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o
 	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o estimate_twists estimate_twists.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o $(LIBS) $(PROFILER)
 
-threadStereo_manyIms: threadStereo_manyIms_noTruth.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o
-	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o threadStereo_manyIms threadStereo_manyIms_noTruth.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o $(LIBS) $(PROFILER)
+threadStereo_manyIms: threadStereo_manyIms_noTruth.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread_stripe.o
+	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o threadStereo_manyIms threadStereo_manyIms_noTruth.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread_stripe.o $(LIBS) $(PROFILER)
 
 
 ################################################
@@ -97,6 +97,9 @@ trajectory_reader.o: $(THREAD_DIR)trajectory_reader.cpp
 
 glThread.o : $(THREAD_DIR)glThread.cpp $(THREAD_DIR)glThread.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c $(THREAD_DIR)glThread.cpp $(PROFILER)
+
+glThread_stripe.o : $(THREAD_DIR)glThread_stripe.cpp $(THREAD_DIR)glThread_stripe.h
+	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c $(THREAD_DIR)glThread_stripe.cpp $(PROFILER)
 
 
 #Thread Vision
