@@ -40,6 +40,8 @@ void initThread_closedPolygon();
 enum key_code {NONE, MOVEPOS, MOVETAN, ROTATETAN, MOVEPOSSTART, MOVETANSTART, ROTATETANSTART};
 
 
+
+
 float lastx_L=0;
 float lasty_L=0;
 float lastx_R=0;
@@ -208,7 +210,7 @@ void processMouse(int button, int state, int x, int y)
       lasty_L = y;
     }
     if (button == GLUT_RIGHT_BUTTON)
-    {
+   {
       lastx_R = x;
       lasty_R = y;
     }
@@ -254,7 +256,19 @@ void processNormalKeys(unsigned char key, int x, int y)
   } else if (key == 27)
   {
     exit(0);
+  } else if(key == 'd') { //toggle stepping to allow debugging
+       thread->stepping = !thread->stepping;
+       cout << "Debugging is now set to: " << thread->stepping << endl;
+  } else if(key == 'n') {
+        cout << "Stepping " << endl;
+        thread->minimize_energy();
+        DrawStuff();
+  } else if(key == 'l') {
+        cout << "Stepping though project length constraint" << endl;
+        thread->project_length_constraint();
+        DrawStuff();
   }
+      
 
   lastx_R = x;
   lasty_R = y;
@@ -359,6 +373,7 @@ void init_contour (void)
 int main (int argc, char * argv[])
 {
 
+  
   srand(time(NULL));
   srand((unsigned int)time((time_t *)NULL));
 
@@ -426,6 +441,8 @@ int main (int argc, char * argv[])
 	InitStuff ();
 
   initThread();
+  thread->stepping = false;
+  thread->step = false;
 	thread->minimize_energy();
   updateThreadPoints();
   thread_saved = new Thread(*thread);
@@ -615,9 +632,10 @@ void DrawStuff (void)
     //thread->set_constraints(positions[0], rotations[0], positions[1], rotations[1]);
     thread->apply_motion_nearEnds(motion_to_apply);
     //thread->set_end_constraint(positions[1], rotations[1]);
-
+    if(!thread->stepping) {
     thread->minimize_energy();
-    updateThreadPoints();
+    }
+
 
     //std::cout <<"ACTUAL END:\n" << thread->end_rot() << std::endl;
 
@@ -626,7 +644,7 @@ void DrawStuff (void)
 
 
   }
-
+    updateThreadPoints();
 
   //Draw Axes
 

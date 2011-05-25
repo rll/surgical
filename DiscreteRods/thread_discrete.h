@@ -7,9 +7,10 @@
 #include "float.h"
 #include "threadutils_discrete.h"
 #include "threadpiece_discrete.h"
-
-
-
+#include <Eigen/Cholesky>
+#include <Eigen/LU>
+#include <Eigen/SVD>
+#include <Eigen/Geometry>
 
 #ifdef ISOTROPIC 
     #define MAX_MOVEMENT_VERTICES 0.1
@@ -46,6 +47,7 @@
 
 using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN
+using namespace Eigen;
 
 class Thread
 {
@@ -207,10 +209,21 @@ class Thread
 
     double _rest_length;
 
+    //intersection
+    double intersection(int i, int j, double radius); //do these two pieces intersect?
+    int check_for_intersection(double radius, vector<double> *intersections); //how many intersecting pairs?
+    void fix_intersections();
+
+    //used for step through mode while debugging   
+     bool stepping;
+     bool step;    
+
+
   protected:
     vector<ThreadPiece*> _thread_pieces;
     vector<ThreadPiece*> _thread_pieces_backup;
     vector<double> _angle_twist_backup;
+
 
 
     void add_momentum_to_gradient(vector<Vector3d>& vertex_gradients, vector<Vector3d>& new_gradients, double last_step_size);

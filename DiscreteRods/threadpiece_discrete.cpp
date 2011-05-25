@@ -135,7 +135,6 @@ void ThreadPiece::set_next(ThreadPiece* next)
 }
 
 
-
 void ThreadPiece::set_bend_coeff(double bend_coeff)
 {
 	BEND_COEFF = bend_coeff;
@@ -567,9 +566,7 @@ void ThreadPiece::update_bishop_frame()
     set_rotation(ang_to_rot_old, toRotAround);
     _bishop_frame = rot*_prev_piece->_bishop_frame;
 
-    
     //this never seemed to happen, so comment for efficiency?
-    
     double old_err = (_bishop_frame.col(0) - _edge.normalized()).norm();
     if ( old_err > 1e-5)
     {
@@ -586,7 +583,6 @@ void ThreadPiece::update_bishop_frame()
         set_rotation(ang_to_rot_old, toRotAround);
         _bishop_frame = rot*_prev_piece->_bishop_frame;
       }
-
     }
     
 

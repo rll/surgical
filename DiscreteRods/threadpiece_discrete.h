@@ -56,6 +56,7 @@ class ThreadPiece
     //Geometry
     void initializeFrames();
     bool is_material_frame_consistent();
+    void set_total_length_and_first_last();
 
     void updateFrames();
 		void updateFrames_all(); //update frames for many vertex position changes
@@ -118,12 +119,6 @@ class ThreadPiece
     Matrix3d _bishop_frame;
 
     Thread* _my_thread;
-
-    /*
-    double _total_length;
-    ThreadPiece* _first_piece;
-    ThreadPiece* _last_piece;
-    */
 
 
     void calculateBinormal(const Vector3d& edge_prev, const Vector3d& edge_after, Vector3d& binormal);
