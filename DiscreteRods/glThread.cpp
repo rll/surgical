@@ -157,6 +157,8 @@ void GLThread::DrawThread() {
                     0x0,
                     twist_cpy);
 
+
+
 /*
 #ifdef ISOTROPIC
     _thread->set_coeffs_normalized(to_set_bend, to_set_twist, to_set_grav);

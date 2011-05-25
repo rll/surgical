@@ -1,4 +1,8 @@
 #include "thread_vision_discrete.h"
+//#include "CannyWriter.h"
+//#include "CannyReader.h"
+//#include <json/json.h>
+#define _USE_MATH_DEFINES
 
 Thread_Vision::Thread_Vision()
 {
@@ -12,7 +16,7 @@ Thread_Vision::Thread_Vision()
         650,  // gain
         "optimized", // optimized or measured
         107109, // camera uid
-        "./stereo_test/stereo_test1-");
+        (string(SAVED_IMAGE_BASE) + "1-").c_str());
     //IM_DIR_1); 
     _captures[0]->setExposure(5000);
     //_captures[0]->setExposure(11000);
@@ -23,7 +27,7 @@ Thread_Vision::Thread_Vision()
         650,  // gain
         "optimized", // optimized or measured
         107110, // camera uid
-        "./stereo_test/stereo_test2-");
+        (string(SAVED_IMAGE_BASE) + "2-").c_str());
     //        IM_DIR_2); 
     _captures[1]->setExposure(3000);
     //_captures[1]->setExposure(7500);
@@ -33,7 +37,7 @@ Thread_Vision::Thread_Vision()
         650,  // gain
         "optimized", // optimized or measured
         107111, // camera uid
-        "./stereo_test/stereo_test3-");
+        (string(SAVED_IMAGE_BASE) + "3-").c_str());
     //          IM_DIR_3); 
     _captures[2]->setExposure(3500);
 
@@ -43,7 +47,7 @@ Thread_Vision::Thread_Vision()
         650,  // gain
         "optimized", // optimized or measured
         107109, // camera uid
-        "/home/pabbeel/rll/code/trunk/surgical/vision/captures/suturenylon1-");
+        "../vision/captures/suturenylon1-");
     //IM_DIR_1); 
     _captures[0]->setExposure(5000);
     //_captures[0]->setExposure(11000);
@@ -54,7 +58,7 @@ Thread_Vision::Thread_Vision()
         650,  // gain
         "optimized", // optimized or measured
         107110, // camera uid
-        "/home/pabbeel/rll/code/trunk/surgical/vision/captures/suturenylon2-");
+        "../vision/captures/suturenylon2-");
     //        IM_DIR_2); 
     _captures[1]->setExposure(3000);
     //_captures[1]->setExposure(7500);
@@ -64,7 +68,7 @@ Thread_Vision::Thread_Vision()
         650,  // gain
         "optimized", // optimized or measured
         107111, // camera uid
-        "/home/pabbeel/rll/code/trunk/surgical/vision/captures/suturenylon3-");
+        "../vision/captures/suturenylon3-");
     //          IM_DIR_3); 
     _captures[2]->setExposure(3500);
 
@@ -133,14 +137,6 @@ Thread_Vision::Thread_Vision()
 
 #endif
 
-
-    //_captures[2]->setExposure(8000);
-
-    /*namedWindow(_names[0], CV_WINDOW_AUTOSIZE);
-    namedWindow(_names[1], CV_WINDOW_AUTOSIZE);
-    namedWindow(_names[2], CV_WINDOW_AUTOSIZE);
-    */
-
     char names_char[NUMCAMS][256];
     char canny_char[NUMCAMS][256];
     for (int camNum=0; camNum < NUMCAMS; camNum++)
@@ -155,15 +151,9 @@ Thread_Vision::Thread_Vision()
 
 
 
-    _captures[0]->init("./calib_params/");
-    _captures[1]->init("./calib_params/");
-    _captures[2]->init("./calib_params/");
-    /*
-    _captures[0]->init("./calib_params/2010_9_15/");
-    _captures[1]->init("./calib_params/2010_9_15/");
-    _captures[2]->init("./calib_params/2010_9_15/");
-    */
-
+    _captures[0]->init("./calib_params/backup_2011_4_20/");
+    _captures[1]->init("./calib_params/backup_2011_4_20/");
+    _captures[2]->init("./calib_params/backup_2011_4_20/");
     cvWaitKey(1000);							// segfaulted without this
 
 
@@ -283,14 +273,14 @@ Thread_Vision::Thread_Vision(char* im_base)
     }
 
 
-/*
+
 _captures[0]->init("./calib_params/");
 _captures[1]->init("./calib_params/");
 _captures[2]->init("./calib_params/");
-*/
-_captures[0]->init("./calib_params/2010_9_15/");
-_captures[1]->init("./calib_params/2010_9_15/");
-_captures[2]->init("./calib_params/2010_9_15/");
+
+//_captures[0]->init("./calib_params/2010_9_15/");
+//_captures[1]->init("./calib_params/2010_9_15/");
+//_captures[2]->init("./calib_params/2010_9_15/");
 
 cvWaitKey(1000);							// segfaulted without this
 
@@ -310,8 +300,8 @@ _cams = new ThreeCam(_captures);
 float width[] = {1.50, 1.50, 1.50};
 float edge_sigma[] = {0.50, 0.50, 0.50};
 float blur_sigma[] = {1.5, 1.5, 1.5};
-double thresh1[] = {4.0, 4.0, 4.0};
-double thresh2[] = {80.0, 80.0, 80.0};
+double thresh1[] = {2.0, 2.0, 2.0};
+double thresh2[] = {15.0, 15.0, 15.0};
 
 _cams->initializeCanny(width, edge_sigma, blur_sigma, thresh1, thresh2);
 
@@ -341,26 +331,51 @@ Thread_Vision::~Thread_Vision()
         delete _captures[i];
     }
 
-    for (int i = 0; i < _thread_hypoths.size(); i++){
-        vector<Thread_Hypoth*> current_thread_hypoths = _thread_hypoths[i];
-        for (int hypoth_ind=0; hypoth_ind < current_thread_hypoths.size(); hypoth_ind++)
-        {
-            delete current_thread_hypoths[hypoth_ind];
-        }
-        _thread_hypoths.clear();
-    }
+    clear_thread_hypoths();
 }
 
 
-
-bool Thread_Vision::optimizeThread(bool visualOnly)
+void Thread_Vision::clear_thread_hypoths()
 {
-    std::cout << "initializing search from ims" << std::endl;
+  for (int i = 0; i < _thread_hypoths.size(); i++){
+    vector<Thread_Hypoth*> current_thread_hypoths = _thread_hypoths[i];
+    for (int hypoth_ind=0; hypoth_ind < current_thread_hypoths.size(); hypoth_ind++)
+    {
+      delete current_thread_hypoths[hypoth_ind];
+    }
+    _thread_hypoths.clear();
+  }
 
-    initializeThreadSearch();
-    std::cout << "searching from ims" << std::endl;
+}
 
-    //Init Start Hypoths
+
+void Thread_Vision::initThreadSearch()
+{
+  //incase we ran this before and updated Images
+  clear_thread_hypoths();
+
+    updateCanny();
+
+    findStartPoints();
+
+    /* Depends on findStartPoints() */
+    best_thread_hypoths = &_thread_hypoths[0];
+
+    stepNumber = 1;
+    cout << "Thread Search Init Finished" << endl;
+
+   // for (int i = 0; i < 2; i++) {
+    //    generateNextSetOfHypoths();
+   // }
+
+   // cout << "First 5 steps finished" << endl;
+
+    hasInit = true;
+}
+
+bool Thread_Vision::findStartPoints()
+{
+    cout << "Finding start points" << endl;
     for (int i = 0; i < _start_data.size(); i++){
         start_data initial_pt_and_tan = _start_data[i];
         vector<corresponding_pts> start_pts;
@@ -368,96 +383,267 @@ bool Thread_Vision::optimizeThread(bool visualOnly)
 
         if (findNextStartPoint(start_pts, initial_pt_and_tan.pt))
         {
-            std::cout << "found start" << std::endl;
+            std::cout << "Found start" << std::endl;
             if (findTangent(start_pts[0], initial_pt_and_tan.tangent, start_tangents))
             {
-                std::cout << "found tan" << std::endl;
+                std::cout << "Found tan" << std::endl;
 
                 _thread_hypoths.resize(_thread_hypoths.size() + 1);
-                //Check if this doesn't duplicate
-                vector<Thread_Hypoth*>& current_thread_hypoths = _thread_hypoths.back();
-                int ij = start_tangents.size();
-                current_thread_hypoths.resize(start_tangents.size());
 
-                for (int hypoth_ind = 0; hypoth_ind < start_tangents.size(); hypoth_ind++)
-                {
-                    current_thread_hypoths[hypoth_ind] = new Thread_Hypoth(this);
-                    current_thread_hypoths[hypoth_ind]->add_first_threadpieces(start_pts[0], start_tangents[hypoth_ind]);
-                }
-                //processHypothesesFromInit(start_pts[0], start_tangents, visualOnly);
+                vector<Thread_Hypoth*>& current_thread_hypoths = _thread_hypoths.back();
+                current_thread_hypoths.clear();
+
+                //for (int hypoth_ind = 0; hypoth_ind < start_tangents.size(); hypoth_ind++)
+                //{
+                    /* Generate possible twists from -2pi/maxlength to 2pi/maxlength */
+                    int twistIncrements = 20;
+                    for (int j = 0; j < twistIncrements; j++) {
+                        int numThreadPieces = _max_length_thread / _rest_length;
+                        double baseTwist = 2.0 * M_PI / numThreadPieces;
+                        double startTwist = -1 * baseTwist + j * (baseTwist * 2 / twistIncrements);
+                        cout << startTwist << " ";
+                        Thread_Hypoth *newThreadHypoth = new Thread_Hypoth(this);
+                        newThreadHypoth->add_first_threadpieces(start_pts[0], start_tangents[0], startTwist);
+                        current_thread_hypoths.push_back(newThreadHypoth);
+
+                    }
+                //}
             }
         }
     }
-
-    //Run Algorithm
-    processHypothesesFromInit();
-
-    std::cout << "DONNNNNNNNNE" << std::endl;
-
-    return (_thread_hypoths.size() > 0);
 }
 
 
 void Thread_Vision::get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles)
 {
-    //_thread_hypoths[curr_hypoth_ind]->get_thread_data(points, twist_angles);
+    best_thread_hypoths->at(curr_hypoth_ind)->get_thread_data(points, twist_angles);
 }
 
 void Thread_Vision::get_thread_data(vector<Vector3d>& points, vector<Matrix3d>& material_frames)
 {
-    //_thread_hypoths[curr_hypoth_ind]->get_thread_data(points, material_frames);
+    best_thread_hypoths->at(curr_hypoth_ind)->get_thread_data(points, material_frames);
 }
 
 void Thread_Vision::get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<Matrix3d>& material_frames)
 {
-    //_thread_hypoths[curr_hypoth_ind]->get_thread_data(points, twist_angles, material_frames);
+    best_thread_hypoths->at(curr_hypoth_ind)->get_thread_data(points, twist_angles, material_frames);
 }
 
-
-bool Thread_Vision::processHypothesesFromInit()
+bool Thread_Vision::generateNextSetOfHypoths()
 {
-    bool running = true;
-    while(running){
-        running = false;
-        for (int i = 0; i < _thread_hypoths.size(); i++){
-            vector<Thread_Hypoth*> current_thread_hypoths = _thread_hypoths[i];
-            Thread_Hypoth *test = current_thread_hypoths.front();
+    cout << "Begin step number: " << stepNumber << endl;
 
-            if (current_thread_hypoths.front()->num_pieces()*_rest_length < _max_length_thread)
-            {
-                running = true;
+    vector<Thread_Hypoth*> &current_thread_hypoths = _thread_hypoths[0];
 
-                suppress_hypoths(current_thread_hypoths);
-                add_possible_next_hypoths(current_thread_hypoths);
-                suppress_hypoths(current_thread_hypoths);
+    if (!isDone())
+    {
+        bool shouldRestore;
+        bool (*compFunc)(Thread_Hypoth *a, Thread_Hypoth * b);
 
-                for (int hypoth_ind=0; hypoth_ind < current_thread_hypoths.size(); hypoth_ind++)
-                {
-                    current_thread_hypoths[hypoth_ind]->optimize_visual();
-                    current_thread_hypoths[hypoth_ind]->minimize_energy_twist_angles();
-                    current_thread_hypoths[hypoth_ind]->calculate_score();
+        add_possible_next_hypoths(current_thread_hypoths);
+        for (int i=0; i < current_thread_hypoths.size(); i++)
+        {
+            current_thread_hypoths[i]->calculate_score();
+        }
+
+        suppress_hypoths(current_thread_hypoths, lessthan_Thread_Hypoth);
+
+        for (int hypoth_ind = 0; hypoth_ind < current_thread_hypoths.size(); hypoth_ind++)
+        {
+            /* Run the optimization algorithm, using visual distance and thread energy */
+            Thread_Hypoth *currentHypoth = current_thread_hypoths[hypoth_ind];
+
+            cout << "Thread ID:" << currentHypoth->threadID << endl;
+            cout << "Old Hypoth " << hypoth_ind << " Twist:" << currentHypoth->end_angle() << endl;
+
+  //          if (currentHypoth->num_pieces() < 5) {
+                currentHypoth->optimize_visual();
+
+                //currentHypoth->minimize_energy_twist_angles();
+                currentHypoth->set_all_angles_zero();
+                currentHypoth->calculate_score();
+ /*           }
+            else {
+                vector<Thread_Hypoth*> intermediateHypoths;
+                currentHypoth->minimize_energy_and_save(intermediateHypoths);
+                double minEnergy = intermediateHypoths.back()->calculate_energy();
+
+                for (int i = 0; i < intermediateHypoths.size(); i++) {
+                    //double energyDistanceFromMin = abs(intermediateHypoths[i]->calculate_energy() - minEnergy);
+                    //double visualReprojectionError = intermediateHypoths[i]->calculate_visual_energy();
+
+                    //double totalScore = visualReprojectionError + ENERGY_DISTANCE_CONST * energyDistanceFromMin;
+                    double totalScore = intermediateHypoths[i]->calculate_total_energy();
+
+                    intermediateHypoths[i]->_score = totalScore;
+                }
+
+                partial_sort (intermediateHypoths.begin(), intermediateHypoths.begin()+1, intermediateHypoths.end(), lessthan_Thread_Hypoth);
+
+                currentHypoth->restore_thread_pieces_and_resize(intermediateHypoths.front()->_thread_pieces);
+                currentHypoth->_score = intermediateHypoths.front()->_score;
+
+                for (int i = 0; i < intermediateHypoths.size(); i++) {
+                    delete intermediateHypoths[i];
                 }
             }
+
+            int totalNumThreadPieces = _max_length_thread / _rest_length;
+            double projectedTwist = currentHypoth->end_angle() / currentHypoth->num_pieces() * totalNumThreadPieces;
+            cout << "Hypoth " << hypoth_ind << " Twist:" << currentHypoth->end_angle() << endl;
+            cout << "Hypoth " << hypoth_ind << " Projected Twist:" << projectedTwist << endl;
+            cout << endl;*/
         }
-    }
-    best_thread_hypoths = _thread_hypoths[0];
-    //Algorithm should grow all threads independently and not join,
-    //so I just take the first one
-    if (best_thread_hypoths.size() == 0)
-    {
-        std::cout << "NO HYPOTHS LEFT" << std::endl;
-        return false;
+
+        //suppress_hypoths(current_thread_hypoths);
     }
 
-    sort_hypoths(best_thread_hypoths);
+    /* Ranks based on change in energy */
+    sort_hypoths(current_thread_hypoths);
     curr_hypoth_ind = 0;
 
+    cout << "Finished step number: " << stepNumber << endl << endl;
+    stepNumber++;
+}
+
+bool Thread_Vision::shouldUseEnergyDistance()
+{
+    if (stepNumber > 10) {
+        return true;
+    }
+    return false;
+}
+
+vector<double>* Thread_Vision::findTwist(Thread_Hypoth *hypoth)
+{
+    int twistIncrements = 20;
+    for (int j = 0; j < twistIncrements; j++) {
+        int numThreadPieces = _max_length_thread / _rest_length;
+        double baseTwist = 2.0 * M_PI / numThreadPieces;
+        double startTwist = -1 * baseTwist + j * (baseTwist * 2 / twistIncrements);
+        double endTwist = startTwist * hypoth->num_pieces();
+        
+        hypoth->_thread_pieces[hypoth->num_pieces() - 2]->set_angle_twist(endTwist);
+        
+        hypoth->minimize_energy_twist_angles();
+
+        //
+    }
+}
+
+bool Thread_Vision::runThreadSearch()
+{
+    while(!isDone()) {
+        generateNextSetOfHypoths(); 
+    }
     return true;
 }
 
 
-//adds new hypoths based on tangents
-void Thread_Vision::add_possible_next_hypoths(vector<Thread_Hypoth*> current_thread_hypoths)
+
+//starting with old hypoths, run new thread search
+void Thread_Vision::runThreadSearch_nextIms()
+{
+  return;
+
+  /*
+  updateCanny();
+
+  vector<Thread_Hypoth*> &current_thread_hypoths = _thread_hypoths[0];
+
+  for (int hypoth_ind=0; hypoth_ind < current_thread_hypoths.size(); hypoth_ind++)
+  {
+    // Run the optimization algorithm, using visual distance and thread energy 
+    current_thread_hypoths[hypoth_ind]->optimize_visual();
+    current_thread_hypoths[hypoth_ind]->minimize_energy_twist_angles();
+    current_thread_hypoths[hypoth_ind]->calculate_score();
+    cout << "Hypoth " << hypoth_ind << " twist:" << current_thread_hypoths[hypoth_ind]->end_angle() << endl;
+  }
+
+  suppress_hypoths(current_thread_hypoths);
+
+// Ranks based on change in energy //
+sort_hypoths(*best_thread_hypoths);
+curr_hypoth_ind = 0;
+
+
+*/
+
+}
+
+bool Thread_Vision::isDone()
+{
+    /* TODO uses the thread hypoths from the first start point */
+    if (_thread_hypoths.size() == 0 || _thread_hypoths[0].front()->num_pieces() < 5) {
+        return false;
+    }
+    return (_thread_hypoths[0].front()->num_pieces()*_rest_length >= _max_length_thread);
+}
+
+vector<thread_hypoth_pair>* Thread_Vision::nearbyPairsOfThreadHypoths()
+{
+    vector<thread_hypoth_pair>* allPairs = new vector<thread_hypoth_pair>();
+    for (int i = 0; i < _thread_hypoths.size(); i++) {
+        vector<Thread_Hypoth*> current_thread_hypoths = _thread_hypoths[i];
+        for (int j = 0; j < current_thread_hypoths.size(); j++) {
+            Thread_Hypoth *current_thread = current_thread_hypoths[j];
+            //Now compare to every other thread
+
+            for (int k = 0; k < _thread_hypoths.size(); k++) {
+                for (int l = 0; l < _thread_hypoths[k].size(); l++) {
+                    Thread_Hypoth *other_thread = _thread_hypoths[k][l];
+                    if (current_thread != other_thread) {
+                        //Check end points
+                        bool isCollision = false;
+
+                        MatchingEnds match = matchingEndsForThreads(current_thread, other_thread, CLOSE_DISTANCE_COEFF);
+
+                        if (match != MatchingNone) {
+                            thread_hypoth_pair pair = {current_thread, other_thread};
+                            bool exists = false;
+                            for (int a = 0; a < allPairs->size(); a++) {
+                                if (isEqualUnordered(pair, pair)) {
+                                    exists = true;
+                                }
+                            }
+                            if (!exists) {
+                                allPairs->push_back(pair);
+                            }
+                        }
+                        //std::cout << distance_between_points(current_thread->start_pos(), current_thread->end_pos()) << "\n";
+                    }
+                }
+            }
+        }
+    }
+    return allPairs;
+}
+
+/* For efficiency, threads are mutated */
+Thread_Hypoth* Thread_Vision::mergeThreads(Thread_Hypoth* thread1, Thread_Hypoth* thread2)
+{
+    MatchingEnds match = matchingEndsForThreads(thread1, thread2, CLOSE_DISTANCE_COEFF);
+    if (match == MatchingStartStart) {
+        thread1->reverseThreadPieces();
+        thread1->appendThread(thread2);
+    }
+    else if (match == MatchingStartEnd) {
+        thread2->appendThread(thread1);
+    }
+    else if (match == MatchingEndStart) {
+        thread1->appendThread(thread2);
+    }
+    else if (match == MatchingEndEnd) {
+        thread2->reverseThreadPieces();
+        thread1->appendThread(thread2);
+    }
+
+    return thread1;
+}
+
+/* Adds new hypoths based on tangents. Hypoths in current_thread_hypoths will
+ * be mutated, and extra ones will be appended to the back */
+void Thread_Vision::add_possible_next_hypoths(vector<Thread_Hypoth*>& current_thread_hypoths)
 {
     int curr_number_hypoths = current_thread_hypoths.size();
     vector<Thread_Hypoth*> extra_hypoths;
@@ -474,12 +660,12 @@ void Thread_Vision::add_possible_next_hypoths(vector<Thread_Hypoth*> current_thr
 Thread* Thread_Vision::flip_to_hypoth(int hypoth_ind)
 {
     curr_hypoth_ind = hypoth_ind;
-    return best_thread_hypoths[hypoth_ind];
+    return best_thread_hypoths->at(hypoth_ind);
 }
 
 void Thread_Vision::next_hypoth()
 {
-    curr_hypoth_ind = min(curr_hypoth_ind+1, (int)best_thread_hypoths.size()-1);
+    curr_hypoth_ind = min(curr_hypoth_ind+1, (int)best_thread_hypoths->size()-1);
 }
 
 void Thread_Vision::prev_hypoth()
@@ -489,22 +675,16 @@ void Thread_Vision::prev_hypoth()
 
 Thread* Thread_Vision::curr_thread()
 {
-    return best_thread_hypoths[curr_hypoth_ind];
+    return best_thread_hypoths->at(curr_hypoth_ind);
 }
 
 
-void Thread_Vision::sort_hypoths(vector<Thread_Hypoth*> current_thread_hypoths)
+void Thread_Vision::sort_hypoths(vector<Thread_Hypoth*>& current_thread_hypoths)
 {
     sort(current_thread_hypoths.begin(), current_thread_hypoths.end(), lessthan_Thread_Hypoth);
 }
 
-
-void Thread_Vision::initializeThreadSearch()
-{
-    updateCanny();
-}
-
-
+/* Find points close to initPt, then scores and projects them onto 2d points */
 bool Thread_Vision::findNextStartPoint(vector<corresponding_pts>& pts, Point3f& initPt)
 {
     double minDist = -0.5;
@@ -760,7 +940,6 @@ bool Thread_Vision::findTangent(corresponding_pts& start, Vector3d& init_tangent
 
     //rotate as in yaw, pitch, roll - no roll, since we only care about direction of tangent
     vector<tangent_and_score> tan_scores;
-// Point3f tanLocation;
     Vector3d start_pos;
     OpencvToEigen(start.pt3d, start_pos);
 
@@ -776,87 +955,80 @@ bool Thread_Vision::findTangent(corresponding_pts& start, Vector3d& init_tangent
 
             currTangent.normalize();
             /*
+            tanLocation.x = ((float)(length_for_tan*currTangent(0))) + start.pt3d.x;
+            tanLocation.y = ((float)(length_for_tan*currTangent(1))) + start.pt3d.y;
+            tanLocation.z = ((float)(length_for_tan*currTangent(2))) + start.pt3d.z;
 
+            double currScore = scoreProjection3dPoint(tanLocation);
+            */
+            double currScore = scoreProjection3dPointAndTanget(start_pos, currTangent*length_for_tan);
 
-tanLocation.x = ((float)(length_for_tan*currTangent(0))) + start.pt3d.x;
-tanLocation.y = ((float)(length_for_tan*currTangent(1))) + start.pt3d.y;
-tanLocation.z = ((float)(length_for_tan*currTangent(2))) + start.pt3d.z;
+            if (currScore < TANGENT_ERROR_THRESH)
+            {
+                tan_scores.resize(tan_scores.size()+1);
+                tan_scores.back().tan = currTangent;
+                tan_scores.back().score = currScore;
+            }
+        }
+    }
 
-double currScore = scoreProjection3dPoint(tanLocation);
-
-*/
-double currScore = scoreProjection3dPointAndTanget(start_pos, currTangent*length_for_tan);
-
-if (currScore < TANGENT_ERROR_THRESH)
-{
-    tan_scores.resize(tan_scores.size()+1);
-    tan_scores.back().tan = currTangent;
-    tan_scores.back().score = currScore;
-}
-
-
-
-}
-}
-
-if (tan_scores.size() <= 0)
-    return false;
+    if (tan_scores.size() <= 0)
+        return false;
 
 
 
     //tangents.push_back(*min_element(tan_scores.begin(), tan_scores.end()));
-suppress_tangents(tan_scores, tangents);
+    suppress_tangents(tan_scores, tangents);
 
-std::cout << "initial tans: " << std::endl;
-for (int i=0; i < tangents.size(); i++)
-{
-    std::cout << tangents[i].tan.transpose() << "\t\t" << tangents[i].score << std::endl;
-}
+    std::cout << "initial tans: " << std::endl;
+    for (int i=0; i < tangents.size(); i++)
+    {
+        std::cout << "Tangent: (" <<  tangents[i].tan.transpose() << ")" << "\t\t" << "Score: " << tangents[i].score << std::endl;
+    }
 
-/*
-//FOR DEBUG - mark best match AND Tan
-Vector3d tangent;
-tangent = tangents[0].tan;
-
-
-Point2i proj_tan[NUMCAMS]; 
-Point3f bestTanLocation(  (float)(length_for_tan*tangent(0)) + start.pt3d.x,
-(float)(length_for_tan*tangent(1)) + start.pt3d.y, 
-(float)(length_for_tan*tangent(2)) + start.pt3d.z);
+    /*
+    //FOR DEBUG - mark best match AND Tan
+    Vector3d tangent;
+    tangent = tangents[0].tan;
 
 
-_cams->project3dPoint(bestTanLocation, proj_tan);
+    Point2i proj_tan[NUMCAMS]; 
+    Point3f bestTanLocation(  (float)(length_for_tan*tangent(0)) + start.pt3d.x,
+    (float)(length_for_tan*tangent(1)) + start.pt3d.y, 
+    (float)(length_for_tan*tangent(2)) + start.pt3d.z);
 
 
-for (int j = 0; j < NUMCAMS; j++)
-{
-display_for_debug[j].resize(display_for_debug[j].size()+1);
-display_for_debug[j][display_for_debug[j].size()-1].pts = new Point[8];
-display_for_debug[j][display_for_debug[j].size()-1].pts[0] = Point(start.pts2d[j].x-1, start.pts2d[j].y+1);
-display_for_debug[j][display_for_debug[j].size()-1].pts[1] = Point(start.pts2d[j].x+1, start.pts2d[j].y+1);
-display_for_debug[j][display_for_debug[j].size()-1].pts[2] = Point(start.pts2d[j].x+1, start.pts2d[j].y-1);
-display_for_debug[j][display_for_debug[j].size()-1].pts[3] = Point(start.pts2d[j].x-1, start.pts2d[j].y-1);
-display_for_debug[j][display_for_debug[j].size()-1].pts[4] = Point(proj_tan[j].x-1, proj_tan[j].y+1);
-display_for_debug[j][display_for_debug[j].size()-1].pts[5] = Point(proj_tan[j].x+1, proj_tan[j].y+1);
-display_for_debug[j][display_for_debug[j].size()-1].pts[6] = Point(proj_tan[j].x+1, proj_tan[j].y-1);
-display_for_debug[j][display_for_debug[j].size()-1].pts[7] = Point(proj_tan[j].x-1, proj_tan[j].y-1);
-display_for_debug[j][display_for_debug[j].size()-1].color = Scalar(255,255,0);
-display_for_debug[j][display_for_debug[j].size()-1].size = 8;
-}
-
-gl_display_for_debug.resize(gl_display_for_debug.size()+1);
-gl_display_for_debug.back().vertices = new Point3f[2];
-gl_display_for_debug.back().vertices[0] = start.pt3d;
-gl_display_for_debug.back().vertices[1] = bestTanLocation;
-gl_display_for_debug.back().size = 2;
-gl_display_for_debug.back().color[0] = 1.0;
-gl_display_for_debug.back().color[1] = 0.0;
-gl_display_for_debug.back().color[2] = 0.0;
+    _cams->project3dPoint(bestTanLocation, proj_tan);
 
 
-*/
-return true;
+    for (int j = 0; j < NUMCAMS; j++)
+    {
+    display_for_debug[j].resize(display_for_debug[j].size()+1);
+    display_for_debug[j][display_for_debug[j].size()-1].pts = new Point[8];
+    display_for_debug[j][display_for_debug[j].size()-1].pts[0] = Point(start.pts2d[j].x-1, start.pts2d[j].y+1);
+    display_for_debug[j][display_for_debug[j].size()-1].pts[1] = Point(start.pts2d[j].x+1, start.pts2d[j].y+1);
+    display_for_debug[j][display_for_debug[j].size()-1].pts[2] = Point(start.pts2d[j].x+1, start.pts2d[j].y-1);
+    display_for_debug[j][display_for_debug[j].size()-1].pts[3] = Point(start.pts2d[j].x-1, start.pts2d[j].y-1);
+    display_for_debug[j][display_for_debug[j].size()-1].pts[4] = Point(proj_tan[j].x-1, proj_tan[j].y+1);
+    display_for_debug[j][display_for_debug[j].size()-1].pts[5] = Point(proj_tan[j].x+1, proj_tan[j].y+1);
+    display_for_debug[j][display_for_debug[j].size()-1].pts[6] = Point(proj_tan[j].x+1, proj_tan[j].y-1);
+    display_for_debug[j][display_for_debug[j].size()-1].pts[7] = Point(proj_tan[j].x-1, proj_tan[j].y-1);
+    display_for_debug[j][display_for_debug[j].size()-1].color = Scalar(255,255,0);
+    display_for_debug[j][display_for_debug[j].size()-1].size = 8;
+    }
 
+    gl_display_for_debug.resize(gl_display_for_debug.size()+1);
+    gl_display_for_debug.back().vertices = new Point3f[2];
+    gl_display_for_debug.back().vertices[0] = start.pt3d;
+    gl_display_for_debug.back().vertices[1] = bestTanLocation;
+    gl_display_for_debug.back().size = 2;
+    gl_display_for_debug.back().color[0] = 1.0;
+    gl_display_for_debug.back().color[1] = 0.0;
+    gl_display_for_debug.back().color[2] = 0.0;
+
+
+    */
+    return true;
 }
 
 
@@ -954,29 +1126,95 @@ double Thread_Vision::scoreProjection3dPointAndTanget(const Vector3d& startpt3d,
 
 double Thread_Vision::score2dPoint(const Point2f& pt, int camNum)
 {
-    double thisMinScore = DIST_FOR_SCORE_CHECK;
-    Point2i rounded = Point2i(floor(pt.x + 0.5), floor(pt.y + 0.5));
+    static double totalTime = 0.0;
+    static int lastPrinted = 0;
 
+    int memoX = pt.x * 1000;
+    int memoY = pt.y * 1000;
+    int memoKey = memoX + 1000 * memoY * cols[camNum];
+
+
+    Timer aTimer;
+
+
+    /* Since we used the square of the distance when
+     * checking if we should add more pixels to the queue */
+    double thisMinScore = sqrt(DIST_FOR_SCORE_CHECK);
+    double verifyMinScore = thisMinScore;
+
+    Point2i rounded = Point2i(floor(pt.x + 0.5), floor(pt.y + 0.5));
     if (_captures[camNum]->inRange(rounded.y, rounded.x))
     {
         int key = keyForHashMap(camNum, rounded.y, rounded.x);
-        if (_cannyDistanceScores[camNum].count(key) > 0)
+        if (_cannySegments[camNum].count(key) > 0)
         {
-            location_and_distance* curr = &_cannyDistanceScores[camNum][key];
-            while (curr != NULL)
-            {
-                thisMinScore = min(thisMinScore, sqrt((double)(pow(pt.x-(float)curr->col,2) + pow(pt.y-(float)curr->row,2))));
-                curr = curr->next;
+            vector<Line_Segment *>* segments = _cannySegments[camNum][key];
+            for (int i = 0; i < segments->size(); i++) {
+                Point2f newPoint(pt.x, pt.y);
+                Point2i startPoint(segments->at(i)->col1, segments->at(i)->row1);
+                Vector2d segmentVector(segments->at(i)->col2 - segments->at(i)->col1, segments->at(i)->row2 - segments->at(i)->row1);
+                thisMinScore = min(thisMinScore, distance(newPoint, segmentVector, startPoint));
             }
         }
+
+/*
+ *        location_and_distance* curr = &_cannyDistanceScores[camNum][key];
+ *        while (curr != NULL)
+ *        {
+ *            vector<Vector2d> vectors;
+ *            Point2i thePoint(curr->col, curr->row);
+ *            vectorsForPixel(thePoint, camNum, vectors);
+ *
+ *            for (int i = 0; i < vectors.size(); i++) {
+ *                Vector2d currentVector = vectors[i];
+ *                Point2f newPoint(pt.x, pt.y);
+ *                verifyMinScore = min(verifyMinScore, distance(newPoint, currentVector, thePoint));
+ *            }
+ *            curr = curr->next;
+ *        }
+ *
+ *        if (abs(thisMinScore - verifyMinScore) > 0.001) {
+ *            cout << "ERROR: " << thisMinScore << "\t" << verifyMinScore << endl;
+ *            assert(false);
+ *        }
+ */
     } else {
         thisMinScore = SCORE_OUT_OF_VIEW;
     }
 
-    if (thisMinScore < SCORE_THRESH_SET_TO_CONST)
-        thisMinScore = SCORE_THRESH_SET_TO_CONST;
+    totalTime += aTimer.elapsed();
+    if ((int) totalTime > lastPrinted) {
+        //cout << "Total Time: " << totalTime << endl;
+        lastPrinted = totalTime;
+    }
 
     return thisMinScore;
+}
+
+void Thread_Vision::vectorsForPixel(Point2i& pt, int camNum, vector<Vector2d>& vectors)
+{
+    vector<Point2i> adjPoints;
+    adjacentPoints(pt, adjPoints, cols[camNum], rows[camNum]);
+
+    for (int i = 0; i < adjPoints.size(); i++) {
+        Point2i &aPoint = adjPoints[i];
+
+        int key = keyForHashMap(camNum, aPoint.y, aPoint.x);
+
+        if (_cannyDistanceScores[camNum].count(key) > 0) {
+            location_and_distance* curr = &(_cannyDistanceScores[camNum][key]);
+            int test = curr->dist;
+
+            if (curr->dist == 0) {
+                Vector2d vector(aPoint.x - pt.x, aPoint.y - pt.y);
+                vectors.push_back(vector);
+            }
+        }
+    }
+
+//    for (int i = 0; i < unitVectors.size(); i++) {
+//        cout << "X: " << unitVectors[i][0] << "\tY: " << unitVectors[i][1] << endl;
+//    }
 }
 
 
@@ -1052,28 +1290,49 @@ bool Thread_Vision::isEndPiece(const int camNum, const Point2i pt)
 
 void Thread_Vision::updateCanny()
 {
-    //FOR DEBUG - don't undistort
-#ifdef FAKEIMS
-    _cams->updateImagesBlockingNoUndistort();
-    _cams->convertToGrayscale();
-    //_frames = _cams->frames();
-    //_cams->filterCanny();
-    //_cannyIms = _cams->cannyIms();
-    gray_to_canny();
-    precomputeDistanceScores();
-#else
-    _cams->updateImagesBlocking();
-    _cams->convertToGrayscale();
-    _frames = _cams->frames();
-    _cams->filterCanny();
-    _cannyIms = _cams->cannyIms();
-    precomputeDistanceScores();
-    if (reproj_points_fix_canny)
-    {
-        reproj_points_for_canny();
-        precomputeDistanceScores();
+
+    /* Check if precomputed file exists */
+/*    string imageName = string(_captures[0]->baseImageName);
+    imageName = imageName.substr(imageName.find_last_of("/") + 1);
+    std::stringstream ss;
+    ss << _captures[0]->imageNumber;
+    string filePath = string("PrecomputedCanny/precomputed_") + imageName + ss.str();
+    
+    CannyReader reader(filePath.c_str());
+    reader.precomputedCannySegments = _cannySegments;
+    bool precomputedCannySegments = reader.readFromFile();
+    if (precomputedCannySegments) {
+        cout << "Found precomputedCannySegments";
     }
+    else {
+    */
+        //FOR DEBUG - don't undistort
+#ifdef FAKEIMS
+        _cams->updateImagesBlockingNoUndistort();
+        _cams->convertToGrayscale();
+        //_frames = _cams->frames();
+        //_cams->filterCanny();
+        //_cannyIms = _cams->cannyIms();
+        gray_to_canny();
+#else
+        _cams->updateImagesBlocking();
+        _cams->convertToGrayscale();
+        _frames = _cams->frames();
+        _cams->filterCanny();
+        _cannyIms = _cams->cannyIms();
+
+        if (reproj_points_fix_canny)
+        {
+            reproj_points_for_canny();
+        }
 #endif
+        precomputeDistanceScores();
+        /* Save precomputed segments */
+        //CannyWriter writer(filePath.c_str());
+        //writer.precomputedCannySegments = _cannySegments;
+        //writer.numCams = 3;
+        //writer.writeToFile();
+    //}
 }
 
 
@@ -1185,26 +1444,31 @@ void Thread_Vision::reproj_points_for_canny()
 
 void Thread_Vision::precomputeDistanceScores()
 {
+    Timer t;
+    /* For each camera */
     for (int camNum=0; camNum < NUMCAMS; camNum++)
     {
         _cannyDistanceScores[camNum].clear();
         queue<location_and_distance_for_queue> loc_and_dist_to_add;
 
-        for( int y = 0; y < _cannyIms[camNum].rows; y++)
+        /* For each row in the image */
+        for(int y = 0; y < _cannyIms[camNum].rows; y++)
         {
             uchar* Uptr = _cannyIms[camNum].ptr<uchar>(y);
-            for( int x = 0; x < _cannyIms[camNum].cols; x++ )
+
+            /* For each col in the image */
+            for(int x = 0; x < _cannyIms[camNum].cols; x++ )
             {
                 if (Uptr[x] == (uchar)255)
                 {
+                    /* Detected a white pixel */
                     location_and_distance toAdd(y,x,0.0);
                     _cannyDistanceScores[camNum][keyForHashMap(camNum, y, x)] = toAdd;
 
 
-                    //add to queue
-                    for (int xadd=-1; xadd <= 1; xadd++)
+                    for (int xadd = -1; xadd <= 1; xadd++)
                     {
-                        int x_next = x+xadd;
+                        int x_next = x + xadd;
                         if (x_next >= 0 && x_next < cols[camNum])
                         {
                             for (int yadd=-1; yadd <= 1; yadd++)
@@ -1214,6 +1478,8 @@ void Thread_Vision::precomputeDistanceScores()
                                 {
                                     if (!(xadd == 0 && yadd == 0))
                                     {
+                                        /* For all points around detected pixel (x,y) */
+                                        /* TODO Why isn't it sqrt? */
                                         location_and_distance forQueue(y, x, (xadd*xadd + yadd*yadd));
                                         location_and_distance_for_queue toAddToQueue(y_next,x_next,forQueue);
                                         loc_and_dist_to_add.push(toAddToQueue);
@@ -1222,29 +1488,32 @@ void Thread_Vision::precomputeDistanceScores()
                             }
                         }
                     }
-
-
                 }
             }
         }
 
 
-        //process queue
+        /* Process queue */
         while (!loc_and_dist_to_add.empty())
         {
             location_and_distance_for_queue fromQueue = loc_and_dist_to_add.front();
             location_and_distance ldFromQueue = fromQueue.ld;
             loc_and_dist_to_add.pop();
 
+            /* Get current location */
             int key = keyForHashMap(camNum, fromQueue.rowCheck, fromQueue.colCheck);
             //if we need to replace/add another thread distance
             bool toProcess = false;
 
             if (_cannyDistanceScores[camNum].count(key) == 0 || ldFromQueue.dist < _cannyDistanceScores[camNum][key].dist)
             {
+                /* The pixel from the queue is closer than anything we have found */
+
                 _cannyDistanceScores[camNum][key] = ldFromQueue;
-                toProcess=true;
+                toProcess = true;
             } else if (ldFromQueue.dist == _cannyDistanceScores[camNum][key].dist) {
+                /* The pixel from the queue is equidistance from something we have found */
+
                 location_and_distance* curr = &(_cannyDistanceScores[camNum][key]);
                 toProcess = true;
                 while (curr->next != NULL)
@@ -1287,16 +1556,71 @@ void Thread_Vision::precomputeDistanceScores()
                         }
                     }
                 }
-
-
             }
-
         }
-
     }
 
+    cout << "Precompute Points: " << t.elapsed() << endl;
+    precomputeSegments();
 }
 
+void Thread_Vision::precomputeSegments()
+{
+    Timer t;
+    for (int camNum = 0; camNum < NUMCAMS; camNum++) {
+        map<int, location_and_distance> &pointMap = _cannyDistanceScores[camNum];
+        map<int, vector<Line_Segment *>*> &segmentMap = _cannySegments[camNum];
+
+        for (int row = 0; row < rows[camNum]; row++) {
+            for (int col = 0; col < cols[camNum]; col++) {
+                /* For every pixel */
+                int key = keyForHashMap(camNum, row, col);
+                location_and_distance *current = &pointMap[key];
+
+                vector<Line_Segment *>* lineSegments = new vector<Line_Segment *>();
+                while (current != NULL) {
+                    /* For every potential closest pixel */
+                    vector<Vector2d> vectors;
+                    Point2i thePoint(current->col, current->row);
+                    vectorsForPixel(thePoint, camNum, vectors);
+                    
+                    bool addedSegment = false;
+                    for (int i = 0; i < vectors.size(); i++) {
+                        Line_Segment* seg = (Line_Segment *) malloc(sizeof(Line_Segment));
+                        seg->row1 = current->row;
+                        seg->col1 = current->col;
+                        seg->row2 = current->row + vectors[i][1];
+                        seg->col2 = current->col + vectors[i][0];
+                        
+                        bool isDuplicate = false;
+                        for (int j = 0; j < lineSegments->size(); j++) {
+                            Line_Segment *segCompare = lineSegments->at(j);
+                            if (segCompare->row1 == seg->row1 && segCompare->row2 == seg->row2 &&
+                                    segCompare->col1 == seg->col1 && segCompare->col2 == seg->col2){
+                                isDuplicate = true;
+                            }
+
+                            if (segCompare->row1 == seg->row2 && segCompare->row2 == seg->row1 &&
+                                    segCompare->col1 == seg->col2 && segCompare->col2 == seg->col1){
+                                isDuplicate = true;
+                            }
+                        }
+                        if (!isDuplicate) {
+                            lineSegments->push_back(seg);
+                            addedSegment = true;
+                        }
+                    }
+
+                    current = current->next;
+                }
+
+                segmentMap[key] = lineSegments;
+            }
+        }
+    }
+
+    cout << "Precompute Segments Time: " << t.elapsed() << endl;
+}
 
 
 void Thread_Vision::initializeOnClicks()
@@ -1309,26 +1633,16 @@ void Thread_Vision::clickOnPoints(Point2i* clickPoints)
     _cams->getClickedPoints(clickPoints);
 }
 
-
 void Thread_Vision::clickOnPoints(Point3f& clickPoints)
 {
     _cams->getClickedPoints(clickPoints);
 }
 
-
-
-
-
-
-
-
-
-
 void Thread_Vision::addThreadPointsToDebug(const Scalar& color)
 {
     Point3f currPoint;
     Point2i imPoints[NUMCAMS];
-    int numPoints = best_thread_hypoths[curr_hypoth_ind]->num_pieces();
+    int numPoints = best_thread_hypoths->at(curr_hypoth_ind)->num_pieces();
 
     gl_display_for_debug.resize(gl_display_for_debug.size()+1);
     gl_display_for_debug[gl_display_for_debug.size()-1].vertices = new Point3f[(numPoints)];
@@ -1340,7 +1654,7 @@ void Thread_Vision::addThreadPointsToDebug(const Scalar& color)
 
     vector<Vector3d> points;
     vector<double> angles;
-    best_thread_hypoths[curr_hypoth_ind]->get_thread_data(points, angles);
+    best_thread_hypoths->at(curr_hypoth_ind)->get_thread_data(points, angles);
 
     for (int ind=0; ind < numPoints; ind++)
     {
@@ -1421,11 +1735,9 @@ void Thread_Vision::addThreadPointsToDebugImages(const Scalar& color, Thread* th
 
 }
 
-
-
 void Thread_Vision::addThreadPointsToDebugImages(const Scalar& color)
 {
-    addThreadPointsToDebugImages(color, best_thread_hypoths[curr_hypoth_ind]);
+    addThreadPointsToDebugImages(color, best_thread_hypoths->at(curr_hypoth_ind));
 }
 
 void Thread_Vision::add_debug_points_to_ims()
@@ -1491,11 +1803,11 @@ void Thread_Vision::saveImages(const char* image_save_base, int im_num)
     char filename[256];
     for (int camNum=0; camNum < NUMCAMS; camNum++)
     { 
-        sprintf(filename, "%s%d-%d.jpg", image_save_base, (camNum+1), im_num);
+        sprintf(filename, "%s%d-%d.png", image_save_base, (camNum+1), im_num);
         imwrite(filename, _frames[camNum]);
-        sprintf(filename, "%s_canny%d-%d.jpg", image_save_base, (camNum+1), im_num);
+        sprintf(filename, "%s_canny%d-%d.png", image_save_base, (camNum+1), im_num);
         imwrite(filename, _cannyIms[camNum]);
-        sprintf(filename, "%s_cannyDisplay%d-%d.jpg", image_save_base, (camNum+1), im_num);
+        sprintf(filename, "%s_cannyDisplay%d-%d.png", image_save_base, (camNum+1), im_num);
         imwrite(filename, _cannyIms_display[camNum]);
     }
 }
@@ -1505,22 +1817,22 @@ void Thread_Vision::saveImages(const char* image_save_base, int im_num)
 
 
 
-const Matrix3d& Thread_Vision::start_rot(void) {return best_thread_hypoths[curr_hypoth_ind]->start_rot();}
-const Matrix3d& Thread_Vision::end_rot(void) {return best_thread_hypoths[curr_hypoth_ind]->end_rot();}
-const Matrix3d& Thread_Vision::end_bishop(void) {return best_thread_hypoths[curr_hypoth_ind]->end_bishop();}
-const double Thread_Vision::end_angle(void) {return best_thread_hypoths[curr_hypoth_ind]->end_angle();}
-const double Thread_Vision::angle_at_ind(const int i) {return best_thread_hypoths[curr_hypoth_ind]->angle_at_ind(i);}
+const Matrix3d& Thread_Vision::start_rot(void) {return best_thread_hypoths->at(curr_hypoth_ind)->start_rot();}
+const Matrix3d& Thread_Vision::end_rot(void) {return best_thread_hypoths->at(curr_hypoth_ind)->end_rot();}
+const Matrix3d& Thread_Vision::end_bishop(void) {return best_thread_hypoths->at(curr_hypoth_ind)->end_bishop();}
+const double Thread_Vision::end_angle(void) {return best_thread_hypoths->at(curr_hypoth_ind)->end_angle();}
+const double Thread_Vision::angle_at_ind(const int i) {return best_thread_hypoths->at(curr_hypoth_ind)->angle_at_ind(i);}
 
-const Vector3d& Thread_Vision::start_pos(void) {return best_thread_hypoths[curr_hypoth_ind]->start_pos();}
-const Vector3d& Thread_Vision::end_pos(void) {return best_thread_hypoths[curr_hypoth_ind]->end_pos();}
+const Vector3d& Thread_Vision::start_pos(void) {return best_thread_hypoths->at(curr_hypoth_ind)->start_pos();}
+const Vector3d& Thread_Vision::end_pos(void) {return best_thread_hypoths->at(curr_hypoth_ind)->end_pos();}
 
-const Vector3d& Thread_Vision::start_edge(void) {return best_thread_hypoths[curr_hypoth_ind]->start_edge();}
-const Vector3d& Thread_Vision::end_edge(void) {return best_thread_hypoths[curr_hypoth_ind]->end_edge();}
-
-
+const Vector3d& Thread_Vision::start_edge(void) {return best_thread_hypoths->at(curr_hypoth_ind)->start_edge();}
+const Vector3d& Thread_Vision::end_edge(void) {return best_thread_hypoths->at(curr_hypoth_ind)->end_edge();}
 
 
 
+const int Thread_Vision::num_pieces()
+{return _thread_hypoths[0].front()->num_pieces();}
 
 
 location_and_distance::~location_and_distance()
@@ -1530,7 +1842,6 @@ location_and_distance::~location_and_distance()
         delete next;
         next = NULL;
     }
-
 }
 
 

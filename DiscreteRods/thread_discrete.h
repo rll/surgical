@@ -16,7 +16,7 @@
     #define MAX_ROTATION_TWIST (M_PI/30.0)
     #define MOMENTUM_CONSTANT 0.0 /*how much of the last gradient do we use*/
 
-    #define MIN_MOVEMENT_VERTICES 1e-4
+    #define MIN_MOVEMENT_VERTICES 1e-5
     #define MIN_ROTATION_TWIST (M_PI/1000.0)
 #else
 
@@ -54,11 +54,12 @@ class Thread
     void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles);
     void get_thread_data(vector<Vector3d>& points, vector<Matrix3d>& material_frames);
     void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<Matrix3d>& material_frames);
+    void set_all_angles_zero();
 
     //energy minimization
     //
 #ifdef ISOTROPIC
-    void minimize_energy(int num_opt_iters=6000, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence=1e-5);
+    bool minimize_energy(int num_opt_iters=8000, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence=1e-5);
     void minimize_energy_hessian(int num_opt_iters=6000, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence=1e-5);
 #else
     void minimize_energy(int num_opt_iters=16000, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence =1e-20);
@@ -69,6 +70,7 @@ class Thread
     void one_step_project(double step_size = 0.1, bool normalize_gradient = true);
     double one_step_grad_change(double step_size);
     void match_start_and_end_constraints(Thread& to_match, int num_steps, int num_steps_break = INT_MAX);
+    void match_start_and_end_constraints(Thread& to_match, int num_steps, int num_steps_break, vector<Thread*>& intermediates);
 
 
     //setting end constraints
@@ -88,6 +90,9 @@ class Thread
     const double end_angle(void) const {return _thread_pieces[_thread_pieces.size()-2]->angle_twist();}
     const double angle_at_ind(int i) const {return _thread_pieces[i]->angle_twist();}
     const Vector3d& vertex_at_ind(int i) const {return _thread_pieces[i]->vertex();}
+    const Vector3d& edge_at_ind(int i) const {return _thread_pieces[i]->edge();}
+    const Matrix3d& bishop_at_ind(int i) const {return _thread_pieces[i]->bishop_frame();}
+    const Matrix3d& material_at_ind(int i) const {return _thread_pieces[i]->material_frame();}
 
     const Vector3d& start_pos(void) const {return _thread_pieces.front()->vertex();}
     const Vector3d& end_pos(void) const {return _thread_pieces.back()->vertex();}
@@ -128,14 +133,14 @@ class Thread
     void make_max_norm_one_allPieces(vector<Vector3d>& to_normalize);
 
     //energy coefficients
-		void set_bend_coeff(double bend_coeff){_thread_pieces.front()->set_bend_coeff(bend_coeff);}
-		void set_bend_matrix(const Matrix2d& bend_matrix){_thread_pieces.front()->set_bend_matrix(bend_matrix);}
-		void set_twist_coeff(double twist_coeff){_thread_pieces.front()->set_twist_coeff(twist_coeff);}
-		void set_grav_coeff(double grav_coeff){_thread_pieces.front()->set_grav_coeff(grav_coeff);}
-		double get_bend_coeff(void){return _thread_pieces[2]->get_bend_coeff();}
-		Matrix2d get_bend_matrix(void){return _thread_pieces[2]->get_bend_matrix();}
-		double get_twist_coeff(void){return _thread_pieces[2]->get_twist_coeff();}
-		double get_grav_coeff(void){return _thread_pieces[2]->get_grav_coeff();}
+	void set_bend_coeff(double bend_coeff){_thread_pieces.front()->set_bend_coeff(bend_coeff);}
+	void set_bend_matrix(const Matrix2d& bend_matrix){_thread_pieces.front()->set_bend_matrix(bend_matrix);}
+	void set_twist_coeff(double twist_coeff){_thread_pieces.front()->set_twist_coeff(twist_coeff);}
+	void set_grav_coeff(double grav_coeff){_thread_pieces.front()->set_grav_coeff(grav_coeff);}
+	double get_bend_coeff(void){return _thread_pieces[2]->get_bend_coeff();}
+	Matrix2d get_bend_matrix(void){return _thread_pieces[2]->get_bend_matrix();}
+	double get_twist_coeff(void){return _thread_pieces[2]->get_twist_coeff();}
+	double get_grav_coeff(void){return _thread_pieces[2]->get_grav_coeff();}
     void set_coeffs_normalized(double bend_coeff, double twist_coeff, double grav_coeff);
     void set_coeffs_normalized(const Matrix2d& bend_matrix, double twist_coeff, double grav_coeff);
 
@@ -161,10 +166,11 @@ class Thread
     //void set_twist_and_minimize(double twist);
     void set_twist_and_minimize(double twist, vector<Vector3d>& orig_pts);
 
-  protected:
+
     vector<ThreadPiece*> _thread_pieces;
     vector<ThreadPiece*> _thread_pieces_backup;
     vector<double> _angle_twist_backup;
+  protected:
 
 
     void add_momentum_to_gradient(vector<Vector3d>& vertex_gradients, vector<Vector3d>& new_gradients, double last_step_size);

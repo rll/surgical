@@ -15,12 +15,13 @@
 #define TANGENT_ERROR_THRESH 1000.0
 #define DIST_FOR_SCORE_CHECK 70.0
 #define SCORE_OUT_OF_VIEW 1.0
-#define SCORE_THRESH_SET_TO_CONST 0.4  /*if this score is below this, just set it to zero*/
+#define SCORE_THRESH_SET_TO_CONST 0.5  /*if this score is below this, just set it to zero*/
 
 #define IM_VALUE_NOT_SEEN 255
 #define IM_VALUE_CHECKED_FOR_BEGIN 200
 #define IM_VALUE_USED_IN_THREAD 127
 
+#define ENERGY_DISTANCE_CONST 0
 //#define INIT_LENGTH_THREAD_EACH_PIECE 86.9/24.0
 //#define MAX_LENGTH_THREAD 87.0   //in mm
 //#define TOTAL_LENGTH_INIT -1.0
@@ -30,12 +31,16 @@
 
 #define DISPLAY_ORIG_BASE "orig cam"
 #define DISPLAY_CANNY_BASE "canny cam"
+#define CLOSE_DISTANCE_COEFF 1 * _rest_length
+
+#define SAVED_IMAGE_BASE "./stereo_test/stereo_test"
 
 
 
 USING_PART_OF_NAMESPACE_EIGEN
 
 
+class Thread_Hypoth;
 
 struct polyline_draw_params {
     Point* pts;
@@ -69,7 +74,7 @@ twist_and_score(){}
 
 //helper structs for precomputing distances to canny detected pixels
 struct location_and_distance {
-    //row and col are the location of thread, dist is the distance
+    /* Row and col are the location of thread, dist is the distance */
     int row;
     int col;
     int dist;
@@ -95,12 +100,17 @@ struct location_and_distance_for_queue {
     location_and_distance_for_queue(){}
 };
 
+struct Line_Segment {
+    int row1, col1;
+    int row2, col2;
+};
+
+//Other Structs
 struct start_data {
     Point3f pt;
     Vector3d tangent;
 };
 
-class Thread_Hypoth; 
 
 class Thread_Vision
 {
@@ -108,56 +118,81 @@ public:
     Thread_Vision();
     Thread_Vision(char* im_base);
     ~Thread_Vision();
+    void clear_thread_hypoths();
 
+    /* Main algorithm */
+    void initThreadSearch();
 
-      //vector<ThreadPiece> _thread_pieces;
+    bool findStartPoints();
 
-    //optimizations
-    bool optimizeThread(bool visualOnly=false);
+    bool runThreadSearch();
+    void runThreadSearch_nextIms();
 
-    bool processHypothesesFromInit();
+    bool generateNextSetOfHypoths();
 
-    void add_possible_next_hypoths(vector<Thread_Hypoth*> current_thread_hypoths);
-    void sort_hypoths(vector<Thread_Hypoth*> current_thread_hypoths);
+    bool shouldUseEnergyDistance();
 
-        //initialize the thread search
+    vector<double>* findTwist(Thread_Hypoth *thread);
+
+    bool isDone();
+
+    vector<thread_hypoth_pair>* nearbyPairsOfThreadHypoths();
+    Thread_Hypoth* mergeThreads(Thread_Hypoth* thread1, Thread_Hypoth* thread2);
+
+    void add_possible_next_hypoths(vector<Thread_Hypoth*>& current_thread_hypoths);
+    void sort_hypoths(vector<Thread_Hypoth*>& current_thread_hypoths);
+
+    /* Initialize the thread search */
     void updateCanny();
-    void initializeThreadSearch();
     bool findNextStartPoint(vector<corresponding_pts>& pts, Point3f& initPt);
     bool findNextStartPoint(vector<corresponding_pts>& pts, Point2i& initPtCenterIm);
     bool findTangent(corresponding_pts& start, Vector3d& init_tangent, vector<tangent_and_score>& tangent);
     bool find_next_tan_visual(vector<tangent_and_score>& tangents);
     bool findCorrespondingPointsOtherIms(vector<corresponding_pts>& pts, Point2i initPt, int camWithPt);
 
-    //during optimizations
+    /* During optimizations */
     double scoreProjection3dPoint(const Point3f& pt3d, double* scores=NULL);
     double scoreProjection3dPointAndTanget(const Vector3d& startpt3d, const Vector3d& tan, double* scores=NULL);
     double score2dPoint(const Point2f& pt, int camNum);
+    void vectorsForPixel(Point2i& pt, int camNum, vector<Vector2d>& vectors);
+
     bool isEndPiece(const Point3f pt);
     bool isEndPiece(const int camNum, const Point2i pt);
-    void precomputeDistanceScores();
-    int keyForHashMap(int camNum, int row, int col){return col+cols[camNum]*row;}
-    map<int,location_and_distance> _cannyDistanceScores[NUMCAMS];
 
-        //stereo on clicks
+    /* Canny Scores */
+    void precomputeDistanceScores();
+    void precomputeSegments();
+    int keyForHashMap(int camNum, int row, int col){return col+cols[camNum]*row;}
+
+    map<int,location_and_distance> _cannyDistanceScores[NUMCAMS];
+    map<int,vector<Line_Segment*>*> _cannySegments[NUMCAMS];
+
+    const int num_pieces ();
+
+    /* Stereo on clicks */
     void initializeOnClicks();
     void clickOnPoints(Point2i* clickPoints);
     void clickOnPoints(Point3f& clickPoint);
 
-    //initialize optimization
-        //void setInitPtFromClicks(){clickOnPoints(_initPtSaved);};
+    /* Initialize optimization */
+    //void setInitPtFromClicks(){clickOnPoints(_initPtSaved);};
     //void setInitPt(Point3f& init){_initPtSaved = init;};
-        //void setEndPt(Point3f& end){_endPtSaved = end;};
-        //void setInitTan(Vector3d& init){_initTanSaved = init.normalized();};
+    //void setEndPt(Point3f& end){_endPtSaved = end;};
+    //void setInitTan(Vector3d& init){_initTanSaved = init.normalized();};
 
     void addStartData(Point3f& pt, Vector3d& tan){
         start_data tmp = {pt, tan.normalized()};
         _start_data.push_back(tmp);
     }
 
+    void clearStartData(){
+        _start_data.clear();
+    }
+
+
     void set_max_length(double max){_max_length_thread = max;}
 
-        //random helpers
+    /* Random helpers */
     void gray_to_canny();
     void addThreadPointsToDebug(const Scalar& color);
     void addThreadPointsToDebugImages(const Scalar& color);
@@ -168,70 +203,75 @@ public:
         for (int i=0; i < NUMCAMS; i++)
         {
             display_for_debug[i].resize(0);
-            }};
-            void saveImages(const char* image_save_base, int im_num);
-            vector<polyline_draw_params> display_for_debug[NUMCAMS];
-            vector<glline_draw_params> gl_display_for_debug;
+        }
+    };
 
-            vector < vector <Point2i> > to_reproj_clicks[NUMCAMS];
-            void set_reproj_fix_canny(const char* filename);
-            bool reproj_points_fix_canny;
-            void reproj_points_for_canny();
+    void saveImages(const char* image_save_base, int im_num);
+    vector<polyline_draw_params> display_for_debug[NUMCAMS];
+    vector<glline_draw_params> gl_display_for_debug;
 
-
-            bool _visual_only;
-
-            Thread* flip_to_hypoth(int hypoth_ind);
-            Thread* curr_thread();
-            void next_hypoth();
-            void prev_hypoth();
-
-            void write_hypoths_to_file(char* filename);
+    vector < vector <Point2i> > to_reproj_clicks[NUMCAMS];
+    void set_reproj_fix_canny(const char* filename);
+    bool reproj_points_fix_canny;
+    void reproj_points_for_canny();
 
 
-            Capture* _captures[NUMCAMS];
-            string _names[NUMCAMS];
-            string _orig_display_names[NUMCAMS];
-            string _canny_display_names[NUMCAMS];
+    bool _visual_only;
 
-            Mat* _frames;
-            Mat* _cannyIms;
-            Mat _cannyIms_display[NUMCAMS];
-            Mat* _cannyAngs;
-            ThreeCam* _cams;
+    Thread* flip_to_hypoth(int hypoth_ind);
+    Thread* curr_thread();
+    void next_hypoth();
+    void prev_hypoth();
 
-            int rows[NUMCAMS];
-            int cols[NUMCAMS];
+    void write_hypoths_to_file(char* filename);
 
-            double _max_length_thread;
+
+    Capture* _captures[NUMCAMS];
+    string _names[NUMCAMS];
+    string _orig_display_names[NUMCAMS];
+    string _canny_display_names[NUMCAMS];
+
+    Mat* _frames;
+    Mat* _cannyIms;
+    Mat _cannyIms_display[NUMCAMS];
+    Mat* _cannyAngs;
+    ThreeCam* _cams;
+
+    int rows[NUMCAMS];
+    int cols[NUMCAMS];
+
+    double _max_length_thread;
     //Point3f _initPtSaved;
-        //Point3f _endPtSaved;
+    //Point3f _endPtSaved;
     //Vector3d _initTanSaved;
 
-            vector<start_data> _start_data;
-            vector< vector<Thread_Hypoth*> > _thread_hypoths;
-            vector<Thread_Hypoth*> best_thread_hypoths;
-            int curr_hypoth_ind;
+    vector<start_data> _start_data;
+    vector< vector<Thread_Hypoth*> > _thread_hypoths;
+    vector<Thread_Hypoth*>* best_thread_hypoths;
+    int curr_hypoth_ind;
 
+
+    bool hasInit;
+    int stepNumber;
 
 
 
     //retrieving thread data
-            void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles);
-            void get_thread_data(vector<Vector3d>& points, vector<Matrix3d>& material_frames);
-            void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<Matrix3d>& material_frames);
-            const Matrix3d& start_rot(void);
-            const Matrix3d& end_rot(void);
-            const Matrix3d& end_bishop(void);
-            const double end_angle(void);
-            const double angle_at_ind(const int i);
+    void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles);
+    void get_thread_data(vector<Vector3d>& points, vector<Matrix3d>& material_frames);
+    void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<Matrix3d>& material_frames);
+    const Matrix3d& start_rot(void);
+    const Matrix3d& end_rot(void);
+    const Matrix3d& end_bishop(void);
+    const double end_angle(void);
+    const double angle_at_ind(const int i);
 
-            const Vector3d& start_pos(void);
-            const Vector3d& end_pos(void);
+    const Vector3d& start_pos(void);
+    const Vector3d& end_pos(void);
 
-            const Vector3d& start_edge(void);
-            const Vector3d& end_edge(void);
-        };
+    const Vector3d& start_edge(void);
+    const Vector3d& end_edge(void);
+};
 
 
 

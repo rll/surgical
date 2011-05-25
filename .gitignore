@@ -3,4 +3,9 @@
 /vision/captures/*.tif
 ThreadVision_DiscreteRods/threadStereo
 ThreadVision_DiscreteRods/threadStereo_fake
-ThreadVision_DiscreteRods/stereo_test/*.tif
+ThreadVision_DiscreteRods/stereo_test/*
+ThreadVision_DiscreteRods/PrecomputedCanny/*
+tags
+vision/captures/*
+*.png
+*.avi

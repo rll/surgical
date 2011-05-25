@@ -4,12 +4,12 @@
 
 Trajectory_Recorder::Trajectory_Recorder()
 {
- sprintf(_fileName_threads, "%s.txt", THREADS_BASE_NAME);
+    sprintf(_fileName_threads, "%s.txt", THREADS_BASE_NAME);
 }
 
-Trajectory_Recorder::Trajectory_Recorder(const char* fileName_threads_in)
+Trajectory_Recorder::Trajectory_Recorder(char* fileName_threads_in)
 {
- sprintf(_fileName_threads, "%s.txt", fileName_threads_in);
+    sprintf(_fileName_threads, "%s.txt", fileName_threads_in);
 }
 
 
@@ -27,7 +27,7 @@ void Trajectory_Recorder::clear_threads()
 void Trajectory_Recorder::write_threads_to_file()
 {
 
-  std::cout << "WRITING TO " << _fileName_threads << std::endl;
+  std::cout << "Writing to: " << _fileName_threads << std::endl;
 
   ofstream threadFile;
   threadFile.precision(20);
@@ -81,6 +81,11 @@ void Trajectory_Recorder::write_threads_to_file()
 
   threadFile.close();
 
+  std::cout << "Writing Done\n";
+}
+
+void Trajectory_Recorder::setFileName(char* newFileName) {
+    sprintf(_fileName_threads, "%s.txt", newFileName);
 }
 
 

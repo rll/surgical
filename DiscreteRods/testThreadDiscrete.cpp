@@ -471,7 +471,7 @@ void DrawStuff (void)
   glPushMatrix ();
 
   /* set up some matrices so that the object spins with the mouse */
-  glTranslatef (0.0,0.0,-130.0);
+  glTranslatef (0.0,0.0,-110.0);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
 

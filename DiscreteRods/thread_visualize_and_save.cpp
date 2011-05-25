@@ -62,6 +62,9 @@ void update_all_threads();
 #define MOVE_TAN_CONST 0.2
 #define ROTATE_TAN_CONST 0.2
 
+#define PIX_WIDTH 1200
+#define PIX_HEIGHT 1200
+
 
 enum key_code {NONE, MOVEPOS, MOVETAN, ROTATETAN};
 
@@ -120,7 +123,7 @@ GLfloat lightThreeColor[] = {0.99, 0.99, 0.99, 1.0};
 GLfloat lightFourPosition[] = {-140.0, 0.0, -200.0, 0.0};
 GLfloat lightFourColor[] = {0.99, 0.99, 0.99, 1.0};
 
-
+/*
 void applyControl(Thread* start, const VectorXd& u, VectorXd* res) {
   int N = glThreads[startThread]->getThread()->num_pieces();
   res->setZero(3*N);
@@ -148,6 +151,7 @@ void applyControl(Thread* start, const VectorXd& u, VectorXd* res) {
 
   start->toVector(res);
 }
+*/
 
 void computeDifference(Thread* a, Thread* b, VectorXd* res) {
   VectorXd avec;
@@ -392,7 +396,7 @@ void DrawStuff (void)
   glPushMatrix ();
 
   /* set up some matrices so that the object spins with the mouse */
-  glTranslatef (20.0,-20.0,-110.0);
+  glTranslatef (0.0,0.0,-110.0);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
 
@@ -542,7 +546,7 @@ void InitGLUT(int argc, char * argv[]) {
   /* initialize glut */
   glutInit (&argc, argv); //can i do that?
   glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-  glutInitWindowSize(1200,1200);
+  glutInitWindowSize(PIX_WIDTH,PIX_HEIGHT);
   glutCreateWindow ("Thread");
   glutDisplayFunc (DrawStuff);
   glutMotionFunc (MouseMotion);
@@ -602,14 +606,12 @@ void InitLights() {
 
 void save_opengl_image()
 {
-  const int IMG_COLS_TOTAL = 1200;
-  const int IMG_ROWS_TOTAL = 1200;
   //playback and save images
-  Mat img(IMG_ROWS_TOTAL, IMG_COLS_TOTAL, CV_8UC3);
+  Mat img(PIX_HEIGHT, PIX_WIDTH, CV_8UC3);
   vector<Mat> img_planes;
   split(img, img_planes);
 
-  uchar tmp_data[3][IMG_COLS_TOTAL*IMG_ROWS_TOTAL];
+  uchar tmp_data[3][PIX_WIDTH*PIX_HEIGHT];
 
   GLenum read_formats[3];
   read_formats[0] = GL_BLUE;
@@ -618,7 +620,7 @@ void save_opengl_image()
 
   for (int i=0; i < 3; i++)
   {
-    glReadPixels(0, 0, IMG_COLS_TOTAL, IMG_ROWS_TOTAL, read_formats[i], GL_UNSIGNED_BYTE, tmp_data[i]);
+    glReadPixels(0, 0, PIX_WIDTH, PIX_HEIGHT, read_formats[i], GL_UNSIGNED_BYTE, tmp_data[i]);
     img_planes[i].data = tmp_data[i];
   }
 
@@ -627,7 +629,7 @@ void save_opengl_image()
   flip(img, img, 0);
 
   char im_name[256];
-  sprintf(im_name, "%s%d.tiff", IMG_SAVE_OPENGL, image_ind+1);
+  sprintf(im_name, "%s%d.png", IMG_SAVE_OPENGL, image_ind+1);
 	image_ind++;
   imwrite(im_name, img);
   waitKey(1);
@@ -645,16 +647,5 @@ void update_all_threads()
 	{
 		glThreads[i]->setThread((new Thread(all_threads[thread_ind])));
 	}
-
-
-	/*
-  vector<Vector3d> pts;
-  vector<double> angls;
-	glThreads[0]->getThread()->get_thread_data(pts, angls);
-
-	glThreads[1]->getThread()->set_twist_and_minimize(-2*M_PI, pts);
-	glThreads[2]->getThread()->set_twist_and_minimize(0, pts);
-	glThreads[3]->getThread()->set_twist_and_minimize(2*M_PI, pts);
-*/
 
 }

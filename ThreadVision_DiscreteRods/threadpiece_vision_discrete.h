@@ -25,7 +25,10 @@ public:
     ThreadPiece_Vision(const ThreadPiece_Vision& rhs);
 
     double energy_vis();
-    double energy_dist(); //visual reprojection error - reprojection error is for entire edge, not just vertex!
+
+    /* visual reprojection error - reprojection error is for entire edge,
+     * not just vertex! dist = distance */
+    double energy_dist();
 
     void gradient_vertex_vis(Vector3d& grad);
     void gradient_vertex_vis_numeric(Vector3d& grad);

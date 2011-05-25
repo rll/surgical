@@ -298,7 +298,8 @@ Thread::Thread(const Thread& rhs)
   //set_constraints(start_pos, start_rot, end_pos, end_rot);
   set_start_constraint(start_pos, start_rot);
 
-  set_end_constraint(end_pos, this->end_rot());
+  if (this->num_pieces() > 4)
+      set_end_constraint(end_pos, this->end_rot());
   //project_length_constraint();
 }
 
@@ -334,12 +335,13 @@ void Thread::delete_threadpieces(vector<ThreadPiece*> thread_pieces)
 }
 
 
-//calculate energy for entire Thread
+/* Calculate energy for the entire thread
+ * Needs at least two thread pieces to work */
 double Thread::calculate_energy()
 {
 
 #ifdef ISOTROPIC
-  double energy = _thread_pieces[2]->get_twist_coeff()*(pow(_thread_pieces[_thread_pieces.size()-2]->angle_twist()-_thread_pieces.front()->angle_twist(),2))/(2.0*_rest_length*(_thread_pieces.size()-2));
+  double energy = _thread_pieces[2]->get_twist_coeff() * (pow(_thread_pieces[_thread_pieces.size() - 2]->angle_twist() - _thread_pieces.front()->angle_twist(),2)) / (2.0 * _rest_length * (_thread_pieces.size() - 2));
 
 	//std::cout << _thread_pieces[2]->get_twist_coeff() << " " << _thread_pieces.size() << " " << _thread_pieces[_thread_pieces.size()-2]->angle_twist() << " " << _thread_pieces.front()->angle_twist() << " " << 2.0*_rest_length*(_thread_pieces.size()-2) << std::endl;
 
@@ -359,7 +361,7 @@ double Thread::calculate_energy()
 }
 
 
-void Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
+bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
 {
   double step_in_grad_dir_vertices = 1.0;
 
@@ -459,6 +461,7 @@ void Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
     recalc_vertex_grad = true;
     if (next_energy + energy_error_for_convergence > curr_energy)
     {
+			opt_iter--;
       if (next_energy >= curr_energy) {
         restore_thread_pieces();
         recalc_vertex_grad = false;
@@ -483,6 +486,9 @@ void Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
   minimize_energy_twist_angles();
 
   next_energy = calculate_energy();
+
+
+	return (opt_iter != num_opt_iters);
 
   //std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
 }
@@ -978,6 +984,111 @@ void Thread::match_start_and_end_constraints(Thread& to_match, int num_steps, in
 
 }
 
+
+void Thread::match_start_and_end_constraints(Thread& to_match, int num_steps, int num_steps_break, vector<Thread*>& intermediates)
+{
+
+    minimize_energy(1000, 1e-6, 0.2, 1e-7);
+    intermediates.push_back(new Thread(*this));
+
+  Vector3d start_pos = this->start_pos();
+  Vector3d start_goal_pos = to_match.start_pos();
+
+  Vector3d end_pos = this->end_pos();
+  Vector3d end_goal_pos = to_match.end_pos();
+
+  Vector3d start_translation = start_goal_pos - start_pos;
+  Vector3d end_translation = end_goal_pos - end_pos;
+  for (int step_num=0; step_num < num_steps-1; step_num++)
+  {
+    if (step_num > num_steps_break)
+      return;
+    // use quaternion interpolation to move closer to end rot
+    Matrix3d end_rot = this->end_rot();
+    start_pos = this->start_pos();
+
+    Matrix3d end_goal_rot = to_match.end_rot();
+    Eigen::Quaterniond endq(end_rot);
+    Eigen::Quaterniond end_goalq(end_goal_rot);
+
+
+
+    double for_ang, angle;
+    angle = DBL_MIN;
+    Vector3d after_end_goal;
+    Vector3d after_end;
+    for (int col_num=0; col_num < 3; col_num++)
+    {
+        after_end_goal = end_goal_rot.col(col_num);
+        after_end= end_rot.col(col_num);
+
+        for_ang = after_end_goal.dot(after_end);
+        for_ang = max (min (for_ang, 1.0), -1.0);
+        angle = max(acos(for_ang), angle);
+    }
+    //cout << "Angle = " << angle << endl; 
+    double t = angle* ((double)(step_num+1))/((double)num_steps);
+  
+
+    /*double for_ang = after_end_goal.dot(after_end);
+    for_ang = max (min (for_ang, 1.0), -1.0);
+    double angle = acos(for_ang);
+    cout << "Angle = " << angle << endl; 
+    double t = angle* ((double)step_num)/((double)num_steps);
+    */
+    Eigen::Quaterniond finalq = endq.slerp(t, end_goalq).normalized();
+
+    Matrix3d end_rotation(finalq*endq.inverse());
+    end_pos = this->end_pos();
+
+
+    Matrix3d start_rot = this->start_rot();
+
+    Matrix3d start_goal_rot = to_match.start_rot();
+    Eigen::Quaterniond startq(start_rot);
+    Eigen::Quaterniond start_goalq(start_goal_rot);
+
+    angle = DBL_MIN;
+    Vector3d after_start_goal;
+    Vector3d after_start;
+    for (int col_num=0; col_num < 3; col_num++)
+    {
+        after_start_goal = start_goal_rot.col(col_num);
+        after_start= start_rot.col(col_num);
+
+        for_ang = after_start_goal.dot(after_start);
+        for_ang = max (min (for_ang, 1.0), -1.0);
+        angle = max(acos(for_ang), angle);
+    }
+    //cout << "Angle = " << angle << endl; 
+    t = angle* ((double)(step_num+1))/((double)num_steps);
+
+
+    finalq = startq.slerp(t, start_goalq).normalized();
+
+    Matrix3d start_rotation(finalq*startq.inverse());
+
+
+    // use linear interpolation to move closer to end pos
+
+    // apply the motion
+    Frame_Motion toMove_start(start_translation/((double)num_steps), start_rotation);
+    Frame_Motion toMove_end(end_translation/((double)num_steps), end_rotation);
+    toMove_start.applyMotion(start_pos, start_rot);
+    toMove_end.applyMotion(end_pos, end_rot);
+
+    set_constraints(start_pos, start_rot, end_pos, end_rot);
+    minimize_energy(30000, 1e-6, 0.2, 1e-7);
+    intermediates.push_back(new Thread(*this));
+  }
+
+  //last step, just match constraints
+  set_constraints(to_match.start_pos(), to_match.start_rot(), to_match.end_pos(), to_match.end_rot());
+  minimize_energy(30000, 1e-6, 0.2, 1e-7);
+  intermediates.push_back(new Thread(*this));
+  //minimize_energy();
+
+}
 
 
 void Thread::calculate_gradient(vector<Vector3d>& vertex_gradients, vector<double>& angle_twist_gradients)
@@ -1683,6 +1794,13 @@ void Thread::get_thread_data(vector<Vector3d>& points, vector<double>& twist_ang
   }
 }
 
+void Thread::set_all_angles_zero()
+{
+    for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
+    {
+        _thread_pieces[piece_ind]->set_angle_twist(0);
+    }
+} 
 
 bool Thread::is_consistent()
 {
@@ -1795,7 +1913,9 @@ void Thread::rotate_end_by(double degrees)
 {
 #ifdef ISOTROPIC
   _thread_pieces[_thread_pieces.size()-2]->offset_angle_twist(degrees);
-  _thread_pieces.front()->initializeFrames();
+  _thread_pieces[_thread_pieces.size()-2]->update_material_frame();
+	set_end_constraint(this->end_pos(), this->end_rot());
+ // _thread_pieces.front()->initializeFrames();
 #else
   Matrix3d new_end_rot = (Eigen::AngleAxisd(degrees, this->end_rot().col(0).normalized()))*this->end_rot();
   set_end_constraint(this->end_pos(), new_end_rot);
