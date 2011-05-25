@@ -23,9 +23,6 @@ class RRTNode {
   MatrixXd B;
   bool linearized;
 
-//  VectorXd x;
-//  VectorXd twists;
-//  Matrix3d endrot;
   Thread* thread;
   int N;
 

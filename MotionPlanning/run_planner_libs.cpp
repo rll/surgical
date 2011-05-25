@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
     vector<Thread*> RRT_SQP_closedloop_traj(0);
     vector<Thread*> RRT_SQP_closedloop_onlylast_traj(0);
 
-
+/*
     vector<Thread*> interpolated_points;
     vector<Thread*> interpolated_ends;
 
@@ -175,7 +175,7 @@ int main(int argc, char* argv[]) {
 
     //deleteAllThreads(current_traj);
 
-    
+  */  
     timer.restart(); 
     //generate RRT
     vector<vector<VectorXd> > RRT_controls;
@@ -188,7 +188,7 @@ int main(int argc, char* argv[]) {
       << RRT_PLANNER_TIME
       << endl;
 
-    
+    /* 
     //add goal to RRT for sqp
     vector<Thread*> RRT_traj_togoal;
     traj_subsampling(RRT_traj, RRT_traj_togoal);
@@ -226,7 +226,7 @@ int main(int argc, char* argv[]) {
       << ","
       << RRT_PLANNER_TIME + RRT_SQP_SMOOTHING_TIME + timer.elapsed()
       << endl;
-
+*/
     timer.restart(); 
     //solve sqp from end of rrt
     vector<Thread*> rrt_endtogoal_interpolate;

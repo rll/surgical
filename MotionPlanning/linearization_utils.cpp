@@ -84,10 +84,11 @@ void control_to_TwoMotion(const VectorXd& u, vector<Two_Motions*>& motions, cons
       to_Move->_start._pos_movement = translation;
       to_Move->_start._frame_rotation = rotation_slerped;
     }
-    else
+    else {
       to_Move->_start.set_nomotion();
       to_Move->_end._pos_movement = translation;
       to_Move->_end._frame_rotation = rotation_slerped;
+    }
   }
 
  
@@ -166,7 +167,7 @@ void solveLinearizedControl(Thread* start, const Thread* goal, VectorXd& u, cons
   else
     num_controls = 6;
 
-  start->minimize_energy(100000000);
+  start->minimize_energy(10000);
 
   int num_pieces = start->num_pieces();
   int num_edges = start->num_edges();
@@ -210,7 +211,7 @@ void solveLinearizedControl(Thread* start, const Thread* goal, VectorXd& u, cons
   // apply the given control
   applyControl(start, u, movement);
 
-  start->minimize_energy(100000000);
+  start->minimize_energy(10000);
 }
 
 void solveLinearizedControl(Thread* start, const Thread* goal, const movement_mode movement) {

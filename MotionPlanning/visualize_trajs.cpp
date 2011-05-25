@@ -365,18 +365,23 @@ void processNormalKeys(unsigned char key, int x, int y)
 		curr_trajectory_ind--;
 		Update_Thread_Displays();
 	} else if (key == 's') {
-    for (int j = 0; j < all_trajs[curr_plan_ind-2].size(); j++) {
-      curr_trajectory_ind = j; 
-      Update_Thread_Displays();
-      cout << curr_trajectory_ind << endl; 
-      for (int i = 0; i < NUM_THREADS; i++) { 
-        if (i != curr_plan_ind && i != init_start && i != init_goal) {
-          display_thread[i] = false; 
+    for (int k = 2; k < 18; k++) {
+      curr_plan_ind = k;
+      for (int j = 0; j < all_trajs[curr_plan_ind-2].size(); j++) {
+        curr_trajectory_ind = j; 
+        Update_Thread_Displays();
+        cout << curr_trajectory_ind << endl; 
+        for (int i = 0; i < NUM_THREADS; i++) { 
+          if (i != curr_plan_ind && i != init_start && i != init_goal) {
+            display_thread[i] = false; 
+          } else { 
+            display_thread[i] = true;
+          }
         }
+        DrawStuff();
+        glutPostRedisplay();
+        save_opengl_image(curr_plan_ind);
       }
-      DrawStuff();
-      glutPostRedisplay();
-      save_opengl_image(curr_plan_ind);
     }
   } else if (key == '+' || key == '=') {
     curr_plan_ind++;
@@ -448,10 +453,6 @@ int main (int argc, char * argv[])
   InitStuff ();
 
 
-	sprintf(image_save_base_opengl, "%s_%d", IMAGE_BASE_NAME,num_links);
-
-
-  
 
 
 
@@ -538,7 +539,7 @@ void DrawStuff (void)
       glColor4f (0.5, 0.5, 0.5, 0.9);
 		}
     if (i == curr_plan_ind) { 
-      glColor4f (0.33, 0.44, 0.55, 0.9);
+      glColor4f (0.8, 0.1, 0.1, 0.9); //red
     } 
 
 
@@ -828,6 +829,10 @@ void Load_Traj_Data()
 		all_trajs[RRT_dim2_SQP_closedloop_onlylast_ind-2] = RRT_dim2_SQP_closedloop_onlylast_reader.get_all_threads();
 
 
+	sprintf(image_save_base_opengl, "%s_%d_%d", IMAGE_BASE_NAME,num_links,curr_thread_ind);
+
+
+  
 	curr_trajectory_ind = 0;
 	Update_Thread_Displays();
 }

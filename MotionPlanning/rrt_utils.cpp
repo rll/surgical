@@ -2,18 +2,14 @@
 #include <time.h>
 
 RRTNode::~RRTNode() {
-  delete data; 
+  delete[] data; 
 
   //if (thread != NULL) { delete thread; }
-
 }
 
 RRTNode::RRTNode(const Thread* start): prev(NULL), next(NULL), linearized(false) {
-//  start->toVector(&x);
-//  start->getTwists(&twists);
-//  endrot = start->end_rot();
+  
   thread = (Thread *) start;   
-  //B.resize(start->num_pieces()*3, 6);
   CVF = 0.0; 
 
   VectorXd positions;
@@ -68,24 +64,17 @@ RRTNode::RRTNode(const Thread* start): prev(NULL), next(NULL), linearized(false)
     if(!isnan(curvature_binormal[i])) 
         data[i+currentIndex] = 0; //(float) (0*curvature_binormal[i]);
   }*/
-
-
 }
   
-
-
 double RRTNodeUtils::distanceBetween(RRTNode* start, RRTNode* end) { 
   int N = start->N;
   const float* startData = start->getData();
   const float* endData = end->getData();
-
-
   double r = 0.0;
   for (int i = 0; i < N; i++) { 
     //cout << "Start: " << startData[i] << endl;
     //cout << "End:" << endData[i] << endl;
     r += pow((startData[i] - endData[i]), 2);  
-  
     //cout << "R = " << r << endl; 
   }
   return r; 

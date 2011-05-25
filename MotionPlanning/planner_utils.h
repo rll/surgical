@@ -27,7 +27,6 @@ class Thread_RRT
   void updateBestPath(); 
   vector<RRTNode*>* getTree() { return &_tree; }
   Thread* generateSample(const Thread* start);
-  Thread* generateSample(int N); 
 
   double distanceBetween(const Thread* start, const Thread* end) {
     RRTNode* sNode = new RRTNode(start);
@@ -64,8 +63,6 @@ class Thread_RRT
   double extendToward(Thread* target);
   double extendAsFarToward(Thread* target);
   double largeRotation(const Thread* target);
-
-
 
   void simpleInterpolation(Thread* start, const Thread* end, vector<Two_Motions*>& motions);
 

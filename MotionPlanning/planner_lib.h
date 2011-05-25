@@ -142,34 +142,34 @@ void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<Vector
  */
 void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& traj, vector<vector<VectorXd> >& mot) 
 {  
-  Thread_RRT planner;  
+  Thread_RRT *planner = new Thread_RRT();  
   Thread* start_copy = new Thread(*start);
   Thread* end_copy = new Thread(*end); 
 
   if (num_dim_reduc == 0) {
-    planner.initialize(new Thread(*start_copy), new Thread(*end_copy));
+    planner->initialize(new Thread(*start_copy), new Thread(*end_copy));
 
     Thread goal_thread; Thread prev_thread; Thread next_thread;
     double bestScore = DBL_MAX;
-    while(planner.getTree()->size() < NUM_NODES && 
+    while(planner->getTree()->size() < NUM_NODES && 
         bestScore > RRT_L2_POINTS_THRESHOLD) {
-      //#pragma omp parallel for num_threads(NUM_CPU_THREADS)
-      //for (int i = 0; i < 24; i++) {
-        planner.planStep(goal_thread, prev_thread, next_thread);
-      //}
+      #pragma omp parallel for num_threads(NUM_CPU_THREADS)
+      for (int i = 0; i < 48; i++) {
+        planner->planStep(goal_thread, prev_thread, next_thread);
+      }
 
-      planner.updateBestPath();
+      planner->updateBestPath();
       
-      RRTNode* node = planner.getTree()->front();
+      RRTNode* node = planner->getTree()->front();
       while (node->next != NULL) {
         node = node->next;
       }
 
-      bestScore = planner.l2PointsDifference(node->thread, end); 
+      bestScore = planner->l2PointsDifference(node->thread, end); 
       
     }
 
-    RRTNode* node = planner.getTree()->front();
+    RRTNode* node = planner->getTree()->front();
     node = node->next;
     while (node != NULL) {
       traj.push_back(new Thread(*node->thread));
@@ -180,8 +180,8 @@ void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& 
     }
 
   } else { 
-    Thread* approxStart = planner.halfDimApproximation(start_copy);
-    Thread* approxTarget = planner.halfDimApproximation(end_copy); 
+    Thread* approxStart = planner->halfDimApproximation(start_copy);
+    Thread* approxTarget = planner->halfDimApproximation(end_copy); 
     vector<Thread*> path;
     vector<vector<VectorXd> > motions; 
     RRTPlanner(approxStart, approxTarget, num_dim_reduc-1, path, motions);
@@ -191,7 +191,7 @@ void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& 
     transformed_path.resize(path.size());
     boost::progress_display progress(path.size()); 
     for (int i = 0; i < path.size(); i++) {
-      transformed_path[i] = planner.doubleDimApproximation(path[i]);
+      transformed_path[i] = planner->doubleDimApproximation(path[i]);
       ++progress; 
     }
 
@@ -203,6 +203,8 @@ void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& 
     pathFollower->getReachedStates(traj);
     pathFollower->getMotions(mot);
   }
+  
+  delete planner;
 };
 
 /*

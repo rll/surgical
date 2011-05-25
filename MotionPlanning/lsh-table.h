@@ -100,36 +100,8 @@ public:
           }
         }
       }
-      /*if (argMin == NULL) {
-        cout << "No match through hash! Running through all nodes..." << endl;
-        for (int i = 0; i < tables_[0].size(); i++) {
-          BOOST_FOREACH(Key key, tables_[0][i]) { 
-            ++keysConsidered;
-            float score = metric(((RRTNode *)key)->getData(), target_value);
-            //cout << "Score: " << score << endl; 
-            if (score < minScore) { 
-              minScore = score;
-              argMin = key; 
-            }
-          }
-        }
-      }
-     //cout << "Keys considered: " << keysConsidered << endl;
-     if (argMin == NULL) {
-        for (unsigned i =0; i < dim; i++) {
-          cout << target_value[i] << endl; 
-        }
-     }*/
      return argMin; 
     }
-
-    /*float metric (Domain d1, Domain d2) { 
-      float r = 0.0; 
-      for (unsigned i = 0; i < dim; i++) {
-        r+= (d1[i] - d2[i]) * (d1[i] - d2[i]); 
-      }
-      return r; 
-    }*/
 
     float metric (Key d1, Key d2) {
       return utils.distanceBetween((RRTNode *) d1, (RRTNode *) d2); 
