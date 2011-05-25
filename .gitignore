@@ -9,3 +9,5 @@ tags
 vision/captures/*
 *.png
 *.avi
+MotionPlanning/SQP_DATA/*.txt
+MotionPlanning/ims_for_vids/*

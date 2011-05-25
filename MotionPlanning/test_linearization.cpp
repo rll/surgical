@@ -21,6 +21,10 @@
 #include "../DiscreteRods/thread_discrete.h"
 #include "../DiscreteRods/trajectory_reader.h"
 #include "linearization_utils.h"
+#include "iterative_control.h"
+#include "trajectory_follower.h"
+#include "../../utils/clock.h"
+
 
 
 #define TRAJ_BASE_NAME_NYLON "../DiscreteRods/LearnParams/config/suturenylon_processed_projected"
@@ -50,7 +54,8 @@ double playbackmotions(int max_linearizations = 1);
 
 #define NUM_THREADS 2
 
-enum key_code {NONE, MOVEPOS, MOVETAN, ROTATETAN};
+enum key_code {NONE, MOVEPOS, MOVETAN, ROTATETAN, MOVEPOSSTART, MOVETANSTART, ROTATETANSTART};
+
 
 
 float lastx_L=0;
@@ -59,9 +64,17 @@ float lastx_R=0;
 float lasty_R=0;
 
 float rotate_frame[2];
+
 float move_end[2];
 float tangent_end[2];
 float tangent_rotation_end[2];
+
+float move_start[2];
+float tangent_start[2];
+float tangent_rotation_start[2];
+
+Vector3d zero_location;
+double zero_angle;
 
 GLThread* glThreads[NUM_THREADS];
 int simulated = 0;
@@ -105,7 +118,7 @@ void generateRandomThread() {
   vertices.push_back(Vector3d::Zero());
   angles.push_back(0.0);
 
-  vertices.push_back(Vector3d::UnitX()*_rest_length);
+  vertices.push_back(Vector3d::UnitX()*DEFAULT_REST_LENGTH);
   angles.push_back(0.0);
 
   double angle;
@@ -120,14 +133,14 @@ void generateRandomThread() {
   } while(abs(angle) > M_PI/4.0);
 
   inc.normalize();
-  inc *= _rest_length;
+  inc *= DEFAULT_REST_LENGTH;
 
   for(int i = 0; i < N-2; i++) {
     vertices.push_back(vertices[vertices.size()-1] + inc);
     angles.push_back(0.0);
     // time to move toward the goal
-    if ((vertices[vertices.size()-1] - goal).squaredNorm() > (N-2-i-1)*(N-2-i-1)*_rest_length*_rest_length) {
-      inc = (goal - vertices[vertices.size()-1]).normalized()*_rest_length;
+    if ((vertices[vertices.size()-1] - goal).squaredNorm() > (N-2-i-1)*(N-2-i-1)*DEFAULT_REST_LENGTH*DEFAULT_REST_LENGTH) {
+      inc = (goal - vertices[vertices.size()-1]).normalized()*DEFAULT_REST_LENGTH;
     }
   }
 
@@ -166,6 +179,18 @@ void processLeft(int x, int y)
   {
     tangent_rotation_end[0] += (x-lastx_L)*ROTATE_TAN_CONST;
     tangent_rotation_end[1] += (lasty_L-y)*ROTATE_TAN_CONST;
+  } else if (key_pressed == MOVEPOSSTART)
+  {
+    move_start[0] += (x-lastx_L)*MOVE_POS_CONST;
+    move_start[1] += (lasty_L-y)*MOVE_POS_CONST;
+  } else if (key_pressed == MOVETANSTART)
+  {
+    tangent_start[0] += (x-lastx_L)*MOVE_TAN_CONST;
+    tangent_start[1] += (lasty_L-y)*MOVE_TAN_CONST;
+  } else if (key_pressed == ROTATETANSTART)
+  {
+    tangent_rotation_start[0] += (x-lastx_L)*ROTATE_TAN_CONST;
+    tangent_rotation_start[1] += (lasty_L-y)*ROTATE_TAN_CONST;
   }
   else {
     rotate_frame[0] += x-lastx_L;
@@ -183,21 +208,39 @@ void processRight(int x, int y)
 
   if (key_pressed == MOVEPOS)
   {
-    move_end[0] += (x-lastx_R)*MOVE_POS_CONST;
-    move_end[1] += (lasty_R-y)*MOVE_POS_CONST;
+    move_end[0] += (x-lastx_L)*MOVE_POS_CONST;
+    move_end[1] += (lasty_L-y)*MOVE_POS_CONST;
   } else if (key_pressed == MOVETAN)
   {
-    tangent_end[0] += (x-lastx_R)*MOVE_TAN_CONST;
-    tangent_end[1] += (lasty_R-y)*MOVE_TAN_CONST;
+    tangent_end[0] += (x-lastx_L)*MOVE_TAN_CONST;
+    tangent_end[1] += (lasty_L-y)*MOVE_TAN_CONST;
   } else if (key_pressed == ROTATETAN)
   {
-    tangent_rotation_end[0] += (x-lastx_R)*ROTATE_TAN_CONST;
-    tangent_rotation_end[1] += (lasty_R-y)*ROTATE_TAN_CONST;
+    tangent_rotation_end[0] += (x-lastx_L)*ROTATE_TAN_CONST;
+    tangent_rotation_end[1] += (lasty_L-y)*ROTATE_TAN_CONST;
+  } else if (key_pressed == MOVEPOSSTART)
+  {
+    move_start[0] += (x-lastx_L)*MOVE_POS_CONST;
+    move_start[1] += (lasty_L-y)*MOVE_POS_CONST;
+  } else if (key_pressed == MOVETANSTART)
+  {
+    tangent_start[0] += (x-lastx_L)*MOVE_TAN_CONST;
+    tangent_start[1] += (lasty_L-y)*MOVE_TAN_CONST;
+  } else if (key_pressed == ROTATETANSTART)
+  {
+    tangent_rotation_start[0] += (x-lastx_L)*ROTATE_TAN_CONST;
+    tangent_rotation_start[1] += (lasty_L-y)*ROTATE_TAN_CONST;
+  }   else {
+    rotate_frame[0] += x-lastx_L;
+    rotate_frame[1] += lasty_L-y;
   }
 
-  lastx_R = x;
-  lasty_R = y;
+  lastx_L = x;
+  lasty_L = y;
+
 }
+
+
 
 void MouseMotion (int x, int y)
 {
@@ -234,12 +277,16 @@ void processNormalKeys(unsigned char key, int x, int y)
 {
   if (key == 't') {
     key_pressed = MOVETAN;
-  }
-  else if (key == 'm') {
+  } else if (key == 'm') {
     key_pressed = MOVEPOS;
-  }
-  else if (key == 'r') {
+  } else if (key == 'r') {
     key_pressed = ROTATETAN;
+  } else if (key == 'T') {
+	  key_pressed = MOVETANSTART;
+  } else if (key == 'M') {
+    key_pressed = MOVEPOSSTART;
+  } else if (key == 'R') {
+    key_pressed = ROTATETANSTART;
   } else if ((key == 'n' || key == 'N') && curr_thread_ind < total_saved_threads-1) {
     curr_thread_ind++;
     std::cout << "displaying thread " << curr_thread_ind  << std::endl;
@@ -260,7 +307,16 @@ void processNormalKeys(unsigned char key, int x, int y)
     solveLinearizedControl(glThreads[simulated]->getThread(), glThreads[reality]->getThread());
     std::cout << "new error: " << calculate_thread_error(glThreads[simulated]->getThread(), glThreads[reality]->getThread()) << std::endl;
     glutPostRedisplay();
-	} else if (key == '1') {
+	} else if (key == 'k') {
+    solveLinearizedControl(glThreads[simulated]->getThread(), glThreads[reality]->getThread(), START);
+    std::cout << "new error: " << calculate_thread_error(glThreads[simulated]->getThread(), glThreads[reality]->getThread()) << std::endl;
+    glutPostRedisplay();
+	} else if (key == 'L') {
+    solveLinearizedControl(glThreads[simulated]->getThread(), glThreads[reality]->getThread(), START_AND_END);
+    std::cout << "new error: " << calculate_thread_error(glThreads[simulated]->getThread(), glThreads[reality]->getThread()) << std::endl;
+    glutPostRedisplay();
+	} 
+  else if (key == '1') {
     std::cout << "running experiment no noise" << std::endl;
     InitMotions();
     glThreads[reality]->to_set_bend = 1.0;
@@ -335,11 +391,66 @@ int main (int argc, char * argv[])
   InitLights();
   InitStuff ();
 
+  vector<Two_Motions*> motions;
+  VectorXd controls(12);
+  double max_trans = 5;
+  double max_angle = 2*M_PI;
+  for (int i=0; i < 12; i++)
+  {
+    if (i % 6 < 3)
+      controls(i) = ((double)(rand() % 10000))/(10000.0)*max_trans;
+    else
+      controls(i) = ((double)(rand() % 10000))/(10000.0)*max_angle;
+  }
 
+  std::cout << "controls:\n" << controls.transpose() << std::endl;
+
+  VectorXd controls_after(12);
+  control_to_TwoMotion(controls, motions);
+  std::cout << "num motiosn: " << motions.size() << std::endl;
+  TwoMotion_to_control(motions, controls_after);
+  std::cout << "controls after:\n" << controls_after.transpose() << std::endl;
 
   InitThread(argc, argv);
 
+  Matrix3d start_rotation_oldcontrol = Matrix3d::Identity();
+  Matrix3d start_rotation_newcontrol = Matrix3d::Identity();
 
+  Two_Motions old_summed;
+  old_summed.set_nomotion();
+  Two_Motions new_summed;
+  new_summed.set_nomotion();
+
+  vector<Two_Motions*> old_motions;
+  vector<Two_Motions*> new_motions;
+
+  control_to_TwoMotion(controls, old_motions);
+  control_to_TwoMotion(controls_after, new_motions);
+
+  std::cout << "old rotations:\n";
+  for (int i=0; i < old_motions.size(); i++)
+  {
+    std::cout << old_motions[i]->_start._frame_rotation << std::endl << std::endl;
+    start_rotation_oldcontrol *= old_motions[i]->_start._frame_rotation;
+    old_summed = *old_motions[i] + old_summed;
+  }
+  std::cout << "\n\nnew rotations:\n";
+  for (int i=0; i < new_motions.size(); i++)
+  {
+    std::cout << new_motions[i]->_start._frame_rotation << std::endl << std::endl;
+    start_rotation_newcontrol *= new_motions[i]->_start._frame_rotation;
+    new_summed = *new_motions[i] + new_summed;
+  }
+  std::cout << std::endl;
+
+  Matrix3d expected_rotation;
+  rotation_from_euler_angles(expected_rotation, controls(3), controls(4), controls(5));
+
+  std::cout << "old end rotation:\n" << start_rotation_oldcontrol << "\nnew end rotation:\n" << start_rotation_newcontrol << "\nexpected:\n" << expected_rotation << std::endl;
+
+  std::cout << "old end summed:\n" << old_summed._start._frame_rotation << std::endl;
+  std::cout << "enw end summed:\n" << new_summed._start._frame_rotation << std::endl;
+ 
   // for (int i=0; i < NUM_PTS; i++)
   // {
   //   radii[i]=THREAD_RADII;
@@ -380,9 +491,9 @@ void DrawStuff (void)
 
 
   //change thread, if necessary
-  if (move_end[0] != 0.0 || move_end[1] != 0.0 || tangent_end[0] != 0.0 || tangent_end[1] != 0.0 || tangent_rotation_end[0] != 0 || tangent_rotation_end[1] != 0)
+  if (move_end[0] != 0.0 || move_end[1] != 0.0 || tangent_end[0] != 0.0 || tangent_end[1] != 0.0 || tangent_rotation_end[0] != 0 || tangent_rotation_end[1] != 0 || move_start[0] != 0.0 || move_start[1] != 0.0 || tangent_start[0] != 0.0 || tangent_start[1] != 0.0 || tangent_rotation_start[0] != 0 || tangent_rotation_start[1] != 0)
   {
-    glThreads[curThread]->ApplyUserInput(move_end, tangent_end, tangent_rotation_end);
+    glThreads[curThread]->ApplyUserInput(move_end, tangent_end, tangent_rotation_end, move_start, tangent_start, tangent_rotation_start);
   }
 
   //Draw Axes
@@ -531,7 +642,6 @@ double calculate_thread_error(Thread* start, Thread* goal)
   goal->get_thread_data(points_goal, angles_goal);
   
   return calculate_vector_diff_norm(points_start, points_goal);
-
 }
 
 
@@ -586,27 +696,50 @@ void InitMotions()
 
 double playbackmotions(int max_linearizations)
 {
-  const double linearization_error_thresh = 1.0;
-  double total_error = 0.0;
-
+  vector<vector<VectorXd> > all_motions; 
+  vector<Thread*> saved_threads;
+  saved_threads.push_back(new Thread(*glThreads[simulated]->getThread()));
+  
+  double start_time = GetClock(); //time(NULL);
+  //record motions
   for (int i=0; i < motions.size(); i++)
   {
-    std::cout << "motion ind: " << i << std::endl;
-    glThreads[reality]->getThread()->apply_motion(motions[i]);
-    glThreads[simulated]->getThread()->apply_motion(motions[i]);
-    double error_last_linearization = calculate_thread_error(glThreads[simulated]->getThread(), glThreads[reality]->getThread());
-    for (int linearization_num=0; linearization_num < max_linearizations; linearization_num++)
-    {
-      solveLinearizedControl(glThreads[simulated]->getThread(), glThreads[reality]->getThread());
-      double error_this_linearizaton = calculate_thread_error(glThreads[simulated]->getThread(), glThreads[reality]->getThread());
-      if (error_this_linearizaton + linearization_error_thresh > error_last_linearization)
-        break;
+    Two_Motions tmp_motion;
+    tmp_motion._start.set_nomotion();
+    tmp_motion._end = motions[i];
 
-      error_last_linearization = error_this_linearizaton;
-    } 
+    vector<VectorXd> this_motion_wrapper(1);
+    this_motion_wrapper[0].resize(12);
+    TwoMotion_to_control(&tmp_motion, this_motion_wrapper[0]);
+
+    all_motions.push_back(this_motion_wrapper);
+    saved_threads.push_back(new Thread(*saved_threads.back()));
+
+    applyControl(saved_threads.back(), this_motion_wrapper[0]);
+  }
+
+
+  //now play them back
+  double total_error = 0;
+  Trajectory_Follower trajectory_follower(saved_threads, all_motions, glThreads[reality]->getThread());
+  std::cout << "num states: " << saved_threads.size() << " " << all_motions.size() << std::endl;
+  while (!trajectory_follower.is_done())
+  {
+    trajectory_follower.Take_Step();
+
+    *glThreads[simulated]->getThread() = *saved_threads[trajectory_follower.curr_ind()];
+    std::cout << "curr ind: " << trajectory_follower.curr_ind() << std::endl;
+    *glThreads[reality]->getThread() = *trajectory_follower.curr_state();
+
     total_error += calculate_thread_error(glThreads[simulated]->getThread(), glThreads[reality]->getThread());
     DrawStuff();
   }
+
+  double end_time = GetClock();//time(NULL);
+  std::cout << "num seconds: " << end_time - start_time << std::endl;
+
+
+
   return total_error/((double)motions.size());
-  
+
 }

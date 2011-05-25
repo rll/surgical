@@ -34,6 +34,8 @@ class Trajectory_Recorder
 		Trajectory_Recorder(char* fileName_threads_in);
 
 		void add_thread_to_list(const Thread& thread);
+    void add_thread_to_list(const Thread* thread);
+    void add_threads_to_list(vector<Thread*> threads);
 
 		void write_threads_to_file();
 		void clear_threads();

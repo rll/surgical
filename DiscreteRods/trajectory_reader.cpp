@@ -37,7 +37,7 @@ void Trajectory_Reader::read_threads_from_file()
   int num = 0;
   while (!threads_playback.eof())
   {
-    
+
     for (int r=0; r < 3; r++)
     {
       for (int c=0; c < 3; c++)
@@ -61,11 +61,11 @@ void Trajectory_Reader::read_threads_from_file()
     }
 		twist_angles.back() = twist_angles[twist_angles.size()-2];
 
-    Thread nextThread(points, twist_angles, start_rot);
+    Thread nextThread(points, twist_angles, start_rot, DEFAULT_REST_LENGTH);
     _each_thread.push_back(nextThread);
 		//_each_thread.back() = nextThread;
-  }
 
+  }
 
   //last read thread is garbage data
   if (_each_thread.size() > 0)
@@ -74,3 +74,10 @@ void Trajectory_Reader::read_threads_from_file()
 }
 
 
+void Trajectory_Reader::get_all_threads(vector<Thread*>& threads_out)
+{
+  for (int i=0; i < _each_thread.size(); i++)
+  {
+    threads_out.push_back(new Thread(_each_thread[i]));
+  }
+}

@@ -1,4 +1,5 @@
 MACHINE= $(shell uname -s)
+HOSTNAME=-D$(shell uname -n)
 
 ifeq ($(MACHINE),Darwin)
     LIBS = -L/usr/lib/ -lglut -lgle -L/usr/local/lib/x86_64
@@ -10,7 +11,6 @@ else
     LDFLAG=
 endif
 
-
 VISION_LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lPvAPI -lrt
 UTILS_DIR = ../../utils/
 INCLUDES = -I/usr/local/include/ -I/usr/include/ -I $(UTILS_DIR) -I/usr/include/eigen2
@@ -19,8 +19,8 @@ VISION_INCLUDES = -I/usr/local/include/opencv/
 # OPT_COMP = -DEIGEN_NO_DEBUG -O3
 OPT_COMP = -O3
 FOPENMP = -fopenmp
-CC = g++ $(OPT_COMP) $(COMPILEFLAG)
-LD = g++ $(OPT_COMP) $(LDFLAG)
+CC = g++ $(OPT_COMP) $(COMPILEFLAG) $(HOSTNAME)
+LD = g++ $(OPT_COMP) $(LDFLAG) $(HOSTNAME) 
 DEBUG = -ggdb
 #DEBUG =
 PROFILER =

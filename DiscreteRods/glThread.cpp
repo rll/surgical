@@ -1,8 +1,13 @@
 #include "glThread.h"
+//default 23 links
+#define NUM_POINTS 19
+
 
 GLThread::GLThread() {
-  int numInit = 10;
+  int numInit = (NUM_POINTS-3)/2;
   double noise_factor = 0.0;
+
+  display_start_pos.setZero();
 
   vector<Vector3d> vertices;
   vector<double> angles;
@@ -10,7 +15,7 @@ GLThread::GLThread() {
   vertices.push_back(Vector3d::Zero());
   angles.push_back(0.0);
   //push back unitx so first tangent matches start_frame
-  vertices.push_back(Vector3d::UnitX()*_rest_length);
+  vertices.push_back(Vector3d::UnitX()*DEFAULT_REST_LENGTH);
   angles.push_back(0.0);
 
   Vector3d direction;
@@ -22,7 +27,7 @@ GLThread::GLThread() {
     {
       Vector3d noise( ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0);
       noise *= noise_factor;
-      Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*_rest_length;
+      Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*DEFAULT_REST_LENGTH;
       vertices.push_back(next_Vec);
       angles.push_back(0.0);
 
@@ -41,14 +46,14 @@ GLThread::GLThread() {
     {
       Vector3d noise( ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0);
       noise *= noise_factor;
-      Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*_rest_length;
+      Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*DEFAULT_REST_LENGTH;
       vertices.push_back(next_Vec);
       angles.push_back(0.0);
 
     }
 
   //push back unitx so last tangent matches end_frame
-  vertices.push_back(vertices.back()+Vector3d::UnitX()*_rest_length);
+  vertices.push_back(vertices.back()+Vector3d::UnitX()*DEFAULT_REST_LENGTH);
   angles.push_back(0.0);
 
 
@@ -59,6 +64,7 @@ GLThread::GLThread() {
 
 
   _thread = new Thread(vertices, angles, rotations[0], rotations[1]);
+  _thread->set_rest_length(DEFAULT_REST_LENGTH);
 
 #ifdef ISOTROPIC
   to_set_bend = _thread->get_bend_coeff();
@@ -76,6 +82,7 @@ GLThread::GLThread() {
 #endif
 
   InitContour();
+  strcpy(_display_name, "");
 }
 
 GLThread::GLThread(Thread* _thread) {
@@ -194,6 +201,21 @@ void GLThread::updateThreadPoints()
 
 void GLThread::ApplyUserInput(float move_end[], float tangent_end[], float tangent_rotation_end[])
 {
+	float move_start[2];
+	move_start[0] = 0.0;
+	move_start[1] = 0.0;
+	float tangent_start[2];
+	tangent_start[0] = 0.0;
+	tangent_start[1] = 0.0;
+	float tangent_rotation_start[2];
+	tangent_rotation_start[0] = 0.0;
+	tangent_rotation_start[1] = 0.0;
+
+	ApplyUserInput(move_end, tangent_end, tangent_rotation_end, move_start, tangent_start, tangent_rotation_start);
+}
+
+void GLThread::ApplyUserInput(float move_end[], float tangent_end[], float tangent_rotation_end[], float move_start[], float tangent_start[], float tangent_rotation_start[])
+{
   GLdouble model_view[16];
   glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
 
@@ -205,6 +227,10 @@ void GLThread::ApplyUserInput(float move_end[], float tangent_end[], float tange
 
 
   double winX, winY, winZ;
+
+  Two_Motions motion_to_apply;
+  motion_to_apply._start.set_nomotion();
+
 
   //change end positions
   Vector3d new_end_pos;
@@ -227,11 +253,13 @@ void GLThread::ApplyUserInput(float move_end[], float tangent_end[], float tange
   new_end_tan -= positions[1];
   new_end_tan.normalize();
 
-  positions[1] = new_end_pos;
+  //positions[1] = new_end_pos;
+  motion_to_apply._end._pos_movement = new_end_pos-positions[1];
 
   Matrix3d rotation_new_tan;
   rotate_between_tangents(tangents[1], new_end_tan, rotation_new_tan);
-  rotations[1] = rotation_new_tan*rotations[1];
+  //rotations[1] = rotation_new_tan*rotations[1];
+  motion_to_apply._end._frame_rotation = rotation_new_tan;
 
 
   //check rotation around tangent
@@ -251,12 +279,70 @@ void GLThread::ApplyUserInput(float move_end[], float tangent_end[], float tange
 
   rotations[1].col(1) = new_end_tan_normal;
   rotations[1].col(2) = rotations[1].col(0).cross(new_end_tan_normal);
+  motion_to_apply._end._frame_rotation = Eigen::AngleAxisd(angle_mismatch(rotations[1], _thread->end_rot()), rotations[1].col(0).normalized())*motion_to_apply._end._frame_rotation;
+
+
+  //change start positions
+  Vector3d new_start_pos;
+  gluProject(positions[0](0), positions[0](1), positions[0](2), model_view, projection, viewport, &winX, &winY, &winZ);
+  winX += move_start[0];
+  winY += move_start[1];
+  move_start[0] = 0.0;
+  move_start[1] = 0.0;
+  gluUnProject(winX, winY, winZ, model_view, projection, viewport, &new_start_pos(0), &new_start_pos(1), &new_start_pos(2));
+  //    std::cout << "X: " << positions[1](0) << " Y: " << positions[1](1) << " Z: " << positions[1](2) << std::endl;
+
+
+
+  //change start tangents
+  Vector3d new_start_tan;
+  gluProject(positions[0](0)+tangents[0](0),positions[0](1)+tangents[0](1), positions[0](2)+tangents[0](2), model_view, projection, viewport, &winX, &winY, &winZ);
+  winX += tangent_start[0];
+  winY += tangent_start[1];
+  tangent_start[0] = 0.0;
+  tangent_start[1] = 0.0;
+  gluUnProject(winX, winY, winZ, model_view, projection, viewport, &new_start_tan(0), &new_start_tan(1), &new_start_tan(2));
+  new_start_tan -= positions[0];
+  new_start_tan.normalize();
+
+
+  //positions[0] = new_start_pos;
+  motion_to_apply._start._pos_movement = new_start_pos-positions[0];
+
+  Matrix3d rotation_new_start_tan;
+  rotate_between_tangents(tangents[0], new_start_tan, rotation_new_tan);
+  //rotations[0] = rotation_new_start_tan*rotations[0];
+  motion_to_apply._start._frame_rotation = rotation_new_tan;
+ 
+
+  //check rotation around start tangent
+  tangent_normal_rotate_around = rotations[0].col(1);
+  Vector3d new_start_tan_normal;
+  gluProject(positions[0](0)+tangent_normal_rotate_around(0), positions[0](1)+tangent_normal_rotate_around(1), positions[0](2)+tangent_normal_rotate_around(2), model_view, projection, viewport, &winX, &winY, &winZ);
+  winX += tangent_rotation_start[0];
+  winY += tangent_rotation_start[1];
+  tangent_rotation_start[0] = 0.0;
+  tangent_rotation_start[1] = 0.0;
+  gluUnProject(winX, winY, winZ, model_view, projection, viewport, &new_start_tan_normal(0), &new_start_tan_normal(1), &new_start_tan_normal(2));
+  new_start_tan_normal -= positions[0];
+  //project this normal onto the plane normal to X (to ensure Y stays normal to X)
+  new_start_tan_normal -= new_start_tan_normal.dot(rotations[0].col(0))*rotations[0].col(0);
+  new_start_tan_normal.normalize();
+
+
+  rotations[0].col(1) = new_start_tan_normal;
+  rotations[0].col(2) = rotations[0].col(0).cross(new_start_tan_normal);
+  double angle_change_start = angle_mismatch(rotations[0], _thread->start_rot());
+  motion_to_apply._start._frame_rotation = Eigen::AngleAxisd(angle_change_start, rotations[0].col(0).normalized())*motion_to_apply._start._frame_rotation;
+
+
 
 
 
   //change thread
-  _thread->set_constraints(positions[0], rotations[0], positions[1], rotations[1]);
+  //_thread->set_constraints(positions[0], rotations[0], positions[1], rotations[1]);
   //thread->set_end_constraint(positions[1], rotations[1]);
+  _thread->apply_motion_nearEnds(motion_to_apply);
 
   // std::cout <<"CONSTRAINT END:\n" << rotations[1] << std::endl;
   _thread->minimize_energy();
@@ -267,10 +353,10 @@ void GLThread::ApplyUserInput(float move_end[], float tangent_end[], float tange
 
 void GLThread::DrawAxes()
 {
-  //Draw Axes at End
-  Vector3d diff_pos = positions[1]-display_start_pos;
+ //Draw Axes at Start
+  Vector3d diff_pos = positions[0]-display_start_pos;
   double rotation_scale_factor = 10.0;
-  Matrix3d rotations_project = rotations[1]*rotation_scale_factor;
+  Matrix3d rotations_project = rotations[0]*rotation_scale_factor;
   glBegin(GL_LINES);
   glEnable(GL_LINE_SMOOTH);
   glColor3d(1.0, 0.0, 0.0); //red
@@ -283,6 +369,28 @@ void GLThread::DrawAxes()
   glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //z
   glVertex3f((float)(diff_pos(0)+rotations_project(0,2)), (float)(diff_pos(1)+rotations_project(1,2)), (float)(diff_pos(2)+rotations_project(2,2)));
   glEnd();
+
+
+  //Draw Axes at End
+  diff_pos = positions[1]-display_start_pos;
+  rotation_scale_factor = 10.0;
+  rotations_project = rotations[1]*rotation_scale_factor;
+  glBegin(GL_LINES);
+  glEnable(GL_LINE_SMOOTH);
+  glColor3d(1.0, 0.0, 0.0); //red
+  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //x
+  glVertex3f((float)(diff_pos(0)+rotations_project(0,0)), (float)(diff_pos(1)+rotations_project(1,0)), (float)(diff_pos(2)+rotations_project(2,0)));
+  glColor3d(0.0, 1.0, 0.0); //green
+  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //y
+  glVertex3f((float)(diff_pos(0)+rotations_project(0,1)), (float)(diff_pos(1)+rotations_project(1,1)), (float)(diff_pos(2)+rotations_project(2,1)));
+  glColor3d(0.0, 0.0, 1.0); //blue
+  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //z
+  glVertex3f((float)(diff_pos(0)+rotations_project(0,2)), (float)(diff_pos(1)+rotations_project(1,2)), (float)(diff_pos(2)+rotations_project(2,2)));
+
+  glEnd();
+
+
+
 }
 
 void GLThread::InitContour ()
@@ -365,6 +473,42 @@ void GLThread::InitContour ()
 
 }
 
+void GLThread::DrawName()
+{
+  GLdouble model_view[16];
+  glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
+
+  GLdouble projection[16];
+  glGetDoublev(GL_PROJECTION_MATRIX, projection);
+
+  GLint viewport[4];
+  glGetIntegerv(GL_VIEWPORT, viewport);
+
+
+
+  double winX, winY, winZ;
+  double coordX, coordY, coordZ;
+  coordX = points[1](0)-display_start_pos(0);
+  coordY = points[1](1)-display_start_pos(1);
+  coordZ = points[1](2)-display_start_pos(2);
+  gluProject(coordX, coordY, coordZ, model_view, projection, viewport, &winX, &winY, &winZ);
+
+  
+
+  for (int i=0; i < strlen(_display_name); i++)
+  {
+    double x_add = 7.0*(double)i;
+    double y_add = 15.0;
+    //glRasterPos2f(winX+x_add, winY+y_add);
+    gluUnProject(winX+x_add, winY+y_add, winZ, model_view, projection, viewport, &coordX, &coordY, &coordZ);
+    glRasterPos3f(coordX, coordY, coordZ);
+    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, _display_name[i]);
+  }
+
+
+
+
+}
 
 void GLThread::set_end_constraint(Vector3d end_pos, Matrix3d end_rot) {
   _thread->set_end_constraint(end_pos, end_rot);

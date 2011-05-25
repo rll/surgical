@@ -1,14 +1,16 @@
+HOSTNAME=-D$(shell uname -n)
+
 UTILS_DIR = ../../utils/
 THREAD_DIR = ../DiscreteRods/
 VISION_DIR = ../vision/
-LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lPvAPI -lrt -lglut -lgle
-INCLUDES = -I/usr/local/include/ -I $(UTILS_DIR) -I/usr/local/include/eigen2/
+LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lPvAPI -lrt -lglut -lgle -llshkit -lgsl -lgslcblas -lboost_program_options-mt 
+INCLUDES = -I/usr/local/include/ -I $(UTILS_DIR) -I/usr/local/include/eigen2/ -I/usr/include/boost/  -I/usr/local/include/lshkit/ -I/usr/local/include/opencv/  
 #INCLUDES = -I/usr/local/include/ -I/usr/local/include/opencv/ -I/usr/local/include/libPvAPI -I $(UTILS_DIR)
-OPT_COMP = -DEIGEN_NO_DEBUG -O3
-# OPT_COMP =
+OPT_COMP = -DEIGEN_NO_DEBUG -O3 
+# OPT_COMP = 
 FOPENMP = -fopenmp
-CC = g++ $(OPT_COMP) $(COMPILEFLAG)
-LD = g++ $(OPT_COMP) $(LDFLAG)
+CC = g++ $(OPT_COMP) $(COMPILEFLAG) $(FOPENMP) $(HOSTNAME)
+LD = g++ $(OPT_COMP) $(LDFLAG) $(FOPENMP) $(HOSTNAME)
 # DEBUG = -ggdb
 DEBUG = -ggdb
 PROFILER =
@@ -17,11 +19,38 @@ FAKEIMS= -DFAKEIMS
 
 #target : testCanny testCapture example_capture_3cam calibrate_robots test_point_distances PositionsOnRequest PositionsOnRequest2 threadStereo
 
-target: test_linearization
+target: test_linearization test_planner run_planner_libs visualize_trajs run_planner_libs_dim1 run_planner_libs_dim2 vis_onetraj
 
-test_linearization: test_linearization.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o
-	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o test_linearization test_linearization.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o $(LIBS) $(PROFILER)
+test_linearization: test_linearization.cpp clock.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o trajectory_follower.o iterative_control.o
+	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o test_linearization test_linearization.cpp clock.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o trajectory_follower.o iterative_control.o $(LIBS) $(PROFILER)
 
+test_planner: test_planner.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o clock.o glThread.o trajectory_reader.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o test_planner test_planner.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o trajectory_recorder.o clock.o glThread.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o $(LIBS) $(PROFILER)
+
+run_planner_libs: run_planner_libs.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o clock.o glThread.o trajectory_reader.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o run_planner_libs run_planner_libs.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o trajectory_recorder.o clock.o glThread.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o $(LIBS) $(PROFILER)
+
+run_planner_libs_dim1: run_planner_libs_dim1.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o clock.o glThread.o trajectory_reader.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o run_planner_libs_dim1 run_planner_libs_dim1.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o trajectory_recorder.o clock.o glThread.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o $(LIBS) $(PROFILER)
+
+run_planner_libs_dim2: run_planner_libs_dim2.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o clock.o glThread.o trajectory_reader.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o run_planner_libs_dim2 run_planner_libs_dim2.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o trajectory_recorder.o clock.o glThread.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o $(LIBS) $(PROFILER)
+
+visualize_trajs: visualize_trajs.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o clock.o glThread.o trajectory_reader.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o visualize_trajs visualize_trajs.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o trajectory_recorder.o clock.o glThread.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o $(LIBS) $(PROFILER)
+
+
+vis_onetraj: vis_onetraj.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o clock.o glThread.o trajectory_reader.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o vis_onetraj vis_onetraj.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o trajectory_recorder.o clock.o glThread.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o $(LIBS) $(PROFILER)
+
+benchmark_planner: benchmark_planner.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o clock.o glThread.o trajectory_reader.o planner_utils.o linearization_utils.o rrt_utils.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o benchmark_planner benchmark_planner.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o trajectory_recorder.o clock.o glThread.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o $(LIBS) $(PROFILER)
+
+run_sample_generator: run_sample_generator.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o clock.o glThread.o trajectory_reader.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o run_sample_generator run_sample_generator.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o trajectory_recorder.o clock.o glThread.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o $(LIBS) $(PROFILER)
+
+benchmark_runner: benchmark_runner.cpp
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o benchmark_runner benchmark_runner.cpp $(LIBS) $(PROFILER)
 
 
 ################################################
@@ -63,7 +92,18 @@ glThread.o : $(THREAD_DIR)glThread.cpp $(THREAD_DIR)glThread.h
 linearization_utils.o: linearization_utils.cpp linearization_utils.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c linearization_utils.cpp $(PROFILER)
 
+rrt_utils.o : rrt_utils.cpp rrt_utils.h
+	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c rrt_utils.cpp $(PROFILER)
+
+planner_utils.o : planner_utils.cpp planner_utils.h planner_lib.h
+	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c planner_utils.cpp $(PROFILER)
+
+trajectory_follower.o : trajectory_follower.cpp trajectory_follower.h
+	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c trajectory_follower.cpp $(PROFILER)
+
+iterative_control.o : iterative_control.cpp iterative_control.h
+	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c iterative_control.cpp $(PROFILER)
 
 clean:
-	rm *.o *.gch test_linearization
+	rm *.o *.gch test_linearization test_planner benchmark_runner benchmark_planner run_planner_libs visualize_trajs run_sample_generator
 

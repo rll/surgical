@@ -1,0 +1,34 @@
+EG-RRT:
+
+Quadratic Regulator-Based Heuristic for Rapidly Exploring State Space:
+-Usually, people use euclidean distance for cost. But this doesn't always work well.
+-Instead, try to think about which node can produce the next child node. Thus, use system dynamics, and see which node closest in terms of controlability.
+-Cost from finite-horizon affine quadratic regulator (AQR)
+-Cost is integral over control inputs, with a search over multiple time horizons
+-Finds optimal control based on that cost at all times. Finds change of state, then integrates to find the final state (and every state in between). Now, there is a cost associated with the control applied to get to that final state. This assumes that the final state is equal to the goal.
+-This assigns a cost between x_0 and x_rand based on the control this system believes is needed (based on linearization)
+-By using this as the distance pseudometric, they change the voronoi regions, and thus affect
+  1. What regions of the sampled space are least explored
+  2. Which children of x_near have brought he RRT closer to the less explored space
+
+-Performance improvements tend to drop off as complexity of system increases
+
+
+
+
+EG-RRT
+RELATED WORKS
+-Often you do not fill up your space (probably because of a poor distance function, particularly one that does not take into account constraints)
+Two Solution
+  1. Adapt the distribution bias to take into account system dynamics
+    a. AQR (Tedrake)
+    b. RG-RRT (assigns reachability set to nodes, bias sampling towards states that will increase the reachable set)
+  2. Reduce weight of selected nodes when you have selected it and been unable to extend
+    a. RRT-blossom (edges in already explored space are eliminated since they didn't help much)
+    b. RC-RRT (explicitly record exploration success and failures, bias sampling of nodes)
+      check "RRT-based algorithm for testing and validating multi-robot controllers"
+
+
+
+Randoms:
+-if cost to go meets several specific conditions, then it is a feasible navigation function. Thus can be descended to reach the goal state (Planning Algorithms, Steve LaValle)

@@ -491,6 +491,9 @@ void DrawStuff (void)
 
     double winX, winY, winZ;
 
+    Two_Motions motion_to_apply;
+    motion_to_apply._start.set_nomotion();
+
 
     //change end positions
     Vector3d new_end_pos;
@@ -513,11 +516,14 @@ void DrawStuff (void)
     new_end_tan -= positions[1];
     new_end_tan.normalize();
 
-    positions[1] = new_end_pos;
+    //positions[1] = new_end_pos;
+    motion_to_apply._end._pos_movement = new_end_pos-positions[1];
 
     Matrix3d rotation_new_tan;
     rotate_between_tangents(tangents[1], new_end_tan, rotation_new_tan);
-    rotations[1] = rotation_new_tan*rotations[1];
+    //rotations[1] = rotation_new_tan*rotations[1];
+    motion_to_apply._end._frame_rotation = rotation_new_tan;
+
 
 
     //check rotation around tangent
@@ -537,7 +543,7 @@ void DrawStuff (void)
 
     rotations[1].col(1) = new_end_tan_normal;
     rotations[1].col(2) = rotations[1].col(0).cross(new_end_tan_normal);
-
+    motion_to_apply._end._frame_rotation = Eigen::AngleAxisd(angle_mismatch(rotations[1], thread->end_rot()), rotations[1].col(0).normalized())*motion_to_apply._end._frame_rotation;
 
 
 
@@ -564,12 +570,13 @@ void DrawStuff (void)
     new_start_tan -= positions[0];
     new_start_tan.normalize();
 
-    positions[0] = new_start_pos;
+//    positions[0] = new_start_pos;
+    motion_to_apply._start._pos_movement = new_start_pos-positions[0];
 
     Matrix3d rotation_new_start_tan;
     rotate_between_tangents(tangents[0], new_start_tan, rotation_new_start_tan);
-    rotations[0] = rotation_new_start_tan*rotations[0];
-
+    //rotations[0] = rotation_new_start_tan*rotations[0];
+    motion_to_apply._start._frame_rotation = rotation_new_start_tan;
 
     //check rotation around tangent
     Matrix3d old_rot_start = rotations[0];
@@ -589,8 +596,11 @@ void DrawStuff (void)
 
     rotations[0].col(1) = new_start_tan_normal;
     rotations[0].col(2) = rotations[0].col(0).cross(new_start_tan_normal);
+    double angle_change_start = angle_mismatch(rotations[0], thread->start_rot());
+    motion_to_apply._start._frame_rotation = Eigen::AngleAxisd(angle_change_start, rotations[0].col(0).normalized())*motion_to_apply._start._frame_rotation;
 
-    zero_angle += angle_mismatch(rotations[0], old_rot_start);
+
+    zero_angle += angle_change_start;
 
 
 
@@ -602,7 +612,8 @@ void DrawStuff (void)
 
 
     //change thread
-    thread->set_constraints(positions[0], rotations[0], positions[1], rotations[1]);
+    //thread->set_constraints(positions[0], rotations[0], positions[1], rotations[1]);
+    thread->apply_motion_nearEnds(motion_to_apply);
     //thread->set_end_constraint(positions[1], rotations[1]);
 
     thread->minimize_energy();
@@ -805,7 +816,7 @@ void initThread()
   vertices.push_back(Vector3d::Zero());
   angles.push_back(0.0);
   //push back unitx so first tangent matches start_frame
-  vertices.push_back(Vector3d::UnitX()*_rest_length);
+  vertices.push_back(Vector3d::UnitX()*DEFAULT_REST_LENGTH);
   angles.push_back(0.0);
 
   Vector3d direction;
@@ -817,7 +828,7 @@ void initThread()
   {
     Vector3d noise( ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0);
     noise *= noise_factor;
-    Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*_rest_length;
+    Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*DEFAULT_REST_LENGTH;
     vertices.push_back(next_Vec);
     angles.push_back(0.0);
 
@@ -836,14 +847,14 @@ void initThread()
   {
     Vector3d noise( ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0);
     noise *= noise_factor;
-    Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*_rest_length;
+    Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*DEFAULT_REST_LENGTH;
     vertices.push_back(next_Vec);
     angles.push_back(0.0);
 
   }
 
   //push back unitx so last tangent matches end_frame
-  vertices.push_back(vertices.back()+Vector3d::UnitX()*_rest_length);
+  vertices.push_back(vertices.back()+Vector3d::UnitX()*DEFAULT_REST_LENGTH);
   angles.push_back(0.0);
 
 
@@ -901,7 +912,7 @@ void initThread_closedPolygon()
 {
   int numVertices = 20;
   double angle_between = M_PI - (((double)(numVertices-2))*(M_PI))/((double)numVertices);
-  //note that edge length is equal to _rest_length
+  //note that edge length is equal to rest_length
 
   double noise_factor = 1.0;
 
@@ -926,7 +937,7 @@ void initThread_closedPolygon()
 
   for (int vert_ind=1; vert_ind < numVertices; vert_ind++)
   {
-    currPoint = currPoint + _rest_length*currRot.col(0);
+    currPoint = currPoint + DEFAULT_REST_LENGTH*currRot.col(0);
     vertices.push_back(currPoint);
     angles.push_back(0.0);
 
@@ -934,7 +945,7 @@ void initThread_closedPolygon()
   }
 
  //push back unitx so last tangent matches end_frame
-  currPoint = currPoint + _rest_length*currRot.col(0);
+  currPoint = currPoint + DEFAULT_REST_LENGTH*currRot.col(0);
   vertices.push_back(currPoint);
   angles.push_back(0.0);
 

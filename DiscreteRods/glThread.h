@@ -13,6 +13,9 @@
 #include <GL/gle.h>
 #endif
 
+#include <string.h>
+
+
 using namespace std;
 
 //CONTOUR STUFF
@@ -41,9 +44,11 @@ class GLThread {
   //void GetConfiguration(int* size, double* pts_cpy[][], double* twist_cpy[]);
   void DrawThread();
   void DrawAxes();
+  void DrawName();
   void minimize_energy();
   void updateThreadPoints();
   void ApplyUserInput(float move_end[], float tangent_end[], float tangent_rotation_end[]);
+  void ApplyUserInput(float move_end[], float tangent_end[], float tangent_rotation_end[], float move_start[], float tangent_start[], float tangent_rotation_start[]);
   void InitContour();
   void set_end_constraint(Vector3d pos, Matrix3d rot);
 
@@ -65,6 +70,11 @@ class GLThread {
 #else
     _thread->set_coeffs_normalized(to_set_B, to_set_twist, to_set_grav);
 #endif
+  }
+
+  void setName(const char* name)
+  {
+    strcpy(_display_name, name);
   }
 
   void printThreadData();
@@ -89,6 +99,7 @@ class GLThread {
 
 // protected:
   Thread* _thread;
+  char _display_name[256];
 
   Vector3d positions[2];
   Vector3d tangents[2];
