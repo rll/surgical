@@ -1,5 +1,5 @@
 MACHINE= $(shell uname -s)
-HOSTNAME=-D$(shell uname -n)
+HOSTNAME=-D$(shell uname -n | sed 's/-/_/g')
 
 ifeq ($(MACHINE),Darwin)
     LIBS = -L/usr/lib/ -lglut -lgle -L/usr/local/lib/x86_64
@@ -16,8 +16,7 @@ UTILS_DIR = ../../utils/
 INCLUDES = -I/usr/local/include/ -I/usr/include/ -I $(UTILS_DIR) -I/usr/include/eigen2
 VISION_INCLUDES = -I/usr/local/include/opencv/
 # OPT_COMP =
-# OPT_COMP = -DEIGEN_NO_DEBUG -O3
-OPT_COMP = -O3
+OPT_COMP = -DEIGEN_NO_DEBUG -O3
 FOPENMP = -fopenmp
 CC = g++ $(OPT_COMP) $(COMPILEFLAG) $(HOSTNAME)
 LD = g++ $(OPT_COMP) $(LDFLAG) $(HOSTNAME) 
@@ -110,6 +109,6 @@ text3d.o: text3d.cpp text3d.h
 
 
 clean:
-	rm *.o *.gch testThreadDiscrete testThreadDiscrete_noniso saveThreadTrajectory recordThreadVideo thread_visualize_and_save thread_visualize_and_save_noniso
+	rm -r *.o *.gch testThreadDiscrete testThreadDiscrete_noniso saveThreadTrajectory recordThreadVideo thread_visualize_and_save thread_visualize_and_save_noniso *.dSYM
 
 
