@@ -1,9 +1,18 @@
-HOSTNAME=-D$(shell uname -n)
+MACHINE= $(shell uname -s)
+HOSTNAME=-D$(shell uname -n | sed 's/-/_/g')
 
+ifeq ($(MACHINE),Darwin)
+    LIBS = -L/usr/local/lib/x86_64 -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/ -lglut -lgle -lboost_program_options-mt -lgsl -lgslcblas -llshkit 
+    COMPILEFLAG=-DMAC
+    LDFLAG=$(COMPILEFLAG) -L"/System/Library/Frameworks/OpenGL.framework/Libraries" -L"/System/Library/Frameworks/GLUT.framework" -framework GLUT -framework OpenGL -lGL -lGLU -L/usr/X11R6/lib
+else
+    LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/ -lglut -lgle -llshkit -lgsl -lgslcblas -lboost_program_options-mt 
+    COMPILEFLAG=
+    LDFLAG=
+endif
 UTILS_DIR = ../../utils/
 THREAD_DIR = ../DiscreteRods/
 VISION_DIR = ../vision/
-LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lPvAPI -lrt -lglut -lgle -llshkit -lgsl -lgslcblas -lboost_program_options-mt 
 INCLUDES = -I/usr/local/include/ -I $(UTILS_DIR) -I/usr/local/include/eigen2/ -I/usr/include/boost/  -I/usr/local/include/lshkit/ -I/usr/local/include/opencv/  
 #INCLUDES = -I/usr/local/include/ -I/usr/local/include/opencv/ -I/usr/local/include/libPvAPI -I $(UTILS_DIR)
 OPT_COMP = -DEIGEN_NO_DEBUG -O3 
