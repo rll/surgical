@@ -253,8 +253,10 @@ class Thread
     double _rest_length;
 
     //intersection
-    double intersection(int i, int j, double radius); //do these two pieces intersect?
+    double self_intersection(int i, int j, double radius); //do these two pieces intersect?
+    double obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius);
     double intersection(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius);
+
     bool check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Intersection>& intersections);
     void fix_intersections();
 

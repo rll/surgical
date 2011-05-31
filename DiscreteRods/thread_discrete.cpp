@@ -595,7 +595,7 @@ void Thread::fix_intersections() {
           _thread_pieces[ind_a + 1]->offset_vertex(cross*dist_a);
           _thread_pieces[ind_b]->offset_vertex(-cross*dist_b); 
           _thread_pieces[ind_b + 1]->offset_vertex(-cross*dist_b);
-          if(intersection(ind_a,ind_b,THREAD_RADIUS)) {
+          if(self_intersection(ind_a,ind_b,THREAD_RADIUS)) {
         //  cout << "cross pointed wrong direction, trying other direction" << endl;
             _thread_pieces[ind_a]->offset_vertex(-2.0*cross*dist_a); 
             _thread_pieces[ind_a + 1]->offset_vertex(-2.0*cross*dist_a);
@@ -607,6 +607,35 @@ void Thread::fix_intersections() {
           }
  */
         }
+
+
+        for (int i=0; i < intersections.size(); i++)
+        {
+          int ind_piece = intersections[i]._piece_ind;
+          int ind_obj = intersections[i]._object_ind;
+          Vector3d cross = _thread_pieces[ind_piece]->edge().cross(objects_in_env[ind_obj]._end_pos - objects_in_env[ind_obj]._start_pos);
+          cross.normalize();
+
+          cross *= intersections[i]._dist;
+
+       //    cross *= MAX_MOVEMENT_VERTICES;
+
+          _thread_pieces[ind_piece]->offset_vertex(cross); 
+          _thread_pieces[ind_piece + 1]->offset_vertex(cross);
+          if(obj_intersection(ind_piece,THREAD_RADIUS, ind_obj,objects_in_env[ind_obj]._radius)) {
+        //  cout << "cross pointed wrong direction, trying other direction" << endl;
+            _thread_pieces[ind_piece]->offset_vertex(-2.0*cross); 
+            _thread_pieces[ind_piece + 1]->offset_vertex(-2.0*cross);
+          }
+ /*         if(intersection(a,b,MAX_MOVEMENT_VERTICES)) {
+             cout << "************BAD: projected orthoganally out of intersection both directions and still intersect" << endl;
+          }
+ */
+        }
+
+
+
+
 
 
     }
@@ -624,7 +653,7 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
     for(int j = i + 2; j < _thread_pieces.size() - 2; j++) {
       if(i == 0 && j == _thread_pieces.size() - 2) 
         continue;
-      double intersection_dist = intersection(i,j,THREAD_RADIUS);
+      double intersection_dist = self_intersection(i,j,THREAD_RADIUS);
       if(intersection_dist != 0) {
         //skip if both ends, since these are constraints
         found = true;
@@ -638,9 +667,7 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
   for (int i=0; i < objects_in_env.size(); i++)
   {
     for(int j = 2; j < _thread_pieces.size() - 3; j++) {
-      double intersection_dist = intersection(
-            objects_in_env[i]._start_pos, objects_in_env[i]._end_pos, objects_in_env[i]._radius,
-            _thread_pieces[j]->vertex(), _thread_pieces[j+1]->vertex(),THREAD_RADIUS);
+      double intersection_dist = obj_intersection(j,THREAD_RADIUS, i, objects_in_env[i]._radius);
       if(intersection_dist != 0) {
         //skip if both ends, since these are constraints
         if(i == 0 && j == _thread_pieces.size() - 2) 
@@ -657,108 +684,15 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
   return found;
 }
 //define an epsilon
-double Thread::intersection(int i, int j, double radius)
+double Thread::self_intersection(int i, int j, double radius)
 {
     return intersection(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, _thread_pieces[j]->vertex(), _thread_pieces[j+1]->vertex(), radius);
-/*
-    ThreadPiece *a = _thread_pieces[i];
-    ThreadPiece *b = _thread_pieces[j];
-    Vector3d as = a->_vertex;
-    Vector3d ae = a->_edge + as;
-    Vector3d bs = b->_vertex;
-    Vector3d be = b->_edge + bs;
+}
 
-
-    bool reject = false;
-    double r = radius * 2.0;
-
- // attempt to trivialy reject based on a's bounding sphere
-    Vector3d amid = (as + ae)/2.0; // edge a's midpoint
-    double edgeLen = max((ae - as).norm() * 1.5,(be-bs).norm()*1.5);
-    //check distance to bs and be
-    Vector3d diff1 = bs - amid;
-    Vector3d diff2 = be - amid;
-    double distbs = diff1.norm();
-    double distbe = diff2.norm();
-    if((distbs > (edgeLen / 2.0 + r)) && (distbe > (edgeLen / 2.0 + r))) {
-       // cout << "false (trivial rejected)" << endl;
-        reject = true;
-        return 0;
-    }
-    
-   
-    
-    // move 'as' to origin and move everything else relative
-    ae = ae - as; bs = bs - as; be = be - as;
-    
-    // rotate 'b' to be along z-axis, and rotate 'a' relative
-    Vector3d zaxis(0.0,0.0,1.0);
-    Quaterniond qrot;
-    Vector3d ae_norm = Vector3d(ae[0],ae[1],ae[2]);
-    ae_norm.normalize();
-    qrot = qrot.setFromTwoVectors(ae_norm,zaxis);
-    Matrix3d mrot;
-    mrot = qrot.toRotationMatrix(); //convert to matrix for more efficent rotation
-    bs = mrot * bs; be = mrot * be; ae = mrot * ae;
-    //////cout << "bs, be, ae: " << bs << endl << endl << be << endl << endl << ae << endl;
-    
-    // check if z values of b are outside of a's z values
-    if((bs[2] > ae[2] + .5 && be[2] > ae[2] + .5) || (bs[2] < -0.5 && be[2] < -0.5)) {
-   // cout << "false (after rotation one line is 'above' other)" << endl;
-       return 0;
-    }
-    // checks for parallel edges
-    if(abs(bs[0]-be[0]) < .00001 && abs(bs[1]-be[1]) < .00001) {
-        if(bs[0]*bs[0] + bs[1]*bs[1] > r) return 0;
-        else return r - sqrt(bs[0]*bs[0] + bs[1]*bs[1]);
-    }
-    // check for intersection in the x-y plane projection by solving quadratic formula
-    Vector2d s(bs[0],bs[1]); //start vector of projection of edge b into x, y plane
-    Vector2d e(be[0],be[1]); //end vector of projection of edge b into x, y plane
-    Vector2d dir = e - s; //direction vector
-    
-    double acoeff, bcoeff, ccoeff; // a, b, and c coefficents in quadratic formula
-    bcoeff = 2.0 * dir.dot(s);
-    acoeff = dir.dot(dir);
-    ccoeff = s.dot(s) - pow(r,2.0);
-    // check determinant to reject intersection
-    double det = pow(bcoeff,2.0) - 4 * acoeff * ccoeff;
-   // cout << "det: " << det << endl;
-    if(det <= 0) {
-   // cout << "false (line never intersects with projection circle <= det < 0)" << endl;
-      return 0;
-    }
-    // check where along edge b intersection occurs
-    double t1 = (-bcoeff + sqrt(det))/(2.0 * acoeff);
-    double t2 = (-bcoeff - sqrt(det))/(2.0 * acoeff);
-    if((t1 > 1.0 && t2 > 1.0) || (t1 < 0.0 && t2 < 0.0)) {
-    // cout << "false (t value => outside range of b vector)" << endl;
-      return 0;
-    }
-    //check where along edge a intersection occurs 
-    double z1 = (bs + t1*(be - bs))[2];
-    double z2 = (bs + t2*(be - bs))[2];  
-    if((z1 < -.5 && z2 < -.5) || (z1 >  ae[2] + .5 && z2 > ae[2] + .5)) {
-     // cout << "false (z value => outside height of a vector)" << endl;
-      return 0;
-    } 
-    // we have intersection
-    //cout << "true (intersection!)" << endl;
-    if(reject) {
-       cout << "---------------------------BAD: trivial reject, but actually intersection" << endl;
-       cout << "t1, t2, z1, z2: " << t1 << " " << t2 << " " << z1 << " " << z2 << endl;
-       cout << "Trivial reject distance: " << edgeLen / 2.0 + r*r << " edgeLen, r " << edgeLen << " " << r << endl; 
-       cout << "ae[2]: " << ae[2] << endl;
-       cout << "distbs, distbe: " << distbs << " " << distbe << endl;
-      // return true;
-    }
-    
-    // return distance
-    double min_t = - s.dot(dir) / dir.dot(dir);
-    double dist = sqrt((s + dir * min_t).dot(s + dir * min_t));
-    
-    return r - dist;
-    */
+double Thread::obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius)
+{
+  return intersection(objects_in_env[obj_ind]._start_pos, objects_in_env[obj_ind]._end_pos, objects_in_env[obj_ind]._radius,
+            _thread_pieces[piece_ind]->vertex(), _thread_pieces[piece_ind+1]->vertex(),THREAD_RADIUS);
 }
 
 #define INTERSECTION_EDGE_LENGTH_FACTOR 1.5
