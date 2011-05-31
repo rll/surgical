@@ -66,6 +66,7 @@ class Thread
     void get_thread_data(vector<Vector3d>& points, vector<Matrix3d>& material_frames);
     void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<Matrix3d>& material_frames);
     void set_all_angles_zero();
+    void set_all_pieces_mythread();
 
     //energy minimization
     //

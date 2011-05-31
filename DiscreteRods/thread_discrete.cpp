@@ -361,6 +361,8 @@ Thread::Thread(const Thread& rhs) :
   if (this->num_pieces() > 4)
     set_end_constraint(rhs.end_pos(), rhs.end_rot());
   //project_length_constraint();
+  
+  set_all_pieces_mythread();
 }
 
 Thread::~Thread()
@@ -408,7 +410,6 @@ double Thread::calculate_energy()
 
   for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
-    _thread_pieces[piece_ind]->set_my_thread(this);
     energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav();
   }
   return energy;
@@ -2103,6 +2104,19 @@ void Thread::set_all_angles_zero()
     }
 } 
 
+void Thread::set_all_pieces_mythread()
+{
+  for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
+  {
+    _thread_pieces[piece_ind]->set_my_thread(this);
+  }
+
+  for (int piece_ind=0; piece_ind < _thread_pieces_backup.size(); piece_ind++)
+  {
+    _thread_pieces_backup[piece_ind]->set_my_thread(this);
+  }
+}
+
 bool Thread::is_consistent()
 {
   bool toRtn = true;
@@ -2539,6 +2553,7 @@ Thread& Thread::operator=(const Thread& rhs)
 
   //set_end_constraint(vertices.back(), end_rot);
 
+  set_all_pieces_mythread();
 
   return *this;
 

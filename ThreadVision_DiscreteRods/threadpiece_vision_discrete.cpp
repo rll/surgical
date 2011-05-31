@@ -31,9 +31,8 @@ ThreadPiece_Vision::ThreadPiece_Vision(const Vector3d& vertex, const double angl
 */
 
 ThreadPiece_Vision::ThreadPiece_Vision(const Vector3d& vertex, const double angle_twist, ThreadPiece_Vision* prev, ThreadPiece_Vision* next, Thread* my_thread, Thread_Vision* my_vision)
-    :ThreadPiece(vertex, angle_twist, prev, next, _my_thread), _my_vision(my_vision)
+    :ThreadPiece(vertex, angle_twist, prev, next, my_thread), _my_vision(my_vision)
 {
-    _my_thread = my_thread;
     grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
     grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
     grad_offsets[2] = Vector3d(0.0, 0.0, grad_eps);
@@ -44,7 +43,6 @@ ThreadPiece_Vision::ThreadPiece_Vision(const Vector3d& vertex, const double angl
 ThreadPiece_Vision::ThreadPiece_Vision(const ThreadPiece_Vision& rhs)
     :ThreadPiece(rhs), _my_vision(rhs._my_vision)
 {
-    _my_thread = rhs._my_thread;
     grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
     grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
     grad_offsets[2] = Vector3d(0.0, 0.0, grad_eps);
@@ -120,11 +118,12 @@ void ThreadPiece_Vision::gradient_vertex_vis_numeric(Vector3d& grad)
 
 }
 
+//this probably doesn't work correctly!
 ThreadPiece_Vision& ThreadPiece_Vision::operator=(const ThreadPiece_Vision& rhs)
 {
    //ThreadPiece::operator= (rhs);
     _my_vision = rhs._my_vision;
-    _my_thread = rhs._my_thread;
+    //_my_thread = rhs._my_thread;
 
     return *this;
 }

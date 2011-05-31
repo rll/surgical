@@ -23,8 +23,7 @@
 #include "../DiscreteRods/trajectory_recorder.h"
 
 
-#define MAX_LENGTH_VIS 21
-//#define MAX_LENGTH_VIS 67
+#define MAX_LENGTH_VIS 67
 
 
 #define FAKEIMS_FILE "for_stereo_fakeims"

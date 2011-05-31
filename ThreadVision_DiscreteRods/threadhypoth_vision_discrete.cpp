@@ -50,6 +50,8 @@ Thread_Hypoth::Thread_Hypoth(const Thread_Hypoth& rhs) :
 
     _thread_pieces.front()->initializeFrames();
 
+    set_all_pieces_mythread();
+
     init();
 }
 
@@ -362,8 +364,6 @@ void Thread_Hypoth::calculate_score()
         //_score = - 1 * ( calculate_energy() - _previous_energy); //
     //}
     _score = calculate_total_energy();
-if (_score > 1000000 || isnan(_score))
-_score = 1000000;
     cout << "Score: " << _score << endl;
 }
 
