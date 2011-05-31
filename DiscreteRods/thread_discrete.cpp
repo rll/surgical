@@ -408,6 +408,7 @@ double Thread::calculate_energy()
 
   for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
+    _thread_pieces[piece_ind]->set_my_thread(this);
     energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav();
   }
   return energy;

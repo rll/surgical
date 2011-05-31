@@ -94,7 +94,7 @@ void Thread_Hypoth::optimize_visual(double (Thread_Hypoth::*energyFunc)())
 
     /* Store energy for score
      * Doesn't include visual error */
-    _previous_energy = calculate_energy();
+    _previous_energy = (this->*energyFunc)();
     double step_in_grad_dir_vertices = 1.0;
 
     /* Constants for accuracy */
@@ -396,7 +396,6 @@ void Thread_Hypoth::add_first_threadpieces(corresponding_pts& start_pt,
 
     Vector3d start_vertex;
     OpencvToEigen(start_pt.pt3d, start_vertex);
-	std::cout << "my addr: " << this << std::endl;
     _thread_pieces[0] = new ThreadPiece_Vision(start_vertex, 0.0, NULL, NULL, this, 
             _thread_vision);
     _thread_pieces[1] = new ThreadPiece_Vision(

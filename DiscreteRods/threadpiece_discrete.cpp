@@ -60,18 +60,12 @@ void ThreadPiece::set_vertex(const Vector3d& vertex)
 
 double ThreadPiece::energy()
 {
-std::cout << "energy curvature: " << energy_curvature() <<std::endl;
-std::cout << "energy grav: " << energy_grav() <<std::endl;
-std::cout << "energy twist: " << energy_twist() <<std::endl;
   return energy_curvature() + energy_twist() + energy_grav(); // + energy_stretch();
 }
 
 //not defined for first or last piece
 double ThreadPiece::energy_curvature()
 {
-
-std::cout << "start angle: " << _my_thread->start_angle() << std::endl;
-std::cout << "end angle: " << _my_thread->end_angle() << std::endl;
   if (_prev_piece == NULL || _next_piece == NULL)
     return 0.0;
 
@@ -98,9 +92,6 @@ double ThreadPiece::energy_twist()
   {
     return 0.0; //same - since the first twist is set to be zero (aligning bishop to initial material frame)
   } else {
-std::cout << "my thread: " << _my_thread << std::endl;
-std::cout << "start angle: " << _my_thread->start_angle() << std::endl;
-std::cout << "end angle: " << _my_thread->end_angle() << std::endl;
     double angle_diff = _my_thread->end_angle() - _my_thread->start_angle();
     return ( (TWIST_COEFF*angle_diff*angle_diff)/((_my_thread->total_length())));
   }
