@@ -75,6 +75,9 @@ Matrix3d rotations[3];
 
 key_code key_pressed;
 
+#define NUM_STEPS_FEW 10
+bool few_minimization_steps = false;
+
 
 /* set up a light */
 GLfloat lightOnePosition[] = {140.0, 0.0, 200.0, 0.0};
@@ -257,18 +260,18 @@ void processNormalKeys(unsigned char key, int x, int y)
   {
     exit(0);
   } else if(key == 'd') { //toggle stepping to allow debugging
-       thread->stepping = !thread->stepping;
-       cout << "Debugging is now set to: " << thread->stepping << endl;
+    few_minimization_steps = !few_minimization_steps;
+    cout << "Debugging is now set to: " << few_minimization_steps << endl;
   } else if(key == 'n') {
-        cout << "Stepping " << endl;
-        thread->minimize_energy();
-        DrawStuff();
+    cout << "Stepping " << endl;
+    thread->minimize_energy(NUM_STEPS_FEW);
+    DrawStuff();
   } else if(key == 'l') {
-        cout << "Stepping though project length constraint" << endl;
-        thread->project_length_constraint();
-        DrawStuff();
+    cout << "Stepping though project length constraint" << endl;
+    thread->project_length_constraint();
+    DrawStuff();
   }
-      
+
 
   lastx_R = x;
   lasty_R = y;
@@ -441,8 +444,8 @@ int main (int argc, char * argv[])
 	InitStuff ();
 
   initThread();
-  thread->stepping = false;
-  thread->step = false;
+  //thread->stepping = false;
+  //thread->step = false;
 	thread->minimize_energy();
   updateThreadPoints();
   thread_saved = new Thread(*thread);
@@ -626,14 +629,14 @@ void DrawStuff (void)
 
 
 
-
+    
 
     //change thread
     //thread->set_constraints(positions[0], rotations[0], positions[1], rotations[1]);
-    thread->apply_motion_nearEnds(motion_to_apply);
+    thread->apply_motion_nearEnds(motion_to_apply, false);
     //thread->set_end_constraint(positions[1], rotations[1]);
-    if(!thread->stepping) {
-    thread->minimize_energy();
+    if(!few_minimization_steps) {
+      thread->minimize_energy();
     }
 
 
