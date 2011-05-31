@@ -36,7 +36,7 @@
 
 #endif
 
-#define DEFAULT_REST_LENGTH 1.5 /*default rest length for each threadpiece*/
+#define DEFAULT_REST_LENGTH 3.0 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
 //#define NUM_THREADS_PARALLEL_FOR 2
@@ -219,7 +219,7 @@ class Thread
      bool step;    
 
 
-  protected:
+  //protected:
     vector<ThreadPiece*> _thread_pieces;
     vector<ThreadPiece*> _thread_pieces_backup;
     vector<double> _angle_twist_backup;

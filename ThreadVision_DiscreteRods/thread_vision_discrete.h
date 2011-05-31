@@ -31,7 +31,7 @@
 
 #define DISPLAY_ORIG_BASE "orig cam"
 #define DISPLAY_CANNY_BASE "canny cam"
-#define CLOSE_DISTANCE_COEFF 1 * _rest_length
+#define CLOSE_DISTANCE_COEFF _rest_length
 
 #define SAVED_IMAGE_BASE "./stereo_test/stereo_test"
 

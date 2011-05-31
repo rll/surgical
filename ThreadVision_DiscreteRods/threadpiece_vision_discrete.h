@@ -19,8 +19,9 @@ public:
     ThreadPiece_Vision();
     ~ThreadPiece_Vision();
 
-    ThreadPiece_Vision(const Vector3d& vertex, const double angle_twist);
+    ThreadPiece_Vision(const Vector3d& vertex, const double angle_twist, Thread* my_thread);
     ThreadPiece_Vision(const Vector3d& vertex, const double angle_twist, ThreadPiece_Vision* prev, ThreadPiece_Vision* next);
+    ThreadPiece_Vision(const Vector3d& vertex, const double angle_twist, ThreadPiece_Vision* prev, ThreadPiece_Vision* next, Thread* my_thread, Thread_Vision* my_vision);
     ThreadPiece_Vision(const Vector3d& vertex, const double angle_twist, ThreadPiece_Vision* prev, ThreadPiece_Vision* next, Thread_Vision* my_thread);
     ThreadPiece_Vision(const ThreadPiece_Vision& rhs);
 
@@ -36,12 +37,13 @@ public:
 
 
 
-    void set_my_thread(Thread_Vision* my_thread){_my_thread = my_thread;};
+    void set_my_thread(Thread_Vision* my_thread){_my_vision = my_thread;};
 
     //overloaded operators
     ThreadPiece_Vision& operator=(const ThreadPiece_Vision& rhs);
   //private:
-    Thread_Vision* _my_thread;
+    //Thread_Vision* _my_thread;
+    Thread_Vision* _my_vision;
 };
 
 

@@ -326,6 +326,22 @@ double Thread_Hypoth::calculate_total_energy()
     return calculate_visual_energy() + calculate_energy();
 }
 
+/*
+ * Calculate distance of given thread from energy-minimal configuration.
+ * Uses average l2-norm of distances between vertices of configurations.
+*/
+double Thread_Hypoth::distance_from_energy_minimal_configuration()
+{
+  double distance = 0.0;
+  save_thread_pieces();
+  minimize_energy();
+  for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++) {
+    distance += (_thread_pieces[piece_ind]->vertex()-_thread_pieces_backup[piece_ind]->vertex()).squaredNorm();
+  }
+  restore_thread_pieces();
+  return distance/_thread_pieces.size();
+}
+
 /* Uses visual reprojection error */
 double Thread_Hypoth::calculate_visual_energy()
 {
@@ -346,6 +362,8 @@ void Thread_Hypoth::calculate_score()
         //_score = - 1 * ( calculate_energy() - _previous_energy); //
     //}
     _score = calculate_total_energy();
+if (_score > 1000000 || isnan(_score))
+_score = 1000000;
     cout << "Score: " << _score << endl;
 }
 
@@ -378,11 +396,12 @@ void Thread_Hypoth::add_first_threadpieces(corresponding_pts& start_pt,
 
     Vector3d start_vertex;
     OpencvToEigen(start_pt.pt3d, start_vertex);
-    _thread_pieces[0] = new ThreadPiece_Vision(start_vertex, 0.0, NULL, NULL,
+	std::cout << "my addr: " << this << std::endl;
+    _thread_pieces[0] = new ThreadPiece_Vision(start_vertex, 0.0, NULL, NULL, this, 
             _thread_vision);
     _thread_pieces[1] = new ThreadPiece_Vision(
             start_vertex + _rest_length * start_tan.tan, startTwist,
-            (ThreadPiece_Vision*) _thread_pieces[0], NULL, _thread_vision);
+            (ThreadPiece_Vision*) _thread_pieces[0], NULL, this, _thread_vision);
     _thread_pieces[0]->set_next(_thread_pieces[1]);
 
     _thread_pieces.front()->set_bishop_frame(start_rot);
@@ -422,7 +441,7 @@ void Thread_Hypoth::add_possible_next_hypoths(
 
     _thread_pieces.push_back(
             new ThreadPiece_Vision(new_vertex_init, new_angle,
-                    (ThreadPiece_Vision*) _thread_pieces.back(), NULL,
+                    (ThreadPiece_Vision*) _thread_pieces.back(), NULL, this, 
                     _thread_vision));
     _thread_pieces[_thread_pieces.size() - 2]->set_next(
             (ThreadPiece_Vision*) _thread_pieces.back());
