@@ -5,6 +5,7 @@ Thread::Thread() :
 {
   _thread_pieces.resize(0);
 	_thread_pieces_backup.resize(0);
+   stepping = false;
 }
 
 
@@ -174,6 +175,7 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
   Matrix3d end_rot = Eigen::AngleAxisd(twist_angles[twist_angles.size()-2], end_bishop.col(0).normalized())*end_bishop;
 
   set_end_constraint(vertices.back(), end_rot);
+  stepping = false;
 
 }
 
@@ -228,7 +230,7 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
   //_saved_last_theta_changes.resize(_thread_pieces.size());
 
   set_constraints(vertices.front(), start_rot, vertices.back(), end_rot);
-
+  stepping = false;
 
 
   //set_end_constraint(vertices.back(), end_rot);
@@ -357,6 +359,7 @@ Thread::Thread(const Thread& rhs) :
 
   //set_constraints(start_pos, start_rot, end_pos, end_rot);
   set_start_constraint(rhs.start_pos(), rhs.start_rot());
+  stepping = rhs.stepping;
 
   if (this->num_pieces() > 4)
     set_end_constraint(rhs.end_pos(), rhs.end_rot());
@@ -2464,6 +2467,7 @@ Thread& Thread::operator=(const Thread& rhs)
   set_constraints(start_pos, start_rot, end_pos, end_rot);
 
   _rest_length = rhs._rest_length;
+  stepping = rhs.stepping; 
   //project_length_constraint();
 
 /*
