@@ -81,7 +81,7 @@ void Thread_Hypoth::optimize_energy_only()
         save_thread_pieces_and_resize(savedThreadPieces);
         minimize_energy();
         _score = -1 * (calculate_energy() - oldEnergy);
-        cout << "Score: " << _score << endl;
+        //cout << "Score: " << _score << endl;
         restore_thread_pieces_and_resize(savedThreadPieces);
     }
     else {
@@ -330,18 +330,20 @@ double Thread_Hypoth::calculate_total_energy()
 
 /*
  * Calculate distance of given thread from energy-minimal configuration.
- * Uses average l2-norm of distances between vertices of configurations.
+ * Uses rms of l2-norm of distances between vertices of configurations.
+ * TODO: Consider using material frame angle distances as well.
 */
 double Thread_Hypoth::distance_from_energy_minimal_configuration()
 {
-  double distance = 0.0;
-  save_thread_pieces();
-  minimize_energy();
-  for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++) {
-    distance += (_thread_pieces[piece_ind]->vertex()-_thread_pieces_backup[piece_ind]->vertex()).squaredNorm();
-  }
-  restore_thread_pieces();
-  return distance/_thread_pieces.size();
+    double distance = 0.0;
+    vector<ThreadPiece*> saved_thread_pieces;
+    save_thread_pieces_and_resize(saved_thread_pieces);
+    minimize_energy();
+    for (int i = 0; i < _thread_pieces.size(); i++) {
+        distance += (_thread_pieces[i]->vertex()-saved_thread_pieces[i]->vertex()).norm();
+    }
+    restore_thread_pieces_and_resize(saved_thread_pieces);
+    return sqrt(distance/((double) _thread_pieces.size()));
 }
 
 /* Uses visual reprojection error */
@@ -354,17 +356,23 @@ double Thread_Hypoth::calculate_visual_energy()
     return energy;
 }
 
+/*
+ * Compute score of a hypothesis for pruning of hypothesis set.
+ * TODO: Testing and tweaking to determine terms and coefficients of score.
+ * TODO: minimize_energy() segfaults/errors if _thread_pieces.size() < 5.
+ */
 void Thread_Hypoth::calculate_score()
 {
-    /* If no change in energy yet */
-    //if (_previous_energy < 0) {
-        //_score = 0;
-    //}
-    //else {
-        //_score = - 1 * ( calculate_energy() - _previous_energy); //
-    //}
-    _score = calculate_total_energy();
-    cout << "Score: " << _score << endl;
+//    _score = calculate_total_energy();
+    const double DISTANCE_COEFF = 0.1;
+    double distance = 0;
+    double visual_energy = calculate_visual_energy();
+    if (_thread_pieces.size() >= 5)
+    {
+        distance += distance_from_energy_minimal_configuration();
+    }
+    distance = DISTANCE_COEFF*distance;
+    cout << "calculate_score | visual energy: " << visual_energy << "\tdistance: " << distance << std::endl;
 }
 
 void Thread_Hypoth::calculate_visual_gradient_vertices(
@@ -459,7 +467,6 @@ void Thread_Hypoth::add_possible_next_hypoths(
             tan_and_scores.front().tan * _rest_length
                     + _thread_pieces[_thread_pieces.size() - 2]->vertex());
     _thread_pieces.front()->initializeFrames();
-    calculate_score();
 
     _thread_pieces_backup.push_back(
             new ThreadPiece_Vision(*(ThreadPiece_Vision*) _thread_pieces.back()));
@@ -468,6 +475,8 @@ void Thread_Hypoth::add_possible_next_hypoths(
     _thread_pieces_backup.back()->set_prev(
             (ThreadPiece_Vision*) _thread_pieces_backup[_thread_pieces_backup.size()
                     - 2]);
+
+    calculate_score();
 
     /* Adds the new hypoths to extra_next_hypoths, if there is more
      * than 1. Will resize extra_next_hypoths and override previous

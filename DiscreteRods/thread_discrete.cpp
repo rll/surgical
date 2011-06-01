@@ -443,10 +443,6 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 
   double curr_energy = calculate_energy();
   double next_energy = 0.0;
- 
-  if(stepping) {
-       num_opt_iters = 10;
-  }
 
   int opt_iter;
   for (opt_iter = 0; opt_iter < num_opt_iters; opt_iter++)
@@ -1669,7 +1665,7 @@ void Thread::project_length_constraint()
   double normerror;
   VectorXd dy(3*(N-4));
   int step_max = num_iters_project;
-  if(stepping) step_max = 1;
+//  if(stepping) step_max = 1;
   for (iter_num=0; iter_num < num_iters_project && iter_num < step_max; iter_num++)
   {
     C.setZero();
@@ -1740,7 +1736,7 @@ void Thread::project_length_constraint()
     
     fix_intersections();
 
-    if(move_too_far && !stepping) {
+    if(move_too_far/* && !stepping*/) {
         project_length_constraint();
     }
 
