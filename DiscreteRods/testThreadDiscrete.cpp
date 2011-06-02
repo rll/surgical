@@ -25,6 +25,7 @@ USING_PART_OF_NAMESPACE_EIGEN
 
 void InitStuff();
 void DrawStuff();
+void DrawObjectsInEnv();
 void updateThreadPoints();
 void initThread();
 void initThread_closedPolygon();
@@ -792,11 +793,42 @@ void DrawStuff (void)
 
 
 
+  DrawObjectsInEnv();
+
   glPopMatrix ();
 
   glutSwapBuffers ();
 }
 
+
+void DrawObjectsInEnv()
+{
+  vector<Intersection_Object>* objects;
+  objects = get_objects_in_env();
+  
+  glColor3f(0.8, 0.05, 0.05);
+  Vector3d vector_array[4];
+  double point_array[4][3];
+  for (int obj_ind=0; obj_ind < objects->size(); obj_ind++)
+  {
+    vector_array[0] = objects->at(obj_ind)._start_pos - (objects->at(obj_ind)._end_pos - objects->at(obj_ind)._start_pos);
+    vector_array[1] = objects->at(obj_ind)._start_pos;
+    vector_array[2] = objects->at(obj_ind)._end_pos;
+    vector_array[3] = objects->at(obj_ind)._end_pos + (objects->at(obj_ind)._end_pos - objects->at(obj_ind)._start_pos);
+
+    for (int pt_ind = 0; pt_ind < 4; pt_ind++)
+    {
+      point_array[pt_ind][0] = vector_array[pt_ind](0);
+      point_array[pt_ind][1] = vector_array[pt_ind](1);
+      point_array[pt_ind][2] = vector_array[pt_ind](2);
+    }
+
+    glePolyCylinder(4, point_array, NULL, objects->at(obj_ind)._radius);
+
+   }
+
+
+}
 
 
 void updateThreadPoints()
@@ -926,6 +958,17 @@ void initThread()
 #else
   thread->set_coeffs_normalized(1.0, 3.0, 1e-4);
 #endif
+
+  Vector3d start_pos_obj(10.0, 5.0, -40.0);
+  Vector3d end_pos_obj(10.0, 5.0, 40.0);
+  Intersection_Object obj(1.5, start_pos_obj, end_pos_obj);
+
+  add_object_to_env(obj);
+
+
+
+
+
 }
 
 

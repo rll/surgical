@@ -616,7 +616,7 @@ void Thread::fix_intersections() {
           Vector3d cross = _thread_pieces[ind_piece]->edge().cross(objects_in_env[ind_obj]._end_pos - objects_in_env[ind_obj]._start_pos);
           cross.normalize();
 
-          cross *= intersections[i]._dist;
+          cross *= intersections[i]._dist+INTERSECTION_PUSHBACK_EPS;
 
        //    cross *= MAX_MOVEMENT_VERTICES;
 
@@ -669,9 +669,6 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
     for(int j = 2; j < _thread_pieces.size() - 3; j++) {
       double intersection_dist = obj_intersection(j,THREAD_RADIUS, i, objects_in_env[i]._radius);
       if(intersection_dist != 0) {
-        //skip if both ends, since these are constraints
-        if(i == 0 && j == _thread_pieces.size() - 2) 
-          continue;
         found = true;
 
         intersections.push_back(Intersection(j,i,intersection_dist));
@@ -679,6 +676,7 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
     }
 
   }
+
 
 
   return found;
@@ -806,7 +804,8 @@ double Thread::intersection(const Vector3d& a_start_in, const Vector3d& a_end_in
 //  }
 
   // return distance
-  double min_t = - b_xy_start.dot(b_xy_edge) / b_xy_edge.dot(b_xy_edge);
+  //double min_t = - b_xy_start.dot(b_xy_edge) / b_xy_edge.dot(b_xy_edge);
+  double min_t = (t1+t2)/2.0;
   double dist = sqrt((b_xy_start + b_xy_edge * min_t).dot(b_xy_start + b_xy_edge * min_t));
 
   return total_radius - dist;
@@ -2480,3 +2479,19 @@ Thread& Thread::operator=(const Thread& rhs)
 
 }
 
+
+
+
+
+void add_object_to_env(Intersection_Object& obj)
+{
+  objects_in_env.push_back(obj);
+}
+
+
+//not sure why, couldn't look at static variable directly
+//so this gets the data
+vector<Intersection_Object>* get_objects_in_env()
+{
+  return &objects_in_env;
+}

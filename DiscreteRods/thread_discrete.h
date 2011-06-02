@@ -91,6 +91,10 @@ struct Intersection_Object
 };
 
 static vector<Intersection_Object> objects_in_env;
+void add_object_to_env(Intersection_Object& obj);
+vector<Intersection_Object>* get_objects_in_env();
+
+
 
 class Thread
 {
