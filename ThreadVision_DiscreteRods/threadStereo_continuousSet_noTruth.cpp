@@ -611,7 +611,9 @@ void findThreadInIms()
 {
     thread_vision_searched = true;
 
+    //will run search until this length
     thread_vision.set_max_length(MAX_LENGTH_VIS);
+    //clear debugging displays
     thread_vision.clear_display();
 
     updateIms(_start_pt, _start_tan, _end_pt, _end_tan);
@@ -620,11 +622,11 @@ void findThreadInIms()
     //thread_vision.addStartData(_end_pt, _end_tan);
 
 
+    //updates images in thread_vision class, runs canny
+    //Also generates initial hypotheses
     thread_vision.initThreadSearch();
 
-//    for (int i = 0; i < 11; i++)
-//        thread_vision.generateNextSetOfHypoths();
-
+    
     if (thread_vision.runThreadSearch())
     {
         std::cout << "Found thread full opt" << std::endl;

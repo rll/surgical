@@ -354,6 +354,7 @@ void Thread_Vision::initThreadSearch()
   //incase we ran this before and updated Images
   clear_thread_hypoths();
 
+    //also precomputes distances
     updateCanny();
 
     findStartPoints();

@@ -489,7 +489,7 @@ bool Thread_Hypoth::find_next_tan_visual(vector<tangent_and_score>& tangents)
 {
     /* TODO Adjust Tangent Error Threshold */
     const double length_for_tan = _rest_length;
-    const double ang_to_rotate = M_PI / 60.0; //TODO Why?
+    const double ang_to_rotate = M_PI / 60.0; //controls how fine to sample
     //const int num_reprojs_per_tan = 10;
 
     //rotate as in yaw, pitch, roll - no roll, since we only care about direction of tangent
@@ -521,7 +521,6 @@ bool Thread_Hypoth::find_next_tan_visual(vector<tangent_and_score>& tangents)
             currScore += TAN_SCORE_DOT_PROD_COEFF * (currTangent.dot(
                     this->end_rot().col(0).normalized()));
 
-            //std::cout << "currScore: " << currScore << "  threadvision: " << _thread_pieces[_thread_pieces.size()-2]->vertex().transpose() << std::endl;
             if (currScore < TANGENT_ERROR_THRESH) {
                 tangent_and_score toAdd(currTangent, currScore);
                 tan_scores.push_back(toAdd);
