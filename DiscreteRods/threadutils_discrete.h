@@ -17,6 +17,8 @@
   #define NUM_CPU_THREADS 6 
 #elif surgical2
   #define NUM_CPU_THREADS 12
+#elif surgical3
+  #define NUM_CPU_THREADS 6
 #else
   #define NUM_CPU_THREADS 1
 #endif

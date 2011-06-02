@@ -343,7 +343,7 @@ double Thread_Hypoth::distance_from_energy_minimal_configuration()
         distance += (_thread_pieces[i]->vertex()-saved_thread_pieces[i]->vertex()).norm();
     }
     restore_thread_pieces_and_resize(saved_thread_pieces);
-    return sqrt(distance/((double) _thread_pieces.size()));
+    return distance/((double) _thread_pieces.size());
 }
 
 /* Uses visual reprojection error */
@@ -359,20 +359,28 @@ double Thread_Hypoth::calculate_visual_energy()
 /*
  * Compute score of a hypothesis for pruning of hypothesis set.
  * TODO: Testing and tweaking to determine terms and coefficients of score.
- * TODO: minimize_energy() segfaults/errors if _thread_pieces.size() < 5.
+ * NOTE: minimize_energy() segfaults/errors if _thread_pieces.size() < 5.
  */
 void Thread_Hypoth::calculate_score()
 {
-//    _score = calculate_total_energy();
+    const bool USE_DISTANCE_METRIC = false;
     const double DISTANCE_COEFF = 0.1;
-    double distance = 0;
     double visual_energy = calculate_visual_energy();
-    if (_thread_pieces.size() >= 5)
-    {
-        distance += distance_from_energy_minimal_configuration();
+    if (!USE_DISTANCE_METRIC) {
+        double energy = calculate_energy();
+//        cout << "calculate_score | visual energy: " << visual_energy << "\tenergy: " << energy << std::endl;
+        _score = visual_energy + energy;
     }
-    distance = DISTANCE_COEFF*distance;
-    cout << "calculate_score | visual energy: " << visual_energy << "\tdistance: " << distance << std::endl;
+    else {
+        double distance = 0;
+        if (_thread_pieces.size() >= 5)
+        {
+            distance += distance_from_energy_minimal_configuration();
+        }
+        distance = DISTANCE_COEFF*distance;
+        cout << "calculate_score | visual energy: " << visual_energy << "\tdistance: " << distance << std::endl;
+        _score = visual_energy + DISTANCE_COEFF*distance;
+    }
 }
 
 void Thread_Hypoth::calculate_visual_gradient_vertices(
