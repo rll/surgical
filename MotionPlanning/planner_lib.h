@@ -138,6 +138,14 @@ void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<Vector
 };
 
 /* 
+ * Smooth a RRT trajectory.
+ */
+void smoothTrajectory(vector<Thread*>& traj_in, vector<Thread*>& traj_out)
+{
+
+};
+
+/* 
  * Build an RRT from start towards end, using num_dim_reduc dimension reductions. 
  */
 void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& traj, vector<vector<VectorXd> >& mot) 
@@ -157,14 +165,12 @@ void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& 
       for (int i = 0; i < 48; i++) {
         planner->planStep(goal_thread, prev_thread, next_thread);
       }
-
       planner->updateBestPath();
       
       RRTNode* node = planner->getTree()->front();
       while (node->next != NULL) {
         node = node->next;
       }
-
       bestScore = planner->l2PointsDifference(node->thread, end); 
       
     }
@@ -206,6 +212,7 @@ void RRTPlanner(Thread* start, Thread* end, int num_dim_reduc, vector<Thread*>& 
   
   delete planner;
 };
+
 
 /*
  * Subsample traj according to some method

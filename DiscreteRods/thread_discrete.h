@@ -13,15 +13,15 @@
 #include <Eigen/Geometry>
 
 #ifdef ISOTROPIC 
-    #define MAX_MOVEMENT_VERTICES 0.1
+    #define MAX_MOVEMENT_VERTICES 0.2
     #define MAX_ROTATION_TWIST (M_PI/30.0)
     #define MOMENTUM_CONSTANT 0.0 /*how much of the last gradient do we use*/
 
-    #define MIN_MOVEMENT_VERTICES 1e-5 //speedy at 1e-4
+    #define MIN_MOVEMENT_VERTICES 1e-6 //speedy at 1e-4
     #define MIN_ROTATION_TWIST (M_PI/1000.0)
     
-    #define ENERGY_FOR_CONVERGENCE 5e-6 //speedy at 1e-5
-    #define NUM_MAX_ITERS 150000000 //speedy at 6000
+    #define ENERGY_FOR_CONVERGENCE 5e-7 //speedy at 1e-5
+    #define NUM_MAX_ITERS 6000 //speedy at 6000
 #else
 
     #define MAX_MOVEMENT_VERTICES 0.2
@@ -36,7 +36,7 @@
 
 #endif
 
-#define DEFAULT_REST_LENGTH 1.5 /*default rest length for each threadpiece*/
+#define DEFAULT_REST_LENGTH 6.0 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
 //#define NUM_THREADS_PARALLEL_FOR 2
@@ -74,7 +74,7 @@ class Thread
     void minimize_energy_hessian(int num_opt_iters=NUM_MAX_ITERS, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence=ENERGY_FOR_CONVERGENCE);
 #else
     void minimize_energy(int num_opt_iters=NUM_MAX_ITERS, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence=ENERGY_FOR_CONVERGENCE);
-    void minimize_energy_hessian(int num_opt_iters=NUM_MAX_ITERS, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence =ENERGY_FOR_CONVERGENCE);
+    void minimize_energy_hessian(int num_opt_iters=NUM_MAX_ITERS, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence=ENERGY_FOR_CONVERGENCE);
 #endif
     void minimize_energy_twist_angles();
 

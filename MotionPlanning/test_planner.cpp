@@ -574,9 +574,10 @@ void interpolateAndFollow() {
 
 void SQPPlanner() { 
 
+	int num_iters = 3; 
   Thread* start = new Thread(*glThreads[planThread]->getThread());
   Thread* end = new Thread(*glThreads[endThread]->getThread());
-  numApprox = 50;
+  numApprox = 100;
   vector<Thread*> traj;
   traj.resize(numApprox);
   traj[0] = new Thread(*start);
@@ -594,7 +595,6 @@ void SQPPlanner() {
 
   Iterative_Control* ic = new Iterative_Control(traj.size(), traj.front()->num_pieces());
 
-	int num_iters = 25; 
   cout << "calling SQP" << endl; 
   ic->iterative_control_opt(traj, U, num_iters);
   
@@ -660,7 +660,6 @@ void SQPSmoother() {
   int num_iters = 2; 
 
   ic->iterative_control_opt(smoothTraj, U, num_iters); 
-
 	vector<vector<VectorXd> > thread_control_data;
   for (int i = 0; i < smoothTraj.size(); i++) { 
     //vector<Thread*> tmp;
@@ -685,15 +684,15 @@ void SQPSmoother() {
 
 }
 
-// change prototype to include the return
 void generateRandomThread() {
   glThreads[curThread]->setThread(planner.generateSample(
         (const Thread*) glThreads[startThread]->getThread()));
   
   // minimize the energy on it
-  glThreads[curThread]->minimize_energy();
-  
+  cout << "calling minimize energy on curThread = " << curThread << endl;
+  glThreads[curThread]->getThread()->minimize_energy(1000000);
   glThreads[curThread]->updateThreadPoints();
+  
   glutPostRedisplay();
 }
 
@@ -1033,7 +1032,6 @@ int main (int argc, char * argv[])
       "\n"
       "Press 'Esc' to quit\n"
       );
-
   InitGLUT(argc, argv);
   InitLights();
   InitStuff ();
