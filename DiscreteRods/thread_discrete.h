@@ -39,6 +39,7 @@
 #define DEFAULT_REST_LENGTH 4.0 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
+#define INTERSECTION_PUSHBACK_EPS 0.03 
 //#define NUM_THREADS_PARALLEL_FOR 2
 #define num_iters_twist_est_max 0
 

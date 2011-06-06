@@ -559,7 +559,6 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 } // end minimize_energy
 
 
-#define INTERSECTION_PUSHBACK_EPS 0.03
 void Thread::fix_intersections() {
     vector<Self_Intersection> self_intersections;
     vector<Intersection> intersections;
