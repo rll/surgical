@@ -860,7 +860,7 @@ void updateThreadPoints()
 
 void initThread()
 {
-  int numInit = 14;
+  int numInit = 20;
   double noise_factor = 0.0;
 
   vector<Vector3d> vertices;

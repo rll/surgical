@@ -536,11 +536,13 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
       max_movement_vertices = min(step_in_grad_dir_vertices*2.0, max_move_vert);
       //max_movement_vertices = max_move_vert;
     }
- 
-   fix_intersections();
+
+    if (COLLISION_CHECKING) { 
+    fix_intersections();
+    }
 
 
-   project_length_constraint();
+    project_length_constraint();
 
 
   }
@@ -1666,7 +1668,9 @@ void Thread::project_length_constraint()
     //apply the actual offsets
     apply_vertex_offsets(vertex_offsets, true, projection_scale_factor,true /*iter_num == (num_iters_project-1) || projected_enough*/);
     
-    fix_intersections();
+    if (COLLISION_CHECKING) { 
+      fix_intersections();
+    }
 
     if(move_too_far) {
         project_length_constraint();
