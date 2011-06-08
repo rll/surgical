@@ -7,7 +7,7 @@ Trajectory_Recorder::Trajectory_Recorder()
     sprintf(_fileName_threads, "%s.txt", THREADS_BASE_NAME);
 }
 
-Trajectory_Recorder::Trajectory_Recorder(char* fileName_threads_in)
+Trajectory_Recorder::Trajectory_Recorder(const char* fileName_threads_in)
 {
     sprintf(_fileName_threads, "%s.txt", fileName_threads_in);
 }
@@ -97,7 +97,7 @@ void Trajectory_Recorder::write_threads_to_file()
   std::cout << "Writing Done\n";
 }
 
-void Trajectory_Recorder::setFileName(char* newFileName) {
+void Trajectory_Recorder::setFileName(const char* newFileName) {
     sprintf(_fileName_threads, "%s.txt", newFileName);
 }
 

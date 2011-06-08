@@ -16,6 +16,8 @@
 
 #define NUM_HYPOTHS_MAX 20
 
+#define USE_DISTANCE_METRIC true
+
 class Thread_Vision;
 
 class Thread_Hypoth: public Thread

@@ -26,7 +26,7 @@
 #define MAX_LENGTH_VIS 67
 
 
-#define FAKEIMS_FILE "for_stereo_fakeims"
+#define FAKEIMS_FILE "saved_threads/test_trajectories"
 #define IMAGE_SAVE_BASE_OPENGL "saved_threads/saved_opengl"
 
 //#define TRY_ALL false
@@ -35,6 +35,7 @@ vector<Thread> saved_trajectory;
 
 
 #define NUM_THREADS_DISPLAY 2
+#define NUM_THREADS 60
 enum DisplayedThreads {optimizedThread, truthThread};
 
 // import most common Eigen types
@@ -48,9 +49,12 @@ void DrawAxes();
 void InitThread(int argc, char* argv[]);
 void updateIms(cv::Point3f& start_pt, Vector3d& start_tan, cv::Point3f& end_pt, Vector3d& end_tan);
 void findThreadInIms();
+void findThreadInIms_next();
 void showThread(Thread *aThread, DisplayedThreads type = optimizedThread);
 void addThreadDebugInfo();
 void save_opengl_image();
+double thread_difference(Thread* t1, Thread* t2);
+
 
 
 
@@ -60,6 +64,9 @@ void save_opengl_image();
 #define MOVE_POS_CONST 1.0
 #define MOVE_TAN_CONST 0.2
 #define ROTATE_TAN_CONST 0.2
+
+#define WINDOW_HEIGHT 900
+#define WINDOW_WIDTH 900
 
 
 enum key_code {NONE, MOVEPOS, MOVETAN, ROTATETAN};
@@ -94,6 +101,13 @@ double twistAngle_best;
 double score_correct_twist;
 double score_best_twist;
 
+/* Keep track of difference between generated thread and actual for
+ * each thread read from trajectory file */
+ double thread_differences[NUM_THREADS];
+
+ /* Keep track of runtimes with different metrics as well */
+ double generation_times[NUM_THREADS];
+
 
 // double radii[NUM_PTS];
 int pressed_mouse_button;
@@ -115,14 +129,41 @@ GLfloat lightThreeColor[] = {0.99, 0.99, 0.99, 1.0};
 GLfloat lightFourPosition[] = {-140.0, 0.0, -200.0, 0.0};
 GLfloat lightFourColor[] = {0.99, 0.99, 0.99, 1.0};
 
+/* Do comparison of runtime */
 
-void computeDifference(Thread* a, Thread* b, VectorXd* res) {
-    VectorXd avec;
-    a->toVector(&avec);
-    VectorXd bvec;
-    b->toVector(&bvec);
+clock_t start_time, end_time;
+void wait(int seconds)
+{
+        clock_t endwait;
+            endwait = clock() + seconds*CLOCKS_PER_SEC;
+                while (clock() < endwait) {};
+}
+void start_timer()
+{
+    start_time = clock();
+}
+void stop_timer()
+{
+    end_time = clock();
+}
+double seconds_elapsed()
+{
+    return ((double) end_time - start_time)/((double) CLOCKS_PER_SEC);
+}
 
-    (*res) = avec - bvec;
+/* Difference between 2 threads based on l2 norm of distance between vertices.
+ * Requires that 2 threads be the same length.
+ */
+double thread_difference(Thread* t1, Thread* t2)
+{
+    double difference = 0;
+    int length = t1->_thread_pieces.size();
+    for (int i = 0; i < length; i++)
+    {
+        difference += (t1->_thread_pieces[i]->vertex()
+                      - t2->_thread_pieces[i]->vertex()).norm();
+    }
+    return difference/((double) length);
 }
 
 
@@ -213,6 +254,24 @@ void processSpecialKeys(int key, int x, int y) {
 
 }
 
+void next_thread()
+{
+    thread_ind = (thread_ind + NUM_THREADS + 1)%NUM_THREADS;
+    cout << "displaying thread " << thread_ind << std::endl;
+    glThreads[truthThread]->setThread(new Thread(saved_trajectory[thread_ind]));
+    glThreads[truthThread]->updateThreadPoints();
+    glutPostRedisplay();
+}
+
+void prev_thread()
+{
+    thread_ind = (thread_ind + NUM_THREADS - 1)%NUM_THREADS;
+    cout << "displaying thread " << thread_ind << std::endl;
+    glThreads[truthThread]->setThread(new Thread(saved_trajectory[thread_ind]));
+    glThreads[truthThread]->updateThreadPoints();
+    glutPostRedisplay();
+}
+
 void processNormalKeys(unsigned char key, int x, int y)
 {
     if (key == 't') {
@@ -225,19 +284,9 @@ void processNormalKeys(unsigned char key, int x, int y)
         key_pressed = ROTATETAN;
     }
     else if (key == 'n') {
-        thread_ind++;
-        std::cout << "displaying thread " << thread_ind  << std::endl;
-        if (thread_ind >= 0 && thread_ind < saved_trajectory.size())
-        {
-            showThread(&saved_trajectory[thread_ind], truthThread);
-        }
+        next_thread();
     } else if (key == 'b') {
-        thread_ind--;
-        std::cout << "displaying thread " << thread_ind  << std::endl;
-        if (thread_ind >= 0 && thread_ind < saved_trajectory.size())
-        {
-            showThread(&saved_trajectory[thread_ind], truthThread);
-        }
+        prev_thread();
     } else if (key == 'v') {
         findThreadInIms();
         glutPostRedisplay();
@@ -253,7 +302,15 @@ void processNormalKeys(unsigned char key, int x, int y)
             }
         }
         else {
-            cout << "Thread Vision not initialized. Press 'v' to init" << endl;
+            // Taken from start of findThreadInIms();
+            thread_vision_searched = true;
+            thread_vision.set_max_length(MAX_LENGTH_VIS);
+            thread_vision.clear_display();
+            updateIms(_start_pt, _start_tan, _end_pt, _end_tan);
+            thread_vision.clearStartData();
+            thread_vision.addStartData(_start_pt, _start_tan);
+            thread_vision.initThreadSearch();
+            //cout << "Thread Vision not initialized. Press 'v' to init" << endl;
         }
     } else if (key == 'q') {
         cout << "Flip to prev hypoth" << endl;
@@ -265,7 +322,7 @@ void processNormalKeys(unsigned char key, int x, int y)
         showThread(thread_vision.curr_thread());
     } else if (key == '1' && key <= '1' + NUM_THREADS_DISPLAY)
     {
-        show_threads[((int)key-'1')] = !show_threads[((int)key-'1')];
+    show_threads[((int)key-'1')] = !show_threads[((int)key-'1')];
 //    } else if (key == 's') {
 //        /* Save current trajectory */
 //        cout << "Saving...\n";
@@ -282,7 +339,34 @@ void processNormalKeys(unsigned char key, int x, int y)
 //        traj_recorder.add_thread_to_list(copiedThread);
 //        traj_recorder.write_threads_to_file();
     }
-
+    /* Run through all threads, generate guess, save image in test_images */
+    else if (key == 'p')
+    {
+        thread_ind = 0;
+        while (true) {
+            next_thread();
+            DrawStuff();
+            cout << endl << "testing thread " << thread_ind << endl << endl;
+            start_timer();
+            findThreadInIms();
+            glutPostRedisplay();
+            stop_timer();
+            wait(2);
+            thread_differences[thread_ind] = thread_difference(glThreads[truthThread]->getThread(), thread_vision.curr_thread());
+            generation_times[thread_ind] = seconds_elapsed();
+            printf("thread %2d |\t runtime (s): %05.3f | difference: %05.3f\n", thread_ind, generation_times[thread_ind], thread_differences[thread_ind]);
+            DrawStuff();
+            save_opengl_image();
+            if (thread_ind == 59) break;
+        }
+        cout << endl << "-------------------" << endl;
+        cout << "PERFORMANCE SUMMARY" << endl;
+        cout << "-------------------" << endl;
+        for (int i = 1; i < NUM_THREADS; i++)
+        {
+            printf("thread %2d |\t runtime (s): %05.3f | difference: %05.3f\n", i, generation_times[i], thread_differences[i]);
+        }
+    }
     else if (key == 27) {
         exit(0);
     }
@@ -638,6 +722,7 @@ void showThread(Thread *aThread, DisplayedThreads type)
 {
     /* Will make a copy of the thread */
     glThreads[type]->setThread(new Thread(*aThread));
+    glThreads[type]->updateThreadPoints();
 
     if (thread_vision.isDone()) {
         /* May move debug images to when 5 thread pieces have been added */
@@ -662,6 +747,7 @@ void showThread(Thread *aThread, DisplayedThreads type)
 }
 
 
+/* NOT WORKING, runThreadSearch_nextIms() just returns */
 //assumes one thread already found, just tries to find the next one
 void findThreadInIms_next()
 {
@@ -709,14 +795,14 @@ void addThreadDebugInfo()
 
 void save_opengl_image()
 {
-    const int IMG_COLS_TOTAL = 900;
-    const int IMG_ROWS_TOTAL = 900;
+    const int IMG_COLS_TOTAL = WINDOW_WIDTH;
+    const int IMG_ROWS_TOTAL = WINDOW_HEIGHT;
     //playback and save images
-    Mat img(900, 900, CV_8UC3);
+    Mat img(WINDOW_WIDTH, WINDOW_HEIGHT, CV_8UC3);
     vector<Mat> img_planes;
     split(img, img_planes);
 
-    uchar tmp_data[3][900*900];
+    uchar tmp_data[3][WINDOW_WIDTH*WINDOW_HEIGHT];
 
     GLenum read_formats[3];
     read_formats[0] = GL_BLUE;
@@ -729,12 +815,13 @@ void save_opengl_image()
         img_planes[i].data = tmp_data[i];
     }
 
-
     merge(img_planes, img);
     flip(img, img, 0);
 
     char im_name[256];
-    sprintf(im_name, "%s-%d.jpg", IMAGE_SAVE_BASE_OPENGL, thread_ind+1);
+    const char*prefix = USE_DISTANCE_METRIC ? "distance" : "energy";
+    sprintf(im_name, "test_images/%s_thread%d_%d.jpg", prefix, NUM_HYPOTHS_MAX, thread_ind);
+    cout << "saving " << im_name << "...\n";
     imwrite(im_name, img);
     waitKey(1);
 }

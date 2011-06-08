@@ -634,6 +634,7 @@ void Thread::fix_intersections() {
           }
      //}
     }
+    delete intersections;
 }
 
 int Thread::check_for_intersection(double radius, vector<double> *intersections)
@@ -1988,6 +1989,11 @@ void Thread::restore_thread_pieces(vector<ThreadPiece*>& to_restore)
   for (int piece_ind=0; piece_ind < to_restore.size(); piece_ind++)
   {
     _thread_pieces[piece_ind]->copyData(*to_restore[piece_ind]);
+  }
+  for (int piece_ind=to_restore.size()-1; piece_ind >= 0; piece_ind--)
+  {
+      delete to_restore[piece_ind];
+      to_restore.pop_back();
   }
 }
 

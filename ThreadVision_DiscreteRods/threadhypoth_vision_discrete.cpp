@@ -3,6 +3,8 @@
 
 using namespace cv;
 
+vector<ThreadPiece*> saved_thread_pieces;
+
 Thread_Hypoth::Thread_Hypoth(Thread_Vision* thread_vision) :
     Thread(), _thread_vision(thread_vision)
 {
@@ -181,7 +183,7 @@ void Thread_Hypoth::optimize_visual(double (Thread_Hypoth::*energyFunc)())
     project_length_constraint();
     minimize_energy_twist_angles();
 	
-	cout << "Change in twist" << end_angle() - oldTwist << endl;
+	//cout << "Change in twist" << end_angle() - oldTwist << endl;
 	oldTwist = end_angle();
 }
 
@@ -335,8 +337,8 @@ double Thread_Hypoth::calculate_total_energy()
 */
 double Thread_Hypoth::distance_from_energy_minimal_configuration()
 {
+    if (_thread_pieces.size() < 6) return 0; // Avoid project_length_constraint errors
     double distance = 0.0;
-    vector<ThreadPiece*> saved_thread_pieces;
     save_thread_pieces_and_resize(saved_thread_pieces);
     minimize_energy();
     for (int i = 0; i < _thread_pieces.size(); i++) {
@@ -363,7 +365,6 @@ double Thread_Hypoth::calculate_visual_energy()
  */
 void Thread_Hypoth::calculate_score()
 {
-    const bool USE_DISTANCE_METRIC = false;
     const double DISTANCE_COEFF = 0.1;
     double visual_energy = calculate_visual_energy();
     if (!USE_DISTANCE_METRIC) {
@@ -373,12 +374,9 @@ void Thread_Hypoth::calculate_score()
     }
     else {
         double distance = 0;
-        if (_thread_pieces.size() >= 5)
-        {
-            distance += distance_from_energy_minimal_configuration();
-        }
+        distance += distance_from_energy_minimal_configuration();
         distance = DISTANCE_COEFF*distance;
-        cout << "calculate_score | visual energy: " << visual_energy << "\tdistance: " << distance << std::endl;
+        //cout << "calculate_score | visual energy: " << visual_energy << "\tdistance: " << distance << std::endl;
         _score = visual_energy + DISTANCE_COEFF*distance;
     }
 }
@@ -577,6 +575,8 @@ void Thread_Hypoth::save_thread_pieces_and_resize(vector<ThreadPiece*>& to_save)
         delete to_save[i];
         to_save.pop_back();
     }
+
+    set_prev_next_pointers(to_save);
 
     save_thread_pieces(to_save);
 

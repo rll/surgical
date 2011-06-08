@@ -204,6 +204,27 @@ public:
         {
             display_for_debug[i].resize(0);
         }
+        /*
+// Fix memory leak.
+// Reference:
+// map<int,location_and_distance> _cannyDistanceScores[NUMCAMS];
+// map<int,vector<Line_Segment*>*> _cannySegments[NUMCAMS];
+        map<int,location_and_distance>::iterator it1;
+        for (it1 = _cannyDistanceScores.begin(); it1 != _cannyDistanceScores.end(); it1++)
+        {
+            delete (*it).second;
+        }
+        map<int,vector<Line_Segment*>*>::iterator it2;
+        for (it2 = _cannySegments->begin(); it2 != _cannySegments->end(); it2++)
+        {
+            vector<Line_Segment*> v = *((*it2).second);
+            for (int j = v.size()-1; j >= 0; j--)
+            {
+                delete v[j];
+                v.pop_back();
+            }
+        }
+        */
     };
 
     void saveImages(const char* image_save_base, int im_num);
