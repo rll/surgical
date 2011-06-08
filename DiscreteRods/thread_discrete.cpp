@@ -420,6 +420,11 @@ double Thread::calculate_energy()
 bool debugflag = false;
 bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
 {
+  //backup pieces in case collision checking infinite loops due to unsatisfiable system
+  //cout << "backing up pieces" << endl; 
+  save_thread_pieces_and_resize(_thread_pieces_collision_backup);
+  bool project_length_constraint_pass = true; 
+
   double step_in_grad_dir_vertices = 1.0;
 
   vector<Vector3d> vertex_gradients(_thread_pieces.size());
@@ -430,7 +435,7 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 
 
   double max_movement_vertices = max_move_vert;
-  project_length_constraint();
+  project_length_constraint_pass &= project_length_constraint();
 
 
   bool recalc_vertex_grad = true;
@@ -509,8 +514,7 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
     minimize_energy_twist_angles();
 #endif
     double energy_before_projection = calculate_energy();
-    project_length_constraint();
-
+    project_length_constraint_pass &= project_length_constraint();
 
     next_energy = calculate_energy();
 
@@ -537,23 +541,50 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
       //max_movement_vertices = max_move_vert;
     }
 
-    if (COLLISION_CHECKING) { 
-    fix_intersections();
+    if (COLLISION_CHECKING) {
+      vector<Self_Intersection> self_intersections;
+      vector<Intersection> intersections;
+      int intersection_iters = 0; 
+      while(check_for_intersection(self_intersections, intersections) && project_length_constraint_pass) {
+        fix_intersections();
+        project_length_constraint_pass &= project_length_constraint();
+        intersection_iters++;
+        //cout << "fixing for " << intersection_iters << " iterations." << endl;
+      }
+      /*if (opt_iter < 200) { 
+      // reset thread_pieces and restore prior end constraints
+      restore_thread_pieces_and_resize(_thread_pieces_collision_backup);
+      restore_constraints(_start_pos_backup, _start_rot_backup, 
+          _end_pos_backup, _end_rot_backup); 
+      }*/
+    } else { 
+
+      project_length_constraint_pass &= project_length_constraint();
+
     }
 
-
-    project_length_constraint();
-
-
   }
+
   //cout << "Number of loops needed in minimize energy: " << opt_iter << endl;
   curr_energy = calculate_energy();
 
-  project_length_constraint();
+  project_length_constraint_pass &= project_length_constraint();
   minimize_energy_twist_angles();
 
   next_energy = calculate_energy();
 
+  if (!project_length_constraint_pass) {
+    //cout << "reverting thread to prior state" << endl; 
+    restore_thread_pieces_and_resize(_thread_pieces_collision_backup);
+    restore_constraints(_start_pos_backup, _start_rot_backup, 
+        _end_pos_backup, _end_rot_backup);
+  }
+  /*
+     cout << "Edges: " << endl; 
+     for (int i = 0; i < num_pieces()-1; i++) {
+     cout << edge_at_ind(i).norm() << endl;; 
+     }
+  */
 
 	return (opt_iter != num_opt_iters);
 
@@ -566,7 +597,7 @@ void Thread::fix_intersections() {
     vector<Intersection> intersections;
     while(check_for_intersection(self_intersections, intersections)) {
         //restore_thread_pieces();
-        cout << "INTERSECTION FOUND, total current intersections is: " << (intersections.size() + self_intersections.size())<< endl;
+        //cout << "INTERSECTION FOUND, total current intersections is: " << (intersections.size() + self_intersections.size())<< endl;
         debugflag = true;
 
         for (int i=0; i < self_intersections.size(); i++)
@@ -1563,8 +1594,16 @@ void Thread::project_length_constraint_old()
 
 }
 
-void Thread::project_length_constraint()
+
+//this function might introduce intersections. fix_intersections should be called (with caution) afterwards. 
+bool Thread::project_length_constraint(int recursive_depth)
 {
+
+  if (recursive_depth <= 0) {
+    //cout << "project length constraint recursively called too much!" << endl;
+    return false; 
+  }
+
   const int num_iters_project = 50;
   const double projection_scale_factor = 1.0;
   const double max_norm_to_break = 1e-5;
@@ -1577,7 +1616,7 @@ void Thread::project_length_constraint()
     all_norms_within_thresh &= abs(_thread_pieces[piece_ind]->edge_norm() - _rest_length) < max_norm_to_break;
   }
   if (all_norms_within_thresh)
-    return;
+    return true;
 
   // set up the augmented lagrangian system: need C, grad C, mass mat.
   // y is the coordinates of all vertices
@@ -1625,7 +1664,7 @@ void Thread::project_length_constraint()
     // (gradC*gradC.transpose()).lu().solve(C,&dl);
     // VectorXd dy = -gradC.transpose()*dl;
 
-    gradC*gradC.transpose();
+    //gradC*gradC.transpose();
     (gradC*gradC.transpose()).llt().solveInPlace(C);
     dy = -gradC.transpose()*C;
 
@@ -1645,7 +1684,7 @@ void Thread::project_length_constraint()
     // find max norm and store in vertex_offsets (for now just announce, max movement too large)
     // if greater than .2, scale vertex_offsets by max norm
     // check for and fix intersections
-       // call project_length constraints if needed (don't let fall off end without fixing length constrainsts and intersections)
+    // call project_length constraints if needed (don't let fall off end without fixing length constrainsts and intersections)
 
     double max_move = 0;
     bool move_too_far = false;
@@ -1668,12 +1707,25 @@ void Thread::project_length_constraint()
     //apply the actual offsets
     apply_vertex_offsets(vertex_offsets, true, projection_scale_factor,true /*iter_num == (num_iters_project-1) || projected_enough*/);
     
+
+    //do not want effectively mutually recursive code 
+    int intersection_iters = 0; 
     if (COLLISION_CHECKING) { 
-      fix_intersections();
+      vector<Self_Intersection> self_intersections;
+      vector<Intersection> intersections;
+      while(check_for_intersection(self_intersections, intersections)) {
+        fix_intersections();
+        intersection_iters++;
+        //cout << "PLC: fixing for " << intersection_iters << " iterations."
+        //  << endl;
+      }
     }
 
     if(move_too_far) {
-        project_length_constraint();
+      //if (intersection_iters == 0) { 
+      //cout << "plc: calling plc again" << endl; 
+      return project_length_constraint(recursive_depth-1);
+      //}
     }
 
     
@@ -1682,6 +1734,8 @@ void Thread::project_length_constraint()
 
   }
   //cout << iter_num << " " << normerror << endl;
+
+  return true; 
 
 }
 
@@ -2120,14 +2174,25 @@ void Thread::print_vertices()
   std::cout << std::endl;
 }
 
+void Thread::restore_constraints(const Vector3d& start_pos, const Matrix3d& start_rot, const Vector3d& end_pos, const Matrix3d& end_rot) 
+{
+  set_start_constraint(start_pos, start_rot, false);
+  set_end_constraint(end_pos, end_rot, false);
+
+}
 void Thread::set_constraints(const Vector3d& start_pos, const Matrix3d& start_rot, const Vector3d& end_pos, const Matrix3d& end_rot)
 {
   set_start_constraint(start_pos, start_rot);
   set_end_constraint(end_pos, end_rot);
 }
 
-void Thread::set_start_constraint(const Vector3d& start_pos, const Matrix3d& start_rot)
+void Thread::set_start_constraint(const Vector3d& start_pos, const Matrix3d& start_rot, bool backup)
 {
+  if (backup) { 
+    _start_pos_backup = this->start_pos();
+    _start_rot_backup = this->start_rot();
+  }
+
   _thread_pieces.front()->set_vertex(start_pos);
   //_start_rot = start_rot;
   _thread_pieces.front()->set_bishop_frame(start_rot);
@@ -2141,9 +2206,13 @@ void Thread::set_start_constraint(const Vector3d& start_pos, const Matrix3d& sta
 
 
 //assumes bishop frame for end is already calculated
-void Thread::set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot)
+void Thread::set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot, bool backup)
 {
-  
+  if (backup) { 
+  _end_pos_backup = this->end_pos();
+  _end_rot_backup = this->end_rot();
+  }
+
   _thread_pieces.back()->set_vertex(end_pos);
   //_end_rot = end_rot;
   _thread_pieces.back()->set_material_frame(end_rot);
@@ -2250,10 +2319,14 @@ void Thread::apply_motion_nearEnds(Two_Motions& motion, bool mini_energy)
   too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
   std::cout << "too long by " << too_long_by << std::endl;
   */
+  // create a backup of the current thread
+
 
   set_constraints(start_pos, start_rot, end_pos, end_rot);
   if (mini_energy)
     minimize_energy();
+
+
 }
 
 

@@ -136,8 +136,9 @@ class Thread
 
     //setting end constraints
     void set_constraints(const Vector3d& start_pos, const Matrix3d& start_rot, const Vector3d& end_pos, const Matrix3d& end_rot);
-    void set_start_constraint(const Vector3d& start_pos, const Matrix3d& start_rot);
-    void set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot);
+    void set_start_constraint(const Vector3d& start_pos, const Matrix3d& start_rot, bool backup=true);
+    void set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot, bool backup=true);
+    void restore_constraints(const Vector3d& start_pos, const Matrix3d& start_rot, const Vector3d& end_pos, const Matrix3d& end_rot);
     void rotate_end_by(double degrees);
     void apply_motion(Frame_Motion& motion); //applies motion to end points/rotations
     void apply_motion(Two_Motions& motion);
@@ -147,7 +148,7 @@ class Thread
     void copy_data_from_vector(VectorXd& toCopy);
     
     void project_length_constraint_old();
-    void project_length_constraint();
+    bool project_length_constraint(int recursive_depth=250);
     void project_length_constraint_slow();
 
     const Matrix3d& start_rot(void) const {return _thread_pieces.front()->material_frame();}
@@ -272,7 +273,11 @@ class Thread
     vector<ThreadPiece*> _thread_pieces_backup;
     vector<double> _angle_twist_backup;
 
-
+    Vector3d _start_pos_backup;
+    Matrix3d _start_rot_backup;
+    Vector3d _end_pos_backup;
+    Matrix3d _end_rot_backup; 
+    vector<ThreadPiece*> _thread_pieces_collision_backup;
 
     void add_momentum_to_gradient(vector<Vector3d>& vertex_gradients, vector<Vector3d>& new_gradients, double last_step_size);
 
