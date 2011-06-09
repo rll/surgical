@@ -159,7 +159,7 @@ void solveLinearizedControl(Thread* start, const Thread* goal, VectorXd& u, cons
   //const double MAX_STEP = 2.0;
   const double DAMPING_CONST_POINTS = 0.1;
   const double DAMPING_CONST_ANGLES = 0.4;
-  const double MAX_MAG = 1.0;
+  const double MAX_MAG = 3;
 
   int num_controls;
   if (movement == START_AND_END)
@@ -167,7 +167,7 @@ void solveLinearizedControl(Thread* start, const Thread* goal, VectorXd& u, cons
   else
     num_controls = 6;
 
-  start->minimize_energy(10000);
+  start->minimize_energy(1000000);
 
   int num_pieces = start->num_pieces();
   int num_edges = start->num_edges();
@@ -211,7 +211,7 @@ void solveLinearizedControl(Thread* start, const Thread* goal, VectorXd& u, cons
   // apply the given control
   applyControl(start, u, movement);
 
-  start->minimize_energy(10000);
+  start->minimize_energy(1000000);
 }
 
 void solveLinearizedControl(Thread* start, const Thread* goal, const movement_mode movement) {

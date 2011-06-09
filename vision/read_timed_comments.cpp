@@ -1,4 +1,4 @@
-#include "../../utils/clock.h"
+#include "../utils/clock.h"
 #include <time.h>
 #include <stdio.h>
 #include <fstream>

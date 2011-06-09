@@ -32,6 +32,7 @@ ThreeCam::ThreeCam(Capture* cams[])
   { 
     _frames[i] = _captures[i]->currentFrame();
     _frames_gray[i] = Mat(_frames[i].size(), CV_8UC1); 
+    //if (!_frames[i].empty())
     cvtColor(_frames[i], _frames_gray[i], CV_BGR2GRAY);
   }
 

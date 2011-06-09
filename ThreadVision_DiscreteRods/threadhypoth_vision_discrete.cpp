@@ -3,6 +3,8 @@
 
 using namespace cv;
 
+vector<ThreadPiece*> saved_thread_pieces;
+
 Thread_Hypoth::Thread_Hypoth(Thread_Vision* thread_vision) :
     Thread(), _thread_vision(thread_vision)
 {
@@ -50,6 +52,8 @@ Thread_Hypoth::Thread_Hypoth(const Thread_Hypoth& rhs) :
 
     _thread_pieces.front()->initializeFrames();
 
+    set_all_pieces_mythread();
+
     init();
 }
 
@@ -79,7 +83,7 @@ void Thread_Hypoth::optimize_energy_only()
         save_thread_pieces_and_resize(savedThreadPieces);
         minimize_energy();
         _score = -1 * (calculate_energy() - oldEnergy);
-        cout << "Score: " << _score << endl;
+        //cout << "Score: " << _score << endl;
         restore_thread_pieces_and_resize(savedThreadPieces);
     }
     else {
@@ -94,7 +98,7 @@ void Thread_Hypoth::optimize_visual(double (Thread_Hypoth::*energyFunc)())
 
     /* Store energy for score
      * Doesn't include visual error */
-    _previous_energy = calculate_energy();
+    _previous_energy = (this->*energyFunc)();
     double step_in_grad_dir_vertices = 1.0;
 
     /* Constants for accuracy */
@@ -179,7 +183,7 @@ void Thread_Hypoth::optimize_visual(double (Thread_Hypoth::*energyFunc)())
     project_length_constraint();
     minimize_energy_twist_angles();
 	
-	cout << "Change in twist" << end_angle() - oldTwist << endl;
+	//cout << "Change in twist" << end_angle() - oldTwist << endl;
 	oldTwist = end_angle();
 }
 
@@ -326,6 +330,24 @@ double Thread_Hypoth::calculate_total_energy()
     return calculate_visual_energy() + calculate_energy();
 }
 
+/*
+ * Calculate distance of given thread from energy-minimal configuration.
+ * Uses rms of l2-norm of distances between vertices of configurations.
+ * TODO: Consider using material frame angle distances as well.
+*/
+double Thread_Hypoth::distance_from_energy_minimal_configuration()
+{
+    if (_thread_pieces.size() < 6) return 0; // Avoid project_length_constraint errors
+    double distance = 0.0;
+    save_thread_pieces_and_resize(saved_thread_pieces);
+    minimize_energy();
+    for (int i = 0; i < _thread_pieces.size(); i++) {
+        distance += (_thread_pieces[i]->vertex()-saved_thread_pieces[i]->vertex()).norm();
+    }
+    restore_thread_pieces_and_resize(saved_thread_pieces);
+    return distance/((double) _thread_pieces.size());
+}
+
 /* Uses visual reprojection error */
 double Thread_Hypoth::calculate_visual_energy()
 {
@@ -336,17 +358,27 @@ double Thread_Hypoth::calculate_visual_energy()
     return energy;
 }
 
+/*
+ * Compute score of a hypothesis for pruning of hypothesis set.
+ * TODO: Testing and tweaking to determine terms and coefficients of score.
+ * NOTE: minimize_energy() segfaults/errors if _thread_pieces.size() < 5.
+ */
 void Thread_Hypoth::calculate_score()
 {
-    /* If no change in energy yet */
-    //if (_previous_energy < 0) {
-        //_score = 0;
-    //}
-    //else {
-        //_score = - 1 * ( calculate_energy() - _previous_energy); //
-    //}
-    _score = calculate_total_energy();
-    cout << "Score: " << _score << endl;
+    const double DISTANCE_COEFF = 0.1;
+    double visual_energy = calculate_visual_energy();
+    if (!USE_DISTANCE_METRIC) {
+        double energy = calculate_energy();
+//        cout << "calculate_score | visual energy: " << visual_energy << "\tenergy: " << energy << std::endl;
+        _score = visual_energy + energy;
+    }
+    else {
+        double distance = 0;
+        distance += distance_from_energy_minimal_configuration();
+        distance = DISTANCE_COEFF*distance;
+        //cout << "calculate_score | visual energy: " << visual_energy << "\tdistance: " << distance << std::endl;
+        _score = visual_energy + DISTANCE_COEFF*distance;
+    }
 }
 
 void Thread_Hypoth::calculate_visual_gradient_vertices(
@@ -378,11 +410,11 @@ void Thread_Hypoth::add_first_threadpieces(corresponding_pts& start_pt,
 
     Vector3d start_vertex;
     OpencvToEigen(start_pt.pt3d, start_vertex);
-    _thread_pieces[0] = new ThreadPiece_Vision(start_vertex, 0.0, NULL, NULL,
+    _thread_pieces[0] = new ThreadPiece_Vision(start_vertex, 0.0, NULL, NULL, this, 
             _thread_vision);
     _thread_pieces[1] = new ThreadPiece_Vision(
             start_vertex + _rest_length * start_tan.tan, startTwist,
-            (ThreadPiece_Vision*) _thread_pieces[0], NULL, _thread_vision);
+            (ThreadPiece_Vision*) _thread_pieces[0], NULL, this, _thread_vision);
     _thread_pieces[0]->set_next(_thread_pieces[1]);
 
     _thread_pieces.front()->set_bishop_frame(start_rot);
@@ -422,7 +454,7 @@ void Thread_Hypoth::add_possible_next_hypoths(
 
     _thread_pieces.push_back(
             new ThreadPiece_Vision(new_vertex_init, new_angle,
-                    (ThreadPiece_Vision*) _thread_pieces.back(), NULL,
+                    (ThreadPiece_Vision*) _thread_pieces.back(), NULL, this, 
                     _thread_vision));
     _thread_pieces[_thread_pieces.size() - 2]->set_next(
             (ThreadPiece_Vision*) _thread_pieces.back());
@@ -441,7 +473,6 @@ void Thread_Hypoth::add_possible_next_hypoths(
             tan_and_scores.front().tan * _rest_length
                     + _thread_pieces[_thread_pieces.size() - 2]->vertex());
     _thread_pieces.front()->initializeFrames();
-    calculate_score();
 
     _thread_pieces_backup.push_back(
             new ThreadPiece_Vision(*(ThreadPiece_Vision*) _thread_pieces.back()));
@@ -450,6 +481,8 @@ void Thread_Hypoth::add_possible_next_hypoths(
     _thread_pieces_backup.back()->set_prev(
             (ThreadPiece_Vision*) _thread_pieces_backup[_thread_pieces_backup.size()
                     - 2]);
+
+    calculate_score();
 
     /* Adds the new hypoths to extra_next_hypoths, if there is more
      * than 1. Will resize extra_next_hypoths and override previous
@@ -471,7 +504,7 @@ bool Thread_Hypoth::find_next_tan_visual(vector<tangent_and_score>& tangents)
 {
     /* TODO Adjust Tangent Error Threshold */
     const double length_for_tan = _rest_length;
-    const double ang_to_rotate = M_PI / 60.0; //TODO Why?
+    const double ang_to_rotate = M_PI / 60.0; //controls how fine to sample
     //const int num_reprojs_per_tan = 10;
 
     //rotate as in yaw, pitch, roll - no roll, since we only care about direction of tangent
@@ -503,7 +536,6 @@ bool Thread_Hypoth::find_next_tan_visual(vector<tangent_and_score>& tangents)
             currScore += TAN_SCORE_DOT_PROD_COEFF * (currTangent.dot(
                     this->end_rot().col(0).normalized()));
 
-            //std::cout << "currScore: " << currScore << "  threadvision: " << _thread_pieces[_thread_pieces.size()-2]->vertex().transpose() << std::endl;
             if (currScore < TANGENT_ERROR_THRESH) {
                 tangent_and_score toAdd(currTangent, currScore);
                 tan_scores.push_back(toAdd);
@@ -543,6 +575,8 @@ void Thread_Hypoth::save_thread_pieces_and_resize(vector<ThreadPiece*>& to_save)
         delete to_save[i];
         to_save.pop_back();
     }
+
+    set_prev_next_pointers(to_save);
 
     save_thread_pieces(to_save);
 

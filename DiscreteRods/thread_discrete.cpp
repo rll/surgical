@@ -174,7 +174,6 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
   Matrix3d end_rot = Eigen::AngleAxisd(twist_angles[twist_angles.size()-2], end_bishop.col(0).normalized())*end_bishop;
 
   set_end_constraint(vertices.back(), end_rot);
-
 }
 
 
@@ -228,8 +227,6 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
   //_saved_last_theta_changes.resize(_thread_pieces.size());
 
   set_constraints(vertices.front(), start_rot, vertices.back(), end_rot);
-
-
 
   //set_end_constraint(vertices.back(), end_rot);
   //project_length_constraint();
@@ -361,6 +358,8 @@ Thread::Thread(const Thread& rhs) :
   if (this->num_pieces() > 4)
     set_end_constraint(rhs.end_pos(), rhs.end_rot());
   //project_length_constraint();
+  
+  set_all_pieces_mythread();
 }
 
 Thread::~Thread()
@@ -405,6 +404,7 @@ double Thread::calculate_energy()
 
 	//std::cout << _thread_pieces[2]->get_twist_coeff() << " " << _thread_pieces.size() << " " << _thread_pieces[_thread_pieces.size()-2]->angle_twist() << " " << _thread_pieces.front()->angle_twist() << " " << 2.0*_rest_length*(_thread_pieces.size()-2) << std::endl;
 
+
   for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
     energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav();
@@ -423,6 +423,11 @@ double Thread::calculate_energy()
 bool debugflag = false;
 bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
 {
+  //backup pieces in case collision checking infinite loops due to unsatisfiable system
+  //cout << "backing up pieces" << endl; 
+  save_thread_pieces_and_resize(_thread_pieces_collision_backup);
+  bool project_length_constraint_pass = true; 
+
   double step_in_grad_dir_vertices = 1.0;
 
   vector<Vector3d> vertex_gradients(_thread_pieces.size());
@@ -433,17 +438,13 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 
 
   double max_movement_vertices = max_move_vert;
-  project_length_constraint();
+  project_length_constraint_pass &= project_length_constraint();
 
 
   bool recalc_vertex_grad = true;
 
   double curr_energy = calculate_energy();
   double next_energy = 0.0;
- 
-  if(stepping) {
-       num_opt_iters = 10;
-  }
 
   int opt_iter;
   for (opt_iter = 0; opt_iter < num_opt_iters; opt_iter++)
@@ -516,8 +517,7 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
     minimize_energy_twist_angles();
 #endif
     double energy_before_projection = calculate_energy();
-    project_length_constraint();
-
+    project_length_constraint_pass &= project_length_constraint();
 
     next_energy = calculate_energy();
 
@@ -543,28 +543,51 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
       max_movement_vertices = min(step_in_grad_dir_vertices*2.0, max_move_vert);
       //max_movement_vertices = max_move_vert;
     }
- 
-    //fix_intersections();
 
-//   vector<Vector3d> before;
-//   for(int j = 0; j < _thread_pieces.size(); j++) {
-//      before.push_back(Vector3d(_thread_pieces[j]->_vertex));
-//   }
-   project_length_constraint();
-//   for(int j = 0; j < _thread_pieces.size(); j++) {
-//      cout << "In reprojection thread: " << j << " has moved " << (before[j] - _thread_pieces[j]->_vertex).norm() << endl;
-//   }
-//  }
+    if (COLLISION_CHECKING) {
+      vector<Self_Intersection> self_intersections;
+      vector<Intersection> intersections;
+      int intersection_iters = 0; 
+      while(check_for_intersection(self_intersections, intersections) && project_length_constraint_pass) {
+        fix_intersections();
+        project_length_constraint_pass &= project_length_constraint();
+        intersection_iters++;
+        //cout << "fixing for " << intersection_iters << " iterations." << endl;
+      }
+      /*if (opt_iter < 200) { 
+      // reset thread_pieces and restore prior end constraints
+      restore_thread_pieces_and_resize(_thread_pieces_collision_backup);
+      restore_constraints(_start_pos_backup, _start_rot_backup, 
+          _end_pos_backup, _end_rot_backup); 
+      }*/
+    } else { 
+
+      project_length_constraint_pass &= project_length_constraint();
+
+    }
 
   }
+
   //cout << "Number of loops needed in minimize energy: " << opt_iter << endl;
   curr_energy = calculate_energy();
 
-  project_length_constraint();
+  project_length_constraint_pass &= project_length_constraint();
   minimize_energy_twist_angles();
 
   next_energy = calculate_energy();
 
+  if (!project_length_constraint_pass) {
+    //cout << "reverting thread to prior state" << endl; 
+    restore_thread_pieces_and_resize(_thread_pieces_collision_backup);
+    restore_constraints(_start_pos_backup, _start_rot_backup, 
+        _end_pos_backup, _end_rot_backup);
+  }
+  /*
+     cout << "Edges: " << endl; 
+     for (int i = 0; i < num_pieces()-1; i++) {
+     cout << edge_at_ind(i).norm() << endl;; 
+     }
+  */
 
 	return (opt_iter != num_opt_iters);
 
@@ -573,185 +596,256 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 
 
 void Thread::fix_intersections() {
-    vector<double> *intersections = new vector<double>();
-    while(check_for_intersection(MAX_MOVEMENT_VERTICES + .01,intersections)) {
+    vector<Self_Intersection> self_intersections;
+    vector<Intersection> intersections;
+    while(check_for_intersection(self_intersections, intersections)) {
         //restore_thread_pieces();
-        cout << "INTERSECTION FOUND, total current intersections is: " << intersections->size() / 2 << endl;
+        //cout << "INTERSECTION FOUND, total current intersections is: " << (intersections.size() + self_intersections.size())<< endl;
         debugflag = true;
-    
-      //return;
-   //     for(int i = 0; 0 < intersections->size(); i+=2) {
-     // reproject back out orthoganally
-           int a = (*intersections)[0];
-          // intersections->pop_back();
-           int b = (*intersections)[1];
-         cout << a << " " << b << " " << (*intersections)[2] << endl;
-     //    cout << "thread: " << a << " has moved: " << (_thread_pieces[a]->_vertex - _thread_pieces_backup[a]->_vertex).norm() << endl;
-     //    cout << "thread: " << b << " has moved: " << (_thread_pieces[b]->_vertex - _thread_pieces_backup[b]->_vertex).norm() << endl;
-      //     intersections->pop_back();
-           Vector3d edge1 = _thread_pieces[a]->_edge;
-           Vector3d edge2 = _thread_pieces[b]->_edge;
-           Vector3d cross = edge1.cross(edge2);
-           cross.normalize();
-           /* This if just takes care of the case that the intersection is with one of the end threads, in that case
-              don't move one of the ends, just move the other thread piece double (note an intersection of the first
-              and last is ignored and not even treated as an intersection by check intersections()) */
-    /*       if(a == 0 || b == _thread_pieces.size() - 1) {
-               cross *= ((*intersections)[2]+.03);
-       //      cross *=  2 * MAX_MOVEMENT_VERTICES;
-               intersections->clear();
-               if ( a == 0 ) a = b;
-               _thread_pieces[a]->offset_vertex(cross); 
-               _thread_pieces[a + 1]->offset_vertex(cross);
-               if(intersection(a,b,MAX_MOVEMENT_VERTICES)) {
-                     _thread_pieces[a]->offset_vertex(-2.0*cross); 
-                     _thread_pieces[a + 1]->offset_vertex(-2.0*cross);
-               }
-               if(intersection(a,b,MAX_MOVEMENT_VERTICES)) {
-             cout << "************BAD: projected orthoganally out of intersection both directions and still intersect" << endl;
-               }
-               continue;
-           } */
-           cross *= (((*intersections)[2]+.03) / 1.0);
+
+        for (int i=0; i < self_intersections.size(); i++)
+        {
+          int ind_a = self_intersections[i]._piece_ind_a;
+          int ind_b = self_intersections[i]._piece_ind_b;
+          Vector3d cross = _thread_pieces[ind_a]->edge().cross(_thread_pieces[ind_b]->edge());
+          cross.normalize();
+
+          double dist_a, dist_b;
+          if (ind_a == 0)
+          {
+            dist_a = 0.0;
+            dist_b = self_intersections[i]._dist + INTERSECTION_PUSHBACK_EPS;
+          } else if (ind_b == _thread_pieces.size()-2) {
+            dist_a = self_intersections[i]._dist + INTERSECTION_PUSHBACK_EPS;
+            dist_b = 0.0;
+          } else {
+            dist_a = dist_b = self_intersections[i]._dist/2.0 + INTERSECTION_PUSHBACK_EPS;
+          }
        //    cross *= MAX_MOVEMENT_VERTICES;
-           intersections->clear();
-          _thread_pieces[a]->offset_vertex(cross); 
-          _thread_pieces[a + 1]->offset_vertex(cross);
-          _thread_pieces[b]->offset_vertex(-cross); 
-          _thread_pieces[b + 1]->offset_vertex(-cross);
-          if(intersection(a,b,MAX_MOVEMENT_VERTICES)) {
+
+          _thread_pieces[ind_a]->offset_vertex(cross*dist_a); 
+          _thread_pieces[ind_a + 1]->offset_vertex(cross*dist_a);
+          _thread_pieces[ind_b]->offset_vertex(-cross*dist_b); 
+          _thread_pieces[ind_b + 1]->offset_vertex(-cross*dist_b);
+          if(self_intersection(ind_a,ind_b,THREAD_RADIUS)) {
         //  cout << "cross pointed wrong direction, trying other direction" << endl;
-            _thread_pieces[a]->offset_vertex(-2.0*cross); 
-            _thread_pieces[a + 1]->offset_vertex(-2.0*cross);
-            _thread_pieces[b]->offset_vertex(2.0*cross); 
-            _thread_pieces[b + 1]->offset_vertex(2.0*cross);
-           
+            _thread_pieces[ind_a]->offset_vertex(-2.0*cross*dist_a); 
+            _thread_pieces[ind_a + 1]->offset_vertex(-2.0*cross*dist_a);
+            _thread_pieces[ind_b]->offset_vertex(2.0*cross*dist_b); 
+            _thread_pieces[ind_b + 1]->offset_vertex(2.0*cross*dist_b);
           }
-          if(intersection(a,b,MAX_MOVEMENT_VERTICES)) {
+ /*         if(intersection(a,b,MAX_MOVEMENT_VERTICES)) {
              cout << "************BAD: projected orthoganally out of intersection both directions and still intersect" << endl;
           }
-     //}
+ */
+        }
+
+
+        for (int i=0; i < intersections.size(); i++)
+        {
+          int ind_piece = intersections[i]._piece_ind;
+          int ind_obj = intersections[i]._object_ind;
+          Vector3d cross = _thread_pieces[ind_piece]->edge().cross(objects_in_env[ind_obj]._end_pos - objects_in_env[ind_obj]._start_pos);
+          cross.normalize();
+
+          cross *= intersections[i]._dist+INTERSECTION_PUSHBACK_EPS;
+
+       //    cross *= MAX_MOVEMENT_VERTICES;
+
+          _thread_pieces[ind_piece]->offset_vertex(cross); 
+          _thread_pieces[ind_piece + 1]->offset_vertex(cross);
+          if(obj_intersection(ind_piece,THREAD_RADIUS, ind_obj,objects_in_env[ind_obj]._radius)) {
+        //  cout << "cross pointed wrong direction, trying other direction" << endl;
+            _thread_pieces[ind_piece]->offset_vertex(-2.0*cross); 
+            _thread_pieces[ind_piece + 1]->offset_vertex(-2.0*cross);
+          }
+ /*         if(intersection(a,b,MAX_MOVEMENT_VERTICES)) {
+             cout << "************BAD: projected orthoganally out of intersection both directions and still intersect" << endl;
+          }
+ */
+        }
+
+
+
+
+
+
     }
 }
 
-int Thread::check_for_intersection(double radius, vector<double> *intersections)
+bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Intersection>& intersections)
 {
-	//TURNS INTERSECTIONS OFF
-	return 0;
-    int rtn = 0; // count of number of intersections
-    for(int i = 0; i < _thread_pieces.size() - 1; i+=1.0) {
-      for(int j = i + 2; j < _thread_pieces.size() - 1; j+=1.0) {
-         if(intersection(i,j, radius) != 0) {
-           if(i == 0 && j == _thread_pieces.size() - 1) continue;
-           rtn++;
-           intersections->push_back((double) i);
-           intersections->push_back((double) j);
-           intersections->push_back(intersection(i,j,radius));
-         }
+  double found = false; // count of number of intersections
+  self_intersections.clear();
+  intersections.clear();
+
+  //self intersections
+  for(int i = 0; i < _thread_pieces.size() - 3; i++) {
+    //+2 so you don't check the adjacent piece - bug?
+    for(int j = i + 2; j < _thread_pieces.size() - 2; j++) {
+      if(i == 0 && j == _thread_pieces.size() - 2) 
+        continue;
+      double intersection_dist = self_intersection(i,j,THREAD_RADIUS);
+      if(intersection_dist != 0) {
+        //skip if both ends, since these are constraints
+        found = true;
+
+        self_intersections.push_back(Self_Intersection(i,j,intersection_dist));
       }
     }
-  //  cout << "tenth piece: " << _thread_pieces[10]->_vertex << endl;
-    return rtn;
+  }
+
+  //intersections with objects
+  for (int i=0; i < objects_in_env.size(); i++)
+  {
+    for(int j = 2; j < _thread_pieces.size() - 3; j++) {
+      double intersection_dist = obj_intersection(j,THREAD_RADIUS, i, objects_in_env[i]._radius);
+      if(intersection_dist != 0) {
+        found = true;
+
+        intersections.push_back(Intersection(j,i,intersection_dist));
+      }
+    }
+
+  }
+
+
+
+  return found;
 }
 //define an epsilon
-double Thread::intersection(int i, int j, double radius)
+double Thread::self_intersection(int i, int j, double radius)
 {
-    //cout << "CHECKING FOR INTERSECTION OF: " << i << " and " << j << endl;
-    bool reject = false;
-    ThreadPiece *a = _thread_pieces[i];
-    ThreadPiece *b = _thread_pieces[j];
-    double r = radius * 2.0;
-    Vector3d as = a->_vertex;
-    Vector3d ae = a->_edge + as;
-    Vector3d bs = b->_vertex;
-    Vector3d be = b->_edge + bs;
-    //cout << "as ae bs be: " << as << endl << endl << ae << endl << endl << bs << endl << endl << be << endl << endl;
+    return intersection(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, _thread_pieces[j]->vertex(), _thread_pieces[j+1]->vertex(), radius);
+}
 
- // attempt to trivialy reject based on a's bounding sphere
-    Vector3d amid = (as + ae)/2.0; // edge a's midpoint
-    double edgeLen = max((ae - as).norm() * 1.5,(be-bs).norm()*1.5);
-    //check distance to bs and be
-    Vector3d diff1 = bs - amid;
-    Vector3d diff2 = be - amid;
-    double distbs = diff1.norm();
-    double distbe = diff2.norm();
-    if((distbs > (edgeLen / 2.0 + r)) && (distbe > (edgeLen / 2.0 + r))) {
-       // cout << "false (trivial rejected)" << endl;
-        reject = true;
-    }
-    
-   
-    
-    // move 'as' to origin and move everything else relative
-    ae = ae - as; bs = bs - as; be = be - as;
-    
-    // rotate 'b' to be along z-axis, and rotate 'a' relative
-    Vector3d zaxis(0.0,0.0,1.0);
-    Quaterniond qrot;
-    Vector3d ae_norm = Vector3d(ae[0],ae[1],ae[2]);
-    ae_norm.normalize();
-    qrot = qrot.setFromTwoVectors(ae_norm,zaxis);
-    Matrix3d mrot;
-    mrot = qrot.toRotationMatrix(); //convert to matrix for more efficent rotation
-    bs = mrot * bs; be = mrot * be; ae = mrot * ae;
-    //////cout << "bs, be, ae: " << bs << endl << endl << be << endl << endl << ae << endl;
-    
-    // check if z values of b are outside of a's z values
-    if((bs[2] > ae[2] + .5 && be[2] > ae[2] + .5) || (bs[2] < -0.5 && be[2] < -0.5)) {
-   // cout << "false (after rotation one line is 'above' other)" << endl;
-       return 0;
-    }
-    // checks for parallel edges
-    if(abs(bs[0]-be[0]) < .00001 && abs(bs[1]-be[1]) < .00001) {
-        if(bs[0]*bs[0] + bs[1]*bs[1] > r) return 0;
-        else return r - sqrt(bs[0]*bs[0] + bs[1]*bs[1]);
-    }
-    // check for intersection in the x-y plane projection by solving quadratic formula
-    Vector2d s(bs[0],bs[1]); //start vector of projection of edge b into x, y plane
-    Vector2d e(be[0],be[1]); //end vector of projection of edge b into x, y plane
-    Vector2d dir = e - s; //direction vector
-    
-    double acoeff, bcoeff, ccoeff; // a, b, and c coefficents in quadratic formula
-    bcoeff = 2.0 * dir.dot(s);
-    acoeff = dir.dot(dir);
-    ccoeff = s.dot(s) - pow(r,2.0);
-    // check determinant to reject intersection
-    double det = pow(bcoeff,2.0) - 4 * acoeff * ccoeff;
-   // cout << "det: " << det << endl;
-    if(det <= 0) {
-   // cout << "false (line never intersects with projection circle <= det < 0)" << endl;
-      return 0;
-    }
-    // check where along edge b intersection occurs
-    double t1 = (-bcoeff + sqrt(det))/(2.0 * acoeff);
-    double t2 = (-bcoeff - sqrt(det))/(2.0 * acoeff);
-    if((t1 > 1.0 && t2 > 1.0) || (t1 < 0.0 && t2 < 0.0)) {
-    // cout << "false (t value => outside range of b vector)" << endl;
-      return 0;
-    }
-    //check where along edge a intersection occurs 
-    double z1 = (bs + t1*(be - bs))[2];
-    double z2 = (bs + t2*(be - bs))[2];  
-    if((z1 < -.5 && z2 < -.5) || (z1 >  ae[2] + .5 && z2 > ae[2] + .5)) {
-     // cout << "false (z value => outside height of a vector)" << endl;
-      return 0;
-    } 
-    // we have intersection
-    //cout << "true (intersection!)" << endl;
-    if(reject) {
-       cout << "---------------------------BAD: trivial reject, but actually intersection" << endl;
-       cout << "t1, t2, z1, z2: " << t1 << " " << t2 << " " << z1 << " " << z2 << endl;
-       cout << "Trivial reject distance: " << edgeLen / 2.0 + r*r << " edgeLen, r " << edgeLen << " " << r << endl; 
-       cout << "ae[2]: " << ae[2] << endl;
-       cout << "distbs, distbe: " << distbs << " " << distbe << endl;
-      // return true;
-    }
-    
-    // return distance
-    double min_t = - s.dot(dir) / dir.dot(dir);
-    double dist = sqrt((s + dir * min_t).dot(s + dir * min_t));
-    
-    return r - dist;
+double Thread::obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius)
+{
+  return intersection(objects_in_env[obj_ind]._start_pos, objects_in_env[obj_ind]._end_pos, objects_in_env[obj_ind]._radius,
+            _thread_pieces[piece_ind]->vertex(), _thread_pieces[piece_ind+1]->vertex(),THREAD_RADIUS);
+}
+
+#define INTERSECTION_EDGE_LENGTH_FACTOR 1.5
+#define INTERSECTION_HEIGHT_FACTOR 0.5
+#define INTERSECTION_PARALLEL_CHECK_FACTOR 1e-5
+
+double Thread::intersection(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius)
+{
+  Vector3d a_start = a_start_in;
+  Vector3d a_end = a_end_in;
+  Vector3d b_start = b_start_in;
+  Vector3d b_end = b_end_in;
+  bool trivial_reject = false;
+  double total_radius = a_radius + b_radius;
+
+  Vector3d a_mid = (a_start + a_end)/2.0;
+  double edgeLen = max((a_end - a_start).norm() * INTERSECTION_EDGE_LENGTH_FACTOR,(b_end-b_start).norm()*INTERSECTION_EDGE_LENGTH_FACTOR);
+  //check distance to b_start and b_end
+  double distb_start = (b_start-a_mid).norm();
+  double distb_end = (b_end - a_mid).norm();
+  if((distb_start > (edgeLen / 2.0 + total_radius)) && (distb_end > (edgeLen / 2.0 + total_radius))) {
+    // cout << "false (trivial rejected)" << endl;
+    trivial_reject = true;
+    return 0;
+  }
+
+
+  // move 'a_start' to origin and move everything else relative
+  a_end = a_end - a_start;
+  b_start = b_start - a_start;
+  b_end = b_end - a_start;
+  a_start.setZero();
+
+
+  // rotate 'b' to be along z-axis, and rotate 'a' relative
+  Quaterniond quat_to_unitz;
+  quat_to_unitz.setFromTwoVectors(a_end.normalized(),Vector3d::UnitZ());
+  //Matrix3d mrot;
+  //mrot = qrot.toRotationMatrix(); //convert to matrix for more efficent rotation
+  a_end = quat_to_unitz*a_end;
+  b_start = quat_to_unitz*b_start;
+  b_end = quat_to_unitz*b_end;
+
+
+  // check if z values of b allow for trivial rejection (both points far enough away)
+  if((b_start[2] > a_end[2] + INTERSECTION_HEIGHT_FACTOR && b_end[2] > a_end[2] + INTERSECTION_HEIGHT_FACTOR) || 
+      (b_start[2] < -INTERSECTION_HEIGHT_FACTOR && b_end[2] < -INTERSECTION_HEIGHT_FACTOR)) {
+    return 0;
+  }
+
+
+  // checks for parallel edges
+  // can do this check because we rotated to unit Z
+  if(abs(b_start[0]-b_end[0]) < INTERSECTION_PARALLEL_CHECK_FACTOR && abs(b_start[1]-b_end[1]) < INTERSECTION_PARALLEL_CHECK_FACTOR)
+  {
+    //parallel, so assume everything the same distance as the start
+    return max(0.0, total_radius - sqrt(b_start[0]*b_start[0] + b_start[1]*b_start[1]));
+//    if(b_start[0]*b_start[0] + b_start[1]*b_start[1] > total_radius)
+//      return 0;
+//    else
+//      return total_radius - sqrt(b_start[0]*b_start[0] + b_start[1]*b_start[1]);
+ 
+  }
+
+
+
+  // check for intersection in the x-y plane projection by solving quadratic formula
+  // parameterize line as start + t(end_start), t in [0,1]
+  // find t that intersects circle of radius total_radius
+  Vector2d b_xy_start(b_start[0],b_start[1]); //start vector of projection of edge b into x, y plane
+  Vector2d b_xy_end(b_end[0],b_end[1]); //end vector of projection of edge b into x, y plane
+  Vector2d b_xy_edge = b_xy_end - b_xy_start; //direction vector
+
+  double acoeff, bcoeff, ccoeff; // a, b, and c coefficents in quadratic formula
+  bcoeff = 2.0 * b_xy_edge.dot(b_xy_start);
+  acoeff = b_xy_edge.dot(b_xy_edge);
+  ccoeff = b_xy_start.dot(b_xy_start) - pow(total_radius,2.0);
+
+  // if there are no solutions, there are no intersections
+  double det = pow(bcoeff,2.0) - 4 * acoeff * ccoeff;
+  if(det <= 0) {
+    return 0;
+  }
+
+  // no intersections if t isn't in range [0,1], since we only care about line segment between points
+  double t1 = (-bcoeff + sqrt(det))/(2.0 * acoeff);
+  double t2 = (-bcoeff - sqrt(det))/(2.0 * acoeff);
+  if((t1 > 1.0 && t2 > 1.0) || (t1 < 0.0 && t2 < 0.0)) {
+    return 0;
+  }
+
+  //if we have an intersection point, ensure, it's within this z
+  double z1 = (b_start + t1*(b_end - b_start))[2];
+  double z2 = (b_start + t2*(b_end - b_start))[2];  
+  if((z1 < -INTERSECTION_HEIGHT_FACTOR && z2 < -INTERSECTION_HEIGHT_FACTOR) || 
+      (z1 >  a_end[2] + INTERSECTION_HEIGHT_FACTOR && z2 > a_end[2] + INTERSECTION_HEIGHT_FACTOR))
+  {
+    return 0;
+  } 
+
+
+  // we have intersection
+  
+//  if(trivial_reject) {
+//    cout << "---------------------------BAD: trivial reject, but actually intersection" << endl;
+//    cout << "t1, t2, z1, z2: " << t1 << " " << t2 << " " << z1 << " " << z2 << endl;
+//    cout << "Trivial reject distance: " << edgeLen / 2.0 + r*r << " edgeLen, r " << edgeLen << " " << r << endl; 
+//    cout << "a_end[2]: " << a_end[2] << endl;
+//    cout << "distb_start, distb_end: " << distb_start << " " << distb_end << endl;
+//    // return true;
+//  }
+
+  // return distance
+  //double min_t = - b_xy_start.dot(b_xy_edge) / b_xy_edge.dot(b_xy_edge);
+  double min_t = (t1+t2)/2.0;
+  double dist = sqrt((b_xy_start + b_xy_edge * min_t).dot(b_xy_start + b_xy_edge * min_t));
+
+  return total_radius - dist;
+
+
+
+  //////cout << "bs, be, ae: " << bs << endl << endl << 
+
 }
 
 void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
@@ -840,131 +934,6 @@ void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, do
 }
 
 
-
-
-
-//old minimize energy
-/*
-void Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
-{
-  double step_in_grad_dir_vertices = 1.0;
-
-  vector<Vector3d> vertex_gradients(_thread_pieces.size());
-  for (int piece_ind=0; piece_ind < vertex_gradients.size(); piece_ind++)
-  {
-    vertex_gradients[piece_ind].setZero();
-  }
-
-
-  double max_movement_vertices = max_move_vert;
-  project_length_constraint();
-  bool recalc_vertex_grad = true;
-
-  double curr_energy = calculate_energy();
-  double next_energy = 0.0;
-
-  int opt_iter;
-  for (opt_iter = 0; opt_iter < num_opt_iters; opt_iter++)
-  {
-    double curr_energy = calculate_energy();
-    double next_energy = 0.0;
-
-    save_thread_pieces();
-    if (recalc_vertex_grad)
-    {
-      calculate_gradient_vertices(vertex_gradients);
-      make_max_norm_one(vertex_gradients);
-      curr_energy = calculate_energy();
-    }
-
-
-
-    
-#ifndef ISOTROPIC
-    save_angle_twists();
-#endif
-    step_in_grad_dir_vertices = max_movement_vertices/2.0;
-    apply_vertex_offsets(vertex_gradients, true, -(step_in_grad_dir_vertices));
-#ifndef ISOTROPIC
-    minimize_energy_twist_angles();
-#endif
-    double search_step = max_movement_vertices/4.0;
-    while (search_step > min_move_vert)
-    {
-      //energy for adding search_step to current step size
-      apply_vertex_offsets(vertex_gradients, true, -search_step);
-#ifndef ISOTROPIC
-      restore_angle_twists();
-      minimize_energy_twist_angles();
-#endif
-      double energy_add = calculate_energy();
-
-      //energy for subtracting search_step to current step size
-      apply_vertex_offsets(vertex_gradients, true, 2.0*search_step);
-#ifndef ISOTROPIC
-      restore_angle_twists();
-      minimize_energy_twist_angles();
-#endif
-      double energy_subtract = calculate_energy();
-
-      //std::cout << "energy add: " << energy_add << "  energy_subtract: " << energy_subtract << "  search step: " << search_step << " curr step: " << step_in_grad_dir_vertices << std::endl;
-
-      if (energy_add < energy_subtract) {
-        apply_vertex_offsets(vertex_gradients, true, -2.0*search_step);
-        step_in_grad_dir_vertices += search_step;
-      } else {
-        step_in_grad_dir_vertices -= search_step;
-      }
-      search_step /= 2.0;
-
-#ifndef ISOTROPIC
-      minimize_energy_twist_angles();
-#endif
-
-    }
-
-#ifndef ISOTROPIC
-    minimize_energy_twist_angles();
-#endif
-    double energy_before_projection = calculate_energy();
-    project_length_constraint();
-
-
-    next_energy = calculate_energy();
-
-
-    //std::cout << "curr energy: " << curr_energy << "   next energy: " << next_energy << "  before projection: " << energy_before_projection << "  last step: " << step_in_grad_dir_vertices <<  std::endl;
-
-    recalc_vertex_grad = true;
-    if (next_energy + energy_error_for_convergence > curr_energy)
-    {
-      if (next_energy >= curr_energy) {
-        restore_thread_pieces();
-        recalc_vertex_grad = false;
-      }
-
-      if (max_movement_vertices <= min_move_vert)
-      {
-        break;
-      }
-      max_movement_vertices = step_in_grad_dir_vertices / 2.0;
-    } else {
-      max_movement_vertices = min(step_in_grad_dir_vertices*2.0, max_move_vert);
-      //max_movement_vertices = max_move_vert;
-    }
-
-  }
-
-  curr_energy = calculate_energy();
-
-  project_length_constraint();
-  minimize_energy_twist_angles();
-
-  next_energy = calculate_energy();
-
-  //std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
-}
-*/
 
 void Thread::one_step_project(double step_size, bool normalize_gradient)
 {
@@ -1628,8 +1597,16 @@ void Thread::project_length_constraint_old()
 
 }
 
-void Thread::project_length_constraint()
+
+//this function might introduce intersections. fix_intersections should be called (with caution) afterwards. 
+bool Thread::project_length_constraint(int recursive_depth)
 {
+
+  if (recursive_depth <= 0) {
+    //cout << "project length constraint recursively called too much!" << endl;
+    return false; 
+  }
+
   const int num_iters_project = 50;
   const double projection_scale_factor = 1.0;
   const double max_norm_to_break = 1e-5;
@@ -1642,7 +1619,7 @@ void Thread::project_length_constraint()
     all_norms_within_thresh &= abs(_thread_pieces[piece_ind]->edge_norm() - _rest_length) < max_norm_to_break;
   }
   if (all_norms_within_thresh)
-    return;
+    return true;
 
   // set up the augmented lagrangian system: need C, grad C, mass mat.
   // y is the coordinates of all vertices
@@ -1665,9 +1642,7 @@ void Thread::project_length_constraint()
   Vector3d cur_point;
   double normerror;
   VectorXd dy(3*(N-4));
-  int step_max = num_iters_project;
-  if(stepping) step_max = 1;
-  for (iter_num=0; iter_num < num_iters_project && iter_num < step_max; iter_num++)
+  for (iter_num=0; iter_num < num_iters_project; iter_num++)
   {
     C.setZero();
     gradC.setZero();
@@ -1692,7 +1667,7 @@ void Thread::project_length_constraint()
     // (gradC*gradC.transpose()).lu().solve(C,&dl);
     // VectorXd dy = -gradC.transpose()*dl;
 
-    gradC*gradC.transpose();
+    //gradC*gradC.transpose();
     (gradC*gradC.transpose()).llt().solveInPlace(C);
     dy = -gradC.transpose()*C;
 
@@ -1712,7 +1687,7 @@ void Thread::project_length_constraint()
     // find max norm and store in vertex_offsets (for now just announce, max movement too large)
     // if greater than .2, scale vertex_offsets by max norm
     // check for and fix intersections
-       // call project_length constraints if needed (don't let fall off end without fixing length constrainsts and intersections)
+    // call project_length constraints if needed (don't let fall off end without fixing length constrainsts and intersections)
 
     double max_move = 0;
     bool move_too_far = false;
@@ -1735,10 +1710,24 @@ void Thread::project_length_constraint()
     //apply the actual offsets
     apply_vertex_offsets(vertex_offsets, true, projection_scale_factor,true /*iter_num == (num_iters_project-1) || projected_enough*/);
     
-    fix_intersections();
 
-    if(move_too_far && !stepping) {
-        project_length_constraint();
+    int intersection_iters = 0; 
+    if (COLLISION_CHECKING) { 
+      vector<Self_Intersection> self_intersections;
+      vector<Intersection> intersections;
+      while(check_for_intersection(self_intersections, intersections)) {
+        fix_intersections();
+        intersection_iters++;
+        //cout << "PLC: fixing for " << intersection_iters << " iterations."
+        //  << endl;
+      }
+    }
+
+    if(move_too_far) {
+      //if (intersection_iters == 0) { 
+      //cout << "plc: calling plc again" << endl; 
+      return project_length_constraint(recursive_depth-1);
+      //}
     }
 
     
@@ -1747,6 +1736,8 @@ void Thread::project_length_constraint()
 
   }
   //cout << iter_num << " " << normerror << endl;
+
+  return true; 
 
 }
 
@@ -1987,6 +1978,11 @@ void Thread::restore_thread_pieces(vector<ThreadPiece*>& to_restore)
   {
     _thread_pieces[piece_ind]->copyData(*to_restore[piece_ind]);
   }
+  for (int piece_ind=to_restore.size()-1; piece_ind >= 0; piece_ind--)
+  {
+      delete to_restore[piece_ind];
+      to_restore.pop_back();
+  }
 }
 
 void Thread::restore_thread_pieces_and_resize(vector<ThreadPiece*>& to_restore)
@@ -2101,6 +2097,19 @@ void Thread::set_all_angles_zero()
     }
 } 
 
+void Thread::set_all_pieces_mythread()
+{
+  for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
+  {
+    _thread_pieces[piece_ind]->set_my_thread(this);
+  }
+
+  for (int piece_ind=0; piece_ind < _thread_pieces_backup.size(); piece_ind++)
+  {
+    _thread_pieces_backup[piece_ind]->set_my_thread(this);
+  }
+}
+
 bool Thread::is_consistent()
 {
   bool toRtn = true;
@@ -2185,14 +2194,25 @@ void Thread::print_vertices()
   std::cout << std::endl;
 }
 
+void Thread::restore_constraints(const Vector3d& start_pos, const Matrix3d& start_rot, const Vector3d& end_pos, const Matrix3d& end_rot) 
+{
+  set_start_constraint(start_pos, start_rot, false);
+  set_end_constraint(end_pos, end_rot, false);
+
+}
 void Thread::set_constraints(const Vector3d& start_pos, const Matrix3d& start_rot, const Vector3d& end_pos, const Matrix3d& end_rot)
 {
   set_start_constraint(start_pos, start_rot);
   set_end_constraint(end_pos, end_rot);
 }
 
-void Thread::set_start_constraint(const Vector3d& start_pos, const Matrix3d& start_rot)
+void Thread::set_start_constraint(const Vector3d& start_pos, const Matrix3d& start_rot, bool backup)
 {
+  if (backup) { 
+    _start_pos_backup = this->start_pos();
+    _start_rot_backup = this->start_rot();
+  }
+
   _thread_pieces.front()->set_vertex(start_pos);
   //_start_rot = start_rot;
   _thread_pieces.front()->set_bishop_frame(start_rot);
@@ -2206,9 +2226,13 @@ void Thread::set_start_constraint(const Vector3d& start_pos, const Matrix3d& sta
 
 
 //assumes bishop frame for end is already calculated
-void Thread::set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot)
+void Thread::set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot, bool backup)
 {
-  
+  if (backup) { 
+  _end_pos_backup = this->end_pos();
+  _end_rot_backup = this->end_rot();
+  }
+
   _thread_pieces.back()->set_vertex(end_pos);
   //_end_rot = end_rot;
   _thread_pieces.back()->set_material_frame(end_rot);
@@ -2309,7 +2333,7 @@ void Thread::apply_motion(Two_Motions& motion)
 }
 
 //applies motion to END
-void Thread::apply_motion_nearEnds(Frame_Motion& motion)
+void Thread::apply_motion_nearEnds(Frame_Motion& motion, bool mini_energy)
 {
   Vector3d end_pos = this->end_pos();
   Matrix3d end_rot = this->end_rot();
@@ -2318,10 +2342,11 @@ void Thread::apply_motion_nearEnds(Frame_Motion& motion)
   end_pos += (vertex_at_ind(_thread_pieces.size()-2)+motion._pos_movement) - (end_pos-end_rot.col(0).normalized()*_rest_length);
   set_end_constraint(end_pos, end_rot);
   unviolate_total_length_constraint();
-  minimize_energy();
+  if (mini_energy)
+    minimize_energy();
 }
 
-void Thread::apply_motion_nearEnds(Two_Motions& motion)
+void Thread::apply_motion_nearEnds(Two_Motions& motion, bool mini_energy)
 {
   Vector3d start_pos = this->start_pos();
   Matrix3d start_rot = this->start_rot();
@@ -2365,9 +2390,14 @@ void Thread::apply_motion_nearEnds(Two_Motions& motion)
   too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
   std::cout << "too long by " << too_long_by << std::endl;
   */
+  // create a backup of the current thread
+
 
   set_constraints(start_pos, start_rot, end_pos, end_rot);
-  minimize_energy();
+  if (mini_energy)
+    minimize_energy();
+
+
 }
 
 
@@ -2588,8 +2618,25 @@ Thread& Thread::operator=(const Thread& rhs)
 
   //set_end_constraint(vertices.back(), end_rot);
 
+  set_all_pieces_mythread();
 
   return *this;
 
 }
 
+
+
+
+
+void add_object_to_env(Intersection_Object& obj)
+{
+  objects_in_env.push_back(obj);
+}
+
+
+//not sure why, couldn't look at static variable directly
+//so this gets the data
+vector<Intersection_Object>* get_objects_in_env()
+{
+  return &objects_in_env;
+}

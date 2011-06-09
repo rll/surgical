@@ -25,6 +25,7 @@ USING_PART_OF_NAMESPACE_EIGEN
 
 void InitStuff();
 void DrawStuff();
+void DrawObjectsInEnv();
 void updateThreadPoints();
 void initThread();
 void initThread_closedPolygon();
@@ -74,6 +75,9 @@ Vector3d tangents[2];
 Matrix3d rotations[3];
 
 key_code key_pressed;
+
+#define NUM_STEPS_FEW 10
+bool few_minimization_steps = false;
 
 
 /* set up a light */
@@ -257,18 +261,18 @@ void processNormalKeys(unsigned char key, int x, int y)
   {
     exit(0);
   } else if(key == 'd') { //toggle stepping to allow debugging
-       thread->stepping = !thread->stepping;
-       cout << "Debugging is now set to: " << thread->stepping << endl;
+    few_minimization_steps = !few_minimization_steps;
+    cout << "Debugging is now set to: " << few_minimization_steps << endl;
   } else if(key == 'n') {
-        cout << "Stepping " << endl;
-        thread->minimize_energy();
-        DrawStuff();
+    cout << "Stepping " << endl;
+    thread->minimize_energy(NUM_STEPS_FEW);
+    DrawStuff();
   } else if(key == 'l') {
-        cout << "Stepping though project length constraint" << endl;
-        thread->project_length_constraint();
-        DrawStuff();
+    cout << "Stepping though project length constraint" << endl;
+    thread->project_length_constraint();
+    DrawStuff();
   }
-      
+
 
   lastx_R = x;
   lasty_R = y;
@@ -441,8 +445,8 @@ int main (int argc, char * argv[])
 	InitStuff ();
 
   initThread();
-  thread->stepping = false;
-  thread->step = false;
+  //thread->stepping = false;
+  //thread->step = false;
 	thread->minimize_energy();
   updateThreadPoints();
   thread_saved = new Thread(*thread);
@@ -626,14 +630,14 @@ void DrawStuff (void)
 
 
 
-
+    
 
     //change thread
     //thread->set_constraints(positions[0], rotations[0], positions[1], rotations[1]);
-    thread->apply_motion_nearEnds(motion_to_apply);
+    thread->apply_motion_nearEnds(motion_to_apply, false);
     //thread->set_end_constraint(positions[1], rotations[1]);
-    if(!thread->stepping) {
-    thread->minimize_energy();
+    if(!few_minimization_steps) {
+      thread->minimize_energy();
     }
 
 
@@ -789,11 +793,42 @@ void DrawStuff (void)
 
 
 
+  DrawObjectsInEnv();
+
   glPopMatrix ();
 
   glutSwapBuffers ();
 }
 
+
+void DrawObjectsInEnv()
+{
+  vector<Intersection_Object>* objects;
+  objects = get_objects_in_env();
+  
+  glColor3f(0.8, 0.05, 0.05);
+  Vector3d vector_array[4];
+  double point_array[4][3];
+  for (int obj_ind=0; obj_ind < objects->size(); obj_ind++)
+  {
+    vector_array[0] = objects->at(obj_ind)._start_pos - (objects->at(obj_ind)._end_pos - objects->at(obj_ind)._start_pos);
+    vector_array[1] = objects->at(obj_ind)._start_pos;
+    vector_array[2] = objects->at(obj_ind)._end_pos;
+    vector_array[3] = objects->at(obj_ind)._end_pos + (objects->at(obj_ind)._end_pos - objects->at(obj_ind)._start_pos);
+
+    for (int pt_ind = 0; pt_ind < 4; pt_ind++)
+    {
+      point_array[pt_ind][0] = vector_array[pt_ind](0);
+      point_array[pt_ind][1] = vector_array[pt_ind](1);
+      point_array[pt_ind][2] = vector_array[pt_ind](2);
+    }
+
+    glePolyCylinder(4, point_array, NULL, objects->at(obj_ind)._radius);
+
+   }
+
+
+}
 
 
 void updateThreadPoints()
@@ -825,7 +860,7 @@ void updateThreadPoints()
 
 void initThread()
 {
-  int numInit = 14;
+  int numInit = 20;
   double noise_factor = 0.0;
 
   vector<Vector3d> vertices;
@@ -923,6 +958,17 @@ void initThread()
 #else
   thread->set_coeffs_normalized(1.0, 3.0, 1e-4);
 #endif
+
+  Vector3d start_pos_obj(10.0, 5.0, -40.0);
+  Vector3d end_pos_obj(10.0, 5.0, 40.0);
+  Intersection_Object obj(1.5, start_pos_obj, end_pos_obj);
+
+  add_object_to_env(obj);
+
+
+
+
+
 }
 
 

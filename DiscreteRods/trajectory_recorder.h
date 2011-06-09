@@ -31,7 +31,7 @@ class Trajectory_Recorder
 {
 	public:
 		Trajectory_Recorder();
-		Trajectory_Recorder(char* fileName_threads_in);
+		Trajectory_Recorder(const char* fileName_threads_in);
 
 		void add_thread_to_list(const Thread& thread);
     void add_thread_to_list(const Thread* thread);
@@ -40,7 +40,7 @@ class Trajectory_Recorder
 		void write_threads_to_file();
 		void clear_threads();
 
-        void setFileName(char* newFileName);
+        void setFileName(const char* newFileName);
 
 	private:
 		char _fileName_threads[256];

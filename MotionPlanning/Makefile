@@ -1,12 +1,23 @@
-HOSTNAME=-D$(shell uname -n)
+MACHINE= $(shell uname -s)
+HOSTNAME=-D$(shell uname -n | sed 's/-/_/g')
 
-UTILS_DIR = ../../utils/
+UTILS_DIR = ../utils/
+ifeq ($(MACHINE),Darwin)
+    LIBS = -L/usr/local/lib/x86_64 -L/usr/lib/ -lglut -lgle -lboost_program_options-mt -lgsl -lgslcblas -llshkit 
+    COMPILEFLAG=-DMAC
+    LDFLAG=$(COMPILEFLAG) -L"/System/Library/Frameworks/OpenGL.framework/Libraries" -L"/System/Library/Frameworks/GLUT.framework" -framework GLUT -framework OpenGL -lGL -lGLU -L/usr/X11R6/lib -L/opt/local/lib -lopencv_core -lopencv_highgui
+    INCLUDES = -I/usr/local/include/ -I $(UTILS_DIR) -I/usr/local/include/eigen2/ -I/usr/include/boost/  -I/usr/local/include/lshkit/ -I/opt/local/include/opencv/  
+else
+    LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/ -lglut -lgle -llshkit -lgsl -lgslcblas -lboost_program_options-mt 
+    COMPILEFLAG=
+    LDFLAG=
+    INCLUDES = -I/usr/local/include/ -I $(UTILS_DIR) -I/usr/local/include/eigen2/ -I/usr/include/boost/  -I/usr/local/include/lshkit/ -I/usr/local/include/opencv/  
+endif
 THREAD_DIR = ../DiscreteRods/
 VISION_DIR = ../vision/
-LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lPvAPI -lrt -lglut -lgle -llshkit -lgsl -lgslcblas -lboost_program_options-mt 
-INCLUDES = -I/usr/local/include/ -I $(UTILS_DIR) -I/usr/local/include/eigen2/ -I/usr/include/boost/  -I/usr/local/include/lshkit/ -I/usr/local/include/opencv/  
 #INCLUDES = -I/usr/local/include/ -I/usr/local/include/opencv/ -I/usr/local/include/libPvAPI -I $(UTILS_DIR)
-OPT_COMP = -DEIGEN_NO_DEBUG -O3 
+#OPT_COMP = -DEIGEN_NO_DEBUG -O3 
+OPT_COMP = -O2
 # OPT_COMP = 
 FOPENMP = -fopenmp
 CC = g++ $(OPT_COMP) $(COMPILEFLAG) $(FOPENMP) $(HOSTNAME)
@@ -105,5 +116,5 @@ iterative_control.o : iterative_control.cpp iterative_control.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c iterative_control.cpp $(PROFILER)
 
 clean:
-	rm *.o *.gch test_linearization test_planner benchmark_runner benchmark_planner run_planner_libs visualize_trajs run_sample_generator
+	rm -r *.o *.gch test_linearization test_planner benchmark_runner benchmark_planner run_planner_libs visualize_trajs run_sample_generator vis_onetraj run_planner_libs_dim1 run_planner_libs_dim2 *.dSYM
 
