@@ -36,18 +36,68 @@
 
 #endif
 
-#define DEFAULT_REST_LENGTH 6.0 /*default rest length for each threadpiece*/
+#define DEFAULT_REST_LENGTH 2.0 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
+#define INTERSECTION_PUSHBACK_EPS 0.03 
 //#define NUM_THREADS_PARALLEL_FOR 2
 #define num_iters_twist_est_max 0
 
+#define THREAD_RADIUS 0.2     /* MUST BE ATLEAST MAX_MOVEMENT_VERTICES */
+#define COLLISION_CHECKING true
 
 
 
 using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN
 using namespace Eigen;
+
+struct Self_Intersection
+{
+  int _piece_ind_a;
+  int _piece_ind_b;
+  double _dist;
+
+  Self_Intersection() {}
+  Self_Intersection(int piece_ind_a, int piece_ind_b, double dist)
+    : _piece_ind_a(piece_ind_a), _piece_ind_b(piece_ind_b), _dist(dist) {}
+  Self_Intersection(const Self_Intersection& cpy)
+    : _piece_ind_a(cpy._piece_ind_a), _piece_ind_b(cpy._piece_ind_b), _dist(cpy._dist) {}
+  
+};
+
+struct Intersection
+{
+  int _piece_ind;
+  int _object_ind;
+  double _dist;
+
+  Intersection() {}
+  Intersection(int piece_ind, int object_ind, double dist)
+    : _piece_ind(piece_ind), _object_ind(object_ind), _dist(dist) {}
+  Intersection(const Intersection& cpy)
+    : _piece_ind(cpy._piece_ind), _object_ind(cpy._object_ind), _dist(cpy._dist) {}
+};
+
+struct Intersection_Object
+{
+  double _radius;
+  Vector3d _start_pos;
+  Vector3d _end_pos;
+
+  Intersection_Object() {}
+  Intersection_Object(double radius, Vector3d& start_pos, Vector3d& end_pos)
+    : _radius(radius), _start_pos(start_pos), _end_pos(end_pos) {}
+  Intersection_Object(const Intersection_Object& cpy)
+    : _radius(cpy._radius), _start_pos(cpy._start_pos), _end_pos(cpy._end_pos) {}
+
+};
+
+static vector<Intersection_Object> objects_in_env;
+void add_object_to_env(Intersection_Object& obj);
+vector<Intersection_Object>* get_objects_in_env();
+
+
 
 class Thread
 {
@@ -86,18 +136,19 @@ class Thread
 
     //setting end constraints
     void set_constraints(const Vector3d& start_pos, const Matrix3d& start_rot, const Vector3d& end_pos, const Matrix3d& end_rot);
-    void set_start_constraint(const Vector3d& start_pos, const Matrix3d& start_rot);
-    void set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot);
+    void set_start_constraint(const Vector3d& start_pos, const Matrix3d& start_rot, bool backup=true);
+    void set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot, bool backup=true);
+    void restore_constraints(const Vector3d& start_pos, const Matrix3d& start_rot, const Vector3d& end_pos, const Matrix3d& end_rot);
     void rotate_end_by(double degrees);
     void apply_motion(Frame_Motion& motion); //applies motion to end points/rotations
     void apply_motion(Two_Motions& motion);
-    void apply_motion_nearEnds(Frame_Motion& motion); //applies motion to 2nd and 2nd to last points/rotations, and clamps to ensure constraints are not violated
-    void apply_motion_nearEnds(Two_Motions& motion);
+    void apply_motion_nearEnds(Frame_Motion& motion, bool mini_energy = true); //applies motion to 2nd and 2nd to last points/rotations, and clamps to ensure constraints are not violated
+    void apply_motion_nearEnds(Two_Motions& motion, bool mini_energy = true);
     void unviolate_total_length_constraint();
     void copy_data_from_vector(VectorXd& toCopy);
     
     void project_length_constraint_old();
-    void project_length_constraint();
+    bool project_length_constraint(int recursive_depth=250);
     void project_length_constraint_slow();
 
     const Matrix3d& start_rot(void) const {return _thread_pieces.front()->material_frame();}
@@ -210,21 +261,23 @@ class Thread
     double _rest_length;
 
     //intersection
-    double intersection(int i, int j, double radius); //do these two pieces intersect?
-    int check_for_intersection(double radius, vector<double> *intersections); //how many intersecting pairs?
+    double self_intersection(int i, int j, double radius); //do these two pieces intersect?
+    double obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius);
+    double intersection(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius);
+
+    bool check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Intersection>& intersections);
     void fix_intersections();
-
-    //used for step through mode while debugging   
-     bool stepping;
-     bool step;    
-
 
   protected:
     vector<ThreadPiece*> _thread_pieces;
     vector<ThreadPiece*> _thread_pieces_backup;
     vector<double> _angle_twist_backup;
 
-
+    Vector3d _start_pos_backup;
+    Matrix3d _start_rot_backup;
+    Vector3d _end_pos_backup;
+    Matrix3d _end_rot_backup; 
+    vector<ThreadPiece*> _thread_pieces_collision_backup;
 
     void add_momentum_to_gradient(vector<Vector3d>& vertex_gradients, vector<Vector3d>& new_gradients, double last_step_size);
 
