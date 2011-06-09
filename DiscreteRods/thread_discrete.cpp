@@ -425,7 +425,10 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 {
   //backup pieces in case collision checking infinite loops due to unsatisfiable system
   //cout << "backing up pieces" << endl; 
-  save_thread_pieces_and_resize(_thread_pieces_collision_backup);
+
+  if (COLLISION_CHECKING) { 
+    save_thread_pieces_and_resize(_thread_pieces_collision_backup);
+  }
   bool project_length_constraint_pass = true; 
 
   double step_in_grad_dir_vertices = 1.0;
@@ -576,7 +579,7 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 
   next_energy = calculate_energy();
 
-  if (!project_length_constraint_pass) {
+  if (!project_length_constraint_pass && COLLISION_CHECKING) {
     //cout << "reverting thread to prior state" << endl; 
     restore_thread_pieces_and_resize(_thread_pieces_collision_backup);
     restore_constraints(_start_pos_backup, _start_rot_backup, 

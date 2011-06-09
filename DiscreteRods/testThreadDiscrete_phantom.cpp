@@ -262,9 +262,6 @@ void processNormalKeys(unsigned char key, int x, int y)
   } else if (key == 27)
   {
     exit(0);
-  } else if(key == 'd') { //toggle stepping to allow debugging
-       thread->stepping = !thread->stepping;
-       cout << "Debugging is now set to: " << thread->stepping << endl;
   } else if(key == 'n') {
         cout << "Stepping " << endl;
         thread->minimize_energy();
@@ -382,8 +379,6 @@ int main (int argc, char * argv[])
 	initStuff ();
 
     initThread();
-    thread->stepping = false;
-    thread->step = false;
 	thread->minimize_energy();
     updateThreadPoints();
     thread_saved = new Thread(*thread);
@@ -431,12 +426,14 @@ void drawStuff (void)
     changeEndThreadHaptic();
     changeStartThreadMouse(); 
   } else if (!start_haptics_mode && !end_haptics_mode) {
-    changeStartThreadMouse();
-    changeEndThreadMouse();
+    changeThreadMouse();
   }
-  if(!thread->stepping) {
-    thread->minimize_energy();
-  }
+  
+  cout << start_proxy_pos << endl;
+  changeThreadMouse();
+  
+  thread->minimize_energy();
+  
   updateThreadPoints();
   drawAxes();
   drawThread();
@@ -899,7 +896,7 @@ void initStuff (void)
 
 void initThread()
 {
-  int numInit = 6; //14  there are 2*numInit+3 vertices
+  int numInit = 4; //14  there are 2*numInit+3 vertices
   double noise_factor = 0.0;
 
   vector<Vector3d> vertices;
