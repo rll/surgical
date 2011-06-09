@@ -143,7 +143,6 @@ class Thread
     void set_start_constraint(const Vector3d& start_pos, const Matrix3d& start_rot, bool backup=true);
     void set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot, bool backup=true);
     void restore_constraints(const Vector3d& start_pos, const Matrix3d& start_rot, const Vector3d& end_pos, const Matrix3d& end_rot);
->>>>>>> 9e193b263bd4e95f723200f105f54f5a110ee895:DiscreteRods/thread_discrete.h
     void rotate_end_by(double degrees);
     void apply_motion(Frame_Motion& motion); //applies motion to end points/rotations
     void apply_motion(Two_Motions& motion);
