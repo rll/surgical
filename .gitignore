@@ -1,5 +1,6 @@
 *.o
 *.swp
+*~
 /vision/captures/*.tif
 ThreadVision_DiscreteRods/threadStereo
 ThreadVision_DiscreteRods/threadStereo_fake
@@ -11,3 +12,4 @@ vision/captures/*
 *.avi
 MotionPlanning/SQP_DATA/*.txt
 MotionPlanning/ims_for_vids/*
+*.pem

@@ -16,6 +16,8 @@
 
 #define NUM_HYPOTHS_MAX 20
 
+#define USE_DISTANCE_METRIC true
+
 class Thread_Vision;
 
 class Thread_Hypoth: public Thread
@@ -49,6 +51,7 @@ public:
 
     double calculate_total_energy();
     double calculate_visual_energy();
+    double distance_from_energy_minimal_configuration();
     void calculate_score();
     void calculate_visual_gradient_vertices(vector<Vector3d>& vertex_gradients);
     void project_length_constraint();

@@ -13,15 +13,15 @@
 #include <Eigen/Geometry>
 
 #ifdef ISOTROPIC 
-    #define MAX_MOVEMENT_VERTICES 0.1
+    #define MAX_MOVEMENT_VERTICES 0.2
     #define MAX_ROTATION_TWIST (M_PI/30.0)
     #define MOMENTUM_CONSTANT 0.0 /*how much of the last gradient do we use*/
 
-    #define MIN_MOVEMENT_VERTICES 1e-5 //speedy at 1e-4
+    #define MIN_MOVEMENT_VERTICES 1e-6 //speedy at 1e-4
     #define MIN_ROTATION_TWIST (M_PI/1000.0)
     
-    #define ENERGY_FOR_CONVERGENCE 5e-6 //speedy at 1e-5
-    #define NUM_MAX_ITERS 150000000 //speedy at 6000
+    #define ENERGY_FOR_CONVERGENCE 5e-7 //speedy at 1e-5
+    #define NUM_MAX_ITERS 6000 //speedy at 6000
 #else
 
     #define MAX_MOVEMENT_VERTICES 0.2
@@ -36,7 +36,7 @@
 
 #endif
 
-#define DEFAULT_REST_LENGTH 2.0 /*default rest length for each threadpiece*/
+#define DEFAULT_REST_LENGTH 3 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
 #define INTERSECTION_PUSHBACK_EPS 0.03 
@@ -116,6 +116,7 @@ class Thread
     void get_thread_data(vector<Vector3d>& points, vector<Matrix3d>& material_frames);
     void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<Matrix3d>& material_frames);
     void set_all_angles_zero();
+    void set_all_pieces_mythread();
 
     //energy minimization
     //
@@ -124,7 +125,7 @@ class Thread
     void minimize_energy_hessian(int num_opt_iters=NUM_MAX_ITERS, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence=ENERGY_FOR_CONVERGENCE);
 #else
     void minimize_energy(int num_opt_iters=NUM_MAX_ITERS, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence=ENERGY_FOR_CONVERGENCE);
-    void minimize_energy_hessian(int num_opt_iters=NUM_MAX_ITERS, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence =ENERGY_FOR_CONVERGENCE);
+    void minimize_energy_hessian(int num_opt_iters=NUM_MAX_ITERS, double min_move_vert=MIN_MOVEMENT_VERTICES, double max_move_vert=MAX_MOVEMENT_VERTICES, double energy_error_for_convergence=ENERGY_FOR_CONVERGENCE);
 #endif
     void minimize_energy_twist_angles();
 
@@ -268,7 +269,7 @@ class Thread
     bool check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Intersection>& intersections);
     void fix_intersections();
 
-  protected:
+  //protected:
     vector<ThreadPiece*> _thread_pieces;
     vector<ThreadPiece*> _thread_pieces_backup;
     vector<double> _angle_twist_backup;

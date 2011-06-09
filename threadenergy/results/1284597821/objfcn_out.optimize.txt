@@ -1,9 +1,0 @@
-Creating SCHEME file: /home/pabbeel/rll/code/trunk/surgical/threadenergy/SCHEME
-pdsopt: factor  =            8
-        beta    =           2
-
-		 PDS Iteration Summary
-
-  Iter    F(x)       ||edge||    step   fevals    jbest
-
-    0        13.42            1              6       0

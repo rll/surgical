@@ -1,11 +1,8 @@
 #include "iterative_control.h"
 #include <boost/progress.hpp>
 
-//#ifdef surgical2
-//  #define MATLAB_INSTALL "/usr/local/bin/matlab/bin/matlab"
-//#else
-  #define MATLAB_INSTALL "matlab"
-//#endif
+#define MATLAB_INSTALL "matlab"
+
 
 
 Iterative_Control::Iterative_Control(int num_threads, int num_vertices)
@@ -20,8 +17,6 @@ Iterative_Control::~Iterative_Control()
 {
 
 }
-
-
 
 void Iterative_Control::resize_controller(int num_threads, int num_vertices)
 {
@@ -46,24 +41,6 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
   if (trajectory.size() != _num_threads && trajectory.front()->num_pieces() != _num_vertices)
     return false;
 
-  //setup goal vector
-  /*SparseMatrix<double> goal_vector( (_num_threads-1)*_size_each_state, 1);
-  VectorXd state_for_ends(_size_each_state);
-  thread_to_state(trajectory.front(), state_for_ends);
-  weight_state(state_for_ends);
-  goal_vector.startFill(2*_size_each_state);
-  for (int i=0; i < _size_each_state; i++)
-  {
-    goal_vector.fill(i,0) = -state_for_ends(i);
-  }
-  thread_to_state(trajectory.back(), state_for_ends);
-  weight_state(state_for_ends);
-  for (int i=0; i < _size_each_state; i++)
-  {
-    goal_vector.fill((_num_threads-2)*_size_each_state + i,0) = state_for_ends(i);
-  }*/
-
-
   //make a copy of the start and goal threads
   _lastopt_startThread = new Thread(*trajectory.front());
   _lastopt_goalThread = new Thread(*trajectory.back());
@@ -71,12 +48,11 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
   //vector to contain the new states
   VectorXd new_states((_num_threads-2)*_size_each_state + (_num_threads-1)*_size_each_control);
 
-
   char filename_goalvec[256];
-    sprintf(filename_goalvec, "%s/%s_%s", SQP_BASE_FOLDER, _namestring, FILENAME_GOALVEC);
+  sprintf(filename_goalvec, "%s/%s_%s", SQP_BASE_FOLDER, _namestring, FILENAME_GOALVEC);
 
   char filename_alltrans[256];
-    sprintf(filename_alltrans, "%s/%s_%s", SQP_BASE_FOLDER, _namestring, FILENAME_ALLTRANS);
+  sprintf(filename_alltrans, "%s/%s_%s", SQP_BASE_FOLDER, _namestring, FILENAME_ALLTRANS);
 
 
   for (int opt_iter=0; opt_iter < num_opts; opt_iter++)
@@ -122,7 +98,9 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
     
 
     cout << "Minimizing Threads returned from MATLAB" << endl; 
-    boost::progress_display progress(trajectory.size()-2); 
+    boost::progress_display progress(trajectory.size()-2);
+
+    #pragma omp parallel for num_threads(NUM_CPU_THREADS)
     for (int i=1; i < trajectory.size()-1; i++)
     {
       VectorXd to_copy = new_states.segment(_size_each_state*(i-1), _size_each_state);
@@ -132,16 +110,20 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
       trajectory[i]->minimize_energy(150000000);
       ++progress;
     }
-    
-      
+
+    //copy out control
+    controls.resize(_num_threads-1);
+    vector<vector<VectorXd> > control_vector;
+    for (int i=0; i < _num_threads-1; i++)
+    {
+      controls[i] = new_states.segment(_size_each_state*(_num_threads-2) + i*_size_each_control, _size_each_control);
+      vector<VectorXd> control_wrapper;
+      control_wrapper.push_back(controls[i]);
+      control_vector.push_back(control_wrapper);
+    }
+
   }
 
-  //copy out control
-  controls.resize(_num_threads-1);
-  for (int i=0; i < _num_threads-1; i++)
-  {
-    controls[i] = new_states.segment(_size_each_state*(_num_threads-2) + i*_size_each_control, _size_each_control);
-  }
 
 
   return true;

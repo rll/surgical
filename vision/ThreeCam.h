@@ -11,7 +11,7 @@
 #include <opencv/cxcore.h>
 #include <iostream>
 #include <string>
-#include "../threadenergy/globals_thread_param_estimation.h"
+//#include "../threadenergy/globals_thread_param_estimation.h"
 
 
 using namespace std;

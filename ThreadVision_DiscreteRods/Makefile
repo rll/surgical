@@ -1,4 +1,4 @@
-UTILS_DIR = ../../utils/
+UTILS_DIR = ../utils/
 MESSAGING_DIR = /home/pabbeel/code/master-slave/slaves/
 SOCKET_DIR = /home/pabbeel/code/master-slave/
 THREAD_DIR = ../DiscreteRods/
@@ -22,7 +22,8 @@ FAKEIMS= -DFAKEIMS
 
 #target : testCanny testCapture example_capture_3cam calibrate_robots test_point_distances PositionsOnRequest PositionsOnRequest2 threadStereo
 
-target: threadStereo_manyIms
+target: threadStereo_continuousSet_noTruth threadStereo_fake_continuousSet_noTruth
+#target: test_distance_metric test_distance_metric_fake
 
 threadStereo: threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o CannyWriter.o CannyReader.o
 	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o threadStereo threadStereo_manyThreads.cpp capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o threadpiece_vision_discrete.o thread_vision_utils.o threadhypoth_vision_discrete.o thread_vision_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o CannyWriter.o CannyReader.o $(LIBS) $(PROFILER)

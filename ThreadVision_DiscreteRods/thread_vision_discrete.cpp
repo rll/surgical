@@ -354,6 +354,7 @@ void Thread_Vision::initThreadSearch()
   //incase we ran this before and updated Images
   clear_thread_hypoths();
 
+    //also precomputes distances
     updateCanny();
 
     findStartPoints();
@@ -398,7 +399,7 @@ bool Thread_Vision::findStartPoints()
                     /* Generate possible twists from -2pi/maxlength to 2pi/maxlength */
                     int twistIncrements = 20;
                     for (int j = 0; j < twistIncrements; j++) {
-                        int numThreadPieces = _max_length_thread / _rest_length;
+                        int numThreadPieces = _max_length_thread / DEFAULT_REST_LENGTH;
                         double baseTwist = 2.0 * M_PI / numThreadPieces;
                         double startTwist = -1 * baseTwist + j * (baseTwist * 2 / twistIncrements);
                         cout << startTwist << " ";
@@ -518,7 +519,7 @@ vector<double>* Thread_Vision::findTwist(Thread_Hypoth *hypoth)
 {
     int twistIncrements = 20;
     for (int j = 0; j < twistIncrements; j++) {
-        int numThreadPieces = _max_length_thread / _rest_length;
+        int numThreadPieces = _max_length_thread / hypoth->rest_length();
         double baseTwist = 2.0 * M_PI / numThreadPieces;
         double startTwist = -1 * baseTwist + j * (baseTwist * 2 / twistIncrements);
         double endTwist = startTwist * hypoth->num_pieces();
@@ -577,7 +578,7 @@ bool Thread_Vision::isDone()
     if (_thread_hypoths.size() == 0 || _thread_hypoths[0].front()->num_pieces() < 5) {
         return false;
     }
-    return (_thread_hypoths[0].front()->num_pieces()*_rest_length >= _max_length_thread);
+    return (_thread_hypoths[0].front()->num_pieces()*DEFAULT_REST_LENGTH >= _max_length_thread);
 }
 
 vector<thread_hypoth_pair>* Thread_Vision::nearbyPairsOfThreadHypoths()
@@ -596,7 +597,7 @@ vector<thread_hypoth_pair>* Thread_Vision::nearbyPairsOfThreadHypoths()
                         //Check end points
                         bool isCollision = false;
 
-                        MatchingEnds match = matchingEndsForThreads(current_thread, other_thread, CLOSE_DISTANCE_COEFF);
+                        MatchingEnds match = matchingEndsForThreads(current_thread, other_thread, current_thread->CLOSE_DISTANCE_COEFF);
 
                         if (match != MatchingNone) {
                             thread_hypoth_pair pair = {current_thread, other_thread};
@@ -622,7 +623,7 @@ vector<thread_hypoth_pair>* Thread_Vision::nearbyPairsOfThreadHypoths()
 /* For efficiency, threads are mutated */
 Thread_Hypoth* Thread_Vision::mergeThreads(Thread_Hypoth* thread1, Thread_Hypoth* thread2)
 {
-    MatchingEnds match = matchingEndsForThreads(thread1, thread2, CLOSE_DISTANCE_COEFF);
+    MatchingEnds match = matchingEndsForThreads(thread1, thread2, thread1->CLOSE_DISTANCE_COEFF);
     if (match == MatchingStartStart) {
         thread1->reverseThreadPieces();
         thread1->appendThread(thread2);
@@ -935,7 +936,7 @@ display_for_debug[j][display_for_debug[j].size()-1].size = 4;
 
 bool Thread_Vision::findTangent(corresponding_pts& start, Vector3d& init_tangent, vector<tangent_and_score>& tangents)
 {
-    const double length_for_tan = _rest_length;
+    const double length_for_tan = DEFAULT_REST_LENGTH;
     const double ang_to_rotate = M_PI/40.0;
 
     //rotate as in yaw, pitch, roll - no roll, since we only care about direction of tangent
@@ -1079,7 +1080,7 @@ double Thread_Vision::scoreProjection3dPoint(const Point3f& pt3d, double* scores
 
 double Thread_Vision::scoreProjection3dPointAndTanget(const Vector3d& startpt3d, const Vector3d& tan, double* scores)
 {
-    const int num_reprojs_per_tan = (int)_rest_length * 3;
+    const int num_reprojs_per_tan = (int) DEFAULT_REST_LENGTH * 3;
 
     //project 3d point to images, and see how far away the projection is (in pixels) to nearest thread pixel
     if (scores == NULL)
