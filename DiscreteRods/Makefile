@@ -12,7 +12,7 @@ else
 endif
 
 VISION_LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lPvAPI -lrt
-UTILS_DIR = ../../utils/
+UTILS_DIR = ../utils/
 INCLUDES = -I/usr/local/include/ -I/usr/include/ -I $(UTILS_DIR) -I/usr/include/eigen2
 VISION_INCLUDES = -I/usr/local/include/opencv/
 # OPT_COMP =

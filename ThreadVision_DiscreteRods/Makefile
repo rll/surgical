@@ -1,4 +1,4 @@
-UTILS_DIR = ../../utils/
+UTILS_DIR = ../utils/
 MESSAGING_DIR = /home/pabbeel/code/master-slave/slaves/
 SOCKET_DIR = /home/pabbeel/code/master-slave/
 THREAD_DIR = ../DiscreteRods/

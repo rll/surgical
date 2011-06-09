@@ -1,6 +1,7 @@
 MACHINE= $(shell uname -s)
 HOSTNAME=-D$(shell uname -n | sed 's/-/_/g')
 
+UTILS_DIR = ../utils/
 ifeq ($(MACHINE),Darwin)
     LIBS = -L/usr/local/lib/x86_64 -L/usr/lib/ -lglut -lgle -lboost_program_options-mt -lgsl -lgslcblas -llshkit 
     COMPILEFLAG=-DMAC
@@ -12,7 +13,6 @@ else
     LDFLAG=
     INCLUDES = -I/usr/local/include/ -I $(UTILS_DIR) -I/usr/local/include/eigen2/ -I/usr/include/boost/  -I/usr/local/include/lshkit/ -I/usr/local/include/opencv/  
 endif
-UTILS_DIR = ../../utils/
 THREAD_DIR = ../DiscreteRods/
 VISION_DIR = ../vision/
 #INCLUDES = -I/usr/local/include/ -I/usr/local/include/opencv/ -I/usr/local/include/libPvAPI -I $(UTILS_DIR)
