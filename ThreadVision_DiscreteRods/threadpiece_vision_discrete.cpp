@@ -9,15 +9,17 @@ ThreadPiece_Vision::ThreadPiece_Vision()
     rot = Matrix3d::Zero();
 }
 
-ThreadPiece_Vision::ThreadPiece_Vision(const Vector3d& vertex, const double angle_twist)
-    :ThreadPiece(vertex, angle_twist)
+ThreadPiece_Vision::ThreadPiece_Vision(const Vector3d& vertex, const double angle_twist, Thread* my_thread)
+    :ThreadPiece(vertex, angle_twist, my_thread)
 {
+    _my_thread = my_thread;
     grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
     grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
     grad_offsets[2] = Vector3d(0.0, 0.0, grad_eps);
     rot = Matrix3d::Zero();
 }
 
+/*
 ThreadPiece_Vision::ThreadPiece_Vision(const Vector3d& vertex, const double angle_twist, ThreadPiece_Vision* prev, ThreadPiece_Vision* next)
     :ThreadPiece(vertex, angle_twist, prev, next)
 {
@@ -26,10 +28,10 @@ ThreadPiece_Vision::ThreadPiece_Vision(const Vector3d& vertex, const double angl
     grad_offsets[2] = Vector3d(0.0, 0.0, grad_eps);
     rot = Matrix3d::Zero();
 }
+*/
 
-
-ThreadPiece_Vision::ThreadPiece_Vision(const Vector3d& vertex, const double angle_twist, ThreadPiece_Vision* prev, ThreadPiece_Vision* next, Thread_Vision* my_thread)
-    :ThreadPiece(vertex, angle_twist, prev, next), _my_thread(my_thread)
+ThreadPiece_Vision::ThreadPiece_Vision(const Vector3d& vertex, const double angle_twist, ThreadPiece_Vision* prev, ThreadPiece_Vision* next, Thread* my_thread, Thread_Vision* my_vision)
+    :ThreadPiece(vertex, angle_twist, prev, next, my_thread), _my_vision(my_vision)
 {
     grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
     grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
@@ -39,7 +41,7 @@ ThreadPiece_Vision::ThreadPiece_Vision(const Vector3d& vertex, const double angl
 
 
 ThreadPiece_Vision::ThreadPiece_Vision(const ThreadPiece_Vision& rhs)
-    :ThreadPiece(rhs), _my_thread(rhs._my_thread)
+    :ThreadPiece(rhs), _my_vision(rhs._my_vision)
 {
     grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
     grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
@@ -56,6 +58,7 @@ ThreadPiece_Vision::~ThreadPiece_Vision()
 double ThreadPiece_Vision::energy_vis()
 {
   //_prev_piece->energy();
+
     return energy() + energy_dist();
 }
 
@@ -65,9 +68,9 @@ double ThreadPiece_Vision::energy_dist()
     {
         cv::Point3f toProj;
         EigenToOpencv(_vertex, toProj);
-        return VISUAL_COEFF*(_my_thread->scoreProjection3dPoint(toProj));
+        return VISUAL_COEFF*(_my_vision->scoreProjection3dPoint(toProj));
     } else {
-        return VISUAL_COEFF*(_my_thread->scoreProjection3dPointAndTanget(_prev_piece->vertex(), _prev_piece->edge()));
+        return VISUAL_COEFF*(_my_vision->scoreProjection3dPointAndTanget(_prev_piece->vertex(), _prev_piece->edge()));
     }
 }
 
@@ -115,10 +118,12 @@ void ThreadPiece_Vision::gradient_vertex_vis_numeric(Vector3d& grad)
 
 }
 
+//this probably doesn't work correctly!
 ThreadPiece_Vision& ThreadPiece_Vision::operator=(const ThreadPiece_Vision& rhs)
 {
    //ThreadPiece::operator= (rhs);
-    _my_thread = rhs._my_thread;
+    _my_vision = rhs._my_vision;
+    //_my_thread = rhs._my_thread;
 
     return *this;
 }

@@ -1,5 +1,6 @@
 *.o
 *.swp
+*~
 /vision/captures/*.tif
 ThreadVision_DiscreteRods/threadStereo
 ThreadVision_DiscreteRods/threadStereo_fake

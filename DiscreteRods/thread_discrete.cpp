@@ -358,6 +358,8 @@ Thread::Thread(const Thread& rhs) :
   if (this->num_pieces() > 4)
     set_end_constraint(rhs.end_pos(), rhs.end_rot());
   //project_length_constraint();
+  
+  set_all_pieces_mythread();
 }
 
 Thread::~Thread()
@@ -401,6 +403,7 @@ double Thread::calculate_energy()
   double energy = _thread_pieces[2]->get_twist_coeff() * (pow(_thread_pieces[_thread_pieces.size() - 2]->angle_twist() - _thread_pieces.front()->angle_twist(),2)) / (2.0 * _rest_length * (_thread_pieces.size() - 2));
 
 	//std::cout << _thread_pieces[2]->get_twist_coeff() << " " << _thread_pieces.size() << " " << _thread_pieces[_thread_pieces.size()-2]->angle_twist() << " " << _thread_pieces.front()->angle_twist() << " " << 2.0*_rest_length*(_thread_pieces.size()-2) << std::endl;
+
 
   for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
@@ -668,6 +671,7 @@ void Thread::fix_intersections() {
 
 
     }
+    delete intersections;
 }
 
 bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Intersection>& intersections)
@@ -1708,7 +1712,6 @@ bool Thread::project_length_constraint(int recursive_depth)
     apply_vertex_offsets(vertex_offsets, true, projection_scale_factor,true /*iter_num == (num_iters_project-1) || projected_enough*/);
     
 
-    //do not want effectively mutually recursive code 
     int intersection_iters = 0; 
     if (COLLISION_CHECKING) { 
       vector<Self_Intersection> self_intersections;
@@ -1976,6 +1979,11 @@ void Thread::restore_thread_pieces(vector<ThreadPiece*>& to_restore)
   {
     _thread_pieces[piece_ind]->copyData(*to_restore[piece_ind]);
   }
+  for (int piece_ind=to_restore.size()-1; piece_ind >= 0; piece_ind--)
+  {
+      delete to_restore[piece_ind];
+      to_restore.pop_back();
+  }
 }
 
 void Thread::restore_thread_pieces_and_resize(vector<ThreadPiece*>& to_restore)
@@ -2089,6 +2097,19 @@ void Thread::set_all_angles_zero()
         _thread_pieces[piece_ind]->set_angle_twist(0);
     }
 } 
+
+void Thread::set_all_pieces_mythread()
+{
+  for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
+  {
+    _thread_pieces[piece_ind]->set_my_thread(this);
+  }
+
+  for (int piece_ind=0; piece_ind < _thread_pieces_backup.size(); piece_ind++)
+  {
+    _thread_pieces_backup[piece_ind]->set_my_thread(this);
+  }
+}
 
 bool Thread::is_consistent()
 {
@@ -2547,6 +2568,7 @@ Thread& Thread::operator=(const Thread& rhs)
 
   //set_end_constraint(vertices.back(), end_rot);
 
+  set_all_pieces_mythread();
 
   return *this;
 

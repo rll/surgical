@@ -36,7 +36,7 @@
 
 #endif
 
-#define DEFAULT_REST_LENGTH 2.0 /*default rest length for each threadpiece*/
+#define DEFAULT_REST_LENGTH 3 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
 #define INTERSECTION_PUSHBACK_EPS 0.03 
@@ -116,6 +116,7 @@ class Thread
     void get_thread_data(vector<Vector3d>& points, vector<Matrix3d>& material_frames);
     void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<Matrix3d>& material_frames);
     void set_all_angles_zero();
+    void set_all_pieces_mythread();
 
     //energy minimization
     //
@@ -268,7 +269,7 @@ class Thread
     bool check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Intersection>& intersections);
     void fix_intersections();
 
-  protected:
+  //protected:
     vector<ThreadPiece*> _thread_pieces;
     vector<ThreadPiece*> _thread_pieces_backup;
     vector<double> _angle_twist_backup;

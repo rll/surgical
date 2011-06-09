@@ -697,6 +697,8 @@ double ThreadPiece::calculate_holonomy()
 
 void ThreadPiece::update_edge()
 {
+  if (_next_piece == 0)
+     return;
   _edge = _next_piece->_vertex - _vertex;
   _edge_norm = _edge.norm();
 }
