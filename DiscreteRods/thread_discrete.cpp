@@ -2220,6 +2220,57 @@ void Thread::set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot
   _thread_pieces.back()->updateFrames_lastpiece();
 }
 
+void Thread::set_start_constraint_nearEnd(Vector3d& start_pos, Matrix3d& start_rot)
+{
+  Vector3d start_pos_movement = start_pos - this->start_pos();
+  start_pos += (vertex_at_ind(1) - this->start_pos()) - (start_rot.col(0)*_rest_length);
+  set_start_constraint(start_pos, start_rot);
+  minimize_energy();
+}
+
+void Thread::set_end_constraint_nearEnd(Vector3d& end_pos, Matrix3d& end_rot)
+{
+  Vector3d end_pos_movement = end_pos - this->end_pos();
+  end_pos += (vertex_at_ind(_thread_pieces.size()-2) - this->end_pos()) + (end_rot.col(0)*_rest_length);
+  set_end_constraint(end_pos, end_rot);
+  minimize_energy();
+}
+
+void Thread::set_constraints_nearEnds(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot)
+{
+  Vector3d start_pos_movement = start_pos - this->start_pos();
+  Vector3d end_pos_movement = end_pos - this->end_pos();
+
+  //make it so the position is at 2nd and 2nd to last vertices
+  //thus, account for how the frame rotation affected position of those vertices
+  start_pos += (vertex_at_ind(1) - this->start_pos()) - (start_rot.col(0)*_rest_length);
+  end_pos += (vertex_at_ind(_thread_pieces.size()-2) - this->end_pos()) + (end_rot.col(0)*_rest_length);
+
+  //check to make sure we aren't trying to go beyond the max length
+  Vector3d pointA = start_pos+start_rot.col(0)*_rest_length;
+  Vector3d pointB = end_pos-end_rot.col(0)*_rest_length;
+
+  //if so, correct by moving back into acceptable region
+  Vector3d entire_length_vector = pointB - pointA;
+  double too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
+  if (too_long_by > 0)
+  {
+    entire_length_vector.normalize();
+    Vector3d start_motion_indir = start_pos_movement.dot(entire_length_vector)*entire_length_vector;
+    Vector3d end_motion_indir = end_pos_movement.dot(entire_length_vector)*entire_length_vector;
+
+    double total_movement = start_motion_indir.norm() + end_motion_indir.norm()+1e-5;
+
+    start_pos -= start_motion_indir*(too_long_by/total_movement);
+    end_pos -= end_motion_indir*(too_long_by/total_movement);
+
+    //due to numerical reasons, this sometimes seems to fail. if so, just move the end back in
+    unviolate_total_length_constraint();
+  }
+  set_constraints(start_pos, start_rot, end_pos, end_rot);
+  minimize_energy();
+}
+
 void Thread::rotate_end_by(double degrees)
 {
 #ifdef ISOTROPIC

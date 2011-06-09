@@ -36,7 +36,7 @@
 
 #endif
 
-#define DEFAULT_REST_LENGTH 1.5 /*default rest length for each threadpiece*/
+#define DEFAULT_REST_LENGTH 7 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
 //#define NUM_THREADS_PARALLEL_FOR 2
@@ -88,6 +88,9 @@ class Thread
     void set_constraints(const Vector3d& start_pos, const Matrix3d& start_rot, const Vector3d& end_pos, const Matrix3d& end_rot);
     void set_start_constraint(const Vector3d& start_pos, const Matrix3d& start_rot);
     void set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot);
+    void set_start_constraint_nearEnd(Vector3d& start_pos, Matrix3d& start_rot);
+    void set_end_constraint_nearEnd(Vector3d& end_pos, Matrix3d& end_rot);
+    void set_constraints_nearEnds(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot);
     void rotate_end_by(double degrees);
     void apply_motion(Frame_Motion& motion); //applies motion to end points/rotations
     void apply_motion(Two_Motions& motion);
