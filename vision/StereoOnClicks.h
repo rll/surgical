@@ -3,7 +3,7 @@
 
 #include "capture2.h"
 #include "util2.h"
-#include "../../utils/clock.h"
+#include "../utils/clock.h"
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 #include <opencv/cxcore.h>

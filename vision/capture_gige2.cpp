@@ -1,6 +1,6 @@
 #include "capture2.h"
 #include "util2.h"
-#include "../../utils/clock.h"
+#include "../utils/clock.h"
 
 #include <iostream>
 #include <fstream>
