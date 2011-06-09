@@ -671,7 +671,6 @@ void Thread::fix_intersections() {
 
 
     }
-    delete intersections;
 }
 
 bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Intersection>& intersections)
