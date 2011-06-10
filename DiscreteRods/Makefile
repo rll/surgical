@@ -15,6 +15,7 @@ VISION_LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr
 UTILS_DIR = ../utils/
 INCLUDES = -I/usr/local/include/ -I/usr/include/ -I $(UTILS_DIR) -I/usr/include/eigen2
 VISION_INCLUDES = -I/usr/local/include/opencv/
+SOCKETS_DIR = ../utils/sockets/
 # OPT_COMP =
 OPT_COMP = -DEIGEN_NO_DEBUG -O3
 FOPENMP = -fopenmp
@@ -25,13 +26,16 @@ DEBUG = -ggdb
 PROFILER =
 ISOTROPIC=-DISOTROPIC
 
-target: testThreadDiscrete 
+target: testThreadDiscrete testThreadDiscrete_phantom 
 
-testThreadDiscrete: testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o
-	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o $(LIBS) $(PROFILER)
+testThreadDiscrete: testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o $(LIBS) $(PROFILER)
 
 testThreadDiscrete_noniso: testThreadDiscrete.cpp threadutils_discrete_noniso.o threadpiece_discrete_noniso.o thread_discrete_noniso.o
 	$(LD) $(INCLUDES) $(DEBUG) -o testThreadDiscrete_noniso testThreadDiscrete.cpp threadutils_discrete_noniso.o threadpiece_discrete_noniso.o thread_discrete_noniso.o $(LIBS) $(PROFILER)
+
+testThreadDiscrete_phantom: testThreadDiscrete_phantom.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete_phantom testThreadDiscrete_phantom.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o $(LIBS) $(PROFILER)
 
 recordThreadVideo: recordThreadVideo.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_reader.o
 	$(LD) $(INCLUDES) $(VISION_INCLUDES) $(DEBUG) -o recordThreadVideo recordThreadVideo.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o $(LIBS) $(VISION_LIBS)
@@ -53,8 +57,6 @@ visualizeEnergyParams: visualizeEnergyParams.cpp threadutils_discrete.o threadpi
 
 thread_visualize_and_save_noniso: thread_visualize_and_save.cpp threadutils_discrete.o threadpiece_discrete_noniso.o thread_discrete_noniso.o trajectory_recorder.o trajectory_reader.o glThread_noniso.o
 	$(LD) $(INCLUDES) $(VISION_INCLUDES) $(DEBUG) -o thread_visualize_and_save_noniso thread_visualize_and_save.cpp threadutils_discrete.o threadpiece_discrete_noniso.o thread_discrete_noniso.o trajectory_recorder.o trajectory_reader.o glThread_noniso.o $(LIBS) $(VISION_LIBS) $(PROFILER)
-
-
 
 
 ################################################
@@ -90,7 +92,6 @@ clock.o : $(UTILS_DIR)/clock.cpp
 	$(CC) $(INCLUDES) $(DEBUG) -c $(UTILS_DIR)/clock.cpp
 
 
-
 glThread.o : glThread.cpp glThread.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c glThread.cpp $(PROFILER)
 
@@ -107,8 +108,16 @@ text3d.o: text3d.cpp text3d.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c text3d.cpp $(PROFILER)
 
 
+Socket.o : $(SOCKETS_DIR)/Socket.cpp $(SOCKETS_DIR)/Socket.h
+	$(CC) $(INCLUDES) $(DEBUG) -c $(SOCKETS_DIR)/Socket.cpp
+	
+UDPSocket.o : $(SOCKETS_DIR)/UDPSocket.cpp $(SOCKETS_DIR)/UDPSocket.h
+	$(CC) $(INCLUDES) $(DEBUG) -c $(SOCKETS_DIR)/UDPSocket.cpp
+
+thread_socket_interface.o: thread_socket_interface.cpp thread_socket_interface.h
+	$(CC) $(INCLUDES) $(DEBUG) -c thread_socket_interface.cpp $(PROFILER)
 
 clean:
-	rm -r *.o *.gch testThreadDiscrete testThreadDiscrete_noniso saveThreadTrajectory recordThreadVideo thread_visualize_and_save thread_visualize_and_save_noniso *.dSYM
+	rm -r *.o *.gch testThreadDiscrete testThreadDiscrete_noniso testThreadDiscrete_phantom saveThreadTrajectory recordThreadVideo thread_visualize_and_save thread_visualize_and_save_noniso *.dSYM
 
 
