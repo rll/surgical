@@ -92,7 +92,7 @@ Vector3d end_proxy_pos;
 Vector3d start_proxy_pos;
 Matrix3d end_proxy_rot;
 Matrix3d start_proxy_rot;
-bool start_haptics_mode = true, end_haptics_mode = true;
+bool start_haptics_mode = false, end_haptics_mode = false;
 bool start_proxybutton = true, end_proxybutton = true;
 bool last_start_proxybutton = true, last_end_proxybutton = true;
 Matrix3d rot_ztox, rot_ztonegx;
