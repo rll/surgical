@@ -1,4 +1,4 @@
-DOOSim - Deformable One-Dimensional Object Simulation
+DOOSim - Deformable One-Dimensional Simulation
 
 == Introduction == 
 Recent advances in the modeling of deformable one-dimensional objects (DOOs) such as surgical suture, rope, and hair show significant promise for improving the simulation, perception, and manipulation of such objects. An important application of these tasks lies in the area of medical robotics, where robotic surgical assistants have the potential to greatly reduce surgeon fatigue and human error by improving the accuracy, speed, and robustness of surgical tasks such as suturing. Towards this goal, we need a DOO simulation environment in order to reliably, accurately, and quickly simulate suture. 
