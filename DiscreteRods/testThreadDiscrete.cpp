@@ -17,6 +17,8 @@
 #include <Eigen/Geometry>
 #include <math.h>
 #include "thread_discrete.h"
+#include "trajectory_reader.h"
+#include "trajectory_recorder.h"
 
 
 // import most common Eigen types
@@ -241,6 +243,19 @@ void processNormalKeys(unsigned char key, int x, int y)
   {
     delete thread_saved;
     thread_saved = new Thread(*thread);
+    /* Save current trajectory */
+    Trajectory_Recorder traj_recorder;
+    cout << "Saving...\n";
+    cout << "Please enter destination file name (without extension): ";
+    char *dstFileName = new char[256];
+    cin >> dstFileName;
+    char *fullPath = new char[256];
+    sprintf(fullPath, "%s%s", "../ThreadVision_DiscreteRods/saved_threads/", dstFileName);
+    traj_recorder.setFileName(fullPath);
+    Thread *newThread = thread_saved;
+    Thread copiedThread(*newThread);
+    traj_recorder.add_thread_to_list(copiedThread);
+    traj_recorder.write_threads_to_file();
   } else if (key == 'S')  {
     Thread* temp = thread;
     thread = thread_saved;
@@ -860,7 +875,7 @@ void updateThreadPoints()
 
 void initThread()
 {
-  int numInit = 20;
+  int numInit = 10;
   double noise_factor = 0.0;
 
   vector<Vector3d> vertices;
