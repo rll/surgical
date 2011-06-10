@@ -365,19 +365,17 @@ double Thread_Hypoth::calculate_visual_energy()
  */
 void Thread_Hypoth::calculate_score()
 {
-    const double DISTANCE_COEFF = 0.1;
     double visual_energy = calculate_visual_energy();
-    if (!USE_DISTANCE_METRIC) {
+    if (CURRENT_METRIC == VISUAL_ONLY)
+        _score = visual_energy;
+    else if (CURRENT_METRIC == VISUAL_ENERGY)
+    {
         double energy = calculate_energy();
-//        cout << "calculate_score | visual energy: " << visual_energy << "\tenergy: " << energy << std::endl;
         _score = visual_energy + energy;
     }
-    else {
-        double distance = 0;
-        distance += distance_from_energy_minimal_configuration();
-        distance = DISTANCE_COEFF*distance;
-        //cout << "calculate_score | visual energy: " << visual_energy << "\tdistance: " << distance << std::endl;
-        _score = visual_energy + DISTANCE_COEFF*distance;
+    else { // CURRENT_METRIC = VISUAL_DISTANCE
+        _score = visual_energy +
+                 DISTANCE_COEFF*distance_from_energy_minimal_configuration();
     }
 }
 
