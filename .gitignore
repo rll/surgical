@@ -6,6 +6,7 @@ ThreadVision_DiscreteRods/threadStereo
 ThreadVision_DiscreteRods/threadStereo_fake
 ThreadVision_DiscreteRods/stereo_test/*
 ThreadVision_DiscreteRods/PrecomputedCanny/*
+ThreadVision_DiscreteRods/test_images/*
 tags
 vision/captures/*
 *.png
