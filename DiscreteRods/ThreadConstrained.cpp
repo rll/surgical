@@ -163,6 +163,52 @@ void ThreadConstrained::getConstrainedTransforms(vector<Vector3d> &positions, ve
 	(tangents[thread_num]).normalize();
 }
 
+// parameters have to be of the right size.
+void ThreadConstrained::getConstrainedNormals(vector<Vector3d> &normals) {
+	if (normals.size()!=(threads.size()+1))
+    cout << "Internal error: getConstrainedTransforms: at least one of the vector parameters is of the wrong size" << endl;
+	vector<vector<Vector3d> > points(threads.size());	
+	Vector3d start_tangent, end_tangent, second_tangent;
+	for (int thread_num=0; thread_num<threads.size(); thread_num++) {
+		threads[thread_num]->get_thread_data(points[thread_num]);
+		if (thread_num==0) {
+			start_tangent = points[thread_num][1] - points[thread_num][0];
+			second_tangent = points[thread_num][2] - points[thread_num][1];
+			normals[thread_num] = start_tangent.cross(start_tangent.cross(second_tangent));
+		} else if (thread_num == threads.size()) {
+			end_tangent = points[thread_num-1][points[thread_num-1].size()-1] - points[thread_num-1][points[thread_num-1].size()-2];
+			second_tangent = points[thread_num-1][points[thread_num-1].size()-2] - points[thread_num-1][points[thread_num-1].size()-1];
+			normals[thread_num] = end_tangent.cross(end_tangent.cross(second_tangent));
+		} else {
+			end_tangent = points[thread_num-1][points[thread_num-1].size()-1] - points[thread_num-1][points[thread_num-1].size()-2];
+			start_tangent = points[thread_num][1] - points[thread_num][0];
+			normals[thread_num] = end_tangent.cross(start_tangent);
+		}
+		normals[thread_num].normalize();
+	}
+}
+
+/*void ThreadConstrained::getNormals(vector<Vector3d> &normals) {
+	normals.resize(num_vertices);
+	vector<Vector3d> vertices;
+	this->get_thread_data(vertices);
+	Vector3d start_tangent, end_tangent, second_tangent;
+	start_tangent = vertices[1] - vertices[0];
+	second_tangent = vertices[2] - vertices[1];
+	normals[0] = start_tangent.cross(start_tangent.cross(second_tangent));
+	normals[0].normalize();
+	for (vertex_num=1; vertex_num<vertices.size()-1; vertex_num++) {
+		end_tangent = vertices[vertex_num] - vertices[vertex_num-1];
+		start_tangent = vertices[vertex_num+1] - vertices[vertex_num];
+		normals[vertex_num] = end_tangent.cross(start_tangent);
+		normals[vertex_num].normalize();
+	}
+	end_tangent = vertices[vertices.size()-1] - vertices[vertices.size()-2];
+	second_tangent = vertices[vertices.size()-2] - vertices[vertices.size()-3];
+	normals[vertices.size()-1] = end_tangent.cross(end_tangent.cross(second_tangent));
+	normals[vertices.size()-1].normalize();
+}*/
+
 void ThreadConstrained::getConstrainedVerticesNums(vector<int> &vertices_nums) {
 	vertices_nums = constrained_vertices_nums;
 }

@@ -32,6 +32,8 @@ class ThreadConstrained {
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<double> &absolute_twist_angles, vector<Matrix3d> &absolute_material_frames);
 		// parameters have to be of the right size, i.e. threads.size()+1
 		void getConstrainedTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations, vector<Vector3d> &tangents);
+		// parameters have to be of the right size.
+		void getConstrainedNormals(vector<Vector3d> &normals);
 		void getConstrainedVerticesNums(vector<int> &vertices_num);
 		void getConstrainedVertices(vector<Vector3d> &constrained_vertices);
 		void getFreeVerticesNums(vector<int> &vertices_nums);
