@@ -26,7 +26,7 @@ DEBUG = -ggdb
 PROFILER =
 ISOTROPIC=-DISOTROPIC
 
-target: testThreadDiscrete testThreadDiscrete_phantom 
+target: testThreadDiscrete testThreadDiscrete_phantom testThreadDiscrete_pickUp
 
 testThreadDiscrete: testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o
 	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o $(LIBS) $(PROFILER)
@@ -36,6 +36,9 @@ testThreadDiscrete_noniso: testThreadDiscrete.cpp threadutils_discrete_noniso.o 
 
 testThreadDiscrete_phantom: testThreadDiscrete_phantom.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o
 	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete_phantom testThreadDiscrete_phantom.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o $(LIBS) $(PROFILER)
+
+testThreadDiscrete_pickUp: testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o ThreadConstrained.o thread_socket_interface.o UDPSocket.o Socket.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete_pickUp testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o ThreadConstrained.o thread_socket_interface.o UDPSocket.o Socket.o $(LIBS) $(PROFILER)
 
 recordThreadVideo: recordThreadVideo.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_reader.o
 	$(LD) $(INCLUDES) $(VISION_INCLUDES) $(DEBUG) -o recordThreadVideo recordThreadVideo.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o $(LIBS) $(VISION_LIBS)
@@ -62,6 +65,9 @@ thread_visualize_and_save_noniso: thread_visualize_and_save.cpp threadutils_disc
 ################################################
 #    Object files                              #
 ################################################
+ThreadConstrained.o: ThreadConstrained.cpp ThreadConstrained.h
+	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c ThreadConstrained.cpp $(PROFILER)
+
 thread_discrete.o: thread_discrete.cpp thread_discrete.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c thread_discrete.cpp $(PROFILER)
 
