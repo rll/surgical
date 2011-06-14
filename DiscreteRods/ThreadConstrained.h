@@ -57,7 +57,7 @@ class ThreadConstrained {
 		int num_vertices;
 		vector<Thread*> threads;
 		vector<double> zero_angle;
-		vector<Matrix3d> rotation_difference;
+		vector<Matrix3d> rot_diff_start, rot_diff_end;
     vector<int> constrained_vertices_nums;
 
 		// Splits the thread threads[thread_num] into two threads, which are stored at threads[thread_num] and threads[thread_num+1].  Threads in threads that are stored after thread_num now have a new thread_num which is one unit more than before. The split is done at vertex vertex of thread[thread_num]

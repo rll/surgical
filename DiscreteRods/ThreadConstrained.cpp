@@ -17,8 +17,8 @@ ThreadConstrained::ThreadConstrained(int num_vertices_init) {
 	angles.push_back(0.0);
 	//specify direction
 	direction(0) = 1.0;
-	direction(1) = 0.0;
-	direction(2) = -2.0;
+	direction(1) = -2.0;
+	direction(2) = 0.0;
 	direction.normalize();
 	for (int i=0; i < numInit; i++) {
 		Vector3d noise( ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0);
@@ -29,8 +29,8 @@ ThreadConstrained::ThreadConstrained(int num_vertices_init) {
 	}
 	//change direction
 	direction(0) = 1.0;
-	direction(1) = 0.0;
-	direction(2) = 2.0;
+	direction(1) = 2.0;
+	direction(2) = 0.0;
 	direction.normalize();
 	for (int i=0; i < numInit; i++)	{
 		Vector3d noise( ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0);
@@ -56,7 +56,8 @@ ThreadConstrained::ThreadConstrained(int num_vertices_init) {
 	thread->minimize_energy();
 
 	zero_angle.push_back(0.0);
-	rotation_difference.push_back(Matrix3d::Identity());
+	rot_diff_start.push_back(Matrix3d::Identity());
+	rot_diff_end.push_back(Matrix3d::Identity());
 	constrained_vertices_nums.push_back(0);
 	constrained_vertices_nums.push_back(num_vertices_init-1);
 }
@@ -153,7 +154,7 @@ void ThreadConstrained::getConstrainedTransforms(vector<Vector3d> &positions, ve
 	for (thread_num=0; thread_num<threads_size; thread_num++) {
 		threads[thread_num]->get_thread_data(points[thread_num]);
 		positions[thread_num] = (points[thread_num]).front();
-		rotations[thread_num] = (threads[thread_num])->start_rot();
+		rotations[thread_num] = (threads[thread_num]->start_rot())*rot_diff_start[thread_num].transpose();
 		tangents[thread_num] = points[thread_num][1] - points[thread_num][0];
 		(tangents[thread_num]).normalize();
 	}
@@ -163,7 +164,7 @@ void ThreadConstrained::getConstrainedTransforms(vector<Vector3d> &positions, ve
 	(tangents[thread_num]).normalize();
 }
 
-// parameters have to be of the right size.
+/*// parameters have to be of the right size.
 void ThreadConstrained::getConstrainedNormals(vector<Vector3d> &normals) {
 	if (normals.size()!=(threads.size()+1))
     cout << "Internal error: getConstrainedTransforms: at least one of the vector parameters is of the wrong size" << endl;
@@ -188,7 +189,7 @@ void ThreadConstrained::getConstrainedNormals(vector<Vector3d> &normals) {
 	}
 }
 
-/*void ThreadConstrained::getNormals(vector<Vector3d> &normals) {
+void ThreadConstrained::getNormals(vector<Vector3d> &normals) {
 	normals.resize(num_vertices);
 	vector<Vector3d> vertices;
 	this->get_thread_data(vertices);
@@ -229,7 +230,7 @@ void ThreadConstrained::getFreeVerticesNums(vector<int> &free_vertices_nums) {
   vector<int> ind_vect(num_vertices);
   invalidateConstraintsNums(ind_vect, constrained_vertices_nums);
 	for(int i=num_vertices-1; i>=0; i--)
-		if (ind_vect[i]!=-1)
+		if (ind_vect[i]==-1)
 			free_vertices_nums.erase(free_vertices_nums.begin()+i);
 }
 
@@ -238,7 +239,7 @@ void ThreadConstrained::getFreeVertices(vector<Vector3d> &free_vertices) {
   vector<int> ind_vect(num_vertices);
   invalidateConstraintsNums(ind_vect, constrained_vertices_nums);
 	for(int i=num_vertices-1; i>=0; i--)
-		if (ind_vect[i]!=-1)
+		if (ind_vect[i]==-1)
 			free_vertices.erase(free_vertices.begin()+i);
 }
 
@@ -301,14 +302,19 @@ void ThreadConstrained::updateConstraints (vector<Vector3d> poss, vector<Matrix3
 	if (poss.size() != threads.size()+1)
 		cout << "Internal Error: setConstraints: not the right number of transforms for current threads. addConstraint or removeConstraint first." << endl;
 	for (int i=0; i<threads.size(); i++) {
-		Matrix3d new_end_rot;
+		Matrix3d new_start_rot, new_end_rot;
+		if (i==0) {
+			new_start_rot = rots[i];
+		} else {
+			new_start_rot = rots[i]*rot_diff_start[i];
+		}
 		if (i==threads.size()-1) {
 			new_end_rot = rots[i+1];
 		} else {
-			new_end_rot = rotation_difference[i]*rots[i+1];
+			new_end_rot = rots[i+1]*rot_diff_end[i+1];
 		}
 		zero_angle[i] += angle_mismatch(rots[i], threads[i]->start_rot());
-	  threads[i]->set_constraints_nearEnds(poss[i], rots[i], poss[i+1], new_end_rot);
+	  threads[i]->set_constraints_check(poss[i], new_start_rot, poss[i+1], new_end_rot);
 	}
 	//cout << "\t\tupdateConstraints is being called" << endl;
 	//cout << zero_angle[0] << "\t\t" << zero_angle[1] << endl;
@@ -362,16 +368,15 @@ void ThreadConstrained::splitThread(int thread_num, int vertex) {
 
   Matrix3d vertex_end_rot = threads[thread_num]->material_at_ind(vertex-1);
   Matrix3d vertex_start_rot = threads[thread_num]->material_at_ind(vertex);
-  Matrix3d difference_matrix = vertex_end_rot*vertex_start_rot.transpose();
-	insertAt(rotation_difference, difference_matrix, thread_num);
-
-	/*cout << "twist_angles: " << twist_angles.size() << endl;
-  for (int i=0; i<(twist_angles.size()+4)/5; i++) {
-    for (int j=0; j<5 && (i*5+j)<twist_angles.size(); j++) {
-      printf("%d:%3.4f\t",i*5+j,twist_angles[i*5+j]);
-    }
-    printf("\n");
-  }*/
+  //Matrix3d difference_matrix = vertex_end_rot*vertex_start_rot.transpose();
+  Quaterniond start_q(vertex_start_rot);
+  Quaterniond end_q(vertex_end_rot);
+  Quaterniond interp_q = start_q.slerp(0.5, end_q);
+  Matrix3d interp = interp_q.toRotationMatrix();
+  Matrix3d rot_diff_end_matrix = interp.transpose()*vertex_end_rot;
+  Matrix3d rot_diff_start_matrix = interp.transpose()*vertex_start_rot;
+  insertAt(rot_diff_end, rot_diff_end_matrix, thread_num+1);
+	insertAt(rot_diff_start, rot_diff_start_matrix, thread_num+1);
 
 	Thread* thread0 = new Thread(point0, twist_angle0, (Matrix3d&) (threads[thread_num])->start_rot(), vertex_end_rot);
 	Thread* thread1 = new Thread(point1, twist_angle1, vertex_start_rot, (Matrix3d&) (threads[thread_num])->end_rot());
@@ -383,29 +388,11 @@ void ThreadConstrained::splitThread(int thread_num, int vertex) {
 	threads[thread_num+1]->minimize_energy();
 	threads[thread_num]->get_thread_data(point0, twist_angle0);
 	threads[thread_num+1]->get_thread_data(point1, twist_angle1);
-	
-	//cout << "twist_angle 0 and 1 after creating threads and minimizing energy: " << endl;
 
 	twist_angle0.back() = 2.0*twist_angle0[twist_angle0.size()-2] - twist_angle0[twist_angle0.size()-3];
 	twist_angle1.back() = 2.0*twist_angle1[twist_angle1.size()-2] - twist_angle1[twist_angle1.size()-3];
 	
-	/*cout << "twist_angle0: " << twist_angle0.size() << endl;
-  for (int i=0; i<(twist_angle0.size()+4)/5; i++) {
-    for (int j=0; j<5 && (i*5+j)<twist_angle0.size(); j++) {
-      printf("%d:%3.4f\t",i*5+j,twist_angle0[i*5+j]);
-    }
-    printf("\n");
-  }
-	cout << "twist_angle1: " << twist_angle1.size() << endl;
-  for (int i=0; i<(twist_angle1.size()+4)/5; i++) {
-    for (int j=0; j<5 && (i*5+j)<twist_angle1.size(); j++) {
-      printf("%d:%3.4f\t",i*5+j,twist_angle1[i*5+j]);
-    }
-    printf("\n");
-  }*/
   insertAt(zero_angle, zero_angle[thread_num] + twist_angle0.back(), thread_num+1);
-	//cout << "zero_angle[" << thread_num << "]: " << zero_angle[thread_num] << endl;
-  //cout << "zero_angle[" << thread_num+1 << "]: " << zero_angle[thread_num+1] << endl;
 }
 
 // Merges the threads threads[thread_num] and threads[thread_num+1] into one thread, which is stored at threads[thread_num]. Threads in threads that are stored after thread_num+1 now have a new thread_num which is one unit less than before.
@@ -423,7 +410,8 @@ void ThreadConstrained::mergeThread(int thread_num) {
 	//mergeVector(twist_angle, twist_angles0, twist_angles1);
 
 	zero_angle.erase(zero_angle.begin()+thread_num+1);
-	rotation_difference.erase(rotation_difference.begin()+thread_num);
+	rot_diff_end.erase(rot_diff_end.begin() + thread_num+1);
+	rot_diff_start.erase(rot_diff_start.begin() + thread_num+1);
 
 	Thread* thread = new Thread(point, twist_angle, (Matrix3d&) (threads[thread_num])->start_rot(), (Matrix3d&) (threads[thread_num+1])->end_rot());
 	delete threads[thread_num];
@@ -633,5 +621,8 @@ int removeSorted (vector<int> &v, int e) {
 	v.erase(v.begin()+i);
 	return i;
 }
+  
+  
+  
 
 

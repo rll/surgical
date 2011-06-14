@@ -31,11 +31,9 @@ void changeEndThreadHaptic();
 void changeThreadHaptic();
 void mouseTransform(Vector3d &new_pos, Matrix3d &new_rot, int cvnum); 
 void drawAxes(int constrained_vertex_num);
-void drawAxes(Vector3d pos, Matrix3d rot);
 void labelAxes(int constrained_vertex_num);
 void drawThread();
-void drawClosedGrip(int constrained_vertex_num);
-void drawOpenGrip(int constrained_vertex_num);
+void drawGrip(int constrained_vertex_num, double degrees);
 void drawSphere(Vector3d position, float radius, float color0, float color1, float color2);
 void drawCursor(int device_id, float color);
 void updateThreadPoints();
@@ -81,7 +79,6 @@ int pressed_mouse_button;
 vector<Vector3d> positions;
 vector<Vector3d> tangents;
 vector<Matrix3d> rotations;
-vector<Vector3d> normals;
 
 key_code key_pressed;
 
@@ -530,13 +527,11 @@ void drawStuff (void)
 			    positions.resize(positions.size()-1);
 			    rotations.resize(rotations.size()-1);
 			    tangents.resize(tangents.size()-1);
-			    normals.resize(normals.size()-1);
 			  } else {	    
 			    thread->addConstraint(operable_vertices_nums[selected_vertex]);
 			    positions.resize(positions.size()+1);
 			    rotations.resize(rotations.size()+1);
 			    tangents.resize(tangents.size()+1);
-			    normals.resize(normals.size()+1);
 			  }
 			  thread->getOperableVertices(operable_vertices, operable_vertices_nums, constrained_or_free);
 			  for (int i=0; i<operable_vertices_nums.size(); i++) {
@@ -562,28 +557,27 @@ void drawStuff (void)
 	  }	  
 	} else {
   	updateThreadPoints();
-		Vector3d new_pos;
-		Matrix3d new_rot;
+		Vector3d new_grip_pos;
+		Matrix3d new_grip_rot;
 		vector<Vector3d> positionConstraints = positions;
 		vector<Matrix3d> rotationConstraints = rotations;
-		vector<double> angle_changeConstraints(positions.size());  
 
-		mouseTransform(new_pos, new_rot, modifiable_vertex);
-		positionConstraints[modifiable_vertex] = new_pos;
-		rotationConstraints[modifiable_vertex] = new_rot;
+		mouseTransform(new_grip_pos, new_grip_rot, modifiable_vertex);
+		positionConstraints[modifiable_vertex] = new_grip_pos;
+		rotationConstraints[modifiable_vertex] = new_grip_rot;
 		
 		thread->updateConstraints(positionConstraints, rotationConstraints);
-		updateThreadPoints();
+		//updateThreadPoints();
 	}
-  for(int i=0; i<positions.size(); i++)
+	updateThreadPoints();
+  drawThread();
+	updateThreadPoints();
+	for(int i=0; i<positions.size(); i++)
 		drawAxes(i);
 	labelAxes(0);
-	drawThread();
-	for(int i=0; i<normals.size(); i++)
-		drawClosedGrip(i);
-  
+	for(int i=0; i<positions.size(); i++)
+		drawGrip(i, 0);
   glPopMatrix ();
-
   glutSwapBuffers ();
 }
 
@@ -658,29 +652,7 @@ void drawAxes(int constrained_vertex_num) {
 	glBegin(GL_LINES);
 	glEnable(GL_LINE_SMOOTH);
 	glColor3d(1.0, 0.0, 0.0); //red
-	glVertex3f(0.0, 0.0, 0.0); //x
-	glVertex3f(10.0, 0.0, 0.0);
-	glColor3d(0.0, 1.0, 0.0); //green
-	glVertex3f(0.0, 0.0, 0.0); //y
-	glVertex3f(0.0, 10.0, 0.0);
-	glColor3d(0.0, 0.0, 1.0); //blue
-	glVertex3f(0.0, 0.0, 0.0); //z
-	glVertex3f(0.0, 0.0, 10.0);
-	glEnd();
-	glPopMatrix();
-}
-
-void drawAxes(Vector3d pos, Matrix3d rot) {
-	glPushMatrix();
-	double transform[] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
-												 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
-												 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
-												 pos(0)   , pos(1)   , pos(2)   , 1 };
-	glMultMatrixd(transform);
-	glBegin(GL_LINES);
-	glEnable(GL_LINE_SMOOTH);
-	glColor3d(1.0, 0.0, 0.0); //red
-	glVertex3f(0.0, 0.0, 0.0); //x
+	glVertex3f(-10.0, 0.0, 0.0); //x
 	glVertex3f(10.0, 0.0, 0.0);
 	glColor3d(0.0, 1.0, 0.0); //green
 	glVertex3f(0.0, 0.0, 0.0); //y
@@ -716,9 +688,7 @@ void labelAxes(int constrained_vertex_num) {
 
 void drawThread() {
   glPushMatrix();
-  
   glColor3f (0.5, 0.5, 0.2);
-
   double pts_cpy[points.size()+2][3];
   double twist_cpy[points.size()+2]; 
   for (int i=0; i < points.size(); i++)
@@ -726,25 +696,21 @@ void drawThread() {
     pts_cpy[i+1][0] = points[i](0)-(double)zero_location(0);
     pts_cpy[i+1][1] = points[i](1)-(double)zero_location(1);
     pts_cpy[i+1][2] = points[i](2)-(double)zero_location(2);
-    twist_cpy[i+1] = -(360.0/(2.0*M_PI))*(twist_angles[i]);
+    twist_cpy[i+1] = 0;//-(360.0/(2.0*M_PI))*(twist_angles[i]);
     //twist_cpy[i+1] = -(360.0/(2.0*M_PI))*(twist_angles[i]+zero_angle);
   }
   //add first and last point
   pts_cpy[0][0] = pts_cpy[1][0]-rotations[0](0,0);
   pts_cpy[0][1] = pts_cpy[1][1]-rotations[0](1,0);
   pts_cpy[0][2] = pts_cpy[1][2]-rotations[0](2,0);
-  twist_cpy[0] = -(360.0/(2.0*M_PI))*(twist_angles[0]);
+  twist_cpy[0] = 0;//-(360.0/(2.0*M_PI))*(twist_angles[0]);
   //twist_cpy[0] = -(360.0/(2.0*M_PI))*(zero_angle);
 
   pts_cpy[points.size()+1][0] = pts_cpy[points.size()][0]+rotations[1](0,0);
   pts_cpy[points.size()+1][1] = pts_cpy[points.size()][1]+rotations[1](1,0);
   pts_cpy[points.size()+1][2] = pts_cpy[points.size()][2]+rotations[1](2,0);
-  twist_cpy[points.size()+1] = twist_cpy[points.size()]-(360.0/(2.0*M_PI))*(twist_angles[0]);
+  twist_cpy[points.size()+1] = 0;//twist_cpy[points.size()]-(360.0/(2.0*M_PI))*(twist_angles[0]);
   //twist_cpy[points.size()+1] = twist_cpy[points.size()]-(360.0/(2.0*M_PI))*zero_angle;
-  
-  for (int i=0; i<points.size()+2; i++)
-  	cout << twist_cpy[i] << " ";
-  cout << endl;
 
   gleTwistExtrusion(20,
       contour,
@@ -757,7 +723,7 @@ void drawThread() {
   glPopMatrix ();
 }
 
-void drawClosedGrip(int constrained_vertex_num) {
+void drawGrip(int constrained_vertex_num, double degrees) {
 	glPushMatrix();
 	Vector3d pos = positions[constrained_vertex_num];
 	Matrix3d rot = rotations[constrained_vertex_num];
@@ -765,48 +731,23 @@ void drawClosedGrip(int constrained_vertex_num) {
 													 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
 													 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
 													 pos(0)   , pos(1)   , pos(2)   , 1 };
-	
-	glMultMatrixd(transform);	
-	Vector3d normal = normals[constrained_vertex_num];
-	Vector3d rot_axis = normal.cross(Vector3d(0,0,1));
-	glRotated(angle_between(normal, Vector3d(0,0,1)), rot_axis(0), rot_axis(1), rot_axis(2));
+	glMultMatrixd(transform);
+	if (constrained_vertex_num==0) {
+		glRotated(90,0,0,1);
+		glRotated(90,0,1,0);
+	} else if (constrained_vertex_num==positions.size()-1) {
+		glRotated(-90,0,0,1);
+		glRotated(90,0,1,0);
+	} else {
+		glRotated(180,1,0,0);
+	}
 	glColor3f(0.0, 0.5, 1.0);
-	double grip_tip0[4][3] = { {0.0, 0.0,-2.0} , {0.0, 0.0, 0.0} , {0.0, 0.0, 2.0} ,
-														 {0.0, 0.0, 4.0} };
-	glePolyCylinder(4, grip_tip0, NULL, 0.95*thread->rest_length());
-	double grip_side0[8][3] = { {0.0, 0.0,-2.0} , {0.0, 0.0, 0.0} , {0.0, 0.0, 2.0} ,
-															{0.0, 3.0, 5.0} , {0.0, 6.0, 5.0} , {0.0,11.0, 0.0} ,
-															{0.0,13.0, 0.0} };
-	glePolyCylinder(8, grip_side0, NULL, 1);
-	double grip_tip1[4][3] = { {0.0, 0.0, 2.0} , {0.0, 0.0, 0.0} , {0.0, 0.0,-2.0} ,
-														 {0.0, 0.0,-4.0} };
-	glePolyCylinder(4, grip_tip1, NULL, 0.95*thread->rest_length());
-	double grip_side1[8][3] = { {0.0, 0.0, 2.0} , {0.0, 0.0, 0.0} , {0.0, 0.0,-2.0} ,
-															{0.0, 3.0,-5.0} , {0.0, 6.0,-5.0} , {0.0,11.0, 0.0} ,
-															{0.0,13.0, 0.0} };
-	glePolyCylinder(8, grip_side1, NULL, 1);
-	double grip_handle[4][3] = { {0.0, 9.0, 0.0} , {0.0,11.0, 0.0} , {0.0,19.0, 0.0} ,
-															 {0.0,21.0, 0.0} };
-	glePolyCylinder(4, grip_handle, NULL, 1);
-	glPopMatrix();
-}
-
-void drawOpenGrip(int constrained_vertex_num) {
-	glPushMatrix();
-	Vector3d position = positions[constrained_vertex_num];
-	double transform[16] = {1,0,0,0,
-													0,1,0,0,
-													0,0,1,0,
-													position(0), position(1), position(2), 1};
-	glMultMatrixd(transform);	
-	glColor3f(0.0, 0.5, 1.0);
-	
 	double grip_handle[4][3] = { {0.0, 9.0, 0.0} , {0.0,11.0, 0.0} , {0.0,19.0, 0.0} ,
 															 {0.0,21.0, 0.0} };
 	glePolyCylinder(4, grip_handle, NULL, 1);
 	
 	glTranslatef(0.0, 11.0, 0.0);
-	glRotatef(-15, 1.0, 0.0, 0.0);
+	glRotatef(-degrees, 1.0, 0.0, 0.0);
 	glTranslatef(0.0, -11.0, 0.0);
 	double grip_tip0[4][3] = { {0.0, 0.0,-2.0} , {0.0, 0.0, 0.0} , {0.0, 0.0, 2.0} ,
 														 {0.0, 0.0, 4.0} };
@@ -817,7 +758,7 @@ void drawOpenGrip(int constrained_vertex_num) {
 	glePolyCylinder(8, grip_side0, NULL, 1);
 															
 	glTranslatef(0.0, 11.0, 0.0);
-	glRotatef(30, 1.0, 0.0, 0.0);
+	glRotatef(2*degrees, 1.0, 0.0, 0.0);
 	glTranslatef(0.0, -11.0, 0.0);	
 	double grip_tip1[4][3] = { {0.0, 0.0, 2.0} , {0.0, 0.0, 0.0} , {0.0, 0.0,-2.0} ,
 														 {0.0, 0.0,-4.0} };
@@ -826,7 +767,6 @@ void drawOpenGrip(int constrained_vertex_num) {
 															{0.0, 3.0,-5.0} , {0.0, 6.0,-5.0} , {0.0,11.0, 0.0} ,
 															{0.0,13.0, 0.0} };
 	glePolyCylinder(8, grip_side1, NULL, 1);
-	
 	glPopMatrix();
 }
 
@@ -894,7 +834,6 @@ void updateThreadPoints()
 {
   thread->get_thread_data(points, twist_angles);
   thread->getConstrainedTransforms(positions, rotations, tangents);
-  thread->getConstrainedNormals(normals);
 }
 
 void initStuff (void)
@@ -926,7 +865,6 @@ void initThread()
   positions.resize(2);
   rotations.resize(2);
   tangents.resize(2);
-  normals.resize(2);
   updateThreadPoints();
 
 #ifndef ISOTROPIC
