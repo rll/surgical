@@ -57,6 +57,8 @@ ThreadConstrained::ThreadConstrained(int num_vertices_init) {
 
 	zero_angle.push_back(0.0);
 	rot_diff_start.push_back(Matrix3d::Identity());
+	rot_diff_start.push_back(Matrix3d::Identity());
+	rot_diff_end.push_back(Matrix3d::Identity());
 	rot_diff_end.push_back(Matrix3d::Identity());
 	constrained_vertices_nums.push_back(0);
 	constrained_vertices_nums.push_back(num_vertices_init-1);
@@ -75,72 +77,33 @@ void ThreadConstrained::get_thread_data(vector<Vector3d> &absolute_points, vecto
 	for (int thread_num=0; thread_num<threads.size(); thread_num++) {
 		threads[thread_num]->get_thread_data(points[thread_num], twist_angles[thread_num]);
 		twist_angles[thread_num].back() = 2.0*twist_angles[thread_num][twist_angles[thread_num].size()-2] - twist_angles[thread_num][twist_angles[thread_num].size()-3];
- 		vector<double> vd = twist_angles[thread_num];
-		/*cout << "twist_angles[" << thread_num << "] :" << vd.size() << endl;
-	  for (int i=0; i<(vd.size()+4)/5; i++) {
-	    for (int j=0; j<5 && (i*5+j)<vd.size(); j++) {
-	      printf("%d:%3.4f\t",i*5+j,vd[i*5+j]);
-	    }
-	    printf("\n");
-	  }*/
- 	}
+		mapAdd(twist_angles[thread_num], zero_angle[thread_num]);
+ 	}  	
 	mergeMultipleVector(absolute_points, points);
-	/*	  
-	for (int thread_num=0; thread_num<threads.size(); thread_num++) {
-	vector<double> vd = twist_angles[thread_num];
-	cout << "twist_angles: " << vd.size() << endl;
-    for (int i=0; i<(vd.size()+4)/5; i++) {
-      for (int j=0; j<5 && (i*5+j)<vd.size(); j++) {
-        printf("%d:%3.4f\t",i*5+j,vd[i*5+j]);
-      }
-      printf("\n");
-    }}
-    */
-  //for (int thread_num=0; thread_num<threads.size(); thread_num++)
-    //for (int thread_num_inner=thread_num; thread_num_inner<threads.size(); thread_num_inner++)
-		  //mapAdd(twist_angles[thread_num_inner], zero_angle[thread_num_inner]);
-	for (int thread_num=0; thread_num<threads.size(); thread_num++) {
-  	mapAdd(twist_angles[thread_num], zero_angle[thread_num]);
-  	//cout << "zero_angle[" << thread_num << "]: " << zero_angle[thread_num] << endl;
-  }
-  /*cout << "after mapAdd: " << endl;
-  for (int thread_num=0; thread_num<threads.size(); thread_num++) {
-		vector<double> vd = twist_angles[thread_num];
-		cout << "twist_angles[" << thread_num << "] :" << vd.size() << endl;
-	  for (int i=0; i<(vd.size()+4)/5; i++) {
-	    for (int j=0; j<5 && (i*5+j)<vd.size(); j++) {
-	      printf("%d:%3.4f\t",i*5+j,vd[i*5+j]);
-	    }
-	    printf("\n");
-	  }
- 	}*/
 	mergeMultipleVector(absolute_twist_angles, twist_angles);
-	/*vector<double> vd = absolute_twist_angles;
-	cout << "absolute_twist_angles: " << vd.size() << endl;
-  for (int i=0; i<(vd.size()+4)/5; i++) {
-    for (int j=0; j<5 && (i*5+j)<vd.size(); j++) {
-      printf("%d:%3.4f\t",i*5+j,vd[i*5+j]);
-    }
-    printf("\n");
-  }*/
-	//cout << absolute_twist_angles[0] << "\t\t" << absolute_twist_angles[7] << "\t\t" << absolute_twist_angles[14] << "\t\t" ;
 }
 
 void ThreadConstrained::get_thread_data(vector<Vector3d> &absolute_points, vector<double> &absolute_twist_angles, vector<Matrix3d> &absolute_material_frames) {
 	vector<vector<Vector3d> > points(threads.size());
 	vector<vector<double> > twist_angles(threads.size());
 	vector<vector<Matrix3d> > material_frames(threads.size());
-	for (int thread_num=0; thread_num<threads.size(); thread_num++)
+	for (int thread_num=0; thread_num<threads.size(); thread_num++) {
 		threads[thread_num]->get_thread_data(points[thread_num], twist_angles[thread_num], material_frames[thread_num]);
+		twist_angles[thread_num].back() = 2.0*twist_angles[thread_num][twist_angles[thread_num].size()-2] - twist_angles[thread_num][twist_angles[thread_num].size()-3];
+	 	mapAdd(twist_angles[thread_num], zero_angle[thread_num]);
+  }
 	mergeMultipleVector(absolute_points, points);
-	//for (int thread_num=0; thread_num<threads.size(); thread_num++)
-    //for (int thread_num_inner=thread_num; thread_num_inner<threads.size(); thread_num_inner++)
-		  //mapAdd(twist_angles[thread_num_inner], zero_angle[thread_num_inner]);
-	for (int thread_num=0; thread_num<threads.size(); thread_num++)
-  	mapAdd(twist_angles[thread_num], zero_angle[thread_num]);
-  	
 	mergeMultipleVector(absolute_twist_angles, twist_angles);
-	absolute_twist_angles.back() = 2.0*absolute_twist_angles[absolute_twist_angles.size()-2] - absolute_twist_angles[absolute_twist_angles.size()-3];
+	mergeMultipleVector(absolute_material_frames, material_frames);
+}
+
+void ThreadConstrained::get_thread_data(vector<Vector3d> &absolute_points, vector<Matrix3d> &absolute_material_frames) {
+	vector<vector<Vector3d> > points(threads.size());
+	vector<vector<Matrix3d> > material_frames(threads.size());
+	for (int thread_num=0; thread_num<threads.size(); thread_num++) {
+		threads[thread_num]->get_thread_data(points[thread_num], material_frames[thread_num]);
+	}
+	mergeMultipleVector(absolute_points, points);
 	mergeMultipleVector(absolute_material_frames, material_frames);
 }
 
@@ -149,18 +112,26 @@ void ThreadConstrained::getConstrainedTransforms(vector<Vector3d> &positions, ve
 	int threads_size = threads.size();
 	if (positions.size()!=(threads_size+1) || rotations.size()!=(threads_size+1) || tangents.size()!=(threads_size+1))
     cout << "Internal error: getConstrainedTransforms: at least one of the vector parameters is of the wrong size" << endl;
-	int thread_num;
 	vector<vector<Vector3d> > points(threads_size);	
-	for (thread_num=0; thread_num<threads_size; thread_num++) {
+	int thread_num = 0;
+		threads[thread_num]->get_thread_data(points[thread_num]);
+	positions[thread_num] = (points[thread_num]).front();
+	rotations[thread_num] = (threads[thread_num]->start_rot()) * (Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ())).transpose()) * rot_diff_start[thread_num].transpose();
+	//tangents[thread_num] = points[thread_num][1] - points[thread_num][0];
+	tangents[thread_num] = rotations[thread_num].col(0);
+	(tangents[thread_num]).normalize();
+	for (thread_num=1; thread_num<threads_size; thread_num++) {
 		threads[thread_num]->get_thread_data(points[thread_num]);
 		positions[thread_num] = (points[thread_num]).front();
-		rotations[thread_num] = (threads[thread_num]->start_rot())*rot_diff_start[thread_num].transpose();
-		tangents[thread_num] = points[thread_num][1] - points[thread_num][0];
+		rotations[thread_num] = (threads[thread_num]->start_rot()) * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())).transpose()) * rot_diff_start[thread_num].transpose();
+		//tangents[thread_num] = points[thread_num][1] - points[thread_num-1][points[thread_num-1].size()-2];
+		tangents[thread_num] = rotations[thread_num].col(0);
 		(tangents[thread_num]).normalize();
 	}
 	positions[thread_num] = (points[thread_num-1]).back();
 	rotations[thread_num] = (threads[thread_num-1])->end_rot();
-	tangents[thread_num] = points[thread_num-1][(points[thread_num-1]).size()-1] - points[thread_num-1][(points[thread_num-1]).size()-2];
+	//tangents[thread_num] = points[thread_num-1][(points[thread_num-1]).size()-1] - points[thread_num-1][(points[thread_num-1]).size()-2];
+	tangents[thread_num] = rotations[thread_num].col(0);
 	(tangents[thread_num]).normalize();
 }
 
@@ -243,12 +214,11 @@ void ThreadConstrained::getFreeVertices(vector<Vector3d> &free_vertices) {
 			free_vertices.erase(free_vertices.begin()+i);
 }
 
-void ThreadConstrained::getOperableVertices(vector<Vector3d> &operable_vertices, vector<int> &operable_vertices_nums, vector<bool> &constrained_or_free) {
-	this->get_thread_data(operable_vertices);
-	operable_vertices_nums.resize(num_vertices);
+void ThreadConstrained::getOperableVertices(vector<int> &operable_vertices_num, vector<bool> &constrained_or_free) {
+	operable_vertices_num.resize(num_vertices);
 	constrained_or_free.resize(num_vertices);
 	for(int i=0; i<num_vertices; i++) {
-		operable_vertices_nums[i] = i;
+		operable_vertices_num[i] = i;
 		constrained_or_free[i] = false;
 	}
 	for(int i=0; i<constrained_vertices_nums.size(); i++)
@@ -258,8 +228,7 @@ void ThreadConstrained::getOperableVertices(vector<Vector3d> &operable_vertices,
 	vector<int> vi = ind_vect;
 	for(int i=num_vertices-1; i>=0; i--) {
 		if (ind_vect[i]==-1) {
-			operable_vertices.erase(operable_vertices.begin()+i);
-			operable_vertices_nums.erase(operable_vertices_nums.begin()+i);
+			operable_vertices_num.erase(operable_vertices_num.begin()+i);
 			constrained_or_free.erase(constrained_or_free.begin()+i);
 		}
 	}
@@ -302,17 +271,29 @@ void ThreadConstrained::updateConstraints (vector<Vector3d> poss, vector<Matrix3
 	if (poss.size() != threads.size()+1)
 		cout << "Internal Error: setConstraints: not the right number of transforms for current threads. addConstraint or removeConstraint first." << endl;
 	for (int i=0; i<threads.size(); i++) {
-		Matrix3d new_start_rot, new_end_rot;
+		Matrix3d new_start_rot = rots[i]*rot_diff_start[i];
+		Matrix3d new_end_rot = rots[i+1]*rot_diff_end[i+1];
+		if (i!=0)
+			new_start_rot = new_start_rot * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
+		else
+			new_start_rot = new_start_rot * (Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ())));
+		if (i!=threads.size()-1)
+			new_end_rot = new_end_rot * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
+		
+
+		/*Matrix3d new_start_rot, new_end_rot;
 		if (i==0) {
-			new_start_rot = rots[i];
+			new_start_rot = rots[i] * rot_diff_start[i] * (Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ())));
+			new_end_rot = rots[i+1] * rot_diff_end[i+1] * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
+		} else if (i==1){//threads.size()-1) {
+			new_start_rot = rots[i] * rot_diff_start[i] * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
+			new_end_rot = rots[i+1] * rot_diff_end[i+1];
+			cout << "hey" ;
 		} else {
-			new_start_rot = rots[i]*rot_diff_start[i];
-		}
-		if (i==threads.size()-1) {
-			new_end_rot = rots[i+1];
-		} else {
-			new_end_rot = rots[i+1]*rot_diff_end[i+1];
-		}
+			new_start_rot = rots[i] * rot_diff_start[i] * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
+			new_end_rot = rots[i+1] * rot_diff_end[i+1] * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
+		}*/
+			
 		zero_angle[i] += angle_mismatch(rots[i], threads[i]->start_rot());
 	  threads[i]->set_constraints_check(poss[i], new_start_rot, poss[i+1], new_end_rot);
 	}
@@ -354,27 +335,52 @@ int ThreadConstrained::nearestVertex(Vector3d pos, vector<Vector3d> vertices, ve
 	return min_vertex_num;
 }*/
 
+Vector3d ThreadConstrained::position(int absolute_vertex_num) {
+	vector<Vector3d> positions;
+	get_thread_data(positions);
+	return positions[absolute_vertex_num];
+}
+
+Matrix3d ThreadConstrained::intermediateRotation(int absolute_vertex_num) {
+	if (absolute_vertex_num == 0) {
+		return start_rot();
+	} else if (absolute_vertex_num == num_vertices-1) {
+		return end_rot();
+	} else {
+		vector<Vector3d> absolute_points;
+		vector<Matrix3d> absolute_material_frames;
+		get_thread_data(absolute_points, absolute_material_frames);
+		Matrix3d inter_rot;
+		intermediateRotation(inter_rot, absolute_material_frames[absolute_vertex_num-1], absolute_material_frames[absolute_vertex_num]);
+		return inter_rot;
+	}
+}
+
+void ThreadConstrained::intermediateRotation(Matrix3d &inter_rot, Matrix3d end_rot, Matrix3d start_rot) {
+	Quaterniond start_q(start_rot);
+  Quaterniond end_q(end_rot);
+  Quaterniond interp_q = start_q.slerp(0.5, end_q);
+  inter_rot = interp_q.toRotationMatrix();
+}
+
 // Splits the thread threads[thread_num] into two threads, which are stored at threads[thread_num] and threads[thread_num+1].  Threads in threads that are stored after thread_num now have a new thread_num which is one unit more than before. The split is done at vertex vertex of thread[thread_num]
-void ThreadConstrained::splitThread(int thread_num, int vertex) {
+void ThreadConstrained::splitThread(int thread_num, int vertex_num) {
 	vector<Vector3d> point0;
 	vector<Vector3d> point1;
 	vector<Vector3d> points;
 	vector<double> twist_angles;
 	threads[thread_num]->get_thread_data(points, twist_angles);
-	vector<double> twist_angle0(vertex+1, 0.0);
-	vector<double> twist_angle1(twist_angles.size()-vertex, 0.0);
+	vector<double> twist_angle0(vertex_num+1, 0.0);
+	vector<double> twist_angle1(twist_angles.size()-vertex_num, 0.0);
 
-	splitVector(point0, point1, points, vertex);
+	splitVector(point0, point1, points, vertex_num);
 
-  Matrix3d vertex_end_rot = threads[thread_num]->material_at_ind(vertex-1);
-  Matrix3d vertex_start_rot = threads[thread_num]->material_at_ind(vertex);
-  //Matrix3d difference_matrix = vertex_end_rot*vertex_start_rot.transpose();
-  Quaterniond start_q(vertex_start_rot);
-  Quaterniond end_q(vertex_end_rot);
-  Quaterniond interp_q = start_q.slerp(0.5, end_q);
-  Matrix3d interp = interp_q.toRotationMatrix();
-  Matrix3d rot_diff_end_matrix = interp.transpose()*vertex_end_rot;
-  Matrix3d rot_diff_start_matrix = interp.transpose()*vertex_start_rot;
+  Matrix3d vertex_end_rot = threads[thread_num]->material_at_ind(vertex_num-1);
+  Matrix3d vertex_start_rot = threads[thread_num]->material_at_ind(vertex_num);
+  Matrix3d inter_rot;
+  intermediateRotation(inter_rot, vertex_end_rot, vertex_start_rot);
+  Matrix3d rot_diff_end_matrix = inter_rot.transpose()*vertex_end_rot;
+  Matrix3d rot_diff_start_matrix = inter_rot.transpose()*vertex_start_rot;
   insertAt(rot_diff_end, rot_diff_end_matrix, thread_num+1);
 	insertAt(rot_diff_start, rot_diff_start_matrix, thread_num+1);
 
@@ -421,18 +427,18 @@ void ThreadConstrained::mergeThread(int thread_num) {
 	threads[thread_num]->minimize_energy();
 }
 
-// Returns the thread number that owns the absolute_vertex number. absolute_vertex must not be a constrained vertex
-int ThreadConstrained::threadOwner(int absolute_vertex) {
+// Returns the thread number that owns the absolute_vertex_num. absolute_vertex_num must not be a constrained vertex
+int ThreadConstrained::threadOwner(int absolute_vertex_num) {
 	int thread_num;
 	int num_absolute_vertices = 1;
 	vector<vector<Vector3d> > points(threads.size());
 	for (thread_num=0; thread_num<threads.size(); thread_num++) {
 		threads[thread_num]->get_thread_data(points[thread_num]);
 		num_absolute_vertices += (points[thread_num]).size() - 1;
-		if (absolute_vertex < num_absolute_vertices) { break; }
+		if (absolute_vertex_num < num_absolute_vertices) { break; }
 	}
 	if (thread_num==threads.size()) {
-		cout << "Internal error: threadOwner: absolute_vertex is greater than total number of vertices" << endl;
+		cout << "Internal error: threadOwner: absolute_vertex_num is greater than total number of vertices" << endl;
 		return 0;
 	} else {
 		return thread_num;
@@ -440,20 +446,20 @@ int ThreadConstrained::threadOwner(int absolute_vertex) {
 }
 
 // Returns the local vertex number (i.e. vertex number within a thread), given the absolute vertex number (i.e. vertex number within all vertices).
-int ThreadConstrained::localVertex(int absolute_vertex) {
+int ThreadConstrained::localVertex(int absolute_vertex_num) {
 	int thread_num;
 	int num_absolute_vertices = 1;
 	vector<vector<Vector3d> > points(threads.size());
 	for (thread_num=0; thread_num<threads.size(); thread_num++) {
 		threads[thread_num]->get_thread_data(points[thread_num]);
 		num_absolute_vertices += (points[thread_num]).size() - 1;
-		if (absolute_vertex < num_absolute_vertices) { break; }
+		if (absolute_vertex_num < num_absolute_vertices) { break; }
 	}
 	if (thread_num==threads.size()) {
-		cout << "Internal error: localVertex: absolute_vertex is greater than total number of vertices" << endl;
+		cout << "Internal error: localVertex: absolute_vertex_num is greater than total number of vertices" << endl;
 		return 0;
 	} else {
-		return absolute_vertex + (points[thread_num]).size() - num_absolute_vertices;
+		return absolute_vertex_num + (points[thread_num]).size() - num_absolute_vertices;
 	}
 }
 

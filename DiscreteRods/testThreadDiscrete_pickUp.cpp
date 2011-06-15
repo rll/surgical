@@ -29,11 +29,13 @@ void drawStuff();
 void changeStartThreadHaptic();
 void changeEndThreadHaptic();
 void changeThreadHaptic();
-void mouseTransform(Vector3d &new_pos, Matrix3d &new_rot, int cvnum); 
+void mouseTransform(Vector3d &new_pos, Matrix3d &new_rot, int cvnum);
+void drawLine(Vector3d line, Vector3d pos);
 void drawAxes(int constrained_vertex_num);
+void drawAxes(Vector3d pos, Matrix3d rot);
 void labelAxes(int constrained_vertex_num);
 void drawThread();
-void drawGrip(int constrained_vertex_num, double degrees);
+void drawGrip(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2);
 void drawSphere(Vector3d position, float radius, float color0, float color1, float color2);
 void drawCursor(int device_id, float color);
 void updateThreadPoints();
@@ -79,6 +81,10 @@ int pressed_mouse_button;
 vector<Vector3d> positions;
 vector<Vector3d> tangents;
 vector<Matrix3d> rotations;
+
+Vector3d test_position = Vector3d(0,0,0);
+Matrix3d test_rotation = Matrix3d::Identity();
+Vector3d test_tangent = test_rotation.col(0);
 
 key_code key_pressed;
 
@@ -206,14 +212,17 @@ void processNormalKeys(unsigned char key, int x, int y) {
   } else if (key == 'w') {
     rotate_frame[0] = 0.0;
     rotate_frame[1] = 0.0;
-  } else if (key == 'f') {
+  } else if (key == 'z') {
     choose_mode = !choose_mode;
     toggle = 0;
     glutPostRedisplay();
-  } else if (key == 'g' && choose_mode) {
+  } else if (key == 'x' && choose_mode) {
     choose_toggle = true;
     glutPostRedisplay();
-  } else if (key == 'z') {
+  } else if (key == 'c') {
+    change_constraint = true;
+    glutPostRedisplay();
+  } else if (key == 'd') {
     vector<Vector3d> vv3d; 
     vector <double> vd;
     thread->get_thread_data(vv3d, vd);
@@ -235,7 +244,7 @@ void processNormalKeys(unsigned char key, int x, int y) {
       }
       printf("\n");
     }
-  } else if (key == 'x') {
+  } else if (key == 'f') {
     vector<Vector3d> vv3d(positions.size());
     vector<Matrix3d> vm3d(positions.size());
     vector<Vector3d> vv3d1(positions.size());
@@ -260,7 +269,7 @@ void processNormalKeys(unsigned char key, int x, int y) {
       }
       printf("\n");
     }
-  } else if ( key == 'c') {
+  } else if ( key == 'g') {
     vector<int> vi;
     thread->getConstrainedVerticesNums(vi);
     cout << "getConstrainedVerticesNums: vertices_num: " << vi.size() << endl;
@@ -270,7 +279,7 @@ void processNormalKeys(unsigned char key, int x, int y) {
       }
       printf("\n");
     }
-  } else if ( key == 'v') {
+  } else if ( key == 'h') {
     vector<int> vi;
     thread->getFreeVerticesNums(vi);
     cout << "getFreeVerticesNums: vertices_num: " << vi.size() << endl;
@@ -280,7 +289,7 @@ void processNormalKeys(unsigned char key, int x, int y) {
       }
       printf("\n");
     }
-  } else if (key == 'b') {
+  } else if (key == 'j') {
     vector<Vector3d> vv3d;
     thread->getConstrainedVertices(vv3d);
 		cout << "getConstrainedVertices: constrained_vertices: " << vv3d.size() << endl;
@@ -293,7 +302,7 @@ void processNormalKeys(unsigned char key, int x, int y) {
       }
       printf("\n");
     }
-  } else if (key == 'n') {
+  } else if (key == 'k') {
 		vector<Vector3d> vv3d;
     thread->getFreeVertices(vv3d);
 		cout << "getFreeVertices: free_vertices: " << vv3d.size() << endl;
@@ -306,22 +315,11 @@ void processNormalKeys(unsigned char key, int x, int y) {
       }
       printf("\n");
     }
-  } else if (key == 'o') {
-		vector<Vector3d> vv3d;
+  } else if (key == 'l') {
 		vector<int> vi;
 		vector<bool> vb;
-    thread->getOperableVertices(vv3d, vi, vb);
-		cout << "getOperableVertices: operable_vertices: " << vv3d.size() << endl;
-    for (int i=0; i<(vv3d.size()+4)/5; i++) {
-      for (int k=0; k<3; k++) {
-        for (int j=0; j<5 && (i*5+j)<vv3d.size(); j++) {
-          printf("%d:%3.4f\t",i*5+j,vv3d[i*5+j](k));
-        }
-        printf("\n");
-      }
-      printf("\n");
-    }
-    cout << "getOperableVertices: operable_vertices_nums: " << vi.size() << endl;
+    thread->getOperableVertices(vi, vb);
+    cout << "getOperableVertices: operable_vertices_num: " << vi.size() << endl;
     for (int i=0; i<(vi.size()+4)/5; i++) {
       for (int j=0; j<5 && (i*5+j)<vi.size(); j++) {
         printf("%d:%d\t",i*5+j,vi[i*5+j]);
@@ -337,9 +335,6 @@ void processNormalKeys(unsigned char key, int x, int y) {
     }
   } else if (key == 'p') {
   	thread->printConstraints();
-  } else if (key == 'a') {
-    change_constraint = true;
-    glutPostRedisplay();
   }	else if (key == 27) {
     exit(0);
   }
@@ -512,30 +507,29 @@ void drawStuff (void)
   		toggle++;
   		choose_toggle = false;
   	}
-	  vector<Vector3d> operable_vertices;
-	  vector<int> operable_vertices_nums;
+	  vector<int> operable_vertices_num;
 	  vector<bool> constrained_or_free;
-	  thread->getOperableVertices(operable_vertices, operable_vertices_nums, constrained_or_free);
-		int selected_vertex = toggle%operable_vertices.size();
+	  thread->getOperableVertices(operable_vertices_num, constrained_or_free);
+		int selected_vertex = toggle%operable_vertices_num.size();
 	  if (change_constraint) {
-	  	int modifiable_vertex_num = operable_vertices_nums[selected_vertex];
-	  	if (modifiable_vertex_num==0 || modifiable_vertex_num==(thread->getNumVertices()-1)) {
+	  	int modifiable_vertex_num = operable_vertices_num[selected_vertex];
+	  	if (modifiable_vertex_num==0 || modifiable_vertex_num==(thread->numVertices()-1)) {
 	  		cout << "You cannot remove the constraint at the ends" << endl;
 	  	} else {
 		  	if (constrained_or_free[selected_vertex]) {
-		  		thread->removeConstraint(operable_vertices_nums[selected_vertex]);
+		  		thread->removeConstraint(operable_vertices_num[selected_vertex]);
 			    positions.resize(positions.size()-1);
 			    rotations.resize(rotations.size()-1);
 			    tangents.resize(tangents.size()-1);
 			  } else {	    
-			    thread->addConstraint(operable_vertices_nums[selected_vertex]);
+			    thread->addConstraint(operable_vertices_num[selected_vertex]);
 			    positions.resize(positions.size()+1);
 			    rotations.resize(rotations.size()+1);
 			    tangents.resize(tangents.size()+1);
 			  }
-			  thread->getOperableVertices(operable_vertices, operable_vertices_nums, constrained_or_free);
-			  for (int i=0; i<operable_vertices_nums.size(); i++) {
-			  	if(modifiable_vertex_num == operable_vertices_nums[i]) {
+			  thread->getOperableVertices(operable_vertices_num, constrained_or_free);
+			  for (int i=0; i<operable_vertices_num.size(); i++) {
+			  	if(modifiable_vertex_num == operable_vertices_num[i]) {
 			  		selected_vertex = toggle = i;
 			  		break;
 			  	}
@@ -543,17 +537,21 @@ void drawStuff (void)
 			}
 		  change_constraint = false;
 	  }
-	  for (int i=0; i<operable_vertices.size(); i++) {
+	  for (int i=0; i<operable_vertices_num.size(); i++) {
 	  	if (constrained_or_free[i]) {
-		  	drawSphere(operable_vertices[i], 1.5, 1.0, 0.0, 0.0);
+		  	drawSphere(thread->position(operable_vertices_num[i]), 1.5, 1.0, 0.0, 0.0);
 		  } else {
-		  	drawSphere(operable_vertices[i], 1.5, 0.0, 1.0, 0.0);
+		  	drawSphere(thread->position(operable_vertices_num[i]), 1.5, 0.0, 1.0, 0.0);
 		  }
 		}
 		if (constrained_or_free[selected_vertex]) {
-	  	drawSphere(operable_vertices[selected_vertex], 2.0, 0.5, 0.0, 0.0);
+	  	drawSphere(thread->position(operable_vertices_num[selected_vertex]), 2.0, 0.5, 0.0, 0.0);
+	  	drawGrip(thread->position(operable_vertices_num[selected_vertex]), 
+	  					 thread->intermediateRotation(operable_vertices_num[selected_vertex]), 0, 0.5, 0.5, 0.5);
 	  } else {
-	  	drawSphere(operable_vertices[selected_vertex], 2.0, 0.0, 0.5, 0.0);
+	  	drawSphere(thread->position(operable_vertices_num[selected_vertex]), 2.0, 0.0, 0.5, 0.0);
+	  	drawGrip(thread->position(operable_vertices_num[selected_vertex]),
+	  					 thread->intermediateRotation(operable_vertices_num[selected_vertex]), 15, 0.5, 0.5, 0.5);
 	  }	  
 	} else {
   	updateThreadPoints();
@@ -575,8 +573,15 @@ void drawStuff (void)
 	for(int i=0; i<positions.size(); i++)
 		drawAxes(i);
 	labelAxes(0);
-	for(int i=0; i<positions.size(); i++)
-		drawGrip(i, 0);
+	for(int i=0; i<tangents.size(); i++)
+		drawLine(20*tangents[i], positions[i]);
+	//for(int i=0; i<positions.size(); i++)
+		//drawGrip(i, 0, 0.7, 0.7, 0.7);
+	//Matrix3d r;
+	for(int vertex_num=0; vertex_num<thread->numVertices(); vertex_num++) {
+		//r =	AngleAxisd(0.5*M_PI, Vector3d::UnitZ());
+		//drawAxes(thread->position(vertex_num), (thread->intermediateRotation(vertex_num)));
+	}
   glPopMatrix ();
   glutSwapBuffers ();
 }
@@ -633,17 +638,55 @@ void mouseTransform(Vector3d &new_pos, Matrix3d &new_rot, int cvnum) {
 		rotations[cvnum].col(1) = new_tan_normal;
 		rotations[cvnum].col(2) = rotations[cvnum].col(0).cross(new_tan_normal);
 		new_rot = Eigen::AngleAxisd(angle_mismatch(rotations[cvnum], old_rot), rotations[cvnum].col(0).normalized())*rotation_new_tan* old_rot;
-		
+		/*
+		AngleAxisd new_aa = AngleAxisd(rotations[cvnum]);
+		AngleAxisd old_aa = AngleAxisd(old_rot);
+		Matrix3d change_rot = Eigen::AngleAxisd(new_aa.angle() - old_aa.angle(), rotations[cvnum].col(0).normalized())*rotation_new_tan;
+		new_rot = change_rot * old_rot;*/
 	} else {
 		new_pos = positions[cvnum];
 		new_rot = rotations[cvnum];
 	}
 }
 
+void drawLine(Vector3d line, Vector3d pos) {
+	glPushMatrix();
+	glTranslated(pos(0), pos(1), pos(2));
+	glBegin(GL_LINES);
+	glEnable(GL_LINE_SMOOTH);
+	glColor3d(1.0, 1.0, 1.0);
+	glVertex3f(-line(0), -line(1), -line(2));
+	glVertex3f(line(0), line(1), line(2));
+	glEnd();
+	glPopMatrix();
+}
+	
 void drawAxes(int constrained_vertex_num) {
 	glPushMatrix();
 	Vector3d pos = positions[constrained_vertex_num]-zero_location;
 	Matrix3d rot = rotations[constrained_vertex_num];
+	double transform[] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
+												 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
+												 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
+												 pos(0)   , pos(1)   , pos(2)   , 1 };
+	glMultMatrixd(transform);
+	glBegin(GL_LINES);
+	glEnable(GL_LINE_SMOOTH);
+	glColor3d(1.0, 0.0, 0.0); //red
+	glVertex3f(-10.0, 0.0, 0.0); //x
+	glVertex3f(10.0, 0.0, 0.0);
+	glColor3d(0.0, 1.0, 0.0); //green
+	glVertex3f(0.0, 0.0, 0.0); //y
+	glVertex3f(0.0, 10.0, 0.0);
+	glColor3d(0.0, 0.0, 1.0); //blue
+	glVertex3f(0.0, 0.0, 0.0); //z
+	glVertex3f(0.0, 0.0, 10.0);
+	glEnd();
+	glPopMatrix();
+}
+
+void drawAxes(Vector3d pos, Matrix3d rot) {
+	glPushMatrix();
 	double transform[] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
 												 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
 												 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
@@ -723,16 +766,14 @@ void drawThread() {
   glPopMatrix ();
 }
 
-void drawGrip(int constrained_vertex_num, double degrees) {
+void drawGrip(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2) {
 	glPushMatrix();
-	Vector3d pos = positions[constrained_vertex_num];
-	Matrix3d rot = rotations[constrained_vertex_num];
 	double transform[16] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
 													 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
 													 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
 													 pos(0)   , pos(1)   , pos(2)   , 1 };
 	glMultMatrixd(transform);
-	if (constrained_vertex_num==0) {
+	/*if (constrained_vertex_num==0) {
 		glRotated(90,0,0,1);
 		glRotated(90,0,1,0);
 	} else if (constrained_vertex_num==positions.size()-1) {
@@ -740,8 +781,8 @@ void drawGrip(int constrained_vertex_num, double degrees) {
 		glRotated(90,0,1,0);
 	} else {
 		glRotated(180,1,0,0);
-	}
-	glColor3f(0.0, 0.5, 1.0);
+	}*/
+	glColor3f(color0, color1, color2);
 	double grip_handle[4][3] = { {0.0, 9.0, 0.0} , {0.0,11.0, 0.0} , {0.0,19.0, 0.0} ,
 															 {0.0,21.0, 0.0} };
 	glePolyCylinder(4, grip_handle, NULL, 1);
