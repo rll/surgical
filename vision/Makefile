@@ -6,7 +6,8 @@ LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  
 OPTLIBS = -L/usr/local/lib/ -lopt -lnewmat -L/usr/lib/ -lglut -lgle
 #FLIBS =  -L/usr/lib/gcc/x86_64-linux-gnu/4.4.1 -L/usr/lib/gcc/x86_64-linux-gnu/4.4.1/../../../../lib -L/lib/../lib -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/4.4.1/../../.. -L/usr/lib/x86_64-linux-gnu -lgfortranbegin -lgfortran
 FLIBS =  -L/usr/lib/gcc/x86_64-linux-gnu/4.4.1 -L/usr/lib/gcc/x86_64-linux-gnu/4.4.1/../../../../lib -L/lib/../lib -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/4.4.1/../../.. -L/usr/lib/x86_64-linux-gnu -lgfortranbegin -lgfortran
-INCLUDES = -I/usr/local/include/ -I/usr/local/include/opencv/ -I/usr/local/include/libPvAPI -I $(UTILS_DIR)
+INCLUDES = -I/usr/local/include/ -I/usr/local/include/opencv/ -I/usr/local/include/libPvAPI -I $(UTILS_DIR) -I/usr/include/eigen2
+
 OPT_DEFINES = -DHAVE_NAMESPACES #-DWITH_MPI -DMPICH_IGNORE_CXX_SEEK
 CC = g++-4.4
 LD = g++-4.4
@@ -14,7 +15,12 @@ DEBUG = -ggdb
 
 #target : testCanny testCapture example_capture_3cam calibrate_robots test_point_distances PositionsOnRequest PositionsOnRequest2 threadStereo
 
-target: capture_3cam_continuous capture_3cam_continuous_bytesOnly imFile_to_ims read_timed_comments threadStereoReal
+#target: capture_3cam_continuous capture_3cam_continuous_bytesOnly imFile_to_ims read_timed_comments threadStereoReal
+#target: testCapture
+target: testCheckerboardFinder
+
+testCheckerboardFinder: testCheckerboardFinder.cpp checkerboard_data_vis.o capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o
+	$(LD) $(INCLUDES) $(DEBUG) -o testCheckerboardFinder testCheckerboardFinder.cpp checkerboard_data_vis.o capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o $(LIBS) 
 
 testCanny: testCanny.cpp CannyOrient.o
 	$(LD) $(INCLUDES) $(DEBUG) -o testCanny testCanny.cpp CannyOrient.o $(LIBS)
@@ -142,6 +148,8 @@ trajectory_recorder.o : $(THREAD_DIR)/trajectory_recorder.cpp
 trajectory_reader.o : $(THREAD_DIR)/trajectory_reader.cpp
 	$(CC) $(OPT_DEFINES) $(INCLUDES) $(DEBUG) -c $(THREAD_DIR)/trajectory_reader.cpp
 
+checkerboard_data_vis.o: checkerboard_data_vis.cpp  checkerboard_data_vis.h
+	$(CC) $(INCLUDES) $(DEBUG) -c checkerboard_data_vis.cpp
 
 clean:
 	rm *.o testCanny testCapture example_capture_3cam calibrate_robots test_point_distances PositionsOnRequest PositionsOnRequest2 threadStereo threadStereoReal

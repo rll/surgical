@@ -26,7 +26,7 @@
 #define MAX_LENGTH_VIS 67
 
 
-#define FAKEIMS_FILE "saved_threads/knots_coils_crossings"
+#define FAKEIMS_FILE "for_stereo_fakeims"
 #define IMAGE_SAVE_BASE_OPENGL "saved_threads/saved_opengl"
 
 //#define TRY_ALL false
