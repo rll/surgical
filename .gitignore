@@ -1,5 +1,6 @@
 *.o
 *.swp
+*.log
 *~
 /vision/captures/*.tif
 ThreadVision_DiscreteRods/threadStereo

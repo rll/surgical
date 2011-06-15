@@ -1,0 +1,75 @@
+<!--
+Runs a Prosilica camera in streaming mode.
+
+Change the ip_address to match your camera.
+For help configuring your camera or determining its IP address, see
+http://www.ros.org/wiki/prosilica_camera/Tutorials.
+
+You can uncomment the viewer if you want to view the image stream.
+-->
+
+<launch>
+
+  <!-- Camera node 1 -->
+  <node name="prosilica_driver1" pkg="prosilica_camera" type="prosilica_node" output="screen">
+    <param name="ip_address" type="str" value="169.254.100.2"/>
+    <param name="trigger_mode" type="str" value="streaming"/>
+    <param name="width" type="int" value="640"/>
+    <param name="height" type="int" value="480"/>
+    <remap from="camera" to="prosilica1" />
+    <rosparam command="load" file="$(find prosilica_camera)/cam_settings.yaml" />
+  </node>
+
+  <!-- Camera node 2 -->
+  <node name="prosilica_driver2" pkg="prosilica_camera" type="prosilica_node" output="screen">
+    <param name="ip_address" type="str" value="169.254.101.2"/>
+    <param name="trigger_mode" type="str" value="streaming"/>
+    <param name="width" type="int" value="640"/>
+    <param name="height" type="int" value="480"/>
+    <remap from="camera" to="prosilica2" />
+    <rosparam command="load" file="$(find prosilica_camera)/cam_settings.yaml" />
+  </node>
+
+  <!-- Camera node 3 -->
+  <node name="prosilica_driver3" pkg="prosilica_camera" type="prosilica_node" output="screen">
+    <param name="ip_address" type="str" value="169.254.102.2"/>
+    <param name="trigger_mode" type="str" value="streaming"/>
+    <param name="width" type="int" value="640"/>
+    <param name="height" type="int" value="480"/>
+    <remap from="camera" to="prosilica3" />
+    <rosparam command="load" file="$(find prosilica_camera)/cam_settings.yaml" />
+  </node>
+
+    <!--
+    Uncomment below if you want to view the image stream on a monochrome
+    camera. (You will see the Bayer coded image on a color camera)
+
+    You will have to run the following command first:
+    $ rosmake image_view
+    -->
+
+  <!--
+  <node pkg="image_view" type="image_view" respawn="false" name="prosilica_viewer_mono">
+    <param name="autosize" type="bool" value="False" />
+    <param name="window_name" type="str" value="'Prosilica Camera (Mono)'" />
+    <remap from="image" to="prosilica/image_raw" />
+  </node>
+  -->
+
+    <!--
+    Uncomment below if you want to view the image stream on a color camera.
+
+    You will have to run the following command first:
+    $ rosmake image_view image_proc
+    -->
+
+  <!--
+  <node ns="prosilica" pkg="image_proc" type="image_proc" respawn="false" name="prosilica_image_proc" />
+  <node pkg="image_view" type="image_view" respawn="false" name="prosilica_viewer_color">
+    <param name="autosize" type="bool" value="False" />
+    <param name="window_name" type="str" value="'Prosilica Camera (Color)'" />
+    <remap from="image" to="prosilica/image_color" />
+  </node>
+  -->
+
+</launch>
