@@ -32,7 +32,9 @@ class ThreadConstrained {
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<double> &absolute_twist_angles, vector<Matrix3d> &absolute_material_frames);
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<Matrix3d> &absolute_material_frames);
 		// parameters have to be of the right size, i.e. threads.size()+1
-		void getConstrainedTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations, vector<Vector3d> &tangents);
+		void getConstrainedTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations);
+		// parameters have to be of the right size, i.e. num_vertices.
+		void getAllTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations);
 		// parameters have to be of the right size.
 		void getConstrainedNormals(vector<Vector3d> &normals);
 		void getConstrainedVerticesNums(vector<int> &vertices_num);
@@ -54,7 +56,7 @@ class ThreadConstrained {
 		// Returns the number of the vertex that is nearest to pos. The chosen vertex have to be in vertices but not in vertex_exception.
 		int nearestVertex(Vector3d pos, vector<Vector3d> vertices, vector<int> vertex_exceptions);
 		Vector3d position(int absolute_vertex_num);
-		Matrix3d intermediateRotation(int absolute_vertex_num);
+		Matrix3d rotation(int absolute_vertex_num);
 
 	private:
 		int num_vertices;
@@ -104,3 +106,5 @@ void mergeMultipleVector(vector<T> &v, vector<vector<T> > vectors);
 int insertSorted (vector<int> &v, int e);
 //Returns the position where the element was removed. Element to remove has to be in vector.
 int removeSorted (vector<int> &v, int e);
+//Returns the position of the element to be found. Element to find has to be in vector.
+int find(vector<int> v, int e);

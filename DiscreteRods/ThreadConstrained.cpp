@@ -108,31 +108,46 @@ void ThreadConstrained::get_thread_data(vector<Vector3d> &absolute_points, vecto
 }
 
 // parameters have to be of the right size, i.e. threads.size()+1
-void ThreadConstrained::getConstrainedTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations, vector<Vector3d> &tangents) {
+void ThreadConstrained::getConstrainedTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations) {
 	int threads_size = threads.size();
-	if (positions.size()!=(threads_size+1) || rotations.size()!=(threads_size+1) || tangents.size()!=(threads_size+1))
+	if (positions.size()!=(threads_size+1) || rotations.size()!=(threads_size+1))
     cout << "Internal error: getConstrainedTransforms: at least one of the vector parameters is of the wrong size" << endl;
 	vector<vector<Vector3d> > points(threads_size);	
 	int thread_num = 0;
-		threads[thread_num]->get_thread_data(points[thread_num]);
+	threads[thread_num]->get_thread_data(points[thread_num]);
 	positions[thread_num] = (points[thread_num]).front();
-	rotations[thread_num] = (threads[thread_num]->start_rot()) * (Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ())).transpose()) * rot_diff_start[thread_num].transpose();
+	rotations[thread_num] = (threads[thread_num]->start_rot()) * rot_diff_start[thread_num].transpose();
+	//rotations[thread_num] = (threads[thread_num]->start_rot()) * (Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ())).transpose()) * rot_diff_start[thread_num].transpose();
 	//tangents[thread_num] = points[thread_num][1] - points[thread_num][0];
-	tangents[thread_num] = rotations[thread_num].col(0);
-	(tangents[thread_num]).normalize();
+	//tangents[thread_num] = rotations[thread_num].col(0);
+	//(tangents[thread_num]).normalize();
 	for (thread_num=1; thread_num<threads_size; thread_num++) {
 		threads[thread_num]->get_thread_data(points[thread_num]);
 		positions[thread_num] = (points[thread_num]).front();
-		rotations[thread_num] = (threads[thread_num]->start_rot()) * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())).transpose()) * rot_diff_start[thread_num].transpose();
+		rotations[thread_num] = (threads[thread_num]->start_rot()) * rot_diff_start[thread_num].transpose();
+		//rotations[thread_num] = (threads[thread_num]->start_rot()) * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())).transpose()) * rot_diff_start[thread_num].transpose();
 		//tangents[thread_num] = points[thread_num][1] - points[thread_num-1][points[thread_num-1].size()-2];
-		tangents[thread_num] = rotations[thread_num].col(0);
-		(tangents[thread_num]).normalize();
+		//tangents[thread_num] = rotations[thread_num].col(0);
+		//(tangents[thread_num]).normalize();
 	}
 	positions[thread_num] = (points[thread_num-1]).back();
 	rotations[thread_num] = (threads[thread_num-1])->end_rot();
 	//tangents[thread_num] = points[thread_num-1][(points[thread_num-1]).size()-1] - points[thread_num-1][(points[thread_num-1]).size()-2];
-	tangents[thread_num] = rotations[thread_num].col(0);
-	(tangents[thread_num]).normalize();
+	//tangents[thread_num] = rotations[thread_num].col(0);
+	//(tangents[thread_num]).normalize();
+}
+
+// parameters have to be of the right size, i.e. num_vertices.
+void ThreadConstrained::getAllTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations) {
+	if (positions.size()!=num_vertices || rotations.size()!=num_vertices)
+    cout << "Internal error: getAllTransforms: at least one of the vector parameters is of the wrong size" << endl;
+	vector<Matrix3d> material_frames;
+	get_thread_data(positions, material_frames);
+	int vertex_num=0;
+	rotations[vertex_num] = start_rot();
+	for(vertex_num=1; vertex_num<num_vertices-1; vertex_num++)
+		intermediateRotation(rotations[vertex_num], material_frames[vertex_num-1], material_frames[vertex_num]);
+	rotations[vertex_num] = end_rot();
 }
 
 /*// parameters have to be of the right size.
@@ -243,7 +258,7 @@ Vector3d ThreadConstrained::end_pos() {
 }
 
 Matrix3d ThreadConstrained::start_rot() {
-	return (threads.front())->start_rot() * (Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ())));
+	return (threads.front())->start_rot();// * (Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ())));
 }
 
 Matrix3d ThreadConstrained::end_rot() {
@@ -273,12 +288,12 @@ void ThreadConstrained::updateConstraints (vector<Vector3d> poss, vector<Matrix3
 	for (int i=0; i<threads.size(); i++) {
 		Matrix3d new_start_rot = rots[i]*rot_diff_start[i];
 		Matrix3d new_end_rot = rots[i+1]*rot_diff_end[i+1];
-		if (i!=0)
+		/*if (i!=0)
 			new_start_rot = new_start_rot * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
 		else
 			new_start_rot = new_start_rot * (Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ())));
 		if (i!=threads.size()-1)
-			new_end_rot = new_end_rot * (Matrix3d (AngleAxisd(-0.5*M_PI, Vector3d::UnitZ())));
+			new_end_rot = new_end_rot * (Matrix3d (AngleAxisd(-0.5*M_PI, Vector3d::UnitZ())));*/
 			
 		zero_angle[i] += angle_mismatch(rots[i], threads[i]->start_rot());
 	  threads[i]->set_constraints_check(poss[i], new_start_rot, poss[i+1], new_end_rot);
@@ -338,7 +353,7 @@ Matrix3d ThreadConstrained::rotation(int absolute_vertex_num) {
 		get_thread_data(absolute_points, absolute_material_frames);
 		Matrix3d inter_rot;
 		intermediateRotation(inter_rot, absolute_material_frames[absolute_vertex_num-1], absolute_material_frames[absolute_vertex_num]);
-		return inter_rot * (Matrix3d (AngleAxisd(-0.5*M_PI, Vector3d::UnitZ())));
+		return inter_rot; // * (Matrix3d (AngleAxisd(-0.5*M_PI, Vector3d::UnitZ())));
 	}
 }
 
@@ -613,8 +628,12 @@ int removeSorted (vector<int> &v, int e) {
 	v.erase(v.begin()+i);
 	return i;
 }
-  
-  
-  
 
-
+//Returns the position of the element to be found. Element to find has to be in vector.
+int find(vector<int> v, int e) {
+	int i;
+	for (i=0; i<v.size() && v[i]!=e; i++) {}
+	if (i==v.size())
+		cout << "Internal error: find: element to find is not in vector" << endl;
+	return i;
+}

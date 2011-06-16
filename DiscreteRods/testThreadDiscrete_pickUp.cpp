@@ -12,6 +12,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <algorithm> // for debugging purposes. to be removed.
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -39,10 +40,19 @@ void drawGrip(Vector3d pos, Matrix3d rot, double degrees, float color0, float co
 void drawSphere(Vector3d position, float radius, float color0, float color1, float color2);
 void drawCursor(int device_id, float color);
 void updateThreadPoints();
+void updateAllThreadPoints();
 void initThread();
 void glutMenu(int ID);
 void initContour ();
 void initGL();
+
+void f(int i) {			// for debugging purposes. to be removed.
+  cout << " " << i;
+}
+
+void pv(vector<int> v) {			// for debugging purposes. to be removed.
+  for_each (v.begin(), v.end(), f);
+}
 
 #define NUM_PTS 500
 #define THREAD_RADII 1.0
@@ -79,12 +89,12 @@ vector<Matrix3d> material_frames;
 int pressed_mouse_button;
 
 vector<Vector3d> positions;
-vector<Vector3d> tangents;
 vector<Matrix3d> rotations;
+vector<Matrix3d> rotations_offset;
 
-Vector3d test_position = Vector3d(0,0,0);
-Matrix3d test_rotation = Matrix3d::Identity();
-Vector3d test_tangent = test_rotation.col(0);
+vector<Vector3d> all_positions;
+vector<Matrix3d> all_rotations;
+vector<Matrix3d> all_rotations_offset;
 
 key_code key_pressed;
 
@@ -213,6 +223,9 @@ void processNormalKeys(unsigned char key, int x, int y) {
     rotate_frame[0] = 0.0;
     rotate_frame[1] = 0.0;
   } else if (key == 'z') {
+  	if (!choose_mode) {
+  		updateAllThreadPoints();
+  	}
     choose_mode = !choose_mode;
     toggle = 0;
     glutPostRedisplay();
@@ -247,23 +260,12 @@ void processNormalKeys(unsigned char key, int x, int y) {
   } else if (key == 'f') {
     vector<Vector3d> vv3d(positions.size());
     vector<Matrix3d> vm3d(positions.size());
-    vector<Vector3d> vv3d1(positions.size());
-    thread->getConstrainedTransforms(vv3d, vm3d, vv3d1);
+    thread->getConstrainedTransforms(vv3d, vm3d);
     cout << "getConstrainedTransforms: positions: " << vv3d.size() << endl;
     for (int i=0; i<(vv3d.size()+4)/5; i++) {
       for (int k=0; k<3; k++) {
         for (int j=0; j<5 && (i*5+j)<vv3d.size(); j++) {
           printf("%d:%3.4f\t",i*5+j,vv3d[i*5+j](k));
-        }
-        printf("\n");
-      }
-      printf("\n");
-    }
-    cout << "getConstrainedTransforms: tangents: " << vv3d1.size() << endl;
-    for (int i=0; i<(vv3d1.size()+4)/5; i++) {
-      for (int k=0; k<3; k++) {
-        for (int j=0; j<5 && (i*5+j)<vv3d1.size(); j++) {
-          printf("%d:%3.4f\t",i*5+j,vv3d1[i*5+j](k));
         }
         printf("\n");
       }
@@ -516,17 +518,23 @@ void drawStuff (void)
 	  	if (modifiable_vertex_num==0 || modifiable_vertex_num==(thread->numVertices()-1)) {
 	  		cout << "You cannot remove the constraint at the ends" << endl;
 	  	} else {
+	  		int location_in_constraint;
+	  		vector<int> constrained_vertices_nums;
+	  		thread->getConstrainedVerticesNums(constrained_vertices_nums);
 		  	if (constrained_or_free[selected_vertex]) {
-		  		thread->removeConstraint(operable_vertices_num[selected_vertex]);
 			    positions.resize(positions.size()-1);
-			    rotations.resize(rotations.size()-1);
-			    tangents.resize(tangents.size()-1);
+			    rotations.resize(rotations.size()-1); 		
+			    location_in_constraint = removeSorted(constrained_vertices_nums, operable_vertices_num[selected_vertex]);
+					rotations_offset.erase(rotations_offset.begin() + location_in_constraint);
+			    thread->removeConstraint(operable_vertices_num[selected_vertex]);
 			  } else {	    
-			    thread->addConstraint(operable_vertices_num[selected_vertex]);
 			    positions.resize(positions.size()+1);
 			    rotations.resize(rotations.size()+1);
-			    tangents.resize(tangents.size()+1);
+			    location_in_constraint = insertSorted(constrained_vertices_nums, operable_vertices_num[selected_vertex]);
+			    rotations_offset.insert(rotations_offset.begin() + location_in_constraint, (Matrix3d) AngleAxisd(0.5*M_PI, Vector3d::UnitZ()));
+			    thread->addConstraint(operable_vertices_num[selected_vertex]);
 			  }
+			  updateAllThreadPoints();
 			  thread->getOperableVertices(operable_vertices_num, constrained_or_free);
 			  for (int i=0; i<operable_vertices_num.size(); i++) {
 			  	if(modifiable_vertex_num == operable_vertices_num[i]) {
@@ -546,13 +554,12 @@ void drawStuff (void)
 		}
 		if (constrained_or_free[selected_vertex]) {
 	  	drawSphere(thread->position(operable_vertices_num[selected_vertex]), 2.0, 0.5, 0.0, 0.0);
-	  	drawGrip(thread->position(operable_vertices_num[selected_vertex]), 
-	  					 thread->rotation(operable_vertices_num[selected_vertex]), 0, 0.5, 0.5, 0.5);
+	  	//drawGrip(all_positions[operable_vertices_num[selected_vertex]], all_rotations[operable_vertices_num[selected_vertex]], 0, 0.5, 0.5, 0.5);
 	  } else {
 	  	drawSphere(thread->position(operable_vertices_num[selected_vertex]), 2.0, 0.0, 0.5, 0.0);
-	  	drawGrip(thread->position(operable_vertices_num[selected_vertex]),
-	  					 thread->rotation(operable_vertices_num[selected_vertex]), 15, 0.5, 0.5, 0.5);
-	  }	  
+	  	//drawGrip(all_positions[operable_vertices_num[selected_vertex]], all_rotations[operable_vertices_num[selected_vertex]], 15, 0.5, 0.5, 0.5);
+	  }
+	  drawAxes(all_positions[operable_vertices_num[selected_vertex]], all_rotations[operable_vertices_num[selected_vertex]]);
 	} else {
   	updateThreadPoints();
 		Vector3d new_grip_pos;
@@ -564,20 +571,24 @@ void drawStuff (void)
 		positionConstraints[modifiable_vertex] = new_grip_pos;
 		rotationConstraints[modifiable_vertex] = new_grip_rot;
 		
+		for (int i=0; i<rotationConstraints.size(); i++)
+			rotationConstraints[i] = rotationConstraints[i] * rotations_offset[i];
 		thread->updateConstraints(positionConstraints, rotationConstraints);
 		//updateThreadPoints();
 	}
 	updateThreadPoints();
   drawThread();
 	for(int i=0; i<positions.size(); i++)
-		drawAxes(i);
+		//drawAxes(i);
 	labelAxes(0);
-	//for(int i=0; i<tangents.size(); i++)
-		//drawLine(20*tangents[i], positions[i]);
+	for(int i=0; i<positions.size(); i++) {
+		drawLine(20*(rotations[i].col(0)), positions[i]);
+		drawLine(20*(rotations[i].col(1)), positions[i]);
+	}
 	for(int i=0; i<positions.size(); i++)
 		//drawGrip(positions[i], rotations[i], 0, 0.7, 0.7, 0.7);
 	for(int vertex_num=0; vertex_num<thread->numVertices(); vertex_num++)
-		drawAxes(thread->position(vertex_num), (thread->rotation(vertex_num)));
+		//drawAxes(thread->position(vertex_num), (thread->rotation(vertex_num)) * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ()))).transpose());
   glPopMatrix ();
   glutSwapBuffers ();
 }
@@ -603,6 +614,11 @@ void mouseTransform(Vector3d &new_pos, Matrix3d &new_rot, int cvnum) {
 		gluUnProject(winX, winY, winZ, model_view, projection, viewport, &new_pos(0), &new_pos(1), &new_pos(2));
 
 		//change tangents
+		vector<Vector3d> tangents(rotations.size());
+		for (int i=0; i<rotations.size(); i++) {
+			tangents[i] = rotations[i].col(0);
+			tangents[i].normalize();
+		}
 		Vector3d new_tan;
 		gluProject(positions[cvnum](0)+tangents[cvnum](0),positions[cvnum](1)+tangents[cvnum](1), positions[cvnum](2)+tangents[cvnum](2), model_view, projection, viewport, &winX, &winY, &winZ);
 		winX += tangent[0];
@@ -863,7 +879,7 @@ void drawCursor(int device_id, float color)
   glColor3f(0.0, color, 1.0);
 
   glCallList(gCursorDisplayList);
-
+  
   glPopMatrix();
   glPopAttrib();
 }
@@ -871,7 +887,22 @@ void drawCursor(int device_id, float color)
 void updateThreadPoints()
 {
   thread->get_thread_data(points, twist_angles);
-  thread->getConstrainedTransforms(positions, rotations, tangents);
+  thread->getConstrainedTransforms(positions, rotations);
+  for (int i=0; i<rotations.size(); i++)
+  	rotations[i] = rotations[i] * rotations_offset[i].transpose();
+}
+
+void updateAllThreadPoints()
+{
+	thread->getAllTransforms(all_positions, all_rotations);
+	for(int vertex_num=0; vertex_num<all_rotations_offset.size(); vertex_num++)
+		all_rotations_offset[vertex_num] = (Matrix3d) AngleAxisd(0.5*M_PI, Vector3d::UnitZ());
+	vector<int> constrained_vertices_nums;
+	thread->getConstrainedVerticesNums(constrained_vertices_nums);
+	for(int i=0; i<constrained_vertices_nums.size(); i++)
+		all_rotations_offset[constrained_vertices_nums[i]] = rotations_offset[i];
+	for (int vertex_num=0; vertex_num<all_rotations.size(); vertex_num++)
+		all_rotations[vertex_num] = all_rotations[vertex_num] * all_rotations_offset[vertex_num].transpose();
 }
 
 void initStuff (void)
@@ -898,12 +929,17 @@ void initStuff (void)
 }
 
 void initThread()
-{
-  thread = new ThreadConstrained(15);
+{	
+	int num_vertices=15;
+  thread = new ThreadConstrained(num_vertices);
   positions.resize(2);
   rotations.resize(2);
-  tangents.resize(2);
+  rotations_offset.push_back(Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ())));
+  rotations_offset.push_back(Matrix3d::Identity());
   updateThreadPoints();
+  all_positions.resize(num_vertices);
+  all_rotations.resize(num_vertices);
+  all_rotations_offset.resize(num_vertices);
 
 #ifndef ISOTROPIC
 	Matrix2d B = Matrix2d::Zero();
