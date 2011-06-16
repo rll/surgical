@@ -243,7 +243,7 @@ Vector3d ThreadConstrained::end_pos() {
 }
 
 Matrix3d ThreadConstrained::start_rot() {
-	return (threads.front())->start_rot();
+	return (threads.front())->start_rot() * (Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ())));
 }
 
 Matrix3d ThreadConstrained::end_rot() {
@@ -278,21 +278,7 @@ void ThreadConstrained::updateConstraints (vector<Vector3d> poss, vector<Matrix3
 		else
 			new_start_rot = new_start_rot * (Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ())));
 		if (i!=threads.size()-1)
-			new_end_rot = new_end_rot * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
-		
-
-		/*Matrix3d new_start_rot, new_end_rot;
-		if (i==0) {
-			new_start_rot = rots[i] * rot_diff_start[i] * (Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ())));
-			new_end_rot = rots[i+1] * rot_diff_end[i+1] * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
-		} else if (i==1){//threads.size()-1) {
-			new_start_rot = rots[i] * rot_diff_start[i] * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
-			new_end_rot = rots[i+1] * rot_diff_end[i+1];
-			cout << "hey" ;
-		} else {
-			new_start_rot = rots[i] * rot_diff_start[i] * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
-			new_end_rot = rots[i+1] * rot_diff_end[i+1] * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
-		}*/
+			new_end_rot = new_end_rot * (Matrix3d (AngleAxisd(-0.5*M_PI, Vector3d::UnitZ())));
 			
 		zero_angle[i] += angle_mismatch(rots[i], threads[i]->start_rot());
 	  threads[i]->set_constraints_check(poss[i], new_start_rot, poss[i+1], new_end_rot);
@@ -341,9 +327,9 @@ Vector3d ThreadConstrained::position(int absolute_vertex_num) {
 	return positions[absolute_vertex_num];
 }
 
-Matrix3d ThreadConstrained::intermediateRotation(int absolute_vertex_num) {
+Matrix3d ThreadConstrained::rotation(int absolute_vertex_num) {
 	if (absolute_vertex_num == 0) {
-		return start_rot();
+		return start_rot();// * (Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ())));
 	} else if (absolute_vertex_num == num_vertices-1) {
 		return end_rot();
 	} else {
@@ -352,7 +338,7 @@ Matrix3d ThreadConstrained::intermediateRotation(int absolute_vertex_num) {
 		get_thread_data(absolute_points, absolute_material_frames);
 		Matrix3d inter_rot;
 		intermediateRotation(inter_rot, absolute_material_frames[absolute_vertex_num-1], absolute_material_frames[absolute_vertex_num]);
-		return inter_rot;
+		return inter_rot * (Matrix3d (AngleAxisd(-0.5*M_PI, Vector3d::UnitZ())));
 	}
 }
 
