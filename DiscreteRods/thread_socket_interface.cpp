@@ -30,11 +30,10 @@ void connectionInit() {
 }
 
 void getDeviceState (double start_proxyxform[], bool &start_proxybutton, double end_proxyxform[], bool &end_proxybutton) {
-    cout << "receive?" << endl;
     if (receiver.recv(buf)) {
         while (receiver.recv(buf));
         
-        cout << buf << endl;
+        //cout << buf << endl;
         
         boost::split(vectbuf, buf, boost::is_any_of("\n"));
         parse(vectbuf[0], vect1);

@@ -71,10 +71,14 @@ float rotate_frame[2];
 float last_rotate_frame[2];
 
 int modifiable_vertex = 1;
+int choose_vertex_num;
 
 float move[2];
 float tangent[2];
 float tangent_rotation[2];
+
+vector<Vector3d> points;
+vector<double> twist_angles;
 
 Vector3d zero_location;
 double zero_angle;
@@ -82,9 +86,9 @@ double zero_angle;
 ThreadConstrained* thread;
 ThreadConstrained* thread_saved;
 
-vector<Vector3d> points;
-vector<double> twist_angles;
-vector<Matrix3d> material_frames;
+//vector<Vector3d> points;
+//vector<double> twist_angles;
+//vector<Matrix3d> material_frames;
 
 int pressed_mouse_button;
 
@@ -223,11 +227,11 @@ void processNormalKeys(unsigned char key, int x, int y) {
     rotate_frame[0] = 0.0;
     rotate_frame[1] = 0.0;
   } else if (key == 'z') {
-  	if (!choose_mode) {
+  	if (!choose_mode) {	//from normal mode to choose mode
   		updateAllThreadPoints();
+  		toggle = 0;
   	}
     choose_mode = !choose_mode;
-    toggle = 0;
     glutPostRedisplay();
   } else if (key == 'x' && choose_mode) {
     choose_toggle = true;
@@ -235,6 +239,24 @@ void processNormalKeys(unsigned char key, int x, int y) {
   } else if (key == 'c') {
     change_constraint = true;
     glutPostRedisplay();
+  } else if (choose_mode && (key == 'j' || key == 'l')) {
+  	double rot_angle;
+  	if (key == 'j')
+  		rot_angle = 0.05;
+  	else
+  		rot_angle = -0.05;
+   	Vector3d axis = all_rotations[choose_vertex_num].col(1).normalized();
+  	all_rotations[choose_vertex_num] = all_rotations_offset[choose_vertex_num] * all_rotations[choose_vertex_num];
+   	all_rotations_offset[choose_vertex_num] = all_rotations_offset[choose_vertex_num] * (Matrix3d) AngleAxisd(rot_angle * M_PI, axis);
+  	all_rotations[choose_vertex_num] = all_rotations_offset[choose_vertex_num].transpose() * all_rotations[choose_vertex_num];
+  	vector<int> constrained_vertices_nums;
+	  thread->getConstrainedVerticesNums(constrained_vertices_nums);
+	  int location_in_constraint = find(constrained_vertices_nums, choose_vertex_num);
+	  if (location_in_constraint>=0) {
+	  	rotations_offset[location_in_constraint] = all_rotations_offset[choose_vertex_num];
+	  	rotations[location_in_constraint] = all_rotations[choose_vertex_num];
+	  }	  		
+  	glutPostRedisplay();
   } else if (key == 'd') {
     vector<Vector3d> vv3d; 
     vector <double> vd;
@@ -478,7 +500,7 @@ int main (int argc, char * argv[])
   updateThreadPoints();
   thread_saved = new ThreadConstrained(*thread);
 
-  zero_location = points[0];
+  zero_location = Vector3d::Zero(); //points[0];
   zero_angle = 0.0;
 
 	//connectionInit();
@@ -503,7 +525,7 @@ void drawStuff (void)
   //drawCursor(1, 0.5);
 
   //updateThreadPoints();
-  
+   
   if (choose_mode) {
   	if (choose_toggle) {
   		toggle++;
@@ -513,9 +535,9 @@ void drawStuff (void)
 	  vector<bool> constrained_or_free;
 	  thread->getOperableVertices(operable_vertices_num, constrained_or_free);
 		int selected_vertex = toggle%operable_vertices_num.size();
+		choose_vertex_num = operable_vertices_num[toggle%operable_vertices_num.size()];
 	  if (change_constraint) {
-	  	int modifiable_vertex_num = operable_vertices_num[selected_vertex];
-	  	if (modifiable_vertex_num==0 || modifiable_vertex_num==(thread->numVertices()-1)) {
+	  	if (choose_vertex_num==0 || choose_vertex_num==(thread->numVertices()-1)) {
 	  		cout << "You cannot remove the constraint at the ends" << endl;
 	  	} else {
 	  		int location_in_constraint;
@@ -524,20 +546,19 @@ void drawStuff (void)
 		  	if (constrained_or_free[selected_vertex]) {
 			    positions.resize(positions.size()-1);
 			    rotations.resize(rotations.size()-1); 		
-			    location_in_constraint = removeSorted(constrained_vertices_nums, operable_vertices_num[selected_vertex]);
+			    location_in_constraint = removeSorted(constrained_vertices_nums, choose_vertex_num);
 					rotations_offset.erase(rotations_offset.begin() + location_in_constraint);
-			    thread->removeConstraint(operable_vertices_num[selected_vertex]);
+			    thread->removeConstraint(choose_vertex_num);
 			  } else {	    
 			    positions.resize(positions.size()+1);
 			    rotations.resize(rotations.size()+1);
-			    location_in_constraint = insertSorted(constrained_vertices_nums, operable_vertices_num[selected_vertex]);
-			    rotations_offset.insert(rotations_offset.begin() + location_in_constraint, (Matrix3d) AngleAxisd(0.5*M_PI, Vector3d::UnitZ()));
-			    thread->addConstraint(operable_vertices_num[selected_vertex]);
+			    location_in_constraint = insertSorted(constrained_vertices_nums, choose_vertex_num);
+			    rotations_offset.insert(rotations_offset.begin() + location_in_constraint,  all_rotations_offset[choose_vertex_num]); //(Matrix3d) AngleAxisd(0.5*M_PI, Vector3d::UnitZ()));
+			    thread->addConstraint(choose_vertex_num);
 			  }
-			  updateAllThreadPoints();
 			  thread->getOperableVertices(operable_vertices_num, constrained_or_free);
 			  for (int i=0; i<operable_vertices_num.size(); i++) {
-			  	if(modifiable_vertex_num == operable_vertices_num[i]) {
+			  	if(choose_vertex_num == operable_vertices_num[i]) {
 			  		selected_vertex = toggle = i;
 			  		break;
 			  	}
@@ -553,13 +574,15 @@ void drawStuff (void)
 		  }
 		}
 		if (constrained_or_free[selected_vertex]) {
-	  	drawSphere(thread->position(operable_vertices_num[selected_vertex]), 2.0, 0.5, 0.0, 0.0);
-	  	//drawGrip(all_positions[operable_vertices_num[selected_vertex]], all_rotations[operable_vertices_num[selected_vertex]], 0, 0.5, 0.5, 0.5);
+	  	drawSphere(thread->position(choose_vertex_num), 2.0, 0.5, 0.0, 0.0);
+	  	drawGrip(all_positions[choose_vertex_num], all_rotations[choose_vertex_num], 0, 0.5, 0.5, 0.5);
 	  } else {
-	  	drawSphere(thread->position(operable_vertices_num[selected_vertex]), 2.0, 0.0, 0.5, 0.0);
-	  	//drawGrip(all_positions[operable_vertices_num[selected_vertex]], all_rotations[operable_vertices_num[selected_vertex]], 15, 0.5, 0.5, 0.5);
+	  	drawSphere(thread->position(choose_vertex_num), 2.0, 0.0, 0.5, 0.0);
+	  	drawGrip(all_positions[choose_vertex_num], all_rotations[choose_vertex_num], 15, 0.5, 0.5, 0.5);
 	  }
-	  drawAxes(all_positions[operable_vertices_num[selected_vertex]], all_rotations[operable_vertices_num[selected_vertex]]);
+	  drawAxes(all_positions[choose_vertex_num], all_rotations[choose_vertex_num]);
+	  for(int i=0; i<positions.size(); i++)
+			drawGrip(positions[i], rotations[i], 0, 0.7, 0.7, 0.7);
 	} else {
   	updateThreadPoints();
 		Vector3d new_grip_pos;
@@ -572,21 +595,21 @@ void drawStuff (void)
 		rotationConstraints[modifiable_vertex] = new_grip_rot;
 		
 		for (int i=0; i<rotationConstraints.size(); i++)
-			rotationConstraints[i] = rotationConstraints[i] * rotations_offset[i];
+			rotationConstraints[i] = rotations_offset[i].transpose() * rotationConstraints[i];
 		thread->updateConstraints(positionConstraints, rotationConstraints);
-		//updateThreadPoints();
+		for (int i=0; i<positions.size(); i++)
+			drawAxes(positionConstraints[i], rotationConstraints[i]);
+		updateThreadPoints();
+		//for(int i=0; i<positions.size(); i++)
+			//drawAxes(i);
+		labelAxes(0);
+		//for(int i=0; i<positions.size(); i++)
+			//drawGrip(positions[i], rotations[i], 0, 0.7, 0.7, 0.7);
 	}
 	updateThreadPoints();
   drawThread();
-	for(int i=0; i<positions.size(); i++)
-		//drawAxes(i);
-	labelAxes(0);
-	for(int i=0; i<positions.size(); i++) {
-		drawLine(20*(rotations[i].col(0)), positions[i]);
-		drawLine(20*(rotations[i].col(1)), positions[i]);
-	}
-	for(int i=0; i<positions.size(); i++)
-		//drawGrip(positions[i], rotations[i], 0, 0.7, 0.7, 0.7);
+  
+	
 	for(int vertex_num=0; vertex_num<thread->numVertices(); vertex_num++)
 		//drawAxes(thread->position(vertex_num), (thread->rotation(vertex_num)) * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ()))).transpose());
   glPopMatrix ();
@@ -650,11 +673,6 @@ void mouseTransform(Vector3d &new_pos, Matrix3d &new_rot, int cvnum) {
 		rotations[cvnum].col(1) = new_tan_normal;
 		rotations[cvnum].col(2) = rotations[cvnum].col(0).cross(new_tan_normal);
 		new_rot = Eigen::AngleAxisd(angle_mismatch(rotations[cvnum], old_rot), rotations[cvnum].col(0).normalized())*rotation_new_tan* old_rot;
-		/*
-		AngleAxisd new_aa = AngleAxisd(rotations[cvnum]);
-		AngleAxisd old_aa = AngleAxisd(old_rot);
-		Matrix3d change_rot = Eigen::AngleAxisd(new_aa.angle() - old_aa.angle(), rotations[cvnum].col(0).normalized())*rotation_new_tan;
-		new_rot = change_rot * old_rot;*/
 	} else {
 		new_pos = positions[cvnum];
 		new_rot = rotations[cvnum];
@@ -742,6 +760,8 @@ void labelAxes(int constrained_vertex_num) {
 
 
 void drawThread() {
+	thread->get_thread_data(points, twist_angles);
+
   glPushMatrix();
   glColor3f (0.5, 0.5, 0.2);
   double pts_cpy[points.size()+2][3];
@@ -755,15 +775,15 @@ void drawThread() {
     //twist_cpy[i+1] = -(360.0/(2.0*M_PI))*(twist_angles[i]+zero_angle);
   }
   //add first and last point
-  pts_cpy[0][0] = pts_cpy[1][0]-rotations[0](0,0);
-  pts_cpy[0][1] = pts_cpy[1][1]-rotations[0](1,0);
-  pts_cpy[0][2] = pts_cpy[1][2]-rotations[0](2,0);
+  pts_cpy[0][0] = 2*pts_cpy[1][0] - pts_cpy[2][0];//pts_cpy[1][0]-rotations[0](0,0);
+  pts_cpy[0][1] = 2*pts_cpy[1][1] - pts_cpy[2][1];//pts_cpy[1][1]-rotations[0](1,0);
+  pts_cpy[0][2] = 2*pts_cpy[1][2] - pts_cpy[2][2];//pts_cpy[1][2]-rotations[0](2,0);
   twist_cpy[0] = 0;//-(360.0/(2.0*M_PI))*(twist_angles[0]);
   //twist_cpy[0] = -(360.0/(2.0*M_PI))*(zero_angle);
 
-  pts_cpy[points.size()+1][0] = pts_cpy[points.size()][0]+rotations[1](0,0);
-  pts_cpy[points.size()+1][1] = pts_cpy[points.size()][1]+rotations[1](1,0);
-  pts_cpy[points.size()+1][2] = pts_cpy[points.size()][2]+rotations[1](2,0);
+  pts_cpy[points.size()+1][0] = 2*pts_cpy[points.size()][0] - pts_cpy[points.size()-1][0];//pts_cpy[points.size()][0]+rotations[1](0,0);
+  pts_cpy[points.size()+1][1] = 2*pts_cpy[points.size()][1] - pts_cpy[points.size()-1][1];//pts_cpy[points.size()][1]+rotations[1](1,0);
+  pts_cpy[points.size()+1][2] = 2*pts_cpy[points.size()][2] - pts_cpy[points.size()-1][2];//pts_cpy[points.size()][2]+rotations[1](2,0);
   twist_cpy[points.size()+1] = 0;//twist_cpy[points.size()]-(360.0/(2.0*M_PI))*(twist_angles[0]);
   //twist_cpy[points.size()+1] = twist_cpy[points.size()]-(360.0/(2.0*M_PI))*zero_angle;
 
@@ -785,15 +805,6 @@ void drawGrip(Vector3d pos, Matrix3d rot, double degrees, float color0, float co
 													 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
 													 pos(0)   , pos(1)   , pos(2)   , 1 };
 	glMultMatrixd(transform);
-	/*if (constrained_vertex_num==0) {
-		glRotated(90,0,0,1);
-		glRotated(90,0,1,0);
-	} else if (constrained_vertex_num==positions.size()-1) {
-		glRotated(-90,0,0,1);
-		glRotated(90,0,1,0);
-	} else {
-		glRotated(180,1,0,0);
-	}*/
 	glRotated(-90,0,0,1);
 	glColor3f(color0, color1, color2);
 	double grip_handle[4][3] = { {0.0, 9.0, 0.0} , {0.0,11.0, 0.0} , {0.0,19.0, 0.0} ,
@@ -888,21 +899,23 @@ void updateThreadPoints()
 {
   thread->get_thread_data(points, twist_angles);
   thread->getConstrainedTransforms(positions, rotations);
+  //for (int i=0; i<rotations.size(); i++)
+  	//rotations[i] = rotations_offset[i].transpose() * rotations[i];
   for (int i=0; i<rotations.size(); i++)
-  	rotations[i] = rotations[i] * rotations_offset[i].transpose();
+  	rotations[i] = rotations_offset[i] * rotations[i];
 }
 
 void updateAllThreadPoints()
 {
 	thread->getAllTransforms(all_positions, all_rotations);
-	for(int vertex_num=0; vertex_num<all_rotations_offset.size(); vertex_num++)
-		all_rotations_offset[vertex_num] = (Matrix3d) AngleAxisd(0.5*M_PI, Vector3d::UnitZ());
+	//for(int vertex_num=0; vertex_num<all_rotations_offset.size(); vertex_num++)
+		//all_rotations_offset[vertex_num] = (Matrix3d) AngleAxisd(0.5*M_PI, Vector3d::UnitZ());
 	vector<int> constrained_vertices_nums;
 	thread->getConstrainedVerticesNums(constrained_vertices_nums);
-	for(int i=0; i<constrained_vertices_nums.size(); i++)
-		all_rotations_offset[constrained_vertices_nums[i]] = rotations_offset[i];
+	//for(int i=0; i<constrained_vertices_nums.size(); i++)
+		//all_rotations_offset[constrained_vertices_nums[i]] = rotations_offset[i];
 	for (int vertex_num=0; vertex_num<all_rotations.size(); vertex_num++)
-		all_rotations[vertex_num] = all_rotations[vertex_num] * all_rotations_offset[vertex_num].transpose();
+		all_rotations[vertex_num] = all_rotations_offset[vertex_num].transpose() * all_rotations[vertex_num];
 }
 
 void initStuff (void)
@@ -934,12 +947,18 @@ void initThread()
   thread = new ThreadConstrained(num_vertices);
   positions.resize(2);
   rotations.resize(2);
-  rotations_offset.push_back(Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ())));
+  //rotations_offset.push_back((Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ()))) * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitX()))));
+  //rotations_offset.push_back(Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitX())));
+  rotations_offset.push_back((Matrix3d (AngleAxisd(M_PI, Vector3d::UnitY()))));
   rotations_offset.push_back(Matrix3d::Identity());
   updateThreadPoints();
   all_positions.resize(num_vertices);
   all_rotations.resize(num_vertices);
   all_rotations_offset.resize(num_vertices);
+  for(int vertex_num=0; vertex_num<all_rotations_offset.size(); vertex_num++)
+		all_rotations_offset[vertex_num] = (Matrix3d) AngleAxisd(0.5*M_PI, Vector3d::UnitZ());
+	all_rotations_offset[0] = rotations_offset[0];
+	all_rotations_offset[num_vertices-1] = rotations_offset[1];
 
 #ifndef ISOTROPIC
 	Matrix2d B = Matrix2d::Zero();

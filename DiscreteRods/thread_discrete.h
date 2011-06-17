@@ -36,7 +36,7 @@
 
 #endif
 
-#define DEFAULT_REST_LENGTH 3 /*default rest length for each threadpiece*/
+#define DEFAULT_REST_LENGTH 6 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
 #define INTERSECTION_PUSHBACK_EPS 0.03 
@@ -114,6 +114,7 @@ class Thread
     void get_thread_data(vector<Vector3d>& points);
     void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles);
     void get_thread_data(vector<Vector3d>& points, vector<Matrix3d>& material_frames);
+    void get_thread_data(vector<Matrix3d>& bishop_frames);
     void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<Matrix3d>& material_frames);
     void set_all_angles_zero();
     void set_all_pieces_mythread();
@@ -140,6 +141,7 @@ class Thread
     void set_start_constraint_nearEnd(Vector3d& start_pos, Matrix3d& start_rot);
     void set_end_constraint_nearEnd(Vector3d& end_pos, Matrix3d& end_rot);
     void set_constraints_nearEnds(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot);
+    void set_constraints_check(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot);
     void set_start_constraint(const Vector3d& start_pos, const Matrix3d& start_rot, bool backup=true);
     void set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot, bool backup=true);
     void restore_constraints(const Vector3d& start_pos, const Matrix3d& start_rot, const Vector3d& end_pos, const Matrix3d& end_rot);

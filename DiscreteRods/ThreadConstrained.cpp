@@ -143,11 +143,10 @@ void ThreadConstrained::getAllTransforms(vector<Vector3d> &positions, vector<Mat
     cout << "Internal error: getAllTransforms: at least one of the vector parameters is of the wrong size" << endl;
 	vector<Matrix3d> material_frames;
 	get_thread_data(positions, material_frames);
-	int vertex_num=0;
-	rotations[vertex_num] = start_rot();
-	for(vertex_num=1; vertex_num<num_vertices-1; vertex_num++)
+	rotations[0] = start_rot();
+	for(int vertex_num=1; vertex_num<num_vertices-1; vertex_num++)
 		intermediateRotation(rotations[vertex_num], material_frames[vertex_num-1], material_frames[vertex_num]);
-	rotations[vertex_num] = end_rot();
+	rotations[num_vertices-1] = end_rot();
 }
 
 /*// parameters have to be of the right size.
@@ -466,19 +465,25 @@ int ThreadConstrained::localVertex(int absolute_vertex_num) {
 
 // Invalidates (sets to -1) the elements of v at indices around i. Indices i are specified by constraintsNums. Indices in constraintsNums have to be in the range of v.
 void invalidateAroundConstraintsNums(vector<int> &v, vector<int> constraintsNums) {
+	if (v.size()<7)
+		cout << "Internal error: invalidateAroundConstraintsNums: vector v is too small" << endl;
 	for (int i=0; i<v.size(); i++)
 		v[i] = i;
 	for (int i=0; i<constraintsNums.size(); i++) {
 		if (constraintsNums[i] == 0) {
-			v[constraintsNums[i]+1] = v[constraintsNums[i]+2] = -1;
+			v[constraintsNums[i]+1] = v[constraintsNums[i]+2] = v[constraintsNums[i]+3] = -1;
 		} else if (constraintsNums[i] == 1) {
-			v[constraintsNums[i]-1] = v[constraintsNums[i]+1] = v[constraintsNums[i]+2] = -1;
+			v[constraintsNums[i]-1] = v[constraintsNums[i]+1] = v[constraintsNums[i]+2] = v[constraintsNums[i]+3] = -1;
+		} else if (constraintsNums[i] == 2) {
+			v[constraintsNums[i]-2] = v[constraintsNums[i]-1] = v[constraintsNums[i]+1] = v[constraintsNums[i]+2] = v[constraintsNums[i]+3] = -1;
 		} else if (constraintsNums[i] == v.size()-1) {
-			v[constraintsNums[i]-2] = v[constraintsNums[i]-1] = -1;
+			v[constraintsNums[i]-3] = v[constraintsNums[i]-2] = v[constraintsNums[i]-1] = -1;
 		} else if (constraintsNums[i] == v.size()-2) {
-			v[constraintsNums[i]-2] = v[constraintsNums[i]-1] = v[constraintsNums[i]+1] = -1;
+			v[constraintsNums[i]-3] = v[constraintsNums[i]-2] = v[constraintsNums[i]-1] = v[constraintsNums[i]+1] = -1;
+		} else if (constraintsNums[i] == v.size()-3) {
+			v[constraintsNums[i]-3] = v[constraintsNums[i]-2] = v[constraintsNums[i]-1] = v[constraintsNums[i]+1] = v[constraintsNums[i]+2] = -1;
 		} else {
-			v[constraintsNums[i]-2] = v[constraintsNums[i]-1] = v[constraintsNums[i]+1] = v[constraintsNums[i]+2] = -1;
+			v[constraintsNums[i]-3] = v[constraintsNums[i]-2] = v[constraintsNums[i]-1] = v[constraintsNums[i]+1] = v[constraintsNums[i]+2] = v[constraintsNums[i]+3] = -1;
 		}
 	}
 }
@@ -629,11 +634,11 @@ int removeSorted (vector<int> &v, int e) {
 	return i;
 }
 
-//Returns the position of the element to be found. Element to find has to be in vector.
+//Returns the position of the element to be found.
 int find(vector<int> v, int e) {
 	int i;
 	for (i=0; i<v.size() && v[i]!=e; i++) {}
 	if (i==v.size())
-		cout << "Internal error: find: element to find is not in vector" << endl;
+		return -1;
 	return i;
 }
