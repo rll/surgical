@@ -594,15 +594,16 @@ void drawStuff (void)
 		  }
 		}
 		if (constrained_or_free[selected_vertex]) {
-	  	drawSphere(thread->position(choose_vertex_num), 2.0, 0.5, 0.0, 0.0);
-	  	drawGrip(all_positions[choose_vertex_num], all_rotations[choose_vertex_num], 0, 0.5, 0.5, 0.5);
+
+	  	drawSphere(thread->position(operable_vertices_num[selected_vertex]), 2.0, 0.5, 0.0, 0.0);
+	  	drawGrip(thread->position(operable_vertices_num[selected_vertex]), 
+	  					 thread->intermediateRotation(operable_vertices_num[selected_vertex]), 0, 0.5, 0.5, 0.5);
 	  } else {
-	  	drawSphere(thread->position(choose_vertex_num), 2.0, 0.0, 0.5, 0.0);
-	  	drawGrip(all_positions[choose_vertex_num], all_rotations[choose_vertex_num], 15, 0.5, 0.5, 0.5);
-	  }
-	  drawAxes(all_positions[choose_vertex_num], all_rotations[choose_vertex_num]);
-	  for(int i=0; i<positions.size(); i++)
-			drawGrip(positions[i], rotations[i], 0, 0.7, 0.7, 0.7);
+	  	drawSphere(thread->position(operable_vertices_num[selected_vertex]), 2.0, 0.0, 0.5, 0.0);
+	  	drawGrip(thread->position(operable_vertices_num[selected_vertex]),
+	  					 thread->intermediateRotation(operable_vertices_num[selected_vertex]), 15, 0.5, 0.5, 0.5);
+	  }	  
+
 	} else {
   	updateThreadPoints();
 		Vector3d new_grip_pos;
@@ -628,10 +629,21 @@ void drawStuff (void)
 	}
 	updateThreadPoints();
   drawThread();
-  
-	
-	for(int vertex_num=0; vertex_num<thread->numVertices(); vertex_num++)
-		//drawAxes(thread->position(vertex_num), (thread->rotation(vertex_num)) * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ()))).transpose());
+
+	updateThreadPoints();
+	for(int i=0; i<positions.size(); i++)
+		drawAxes(i);
+	labelAxes(0);
+	for(int i=0; i<tangents.size(); i++)
+		drawLine(20*tangents[i], positions[i]);
+	//for(int i=0; i<positions.size(); i++)
+		//drawGrip(i, 0, 0.7, 0.7, 0.7);
+	//Matrix3d r;
+	for(int vertex_num=0; vertex_num<thread->numVertices(); vertex_num++) {
+		//r =	AngleAxisd(0.5*M_PI, Vector3d::UnitZ());
+		//drawAxes(thread->position(vertex_num), (thread->intermediateRotation(vertex_num)));
+	}
+
   glPopMatrix ();
   glutSwapBuffers ();
 }
@@ -723,7 +735,7 @@ void drawAxes(int constrained_vertex_num) {
 	glBegin(GL_LINES);
 	glEnable(GL_LINE_SMOOTH);
 	glColor3d(1.0, 0.0, 0.0); //red
-	glVertex3f(0.0, 0.0, 0.0); //x
+	glVertex3f(-10.0, 0.0, 0.0); //x
 	glVertex3f(10.0, 0.0, 0.0);
 	glColor3d(0.0, 1.0, 0.0); //green
 	glVertex3f(0.0, 0.0, 0.0); //y
@@ -745,7 +757,7 @@ void drawAxes(Vector3d pos, Matrix3d rot) {
 	glBegin(GL_LINES);
 	glEnable(GL_LINE_SMOOTH);
 	glColor3d(1.0, 0.0, 0.0); //red
-	glVertex3f(0.0, 0.0, 0.0); //x
+	glVertex3f(-10.0, 0.0, 0.0); //x
 	glVertex3f(10.0, 0.0, 0.0);
 	glColor3d(0.0, 1.0, 0.0); //green
 	glVertex3f(0.0, 0.0, 0.0); //y
@@ -825,7 +837,17 @@ void drawGrip(Vector3d pos, Matrix3d rot, double degrees, float color0, float co
 													 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
 													 pos(0)   , pos(1)   , pos(2)   , 1 };
 	glMultMatrixd(transform);
-	glRotated(-90,0,0,1);
+
+	/*if (constrained_vertex_num==0) {
+		glRotated(90,0,0,1);
+		glRotated(90,0,1,0);
+	} else if (constrained_vertex_num==positions.size()-1) {
+		glRotated(-90,0,0,1);
+		glRotated(90,0,1,0);
+	} else {
+		glRotated(180,1,0,0);
+	}*/
+
 	glColor3f(color0, color1, color2);
 	double grip_handle[4][3] = { {0.0, 9.0, 0.0} , {0.0,11.0, 0.0} , {0.0,19.0, 0.0} ,
 															 {0.0,21.0, 0.0} };
