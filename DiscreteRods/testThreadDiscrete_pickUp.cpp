@@ -246,6 +246,26 @@ void processNormalKeys(unsigned char key, int x, int y) {
   	else
   		rot_angle = -0.05;
    	Vector3d axis = all_rotations[choose_vertex_num].col(1).normalized();
+   	//axis = Vector3d(0,-1,0);
+  	all_rotations[choose_vertex_num] = all_rotations_offset[choose_vertex_num] * all_rotations[choose_vertex_num];
+   	all_rotations_offset[choose_vertex_num] = all_rotations_offset[choose_vertex_num] * (Matrix3d) AngleAxisd(rot_angle * M_PI, axis);
+  	all_rotations[choose_vertex_num] = all_rotations_offset[choose_vertex_num].transpose() * all_rotations[choose_vertex_num];
+  	vector<int> constrained_vertices_nums;
+	  thread->getConstrainedVerticesNums(constrained_vertices_nums);
+	  int location_in_constraint = find(constrained_vertices_nums, choose_vertex_num);
+	  if (location_in_constraint>=0) {
+	  	rotations_offset[location_in_constraint] = all_rotations_offset[choose_vertex_num];
+	  	rotations[location_in_constraint] = all_rotations[choose_vertex_num];
+	  }	  		
+  	glutPostRedisplay();
+  } else if (choose_mode && (key == 'k' || key == 'i')) {
+  	double rot_angle;
+  	if (key == 'k')
+  		rot_angle = 0.05;
+  	else
+  		rot_angle = -0.05;
+   	Vector3d axis = all_rotations[choose_vertex_num].col(2).normalized();
+   	//axis = Vector3d(0,0,-1);
   	all_rotations[choose_vertex_num] = all_rotations_offset[choose_vertex_num] * all_rotations[choose_vertex_num];
    	all_rotations_offset[choose_vertex_num] = all_rotations_offset[choose_vertex_num] * (Matrix3d) AngleAxisd(rot_angle * M_PI, axis);
   	all_rotations[choose_vertex_num] = all_rotations_offset[choose_vertex_num].transpose() * all_rotations[choose_vertex_num];
@@ -949,7 +969,7 @@ void initThread()
   rotations.resize(2);
   //rotations_offset.push_back((Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ()))) * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitX()))));
   //rotations_offset.push_back(Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitX())));
-  rotations_offset.push_back((Matrix3d (AngleAxisd(M_PI, Vector3d::UnitY()))));
+  rotations_offset.push_back( (Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ()))) * ((Matrix3d) AngleAxisd(M_PI, Vector3d(0,-1,0))) );
   rotations_offset.push_back(Matrix3d::Identity());
   updateThreadPoints();
   all_positions.resize(num_vertices);
