@@ -1,12 +1,12 @@
 MACHINE= $(shell uname -s)
-HOSTNAME=-D$(shell uname -n | sed 's/-/_/g')
+HOSTNAME=-D$(shell uname -n | sed 's/-/_/g' | sed 's/\./_/g')
 
 UTILS_DIR = ../utils/
 ifeq ($(MACHINE),Darwin)
-    LIBS = -L/usr/local/lib/x86_64 -L/usr/lib/ -lglut -lgle -lboost_program_options-mt -lgsl -lgslcblas -llshkit 
+    LIBS = -L/usr/lib/ -lglut -lgle -lgsl -lgslcblas -llshkit -L/opt/local/lib/ -lboost_program_options-mt
     COMPILEFLAG=-DMAC
     LDFLAG=$(COMPILEFLAG) -L"/System/Library/Frameworks/OpenGL.framework/Libraries" -L"/System/Library/Frameworks/GLUT.framework" -framework GLUT -framework OpenGL -lGL -lGLU -L/usr/X11R6/lib -L/opt/local/lib -lopencv_core -lopencv_highgui
-    INCLUDES = -I/usr/local/include/ -I $(UTILS_DIR) -I/usr/local/include/eigen2/ -I/usr/include/boost/  -I/usr/local/include/lshkit/ -I/opt/local/include/opencv/  
+    INCLUDES = -I/usr/local/include/ -I $(UTILS_DIR) -I/opt/local/include/eigen2/ -I/opt/local/include/  -I/opt/local/include/lshkit/ -I/opt/local/include/opencv/  
 else
     LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/ -lglut -lgle -llshkit -lgsl -lgslcblas -lboost_program_options-mt 
     COMPILEFLAG=
