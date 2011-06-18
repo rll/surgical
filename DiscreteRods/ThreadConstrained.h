@@ -33,8 +33,8 @@ class ThreadConstrained {
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<Matrix3d> &absolute_material_frames);
 		// parameters have to be of the right size, i.e. threads.size()+1
 		void getConstrainedTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations);
-		// parameters have to be of the right size, i.e. num_vertices.
 		void getAllTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations);
+		void setAllTransforms(vector<Vector3d> positions, vector<Matrix3d> rotations);
 		// parameters have to be of the right size.
 		void getConstrainedNormals(vector<Vector3d> &normals);
 		void getConstrainedVerticesNums(vector<int> &vertices_num);
@@ -57,12 +57,15 @@ class ThreadConstrained {
 		int nearestVertex(Vector3d pos, vector<Vector3d> vertices, vector<int> vertex_exceptions);
 		Vector3d position(int absolute_vertex_num);
 		Matrix3d rotation(int absolute_vertex_num);
+		void setRotOffset(Matrix3d new_rot_offset, int constraint_num);
+		void applyRotOffset(Matrix3d change_rot_offset, int constraint_num);
 
 	private:
 		int num_vertices;
 		vector<Thread*> threads;
 		vector<double> zero_angle;
-		vector<Matrix3d> rot_diff_start, rot_diff_end;
+		vector<Matrix3d> rot_diff;
+		vector<Matrix3d> rot_offset;
     vector<int> constrained_vertices_nums;
 		void intermediateRotation(Matrix3d &inter_rot, Matrix3d end_rot, Matrix3d start_rot);
 		// Splits the thread threads[thread_num] into two threads, which are stored at threads[thread_num] and threads[thread_num+1].  Threads in threads that are stored after thread_num now have a new thread_num which is one unit more than before. The split is done at vertex vertex of thread[thread_num]
