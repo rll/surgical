@@ -118,31 +118,14 @@ void ThreadConstrained::getConstrainedTransforms(vector<Vector3d> &positions, ve
 	int thread_num = 0;
 	threads[thread_num]->get_thread_data(points[thread_num]);
 	positions[thread_num] = (points[thread_num]).front();
-	//rotations[thread_num] = (threads[thread_num]->start_rot()) * rot_diff_start[thread_num].transpose();
-	//rotations[thread_num] = (threads[thread_num]->start_rot()) * (Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ())).transpose()) * rot_diff_start[thread_num].transpose(); last commented
 	rotations[thread_num] = (threads[thread_num]->start_rot()) * rot_offset[constrained_vertices_nums[thread_num]].transpose();
-	
-	//tangents[thread_num] = points[thread_num][1] - points[thread_num][0];
-	//tangents[thread_num] = rotations[thread_num].col(0);
-	//(tangents[thread_num]).normalize();
 	for (thread_num=1; thread_num<threads_size; thread_num++) {
 		threads[thread_num]->get_thread_data(points[thread_num]);
 		positions[thread_num] = (points[thread_num]).front();
-		//rotations[thread_num] = (threads[thread_num]->start_rot()) * rot_diff_start[thread_num].transpose();
-		//rotations[thread_num] = (threads[thread_num]->start_rot()) * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())).transpose()) * rot_diff_start[thread_num].transpose(); last commented
 		rotations[thread_num] = (threads[thread_num]->start_rot()) * rot_offset[constrained_vertices_nums[thread_num]].transpose();
-		
-		//tangents[thread_num] = points[thread_num][1] - points[thread_num-1][points[thread_num-1].size()-2];
-		//tangents[thread_num] = rotations[thread_num].col(0);
-		//(tangents[thread_num]).normalize();
 	}
 	positions[thread_num] = (points[thread_num-1]).back();
-	//rotations[thread_num] = (threads[thread_num-1])->end_rot(); last commented
 	rotations[thread_num] = (threads[thread_num-1])->end_rot() * rot_offset[constrained_vertices_nums[thread_num]].transpose();
-	
-	//tangents[thread_num] = points[thread_num-1][(points[thread_num-1]).size()-1] - points[thread_num-1][(points[thread_num-1]).size()-2];
-	//tangents[thread_num] = rotations[thread_num].col(0);
-	//(tangents[thread_num]).normalize();
 }
 
 void ThreadConstrained::getAllTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations) {
@@ -169,52 +152,6 @@ void ThreadConstrained::setAllTransforms(vector<Vector3d> positions, vector<Matr
 	rot_offset[num_vertices-1] = rotations[num_vertices-1].transpose() * end_rot();
 	rot_offset[num_vertices-1] = (Matrix3d) AngleAxisd(rot_offset[num_vertices-1]); // to fix numerical errors and rot_offset stays orthonormal
 }
-
-/*// parameters have to be of the right size.
-void ThreadConstrained::getConstrainedNormals(vector<Vector3d> &normals) {
-	if (normals.size()!=(threads.size()+1))
-    cout << "Internal error: getConstrainedTransforms: at least one of the vector parameters is of the wrong size" << endl;
-	vector<vector<Vector3d> > points(threads.size());	
-	Vector3d start_tangent, end_tangent, second_tangent;
-	for (int thread_num=0; thread_num<threads.size(); thread_num++) {
-		threads[thread_num]->get_thread_data(points[thread_num]);
-		if (thread_num==0) {
-			start_tangent = points[thread_num][1] - points[thread_num][0];
-			second_tangent = points[thread_num][2] - points[thread_num][1];
-			normals[thread_num] = start_tangent.cross(start_tangent.cross(second_tangent));
-		} else if (thread_num == threads.size()) {
-			end_tangent = points[thread_num-1][points[thread_num-1].size()-1] - points[thread_num-1][points[thread_num-1].size()-2];
-			second_tangent = points[thread_num-1][points[thread_num-1].size()-2] - points[thread_num-1][points[thread_num-1].size()-1];
-			normals[thread_num] = end_tangent.cross(end_tangent.cross(second_tangent));
-		} else {
-			end_tangent = points[thread_num-1][points[thread_num-1].size()-1] - points[thread_num-1][points[thread_num-1].size()-2];
-			start_tangent = points[thread_num][1] - points[thread_num][0];
-			normals[thread_num] = end_tangent.cross(start_tangent);
-		}
-		normals[thread_num].normalize();
-	}
-}
-
-void ThreadConstrained::getNormals(vector<Vector3d> &normals) {
-	normals.resize(num_vertices);
-	vector<Vector3d> vertices;
-	this->get_thread_data(vertices);
-	Vector3d start_tangent, end_tangent, second_tangent;
-	start_tangent = vertices[1] - vertices[0];
-	second_tangent = vertices[2] - vertices[1];
-	normals[0] = start_tangent.cross(start_tangent.cross(second_tangent));
-	normals[0].normalize();
-	for (vertex_num=1; vertex_num<vertices.size()-1; vertex_num++) {
-		end_tangent = vertices[vertex_num] - vertices[vertex_num-1];
-		start_tangent = vertices[vertex_num+1] - vertices[vertex_num];
-		normals[vertex_num] = end_tangent.cross(start_tangent);
-		normals[vertex_num].normalize();
-	}
-	end_tangent = vertices[vertices.size()-1] - vertices[vertices.size()-2];
-	second_tangent = vertices[vertices.size()-2] - vertices[vertices.size()-3];
-	normals[vertices.size()-1] = end_tangent.cross(end_tangent.cross(second_tangent));
-	normals[vertices.size()-1].normalize();
-}*/
 
 void ThreadConstrained::getConstrainedVerticesNums(vector<int> &vertices_nums) {
 	vertices_nums = constrained_vertices_nums;
@@ -278,7 +215,7 @@ Vector3d ThreadConstrained::end_pos() {
 }
 
 Matrix3d ThreadConstrained::start_rot() {
-	return (threads.front())->start_rot();// * (Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ())));
+	return (threads.front())->start_rot();
 }
 
 Matrix3d ThreadConstrained::end_rot() {
@@ -308,25 +245,9 @@ void ThreadConstrained::updateConstraints (vector<Vector3d> poss, vector<Matrix3
 	for (int i=0; i<threads.size(); i++) {
 		Matrix3d new_start_rot = rots[i]*rot_offset[constrained_vertices_nums[i]];
 		Matrix3d new_end_rot = rots[i+1]*rot_offset[constrained_vertices_nums[i+1]]*rot_diff[i+1];
-		/*if (i!=0)
-			new_start_rot = new_start_rot * (Matrix3d (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
-		else
-			new_start_rot = new_start_rot * (Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ())));
-		if (i!=threads.size()-1)
-			new_end_rot = new_end_rot * (Matrix3d (AngleAxisd(-0.5*M_PI, Vector3d::UnitZ())));*/			
 		zero_angle[i] += angle_mismatch(rots[i], threads[i]->start_rot());
 	  threads[i]->set_constraints_check(poss[i], new_start_rot, poss[i+1], new_end_rot);
 	}
-	//cout << "\t\tupdateConstraints is being called" << endl;
-	//cout << zero_angle[0] << "\t\t" << zero_angle[1] << endl;
-}
-
-void ThreadConstrained::printConstraints () {
-	cout << "printing constraints: " << endl;
-	cout << threads[0]->start_rot() << endl;
-	cout << threads[0]->end_rot() << endl;
-	//cout << threads[1]->start_rot() << endl;
-	//cout << threads[1]->end_rot() << endl;
 }
 
 void ThreadConstrained::addConstraint (int absolute_vertex_num) {
@@ -361,21 +282,6 @@ Vector3d ThreadConstrained::position(int absolute_vertex_num) {
 	return positions[absolute_vertex_num];
 }
 
-/*Matrix3d ThreadConstrained::rotation(int absolute_vertex_num) {
-	if (absolute_vertex_num == 0) {
-		return start_rot();// * (Matrix3d (AngleAxisd(M_PI, Vector3d::UnitZ())));
-	} else if (absolute_vertex_num == num_vertices-1) {
-		return end_rot();
-	} else {
-		vector<Vector3d> absolute_points;
-		vector<Matrix3d> absolute_material_frames;
-		get_thread_data(absolute_points, absolute_material_frames);
-		Matrix3d inter_rot;
-		intermediateRotation(inter_rot, absolute_material_frames[absolute_vertex_num-1], absolute_material_frames[absolute_vertex_num]);
-		return inter_rot; // * (Matrix3d (AngleAxisd(-0.5*M_PI, Vector3d::UnitZ())));
-	}
-}*/
-
 Matrix3d ThreadConstrained::rotation(int absolute_vertex_num) {
 	vector<Vector3d> positions;
 	vector<Matrix3d> material_frames;
@@ -389,14 +295,6 @@ Matrix3d ThreadConstrained::rotation(int absolute_vertex_num) {
 		vertex_start_rot = material_frames[absolute_vertex_num];
 	}
 	return vertex_start_rot * rot_offset[absolute_vertex_num].transpose();
-}
-
-void ThreadConstrained::setRotOffset(Matrix3d new_rot_offset, int constraint_num) {
-	rot_offset[constraint_num] = new_rot_offset;
-}
-
-void ThreadConstrained::applyRotOffset(Matrix3d change_rot_offset, int constraint_num) {
-	rot_offset[constraint_num] =  rot_offset[constraint_num] * change_rot_offset;
 }
 
 void ThreadConstrained::intermediateRotation(Matrix3d &inter_rot, Matrix3d end_rot, Matrix3d start_rot) {

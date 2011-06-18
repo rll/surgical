@@ -50,15 +50,12 @@ class ThreadConstrained {
 		void set_coeffs_normalized(const Matrix2d& bend_coeff, double twist_coeff, double grav_coeff);
 		void minimize_energy();
 		void updateConstraints (vector<Vector3d> poss, vector<Matrix3d> rots);
-		void printConstraints();
 		void addConstraint (int absolute_vertex_num);
 		void removeConstraint (int absolute_vertex_num);
 		// Returns the number of the vertex that is nearest to pos. The chosen vertex have to be in vertices but not in vertex_exception.
 		int nearestVertex(Vector3d pos, vector<Vector3d> vertices, vector<int> vertex_exceptions);
 		Vector3d position(int absolute_vertex_num);
 		Matrix3d rotation(int absolute_vertex_num);
-		void setRotOffset(Matrix3d new_rot_offset, int constraint_num);
-		void applyRotOffset(Matrix3d change_rot_offset, int constraint_num);
 
 	private:
 		int num_vertices;
