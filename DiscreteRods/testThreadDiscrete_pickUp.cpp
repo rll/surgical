@@ -38,6 +38,7 @@ void labelAxes(int constrained_vertex_num);
 void drawThread();
 void drawGrip(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2);
 void drawEndEffector(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2);
+void drawHapticEndEffector(int device_id, double degrees, float color0, float color1, float color2);
 void drawSphere(Vector3d position, float radius, float color0, float color1, float color2);
 void drawCursor(int device_id, float color);
 void initThread();
@@ -457,7 +458,7 @@ int main (int argc, char * argv[])
   glutMouseFunc (processMouse);
   glutKeyboardFunc(processNormalKeys);
   glutKeyboardUpFunc(processKeyUp);
-  //glutTimerFunc(100, processHapticDevice, 0);
+  glutTimerFunc(100, processHapticDevice, 0);
 
 	/* create popup menu */
 	glutCreateMenu (glutMenu);
@@ -475,10 +476,9 @@ int main (int argc, char * argv[])
   zero_location = Vector3d::Zero(); //points[0];
   zero_angle = 0.0;
 
-	//connectionInit();
+	connectionInit();
 
   glutMainLoop ();
-	//   return 0;             /* ANSI C requires main to return int. */
 }
 
 void drawStuff (void)
@@ -493,8 +493,8 @@ void drawStuff (void)
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
   
-  //drawCursor(0, 1.0);
-  //drawCursor(1, 0.5);
+  drawHapticEndEffector(0, start_haptics_mode ? 0 : 15, 0.7, 0.7, 0.7);
+  drawHapticEndEffector(1, end_haptics_mode ? 0 : 15, 0.7, 0.7, 0.7);
 	
   //thread->getConstrainedTransforms(positions, rotations);
   
@@ -745,6 +745,46 @@ void drawGrip(Vector3d pos, Matrix3d rot, double degrees, float color0, float co
 															{0.0, 3.0,-5.0} , {0.0, 6.0,-5.0} , {0.0,11.0, 0.0} ,
 															{0.0,13.0, 0.0} };
 	glePolyCylinder(8, grip_side1, NULL, 1);
+	glPopMatrix();
+}
+
+void drawHapticEndEffector(int device_id, double degrees, float color0, float color1, float color2) {
+	glPushMatrix();
+	if (device_id) {
+  	glMultMatrixd(end_proxyxform);
+  } else {
+  	glMultMatrixd(start_proxyxform);
+  }
+	glRotated(90,1,0,0);
+	glColor3f(color0, color1, color2);
+	
+	int pieces = 6;
+	double h = 1.5;
+	double start = -3;
+	double handle_r = 1.2;
+	double end = ((double) pieces)*h + start;
+	glTranslated(0,-end-30,0);
+	double grip_handle[4][3] = { {0.0, end-1.0, 0.0} , {0.0, end, 0.0} , {0.0, end+30.0, 0.0} ,
+															 {0.0, end+31.0, 0.0} };
+	glePolyCylinder(4, grip_handle, NULL, handle_r);
+	
+	glTranslatef(0.0, end, 0.0);
+	glRotatef(-degrees, 1.0, 0.0, 0.0);
+	glTranslatef(0.0, -end, 0.0);
+	for (int piece=0; piece<pieces; piece++) {
+		double r = 0.5+((double) piece)*((0.8*handle_r)-0.5)/((double) pieces-1);
+		gleDouble grip_tip[4][3] = { {0.0, start+((double) piece)*h-1.0, r} , {0.0, start+((double) piece)*h, r} , {0.0, start+((double) piece+1)*h, r} , {0.0, start+((double) piece+1)*h+1.0, r} };
+ 		glePolyCylinder(4, grip_tip, NULL, r);
+	}
+	
+	glTranslatef(0.0, end, 0.0);
+	glRotatef(2*degrees, 1.0, 0.0, 0.0);
+	glTranslatef(0.0, -end, 0.0);
+	for (int piece=0; piece<pieces; piece++) {
+		double r = 0.5+((double) piece)*((0.8*handle_r)-0.5)/((double) pieces-1);
+		gleDouble grip_tip[4][3] = { {0.0, start+((double) piece)*h-1.0, -r} , {0.0, start+((double) piece)*h, -r} , {0.0, start+((double) piece+1)*h, -r} , {0.0, start+((double) piece+1)*h+1.0, -r} };
+ 		glePolyCylinder(4, grip_tip, NULL, r);
+	}
 	glPopMatrix();
 }
 
