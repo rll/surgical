@@ -37,7 +37,7 @@ int main(int argc, char** argv)
           //"./suture_sets/set3/suture1_1-"); 
   //_captures[0]->setExposure(4900);
   //_captures[0]->setExposure(22000);
-  _captures[0]->setExposure(5000);
+  _captures[0]->setExposure(10000);
   
 
   _captures[1] = new Capture(1, //id
@@ -49,7 +49,7 @@ int main(int argc, char** argv)
           //"./suture_sets/set3/suture1_2-"); 
   //_captures[1]->setExposure(3000);
   //_captures[1]->setExposure(16000);
-  _captures[1]->setExposure(3300);
+  _captures[1]->setExposure(10000);
 
   _captures[2] = new Capture(2, //id
           _names[2].c_str(),// cam name
@@ -60,7 +60,7 @@ int main(int argc, char** argv)
           //"./suture_sets/set3/suture1_3-"); 
   //_captures[2]->setExposure(4000);
   //_captures[2]->setExposure(18000);
-  _captures[2]->setExposure(3600);
+  _captures[2]->setExposure(10000);
 
   /*namedWindow(_names[0], CV_WINDOW_AUTOSIZE);
   namedWindow(_names[1], CV_WINDOW_AUTOSIZE);

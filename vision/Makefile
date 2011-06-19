@@ -15,9 +15,10 @@ DEBUG = -ggdb
 
 #target : testCanny testCapture example_capture_3cam calibrate_robots test_point_distances PositionsOnRequest PositionsOnRequest2 threadStereo
 
-#target: capture_3cam_continuous capture_3cam_continuous_bytesOnly imFile_to_ims read_timed_comments threadStereoReal
+target: capture_3cam_continuous capture_3cam_continuous_bytesOnly
+	#imFile_to_ims read_timed_comments threadStereoReal
 #target: testCapture
-target: testCheckerboardFinder
+#target: testCheckerboardFinder
 
 testCheckerboardFinder: testCheckerboardFinder.cpp checkerboard_data_vis.o capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o
 	$(LD) $(INCLUDES) $(DEBUG) -o testCheckerboardFinder testCheckerboardFinder.cpp checkerboard_data_vis.o capture_gige2.o utils2.o clock.o CannyOrient.o ThreeCam.o StereoOnClicks2.o $(LIBS) 

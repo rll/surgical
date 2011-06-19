@@ -14,9 +14,8 @@ You can uncomment the viewer if you want to view the image stream.
   <node name="prosilica_driver1" pkg="prosilica_camera" type="prosilica_node" output="screen">
     <param name="ip_address" type="str" value="169.254.100.2"/>
     <param name="trigger_mode" type="str" value="streaming"/>
-    <param name="width" type="int" value="640"/>
-    <param name="height" type="int" value="480"/>
-    <remap from="camera" to="prosilica1" />
+    <param name="frame_id" type="str" value="prosilica_left_frame"/>
+    <remap from="camera" to="prosilica/left" />
     <rosparam command="load" file="$(find prosilica_camera)/cam_settings.yaml" />
   </node>
 
@@ -24,9 +23,8 @@ You can uncomment the viewer if you want to view the image stream.
   <node name="prosilica_driver2" pkg="prosilica_camera" type="prosilica_node" output="screen">
     <param name="ip_address" type="str" value="169.254.101.2"/>
     <param name="trigger_mode" type="str" value="streaming"/>
-    <param name="width" type="int" value="640"/>
-    <param name="height" type="int" value="480"/>
-    <remap from="camera" to="prosilica2" />
+    <param name="frame_id" type="str" value="prosilica_right_frame"/>
+    <remap from="camera" to="prosilica/right" />
     <rosparam command="load" file="$(find prosilica_camera)/cam_settings.yaml" />
   </node>
 
@@ -34,11 +32,15 @@ You can uncomment the viewer if you want to view the image stream.
   <node name="prosilica_driver3" pkg="prosilica_camera" type="prosilica_node" output="screen">
     <param name="ip_address" type="str" value="169.254.102.2"/>
     <param name="trigger_mode" type="str" value="streaming"/>
-    <param name="width" type="int" value="640"/>
-    <param name="height" type="int" value="480"/>
-    <remap from="camera" to="prosilica3" />
+    <param name="frame_id" type="str" value="prosilica_top_frame"/>
+    <remap from="camera" to="prosilica/top" />
     <rosparam command="load" file="$(find prosilica_camera)/cam_settings.yaml" />
   </node>
+
+  <!-- For camera pose calibration -->
+  <include file="$(find camera_pose_calibration)/blocks/calibration_tf_publisher.launch">
+    <arg name="cache_file" value="/tmp/camera_pose_calibration_cache.bag" />
+  </include>
 
     <!--
     Uncomment below if you want to view the image stream on a monochrome
