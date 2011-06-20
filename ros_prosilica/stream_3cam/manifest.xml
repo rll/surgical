@@ -1,0 +1,17 @@
+<package>
+  <description brief="stream_3cam">
+
+     stream_3cam
+
+  </description>
+  <author>ziang</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/stream_3cam</url>
+  <depend package="image_transport"/>
+  <depend package="opencv2"/>
+  <depend package="cv_bridge"/>
+
+</package>
+
+
