@@ -2,6 +2,7 @@
 *.swp
 *.log
 *.pyc
+README.html
 *~
 /vision/captures/*.tif
 ThreadVision_DiscreteRods/threadStereo
