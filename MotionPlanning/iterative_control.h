@@ -68,6 +68,7 @@ class Iterative_Control
     void resize_controller(int num_threads, int num_vertices);
 
     bool iterative_control_opt(vector<Thread*>& trajectory, vector<VectorXd>& controls, int num_opts = 5);
+    bool iterative_control_opt(vector<Thread*>& trajectory, vector<VectorXd>& controls, vector<Thread*>& sqp_debug_data, int num_opts = 5);
     void AnswerFile_To_Traj(const char* filename, vector<Thread*>& trajectory, vector<VectorXd>& control);
     void AllFiles_To_Traj(int num_iters, vector< vector<Thread*> >& trajectory, vector< vector<VectorXd> >& control);
 

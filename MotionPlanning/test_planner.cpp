@@ -277,15 +277,30 @@ void DimensionReductionBestPath(Thread* start, Thread* target, int n, vector<Thr
 void initializeSQP() {  
   readGoalThreadFromFile(1);
   readGoalThreadFromFile(2);
-  vector<Thread*> initialTraj; 
+  vector<Thread*> interpTraj; 
   interpolatePointsTrajectory(glThreads[planThread]->getThread(),
                               glThreads[endThread]->getThread(),
-                              initialTraj);
-
+                              interpTraj);
+  
+  vector<Thread*> initialTraj;
+  linearizeViaTrajectory(interpTraj, initialTraj);
+ 
+  initialTraj[initialTraj.size()-1] = initialTraj[initialTraj.size()-2];
+  vector<Thread*> SQPTraj; 
+  vector<VectorXd> SQPControls;
+  vector<Thread*> sqp_debug_data;
+  string namestring = "sqp_debug"; 
+  solveSQP(initialTraj, SQPTraj, SQPControls, sqp_debug_data, namestring.c_str());   
+  
+  vector<Thread*> OLCTraj; 
+  openLoopController(SQPTraj, SQPControls, OLCTraj); 
   vector<vector<Thread*> > visualizationData;
-  visualizationData.push_back(initialTraj);
-  setThreads(visualizationData);
+  //visualizationData.push_back(initialTraj);
+  visualizationData.push_back(sqp_debug_data);
 
+  //visualizationData.push_back(SQPTraj);
+  visualizationData.push_back(OLCTraj); 
+  setThreads(visualizationData);
 
 }
 
