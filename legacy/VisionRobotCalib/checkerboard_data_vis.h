@@ -15,9 +15,9 @@
 #include <iostream>
 
 
-#define CHECKERS_PER_ROW 7
-#define CHECKERS_PER_COL 6
-#define SIZE_EACH_CHECKER 7.1
+#define CHECKERS_PER_ROW 14
+#define CHECKERS_PER_COL 16
+#define SIZE_EACH_CHECKER 6.6
 
 USING_PART_OF_NAMESPACE_EIGEN
 
