@@ -36,9 +36,10 @@ void drawAxes(int constrained_vertex_num);
 void drawAxes(Vector3d pos, Matrix3d rot);
 void labelAxes(int constrained_vertex_num);
 void drawThread();
+void drawCylinder(Vector3d pos, Matrix3d rot, double h, double r, float color0, float color1, float color2);
 void drawGrip(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2);
 void drawEndEffector(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2);
-void drawHapticEndEffector(int device_id, double degrees, float color0, float color1, float color2);
+//void drawHapticEndEffector(int device_id, double degrees, float color0, float color1, float color2);
 void drawSphere(Vector3d position, float radius, float color0, float color1, float color2);
 void drawCursor(int device_id, float color);
 void initThread();
@@ -59,6 +60,7 @@ void pv(vector<int> v) {			// for debugging purposes. to be removed.
 #define MOVE_POS_CONST 1.0
 #define MOVE_TAN_CONST 0.2
 #define ROTATE_TAN_CONST 0.2
+#define HAPTICS true
 
 enum key_code {NONE, MOVEPOS, MOVETAN, ROTATETAN};
 
@@ -97,17 +99,19 @@ static double gCursorScale = 6;
 static GLuint gCursorDisplayList = 0;
 double start_proxyxform[16] = {-0.1018,-0.9641,0.2454,0.0000,0.0806,0.2379,0.9680,0.0000,-0.9915,0.1183,0.0534,0.0000,-0.5611,-0.1957,-0.8401,1.0000};
 double end_proxyxform[16] = {0.5982,0.7791,-0.1877,0.0000,0.3575,-0.0498,0.9326,0.0000,0.7172,-0.6250,-0.3083,0.0000,1.1068,0.2221,-0.7281,1.0000};
-Vector3d end_proxy_pos;
-Vector3d start_proxy_pos;
-Matrix3d end_proxy_rot;
-Matrix3d start_proxy_rot;
-bool start_haptics_mode = false, end_haptics_mode = false;
-bool start_proxybutton = true, end_proxybutton = true;
-bool last_start_proxybutton = true, last_end_proxybutton = true;
+Vector3d start_proxy_pos, end_proxy_pos, start_tip_pos, end_tip_pos;
+Matrix3d start_proxy_rot, end_proxy_rot;
+bool start_open = false, end_open = false, start_attach = false, end_attach = false;
+bool last_start_open = false, last_end_open = false;
+bool start_proxybutton[2] = {true, true}, end_proxybutton[2] = {true, true};
+bool last_start_proxybutton[2] = {true, true}, last_end_proxybutton[2] = {true, true};
 bool change_constraint = false;
 bool choose_mode = false;
 int toggle = 0, selected_vertex_num = 0;
 vector<int> constrained_vertices_nums;
+int start_haptic_vertex = -1, end_haptic_vertex = -1;
+Vector3d extra_end_effectors_pos = Vector3d(-40.0, -10.0, 0.0);
+Matrix3d extra_end_effectors_rot = (Matrix3d) AngleAxisd(0.5*M_PI, Vector3d::UnitZ());
 
 Matrix3d rot_ztox, rot_ztonegx;
 
@@ -280,8 +284,8 @@ void processNormalKeys(unsigned char key, int x, int y) {
     }
   } else if ( key == 'h') {
     vector<int> vi;
-    thread->getFreeVerticesNums(vi);
-    cout << "getFreeVerticesNums: vertices_num: " << vi.size() << endl;
+    thread->getOperableFreeVertices(vi);
+    cout << "getOperableFreeVertices: vertices_num: " << vi.size() << endl;
     for (int i=0; i<(vi.size()+4)/5; i++) {
       for (int j=0; j<5 && (i*5+j)<vi.size(); j++) {
         printf("%d:%d\t",i*5+j,vi[i*5+j]);
@@ -374,17 +378,28 @@ void processKeyUp(unsigned char key, int x, int y)
 }
 
 void processStartProxybutton() {
-  if (!last_start_proxybutton && start_proxybutton) {
-      start_haptics_mode = !start_haptics_mode;
+  last_start_open = start_open;
+  if (!last_start_proxybutton[0] && start_proxybutton[0]) {
+      start_open = !start_open;
   }
-  last_start_proxybutton = start_proxybutton;
+  last_start_proxybutton[0] = start_proxybutton[0];
+  double angle = 2*asin((start_proxy_rot.col(0) - extra_end_effectors_rot.col(0)).norm()/2);
+  if (!start_proxybutton[1] && ((extra_end_effectors_pos - start_proxy_pos).norm() < 4.0) && angle < 0.25*M_PI)
+  	start_attach = true;
+  else if (!start_proxybutton[1] && start_attach)
+  	start_attach = false;
 }
 
 void processEndProxybutton() {
-  if (!last_end_proxybutton && end_proxybutton) {
-      end_haptics_mode = !end_haptics_mode;
+  if (!last_end_proxybutton[0] && end_proxybutton[0]) {
+      end_open = !end_open;
   }
-  last_end_proxybutton = end_proxybutton;
+  last_end_proxybutton[0] = end_proxybutton[0];
+  double angle = 2*asin((end_proxy_rot.col(0) - extra_end_effectors_rot.col(0)).norm()/2);
+  if (!end_proxybutton[1] && ((extra_end_effectors_pos - end_proxy_pos).norm() < 4.0) && angle < 0.25*M_PI)
+  	end_attach = true;
+  else if (!end_proxybutton[1] && end_attach)
+  	end_attach = false;
 }            
 
 void processHapticDevice(int value)
@@ -413,7 +428,7 @@ void processHapticDevice(int value)
       }
   }
       
-  start_proxy_rot = start_proxy_rot * rot_ztox;
+  start_proxy_rot = start_proxy_rot * rot_ztonegx;
   end_proxy_rot = end_proxy_rot * rot_ztonegx;
   
   processStartProxybutton();
@@ -458,8 +473,9 @@ int main (int argc, char * argv[])
   glutMouseFunc (processMouse);
   glutKeyboardFunc(processNormalKeys);
   glutKeyboardUpFunc(processKeyUp);
-  glutTimerFunc(100, processHapticDevice, 0);
-
+  if (HAPTICS)
+  	glutTimerFunc(100, processHapticDevice, 0);
+	
 	/* create popup menu */
 	glutCreateMenu (glutMenu);
 	glutAddMenuEntry ("Exit", 99);
@@ -476,7 +492,8 @@ int main (int argc, char * argv[])
   zero_location = Vector3d::Zero(); //points[0];
   zero_angle = 0.0;
 
-	connectionInit();
+	if (HAPTICS)
+		connectionInit();
 
   glutMainLoop ();
 }
@@ -493,9 +510,6 @@ void drawStuff (void)
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
   
-  drawHapticEndEffector(0, start_haptics_mode ? 0 : 15, 0.7, 0.7, 0.7);
-  drawHapticEndEffector(1, end_haptics_mode ? 0 : 15, 0.7, 0.7, 0.7);
-	
   //thread->getConstrainedTransforms(positions, rotations);
   
   if (choose_mode) {
@@ -550,20 +564,72 @@ void drawStuff (void)
 	  	drawEndEffector(all_positions[selected_vertex_num], all_rotations[selected_vertex_num], 15, 0.4, 0.4, 0.4);
 	  }
 	} else {
-  	toggle = (toggle+constrained_vertices_nums.size())%constrained_vertices_nums.size();
+
+  	if (HAPTICS) {
+  		start_tip_pos = start_proxy_pos + start_proxy_rot*Vector3d(-12,0,0);
+  		end_tip_pos = end_proxy_pos + end_proxy_rot*Vector3d(-12,0,0);
+  		
+			drawCylinder(start_proxy_pos, start_proxy_rot, 3, 2, start_open?0.0:0.5, start_open?0.5:0.0, 0.0);
+		  //if (start_attach) {
+		  if (start_haptic_vertex<0)
+		  	drawEndEffector(start_tip_pos, start_proxy_rot, start_open ? 15 : 0, 0.7, 0.7, 0.7);
+		  //}
+		  drawCylinder(end_proxy_pos, end_proxy_rot, 3, 2, end_open?0.0:0.5, end_open?0.5:0.0, 0.0);
+		  //if (end_attach) {
+		  	drawEndEffector(end_tip_pos, end_proxy_rot, end_open ? 15 : 0, 0.7, 0.7, 0.7);
+		  //}
+		  
+		  //drawSphere(start_proxy_pos + start_proxy_rot*Vector3d(-36,0,0), 1.4, 0.5, 0.0, 0.0);
+		  
+		  int nearest_vertex = thread->nearestVertex(start_tip_pos);
+		  if (((thread->position(nearest_vertex) - start_tip_pos).norm() < 4.0) && !start_open && last_start_open) {
+		  	//thread->getAllTransforms(all_positions, all_rotations);
+		  	positions.resize(positions.size()+1);
+		    rotations.resize(rotations.size()+1);
+		    thread->addConstraint(nearest_vertex);
+		    start_haptic_vertex = nearest_vertex;
+				thread->getConstrainedVerticesNums(constrained_vertices_nums);
+		    thread->getConstrainedTransforms(positions, rotations);
+		    positions[find(constrained_vertices_nums, start_haptic_vertex)] = start_tip_pos;
+		    rotations[find(constrained_vertices_nums, start_haptic_vertex)] = start_proxy_rot;
+		    thread->setConstrainedTransforms(positions, rotations);
+		    thread->getConstrainedTransforms(positions, rotations);
+		    //all_positions[start_haptic_vertex] = start_tip_pos;
+		    //all_rotations[start_haptic_vertex] = start_proxy_rot;
+   		  //thread->setAllTransforms(all_positions, all_rotations);
+			  //thread->getAllTransforms(all_positions, all_rotations);
+		  } else if (start_haptic_vertex>=0 && start_open && !last_start_open) {
+		  	positions.resize(positions.size()-1);
+		    rotations.resize(rotations.size()-1);
+		    thread->removeConstraint(start_haptic_vertex);
+		    start_haptic_vertex = -1;
+				thread->getConstrainedVerticesNums(constrained_vertices_nums);
+				thread->getConstrainedTransforms(positions, rotations);
+		  }		  
+		}
+		toggle = (toggle+constrained_vertices_nums.size())%constrained_vertices_nums.size();
 		
   	thread->getConstrainedTransforms(positions, rotations);
 		vector<Vector3d> positionConstraints = positions;
 		vector<Matrix3d> rotationConstraints = rotations;
 		mouseTransform(positionConstraints[toggle], rotationConstraints[toggle], positions, rotations, toggle);
+		if (HAPTICS) {
+		  if (start_haptic_vertex >=0) {
+		  	positionConstraints[find(constrained_vertices_nums, start_haptic_vertex)] = start_tip_pos;
+		  	rotationConstraints[find(constrained_vertices_nums, start_haptic_vertex)] = start_proxy_rot;
+		  }
+		}
 		thread->updateConstraints(positionConstraints, rotationConstraints);
 		
 		thread->getConstrainedTransforms(positions, rotations);
 		for(int i=0; i<positions.size(); i++)
 			drawEndEffector(positions[i], rotations[i], 0, 0.7, 0.7, 0.7);
 		drawEndEffector(positions[toggle], rotations[toggle], 0, 0.4, 0.4, 0.4);
+		
 	}
 	drawThread();
+	drawCylinder(extra_end_effectors_pos+Vector3d(0.0, -10.0, 0.0), extra_end_effectors_rot, 30, 8, 0.0, 1.0, 0.0);
+  drawEndEffector(extra_end_effectors_pos + Vector3d(0.0, -36.0, 0.0), extra_end_effectors_rot, 0, 0.7, 0.7, 0.7);
   
   glPopMatrix ();
   glutSwapBuffers ();
@@ -671,6 +737,20 @@ void drawThread() {
   glPopMatrix ();
 }
 
+void drawCylinder(Vector3d pos, Matrix3d rot, double h, double r, float color0, float color1, float color2) {
+	glPushMatrix();
+	double transform[16] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
+													 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
+													 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
+													 pos(0)   , pos(1)   , pos(2)   , 1 };
+	glMultMatrixd(transform);
+	glColor3f(color0, color1, color2);
+	double cylinder[4][3] = { {-h-1.0, 0.0, 0.0} , {-h, 0.0, 0.0} , {0.0, 0.0, 0.0} ,
+															 {1.0, 0.0, 0.0} };
+	glePolyCylinder(4, cylinder, NULL, r);
+	glPopMatrix();
+}
+
 void drawEndEffector(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2) {
 	glPushMatrix();
 	double transform[16] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
@@ -678,7 +758,6 @@ void drawEndEffector(Vector3d pos, Matrix3d rot, double degrees, float color0, f
 													 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
 													 pos(0)   , pos(1)   , pos(2)   , 1 };
 	glMultMatrixd(transform);
-	glRotated(-90,0,0,1);
 	glColor3f(color0, color1, color2);
 		
 	int pieces = 6;
@@ -686,30 +765,69 @@ void drawEndEffector(Vector3d pos, Matrix3d rot, double degrees, float color0, f
 	double start = -3;
 	double handle_r = 1.2;
 	double end = ((double) pieces)*h + start;
-	
-	double grip_handle[4][3] = { {0.0, end-1.0, 0.0} , {0.0, end, 0.0} , {0.0, end+30.0, 0.0} ,
-															 {0.0, end+31.0, 0.0} };
+	double grip_handle[4][3] = { {end-1.0, 0.0, 0.0} , {end, 0.0, 0.0} , {end+30.0, 0.0, 0.0} ,
+															 {end+31.0, 0.0, 0.0} };
 	glePolyCylinder(4, grip_handle, NULL, handle_r);
 	
-	glTranslatef(0.0, end, 0.0);
-	glRotatef(-degrees, 1.0, 0.0, 0.0);
-	glTranslatef(0.0, -end, 0.0);
+	glTranslatef(end, 0.0, 0.0);
+	glRotatef(-degrees, 0.0, 0.0, 1.0);
+	glTranslatef(-end, 0.0, 0.0);
 	for (int piece=0; piece<pieces; piece++) {
 		double r = 0.5+((double) piece)*((0.8*handle_r)-0.5)/((double) pieces-1);
-		gleDouble grip_tip[4][3] = { {0.0, start+((double) piece)*h-1.0, r} , {0.0, start+((double) piece)*h, r} , {0.0, start+((double) piece+1)*h, r} , {0.0, start+((double) piece+1)*h+1.0, r} };
+		gleDouble grip_tip[4][3] = { {start+((double) piece)*h-1.0, r, 0.0} , {start+((double) piece)*h, r, 0.0} , {start+((double) piece+1)*h, r, 0.0} , {start+((double) piece+1)*h+1.0, r, 0.0} };
  		glePolyCylinder(4, grip_tip, NULL, r);
 	}
 	
-	glTranslatef(0.0, end, 0.0);
-	glRotatef(2*degrees, 1.0, 0.0, 0.0);
-	glTranslatef(0.0, -end, 0.0);
+	glTranslatef(end, 0.0, 0.0);
+	glRotatef(2*degrees, 0.0, 0.0, 1.0);
+	glTranslatef(-end, 0.0, 0.0);
 	for (int piece=0; piece<pieces; piece++) {
 		double r = 0.5+((double) piece)*((0.8*handle_r)-0.5)/((double) pieces-1);
-		gleDouble grip_tip[4][3] = { {0.0, start+((double) piece)*h-1.0, -r} , {0.0, start+((double) piece)*h, -r} , {0.0, start+((double) piece+1)*h, -r} , {0.0, start+((double) piece+1)*h+1.0, -r} };
+		gleDouble grip_tip[4][3] = { {start+((double) piece)*h-1.0, -r, 0.0} , {start+((double) piece)*h, -r, 0.0} , {start+((double) piece+1)*h, -r, 0.0} , {start+((double) piece+1)*h+1.0, -r, 0.0} };
  		glePolyCylinder(4, grip_tip, NULL, r);
 	}
 	glPopMatrix();
 }
+
+/*void drawHapticEndEffector(int device_id, double degrees, float color0, float color1, float color2) {
+	glPushMatrix();
+	if (device_id) {
+  	glMultMatrixd(end_proxyxform);
+  } else {
+  	glMultMatrixd(start_proxyxform);
+  }
+	glRotated(-90,0,1,0);
+	glColor3f(color0, color1, color2);
+	
+	int pieces = 6;
+	double h = 1.5;
+	double start = -3;
+	double handle_r = 1.2;
+	double end = ((double) pieces)*h + start;
+	glTranslated(-end-30,0,0);
+	double grip_handle[4][3] = { {end-1.0, 0.0, 0.0} , {end, 0.0, 0.0} , {end+30.0, 0.0, 0.0} ,
+															 {end+31.0, 0.0, 0.0} };
+	glePolyCylinder(4, grip_handle, NULL, handle_r);
+	
+	glTranslatef(end, 0.0, 0.0);
+	glRotatef(-degrees, 0.0, 0.0, 1.0);
+	glTranslatef(-end, 0.0, 0.0);
+	for (int piece=0; piece<pieces; piece++) {
+		double r = 0.5+((double) piece)*((0.8*handle_r)-0.5)/((double) pieces-1);
+		gleDouble grip_tip[4][3] = { {start+((double) piece)*h-1.0, r, 0.0} , {start+((double) piece)*h, r, 0.0} , {start+((double) piece+1)*h, r, 0.0} , {start+((double) piece+1)*h+1.0, r, 0.0} };
+ 		glePolyCylinder(4, grip_tip, NULL, r);
+	}
+	
+	glTranslatef(end, 0.0, 0.0);
+	glRotatef(2*degrees, 0.0, 0.0, 1.0);
+	glTranslatef(-end, 0.0, 0.0);
+	for (int piece=0; piece<pieces; piece++) {
+		double r = 0.5+((double) piece)*((0.8*handle_r)-0.5)/((double) pieces-1);
+		gleDouble grip_tip[4][3] = { {start+((double) piece)*h-1.0, -r, 0.0} , {start+((double) piece)*h, -r, 0.0} , {start+((double) piece+1)*h, -r, 0.0} , {start+((double) piece+1)*h+1.0, -r, 0.0} };
+ 		glePolyCylinder(4, grip_tip, NULL, r);
+	}
+	glPopMatrix();
+}*/
 
 void drawGrip(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2) {
 	glPushMatrix();
@@ -745,46 +863,6 @@ void drawGrip(Vector3d pos, Matrix3d rot, double degrees, float color0, float co
 															{0.0, 3.0,-5.0} , {0.0, 6.0,-5.0} , {0.0,11.0, 0.0} ,
 															{0.0,13.0, 0.0} };
 	glePolyCylinder(8, grip_side1, NULL, 1);
-	glPopMatrix();
-}
-
-void drawHapticEndEffector(int device_id, double degrees, float color0, float color1, float color2) {
-	glPushMatrix();
-	if (device_id) {
-  	glMultMatrixd(end_proxyxform);
-  } else {
-  	glMultMatrixd(start_proxyxform);
-  }
-	glRotated(90,1,0,0);
-	glColor3f(color0, color1, color2);
-	
-	int pieces = 6;
-	double h = 1.5;
-	double start = -3;
-	double handle_r = 1.2;
-	double end = ((double) pieces)*h + start;
-	glTranslated(0,-end-30,0);
-	double grip_handle[4][3] = { {0.0, end-1.0, 0.0} , {0.0, end, 0.0} , {0.0, end+30.0, 0.0} ,
-															 {0.0, end+31.0, 0.0} };
-	glePolyCylinder(4, grip_handle, NULL, handle_r);
-	
-	glTranslatef(0.0, end, 0.0);
-	glRotatef(-degrees, 1.0, 0.0, 0.0);
-	glTranslatef(0.0, -end, 0.0);
-	for (int piece=0; piece<pieces; piece++) {
-		double r = 0.5+((double) piece)*((0.8*handle_r)-0.5)/((double) pieces-1);
-		gleDouble grip_tip[4][3] = { {0.0, start+((double) piece)*h-1.0, r} , {0.0, start+((double) piece)*h, r} , {0.0, start+((double) piece+1)*h, r} , {0.0, start+((double) piece+1)*h+1.0, r} };
- 		glePolyCylinder(4, grip_tip, NULL, r);
-	}
-	
-	glTranslatef(0.0, end, 0.0);
-	glRotatef(2*degrees, 1.0, 0.0, 0.0);
-	glTranslatef(0.0, -end, 0.0);
-	for (int piece=0; piece<pieces; piece++) {
-		double r = 0.5+((double) piece)*((0.8*handle_r)-0.5)/((double) pieces-1);
-		gleDouble grip_tip[4][3] = { {0.0, start+((double) piece)*h-1.0, -r} , {0.0, start+((double) piece)*h, -r} , {0.0, start+((double) piece+1)*h, -r} , {0.0, start+((double) piece+1)*h+1.0, -r} };
- 		glePolyCylinder(4, grip_tip, NULL, r);
-	}
 	glPopMatrix();
 }
 
@@ -927,7 +1005,7 @@ void initStuff (void)
 
 void initThread()
 {	
-	int num_vertices=20;
+	int num_vertices=15;
   thread = new ThreadConstrained(num_vertices);
   positions.resize(2);
   rotations.resize(2);

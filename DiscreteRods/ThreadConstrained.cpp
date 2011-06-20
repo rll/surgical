@@ -128,6 +128,29 @@ void ThreadConstrained::getConstrainedTransforms(vector<Vector3d> &positions, ve
 	rotations[thread_num] = (threads[thread_num-1])->end_rot() * rot_offset[constrained_vertices_nums[thread_num]].transpose();
 }
 
+void ThreadConstrained::setConstrainedTransforms(vector<Vector3d> positions, vector<Matrix3d> rotations) {
+	int threads_size = threads.size();
+	if (positions.size()!=(threads_size+1) || rotations.size()!=(threads_size+1))
+    cout << "Internal error: getConstrainedTransforms: at least one of the vector parameters is of the wrong size" << endl;
+	vector<Matrix3d> material_frames;
+	get_thread_data(positions, material_frames);
+	for (int i=0; i<constrained_vertices_nums.size(); i++) {
+		if (constrained_vertices_nums[i]==0) {
+			rot_offset[0] = rotations[i].transpose() * start_rot();
+			rot_offset[0] = (Matrix3d) AngleAxisd(rot_offset[0]); // to fix numerical errors and rot_offset stays orthonormal
+		} else if (constrained_vertices_nums[i]==num_vertices-1) {
+			rot_offset[num_vertices-1] = rotations[i].transpose() * end_rot();
+			rot_offset[num_vertices-1] = (Matrix3d) AngleAxisd(rot_offset[num_vertices-1]); // to fix numerical errors and rot_offset stays orthonormal
+		} else {
+			Matrix3d inter_rot;
+			int vertex_num = constrained_vertices_nums[i];
+			intermediateRotation(inter_rot, material_frames[vertex_num-1], material_frames[vertex_num]);
+			rot_offset[vertex_num] = rotations[i].transpose() * material_frames[vertex_num];
+			rot_offset[vertex_num] = (Matrix3d) AngleAxisd(rot_offset[vertex_num]); // to fix numerical errors and rot_offset stays orthonormal
+		}
+	}
+}
+
 void ThreadConstrained::getAllTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations) {
 	vector<Matrix3d> material_frames;
 	get_thread_data(positions, material_frames);
@@ -177,13 +200,26 @@ void ThreadConstrained::getFreeVerticesNums(vector<int> &free_vertices_nums) {
 			free_vertices_nums.erase(free_vertices_nums.begin()+i);
 }
 
-void ThreadConstrained::getFreeVertices(vector<Vector3d> &free_vertices) {
-  this->get_thread_data(free_vertices);
+void ThreadConstrained::getFreeVertices(vector<Vector3d> &free_vertices_num) {
+  this->get_thread_data(free_vertices_num);
   vector<int> ind_vect(num_vertices);
   invalidateConstraintsNums(ind_vect, constrained_vertices_nums);
 	for(int i=num_vertices-1; i>=0; i--)
 		if (ind_vect[i]==-1)
-			free_vertices.erase(free_vertices.begin()+i);
+			free_vertices_num.erase(free_vertices_num.begin()+i);
+}
+
+void ThreadConstrained::getOperableFreeVertices(vector<int> &free_vertices_num) {
+	free_vertices_num.resize(num_vertices);
+	for(int i=0; i<num_vertices; i++)
+		free_vertices_num[i] = i;
+	vector<int> ind_vect(num_vertices);
+	invalidateAroundConstraintsNums(ind_vect, constrained_vertices_nums);
+	for(int i=0; i<constrained_vertices_nums.size(); i++)
+		ind_vect[constrained_vertices_nums[i]] = -1;
+	for(int i=num_vertices-1; i>=0; i--)
+		if (ind_vect[i]==-1)
+			free_vertices_num.erase(free_vertices_num.begin()+i);
 }
 
 void ThreadConstrained::getOperableVertices(vector<int> &operable_vertices_num, vector<bool> &constrained_or_free) {
@@ -197,7 +233,6 @@ void ThreadConstrained::getOperableVertices(vector<int> &operable_vertices_num, 
 		constrained_or_free[constrained_vertices_nums[i]] = true;
 	vector<int> ind_vect(num_vertices);
 	invalidateAroundConstraintsNums(ind_vect, constrained_vertices_nums);
-	vector<int> vi = ind_vect;
 	for(int i=num_vertices-1; i>=0; i--) {
 		if (ind_vect[i]==-1) {
 			operable_vertices_num.erase(operable_vertices_num.begin()+i);
@@ -260,21 +295,22 @@ void ThreadConstrained::removeConstraint (int absolute_vertex_num) {
 	mergeThread(thread_num);
 }
 
-/*// Returns the number of the vertex that is nearest to pos. The chosen vertex have to be in vertices but not in vertex_exception.
-int ThreadConstrained::nearestVertex(Vector3d pos, vector<Vector3d> vertices, vector<int> vertex_exceptions) {
-	int vertex_num;
+// Returns the number of the vertex that is nearest to pos. The chosen vertex have to be in vertices but not in vertex_exception.
+int ThreadConstrained::nearestVertex(Vector3d pos) {
+	vector<Vector3d> vertices;
+	get_thread_data(vertices);
+	vector<int> free_vertices_num;
+	getOperableFreeVertices(free_vertices_num);
 	vector<double> distances;
-	for (vertex_num=0; vertex_num<vertices.size(); vertex_num++) {
-		distances.push_back((vertices[vertex_num]-pos).squaredNorm());
+	for (int i=0; i<free_vertices_num.size(); i++) {
+		distances.push_back((vertices[free_vertices_num[i]]-pos).squaredNorm());
 	}
-	invalidateSortedElements(distances, vertex_exceptions);
-	for (vertex_num=0; distances[vertex_num]<0; vertex_num++) { }
-	int min_vertex_num = vertex_num;
-	for (vertex_num=min_vertex_num+1; vertex_num<distances.size(); vertex_num++)
-		if (distances[vertex_num]>=0 && (distances[vertex_num] < distances[min_vertex_num]))
-			min_vertex_num = vertex_num;
-	return min_vertex_num;
-}*/
+	int min_ind = 0;
+	for (int i=1; i<free_vertices_num.size(); i++)
+		if (distances[i]<distances[min_ind])
+			min_ind = i;
+	return free_vertices_num[min_ind];
+}
 
 Vector3d ThreadConstrained::position(int absolute_vertex_num) {
 	vector<Vector3d> positions;

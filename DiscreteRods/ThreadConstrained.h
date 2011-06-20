@@ -33,6 +33,7 @@ class ThreadConstrained {
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<Matrix3d> &absolute_material_frames);
 		// parameters have to be of the right size, i.e. threads.size()+1
 		void getConstrainedTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations);
+		void setConstrainedTransforms(vector<Vector3d> positions, vector<Matrix3d> rotations);
 		void getAllTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations);
 		void setAllTransforms(vector<Vector3d> positions, vector<Matrix3d> rotations);
 		// parameters have to be of the right size.
@@ -41,6 +42,7 @@ class ThreadConstrained {
 		void getConstrainedVertices(vector<Vector3d> &constrained_vertices);
 		void getFreeVerticesNums(vector<int> &vertices_nums);
 		void getFreeVertices(vector<Vector3d> &free_vertices);
+		void getOperableFreeVertices(vector<int> &free_vertices_num);
 		void getOperableVertices(vector<int> &operable_vertices_num, vector<bool> &constrained_or_free);
 		Vector3d start_pos();
 		Vector3d end_pos();
@@ -52,8 +54,8 @@ class ThreadConstrained {
 		void updateConstraints (vector<Vector3d> poss, vector<Matrix3d> rots);
 		void addConstraint (int absolute_vertex_num);
 		void removeConstraint (int absolute_vertex_num);
-		// Returns the number of the vertex that is nearest to pos. The chosen vertex have to be in vertices but not in vertex_exception.
-		int nearestVertex(Vector3d pos, vector<Vector3d> vertices, vector<int> vertex_exceptions);
+		// Returns the number of the vertex that is nearest to pos. The chosen vertex have to be a free operable vertex.
+		int nearestVertex(Vector3d pos);
 		Vector3d position(int absolute_vertex_num);
 		Matrix3d rotation(int absolute_vertex_num);
 
