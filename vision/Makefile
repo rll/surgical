@@ -153,6 +153,6 @@ checkerboard_data_vis.o: checkerboard_data_vis.cpp  checkerboard_data_vis.h
 	$(CC) $(INCLUDES) $(DEBUG) -c checkerboard_data_vis.cpp
 
 clean:
-	rm *.o testCanny testCapture example_capture_3cam calibrate_robots test_point_distances PositionsOnRequest PositionsOnRequest2 threadStereo threadStereoReal
+	rm *.o testCanny testCapture example_capture_3cam calibrate_robots test_point_distances PositionsOnRequest PositionsOnRequest2 threadStereo threadStereoReal imFile_to_ims testCheckerboardFinder read_timed_comments capture_3cam_continuous capture_3cam_continuous_bytesOnly
 
 
