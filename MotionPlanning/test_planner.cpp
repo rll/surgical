@@ -43,7 +43,8 @@ void InitThread(int argc, char* argv[]);
 #define MOVE_POS_CONST 1.0
 #define MOVE_TAN_CONST 0.2
 #define ROTATE_TAN_CONST 0.2
-#define RRT_GOAL_THREAD_FILE "rrt_goal_thread_data"
+#define PLANNER_START_THREAD_FILE "planner_start_thread_data"
+#define PLANNER_END_THREAD_FILE "planner_end_thread_data"
 
 enum key_code {NONE, MOVEPOS, MOVETAN, ROTATETAN, MOVEPOSSTART, MOVETANSTART, ROTATETANSTART};
 
@@ -114,22 +115,44 @@ GLfloat lightFourPosition[] = {-140.0, 0.0, -200.0, 0.0};
 GLfloat lightFourColor[] = {0.99, 0.99, 0.99, 1.0};
 
 
-void writeGoalThreadToFile() { 
-  Trajectory_Recorder r(RRT_GOAL_THREAD_FILE);
-  r.add_thread_to_list(*(glThreads[endThread]->getThread()));
-  r.write_threads_to_file();
-
+string getFilename (int fileNum) {
+  string filename; 
+  if (fileNum == 1) { 
+    filename = PLANNER_START_THREAD_FILE;
+  }
+  else if (fileNum == 2) { 
+    filename = PLANNER_END_THREAD_FILE;
+  }
+  return filename; 
 }
 
-void readGoalThreadFromFile() { 
-  Trajectory_Reader r(RRT_GOAL_THREAD_FILE);
+void writeGoalThreadToFile(int fileNum) {
+  string filename = getFilename(fileNum);     
+  Trajectory_Recorder r(filename.c_str());
+  r.add_thread_to_list(*(glThreads[curThread]->getThread()));
+  r.write_threads_to_file();
+}
+
+void readGoalThreadFromFile(int fileNum) {
+  string filename = getFilename(fileNum);
+
+  Trajectory_Reader r(filename.c_str());
   r.read_threads_from_file();
+
   vector<Thread> threads = r.get_all_threads();
-  if (threads.size() > 0) { 
+  if (threads.size() > 0) {
+    int fileThreadNum;
+    if (fileNum == 1) { 
+      fileThreadNum = planThread; 
+    } 
+    else if (fileNum == 2) { 
+      fileThreadNum = endThread; 
+    }
 
     Thread* frontThread = new Thread(threads.front()); 
-    glThreads[endThread]->setThread(frontThread);
-    glThreads[endThread]->minimize_energy();
+    glThreads[fileThreadNum]->setThread(frontThread);
+    glThreads[fileThreadNum]->updateThreadPoints();
+    glThreads[fileThreadNum]->minimize_energy();
     glutPostRedisplay();
   } 
 }
@@ -251,6 +274,21 @@ void DimensionReductionBestPath(Thread* start, Thread* target, int n, vector<Thr
 
 }
 
+void initializeSQP() {  
+  readGoalThreadFromFile(1);
+  readGoalThreadFromFile(2);
+  vector<Thread*> initialTraj; 
+  interpolatePointsTrajectory(glThreads[planThread]->getThread(),
+                              glThreads[endThread]->getThread(),
+                              initialTraj);
+
+  vector<vector<Thread*> > visualizationData;
+  visualizationData.push_back(initialTraj);
+  setThreads(visualizationData);
+
+
+}
+
 
 void DimensionReductionBestPath(int n) {
   
@@ -290,113 +328,6 @@ void DimensionReductionBestPath(int n) {
 
 }
 
-/*void DimensionReductionBestPath() {
-
-  if(!initialized) { 
-    Thread* start = glThreads[planThread]->getThread();
-    Thread* end = glThreads[endThread]->getThread();
-
-    start->minimize_energy(20000, 1e-10, 0.2, 1e-11);
-    end->minimize_energy(20000, 1e-10, 0.2, 1e-11);
-
-    Thread* startApprox = planner.halfDimApproximation(start);
-    Thread* endApprox = planner.halfDimApproximation(end);
-
-    startApprox = planner.halfDimApproximation(startApprox);
-    endApprox = planner.halfDimApproximation(endApprox);
-
-    planner.initialize(startApprox, endApprox);
-    glThreads[4]->setThread(new Thread(*startApprox));
-    glThreads[4]->updateThreadPoints();
-    glThreads[5]->setThread(new Thread(*endApprox));
-    glThreads[5]->updateThreadPoints();
-    glThreads[6]->setThread(new Thread(*endApprox));
-    glThreads[6]->updateThreadPoints();
-
-    initialized = true; 
-  }
-
-  
-  Thread goal_thread; Thread prev_thread; Thread next_thread; 
-  while(!interruptEnabled) {
-  #pragma omp parallel for num_threads(NUM_CPU_THREADS)
-    for (int i = 0; i < 999999; i++) {
-      if (!interruptEnabled) {  
-        planner.planStep(goal_thread, prev_thread, next_thread);
-      }
-    }
-  }
-
-  planner.updateBestPath();
-  RRTNode* node = planner.getTree()->front();
-  node = node->next; 
-  vector<Thread*> path; 
-  vector<vector<Two_Motions*> > motions; 
-  while (node != NULL) {
-    Thread* doubleDimApprox = planner.doubleDimApproximation(node->thread);
-    path.push_back(doubleDimApprox);
-    motions.push_back(node->lstMotions);
-    node = node->next;
-    
-  }
-
-  Thread* followerThread = new Thread(*glThreads[planThread]->getThread());
-  //followerThread->minimize_energy();
-  //follower = new Trajectory_Follower(path, motions, followerThread);
-
-//  Thread* localFollowerThread = new Thread(*glThreads[planThread]->getThread());
-  Thread* localFollowerThread = new Thread(*planner.halfDimApproximation(glThreads[planThread]->getThread()));
-  //localFollowerThread->minimize_energy();
-  Trajectory_Follower* localFollower = new Trajectory_Follower(path, motions, localFollowerThread);
-
-  localCurNode = new RRTNode(new Thread(*localFollowerThread));
-  RRTNode* prevNode = localCurNode;
-  while (!localFollower->is_done()) {
-    cout << "precomputing step" << endl;
-    localFollower->Take_Step();
-    cout << "step complete" << endl; 
-    RRTNode* node = new RRTNode(new Thread(*localFollower->curr_state()));
-    node->prev = prevNode;
-    prevNode->next = node;
-    prevNode = node; 
-  }
-
-  vector<Thread*> traj; 
-  localFollower->getReachedStates(traj);
-  cout << "Trajectory size: " << traj.size() << endl; 
-  vector<Thread*> newPath;
-  newPath.resize(traj.size());
-
-  for (int i = 0; i < traj.size(); i++) {
-    newPath[i] = planner.doubleDimApproximation(traj[i]);
-  }
-
-  Thread* newLFT = new Thread(*glThreads[planThread]->getThread());
-  Trajectory_Follower* newLF = new Trajectory_Follower(newPath, motions, newLFT);
-
-  localCurNode = new RRTNode(new Thread(*newLFT));
-
-  prevNode = localCurNode;
-  while (!newLF->is_done()) {
-    cout << "precomputing step" << endl;
-    newLF->Take_Step();
-    cout << "step complete" << endl; 
-    RRTNode* node = new RRTNode(new Thread(*newLF->curr_state()));
-    node->prev = prevNode;
-    prevNode->next = node;
-    prevNode = node; 
-  }
-
-  glThreads[startThread]->setThread(new Thread(*followerThread));
-  glThreads[startThread]->updateThreadPoints();
-
-  curNode = planner.getTree()->front();
-  Thread* curNodeThread = new Thread(*(curNode->thread));
-  glThreads[7]->setThread(curNodeThread);
-  glThreads[7]->updateThreadPoints();
-  glutPostRedisplay();
-}
-*/
 void stepTrajectoryFollower() { 
   if (follower == NULL) return; 
   if (follower->is_done()) {
@@ -959,11 +890,17 @@ void processNormalKeys(unsigned char key, int x, int y)
   else if (key == 's') { 
     stepRRT(100); 
   }
-  else if (key == 'x') {
-    writeGoalThreadToFile();
+  else if (key == '!') {
+    writeGoalThreadToFile(1);
   }
-  else if (key == '/') {
-    readGoalThreadFromFile();
+  else if (key == '@') { 
+    writeGoalThreadToFile(2);
+  }
+  else if (key == '#') {
+    readGoalThreadFromFile(1);
+  }
+  else if (key == '0') {
+    initializeSQP();
   }
   else if (key == 'v') { 
     reduceDimension();
