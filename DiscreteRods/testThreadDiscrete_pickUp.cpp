@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <pthread.h>
 
 #ifdef MAC
 #include <OpenGL/gl.h>
@@ -30,6 +31,7 @@ void drawStuff();
 void changeStartThreadHaptic();
 void changeEndThreadHaptic();
 void changeThreadHaptic();
+bool closeEnough(Vector3d my_pos, Matrix3d my_rot, Vector3d pos, Matrix3d rot);
 void mouseTransform(Vector3d &new_pos, Matrix3d &new_rot, vector<Vector3d> &positions, vector<Matrix3d> &rotations, int cvnum);
 void drawLine(Vector3d line, Vector3d pos);
 void drawAxes(int constrained_vertex_num);
@@ -109,9 +111,10 @@ bool change_constraint = false;
 bool choose_mode = false;
 int toggle = 0, selected_vertex_num = 0;
 vector<int> constrained_vertices_nums;
-int start_haptic_vertex = -1, end_haptic_vertex = -1;
-Vector3d extra_end_effectors_pos = Vector3d(-40.0, -10.0, 0.0);
-Matrix3d extra_end_effectors_rot = (Matrix3d) AngleAxisd(0.5*M_PI, Vector3d::UnitZ());
+int start_haptic_vertex = -1, end_haptic_vertex = -1, start_haptic_vertex_ind = -1, end_haptic_vertex_ind = -1;
+Vector3d extra_end_effectors_pos = Vector3d(-40.0, -30.0, 0.0);
+Matrix3d extra_end_effectors_rot = Matrix3d::Identity();
+double grab_offset = 12.0;
 
 Matrix3d rot_ztox, rot_ztonegx;
 
@@ -383,11 +386,6 @@ void processStartProxybutton() {
       start_open = !start_open;
   }
   last_start_proxybutton[0] = start_proxybutton[0];
-  double angle = 2*asin((start_proxy_rot.col(0) - extra_end_effectors_rot.col(0)).norm()/2);
-  if (!start_proxybutton[1] && ((extra_end_effectors_pos - start_proxy_pos).norm() < 4.0) && angle < 0.25*M_PI)
-  	start_attach = true;
-  else if (!start_proxybutton[1] && start_attach)
-  	start_attach = false;
 }
 
 void processEndProxybutton() {
@@ -395,11 +393,6 @@ void processEndProxybutton() {
       end_open = !end_open;
   }
   last_end_proxybutton[0] = end_proxybutton[0];
-  double angle = 2*asin((end_proxy_rot.col(0) - extra_end_effectors_rot.col(0)).norm()/2);
-  if (!end_proxybutton[1] && ((extra_end_effectors_pos - end_proxy_pos).norm() < 4.0) && angle < 0.25*M_PI)
-  	end_attach = true;
-  else if (!end_proxybutton[1] && end_attach)
-  	end_attach = false;
 }            
 
 void processHapticDevice(int value)
@@ -563,60 +556,144 @@ void drawStuff (void)
 	  	drawSphere(all_positions[selected_vertex_num], 1.4, 0.0, 0.5, 0.0);
 	  	drawEndEffector(all_positions[selected_vertex_num], all_rotations[selected_vertex_num], 15, 0.4, 0.4, 0.4);
 	  }
+	  
+	  
+	  
 	} else {
-
+		// starts non-choose mode
   	if (HAPTICS) {
-  		start_tip_pos = start_proxy_pos + start_proxy_rot*Vector3d(-12,0,0);
-  		end_tip_pos = end_proxy_pos + end_proxy_rot*Vector3d(-12,0,0);
-  		
+  		start_tip_pos = start_proxy_pos + start_proxy_rot*Vector3d(-grab_offset,0,0);
+  		end_tip_pos = end_proxy_pos + end_proxy_rot*Vector3d(-grab_offset,0,0);
+
 			drawCylinder(start_proxy_pos, start_proxy_rot, 3, 2, start_open?0.0:0.5, start_open?0.5:0.0, 0.0);
-		  //if (start_attach) {
-		  if (start_haptic_vertex<0)
-		  	drawEndEffector(start_tip_pos, start_proxy_rot, start_open ? 15 : 0, 0.7, 0.7, 0.7);
-		  //}
-		  drawCylinder(end_proxy_pos, end_proxy_rot, 3, 2, end_open?0.0:0.5, end_open?0.5:0.0, 0.0);
-		  //if (end_attach) {
-		  	drawEndEffector(end_tip_pos, end_proxy_rot, end_open ? 15 : 0, 0.7, 0.7, 0.7);
-		  //}
-		  
-		  //drawSphere(start_proxy_pos + start_proxy_rot*Vector3d(-36,0,0), 1.4, 0.5, 0.0, 0.0);
-		  
-		  int nearest_vertex = thread->nearestVertex(start_tip_pos);
-		  if (((thread->position(nearest_vertex) - start_tip_pos).norm() < 4.0) && !start_open && last_start_open) {
-		  	//thread->getAllTransforms(all_positions, all_rotations);
-		  	positions.resize(positions.size()+1);
-		    rotations.resize(rotations.size()+1);
-		    thread->addConstraint(nearest_vertex);
-		    start_haptic_vertex = nearest_vertex;
-				thread->getConstrainedVerticesNums(constrained_vertices_nums);
-		    thread->getConstrainedTransforms(positions, rotations);
-		    positions[find(constrained_vertices_nums, start_haptic_vertex)] = start_tip_pos;
-		    rotations[find(constrained_vertices_nums, start_haptic_vertex)] = start_proxy_rot;
-		    thread->setConstrainedTransforms(positions, rotations);
-		    thread->getConstrainedTransforms(positions, rotations);
-		    //all_positions[start_haptic_vertex] = start_tip_pos;
-		    //all_rotations[start_haptic_vertex] = start_proxy_rot;
-   		  //thread->setAllTransforms(all_positions, all_rotations);
-			  //thread->getAllTransforms(all_positions, all_rotations);
-		  } else if (start_haptic_vertex>=0 && start_open && !last_start_open) {
-		  	positions.resize(positions.size()-1);
-		    rotations.resize(rotations.size()-1);
-		    thread->removeConstraint(start_haptic_vertex);
-		    start_haptic_vertex = -1;
-				thread->getConstrainedVerticesNums(constrained_vertices_nums);
-				thread->getConstrainedTransforms(positions, rotations);
-		  }		  
+			if (start_attach) {
+			  if (start_haptic_vertex<0) {																		// start cursor has an end effector but it isn't holding the thread
+			  	drawEndEffector(start_tip_pos, start_proxy_rot, start_open ? 15 : 0, 0.7, 0.7, 0.7);
+			  	int nearest_vertex = thread->nearestVertex(start_tip_pos);
+			  	if (((thread->position(nearest_vertex) - start_tip_pos).norm() < 4.0) && !start_open) {
+			  		start_haptic_vertex = nearest_vertex;
+				  	positions.resize(positions.size()+1);
+				    rotations.resize(rotations.size()+1);
+				    thread->addConstraint(start_haptic_vertex);
+						thread->getConstrainedVerticesNums(constrained_vertices_nums);
+				    thread->getConstrainedTransforms(positions, rotations);
+				    start_haptic_vertex_ind = find(constrained_vertices_nums, start_haptic_vertex);
+				    positions[start_haptic_vertex_ind] = start_tip_pos;
+				    rotations[start_haptic_vertex_ind] = start_proxy_rot;
+				    thread->setConstrainedTransforms(positions, rotations);			// the end effector's orientation matters when it grips the thread. This updates the offset rotation.
+				    //thread->getConstrainedTransforms(positions, rotations);
+				  }
+			  } else if (start_haptic_vertex==0 || start_haptic_vertex==(thread->numVertices()-1)) {
+			  	if (start_open) {
+				  	cout << "You cannot open the end effector holding the end constraint" << endl;
+				  	start_open = false;
+				  }
+			  } else {																							// start cursor has an end effector which is holding the thread
+			  	if (start_open) {
+				  	positions.resize(positions.size()-1);
+				    rotations.resize(rotations.size()-1);
+				    thread->removeConstraint(start_haptic_vertex);
+				    start_haptic_vertex = start_haptic_vertex_ind = -1;
+						thread->getConstrainedVerticesNums(constrained_vertices_nums);
+						//thread->getConstrainedTransforms(positions, rotations);
+					}
+				}
+				if (!start_proxybutton[1]) {
+					start_attach = false;
+					start_haptic_vertex = start_haptic_vertex_ind = -1;
+				}
+			} else if (!start_attach) {																				// start cursor doesn't have an end effector, THUS it isn't holding the thread i.e. start_haptic_vertex==-1
+		  	if (start_haptic_vertex!=-1)
+		  		cout << "Internal error: drawStuff: !start_attach: start cursor doesn't have an end effector but it is holding a thread" << endl; 
+		  	if (!start_proxybutton[1] && closeEnough(start_tip_pos, start_proxy_rot, extra_end_effectors_pos, extra_end_effectors_rot)) {
+		  		start_attach = true;
+		  		sleep(0.005);
+		  	} else {
+		  		for (int i=0; i<positions.size(); i++) {
+		  			if (!start_proxybutton[1] && closeEnough(start_tip_pos, start_proxy_rot, positions[i], rotations[i])) {
+		  				start_haptic_vertex = constrained_vertices_nums[i];
+		  				start_haptic_vertex_ind = i;
+		  				start_attach = true;
+		  				sleep(0.005);
+		  				break;
+		  			}
+		  		}
+		  	}
+		 	}
+		 	
+		 	drawCylinder(end_proxy_pos, end_proxy_rot, 3, 2, end_open?0.0:0.5, end_open?0.5:0.0, 0.0);
+			if (end_attach) {
+			  if (end_haptic_vertex<0) {																		// end cursor has an end effector but it isn't holding the thread
+			  	drawEndEffector(end_tip_pos, end_proxy_rot, end_open ? 15 : 0, 0.7, 0.7, 0.7);
+			  	int nearest_vertex = thread->nearestVertex(end_tip_pos);
+			  	if (((thread->position(nearest_vertex) - end_tip_pos).norm() < 4.0) && !end_open) {
+			  		end_haptic_vertex = nearest_vertex;
+				  	positions.resize(positions.size()+1);
+				    rotations.resize(rotations.size()+1);
+				    thread->addConstraint(end_haptic_vertex);
+						thread->getConstrainedVerticesNums(constrained_vertices_nums);
+				    thread->getConstrainedTransforms(positions, rotations);
+				    end_haptic_vertex_ind = find(constrained_vertices_nums, end_haptic_vertex);
+				    positions[end_haptic_vertex_ind] = end_tip_pos;
+				    rotations[end_haptic_vertex_ind] = end_proxy_rot;
+				    thread->setConstrainedTransforms(positions, rotations);			// the end effector's orientation matters when it grips the thread. This updates the offset rotation.
+				    //thread->getConstrainedTransforms(positions, rotations);
+				  }
+			  } else if (end_haptic_vertex==0 || end_haptic_vertex==(thread->numVertices()-1)) {
+			  	if (end_open) {
+				  	cout << "You cannot open the end effector holding the end constraint" << endl;
+				  	end_open = false;
+				  }
+			  } else {																							// end cursor has an end effector which is holding the thread
+			  	if (end_open) {
+				  	positions.resize(positions.size()-1);
+				    rotations.resize(rotations.size()-1);
+				    thread->removeConstraint(end_haptic_vertex);
+				    end_haptic_vertex = end_haptic_vertex_ind = -1;
+						thread->getConstrainedVerticesNums(constrained_vertices_nums);
+						//thread->getConstrainedTransforms(positions, rotations);
+					}
+				}
+				if (!end_proxybutton[1]) {
+					end_attach = false;
+					end_haptic_vertex = end_haptic_vertex_ind = -1;
+				}
+			} else if (!end_attach) {																				// end cursor doesn't have an end effector, THUS it isn't holding the thread i.e. end_haptic_vertex==-1
+		  	if (end_haptic_vertex!=-1)
+		  		cout << "Internal error: drawStuff: !end_attach: end cursor doesn't have an end effector but it is holding a thread" << endl; 
+		  	if (!end_proxybutton[1] && closeEnough(end_tip_pos, end_proxy_rot, extra_end_effectors_pos, extra_end_effectors_rot)) {
+		  		end_attach = true;
+		  		sleep(0.005);
+		  	} else {
+		  		for (int i=0; i<positions.size(); i++) {
+		  			if (!end_proxybutton[1] && closeEnough(end_tip_pos, end_proxy_rot, positions[i], rotations[i])) {
+		  				end_haptic_vertex = constrained_vertices_nums[i];
+		  				end_haptic_vertex_ind = i;
+		  				end_attach = true;
+		  				sleep(0.005);
+		  				break;
+		  			}
+		  		}
+		  	}
+		  }
 		}
+		
 		toggle = (toggle+constrained_vertices_nums.size())%constrained_vertices_nums.size();
 		
   	thread->getConstrainedTransforms(positions, rotations);
 		vector<Vector3d> positionConstraints = positions;
 		vector<Matrix3d> rotationConstraints = rotations;
-		mouseTransform(positionConstraints[toggle], rotationConstraints[toggle], positions, rotations, toggle);
+		if (toggle != start_haptic_vertex_ind && toggle != end_haptic_vertex_ind)
+			mouseTransform(positionConstraints[toggle], rotationConstraints[toggle], positions, rotations, toggle);
+		
 		if (HAPTICS) {
-		  if (start_haptic_vertex >=0) {
-		  	positionConstraints[find(constrained_vertices_nums, start_haptic_vertex)] = start_tip_pos;
-		  	rotationConstraints[find(constrained_vertices_nums, start_haptic_vertex)] = start_proxy_rot;
+		  if (start_haptic_vertex_ind>=0) {
+		  	positionConstraints[start_haptic_vertex_ind] = start_tip_pos;
+		  	rotationConstraints[start_haptic_vertex_ind] = start_proxy_rot;
+		  }
+		  if (end_haptic_vertex_ind>=0) {
+		  	positionConstraints[end_haptic_vertex_ind] = end_tip_pos;
+		  	rotationConstraints[end_haptic_vertex_ind] = end_proxy_rot;
 		  }
 		}
 		thread->updateConstraints(positionConstraints, rotationConstraints);
@@ -628,11 +705,17 @@ void drawStuff (void)
 		
 	}
 	drawThread();
-	drawCylinder(extra_end_effectors_pos+Vector3d(0.0, -10.0, 0.0), extra_end_effectors_rot, 30, 8, 0.0, 1.0, 0.0);
-  drawEndEffector(extra_end_effectors_pos + Vector3d(0.0, -36.0, 0.0), extra_end_effectors_rot, 0, 0.7, 0.7, 0.7);
+	drawCylinder(extra_end_effectors_pos+Vector3d(20.0, -1.2, 0.0), (Matrix3d) AngleAxisd(0.5*M_PI, Vector3d::UnitZ()), 15, 8, 0.0, 1.0, 0.0);
+  drawEndEffector(extra_end_effectors_pos, extra_end_effectors_rot, 0, 0.7, 0.7, 0.7);
   
   glPopMatrix ();
   glutSwapBuffers ();
+}
+
+
+bool closeEnough(Vector3d my_pos, Matrix3d my_rot, Vector3d pos, Matrix3d rot) {
+	double angle = 2*asin((my_rot.col(0) - rot.col(0)).norm()/2);
+  return (((my_pos - pos).norm() < 4.0) && angle < 0.25*M_PI);
 }
 
 //cvnum stands for constrained vertex number or choosen vertex number
@@ -758,13 +841,19 @@ void drawEndEffector(Vector3d pos, Matrix3d rot, double degrees, float color0, f
 													 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
 													 pos(0)   , pos(1)   , pos(2)   , 1 };
 	glMultMatrixd(transform);
-	glColor3f(color0, color1, color2);
-		
+			
 	int pieces = 6;
 	double h = 1.5;
 	double start = -3;
 	double handle_r = 1.2;
 	double end = ((double) pieces)*h + start;
+	
+	glColor3f(0.3, 0.3, 0.0);
+	double cylinder[4][3] = { {grab_offset-4.0, 0.0, 0.0} , {grab_offset-3.0, 0.0, 0.0} , {grab_offset, 0.0, 0.0} ,
+														{grab_offset+1.0, 0.0, 0.0} };
+	glePolyCylinder(4, cylinder, NULL, 1.6);	
+	
+	glColor3f(color0, color1, color2);
 	double grip_handle[4][3] = { {end-1.0, 0.0, 0.0} , {end, 0.0, 0.0} , {end+30.0, 0.0, 0.0} ,
 															 {end+31.0, 0.0, 0.0} };
 	glePolyCylinder(4, grip_handle, NULL, handle_r);
@@ -1005,7 +1094,7 @@ void initStuff (void)
 
 void initThread()
 {	
-	int num_vertices=15;
+	int num_vertices=25;
   thread = new ThreadConstrained(num_vertices);
   positions.resize(2);
   rotations.resize(2);
