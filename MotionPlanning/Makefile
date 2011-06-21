@@ -1,6 +1,8 @@
 MACHINE= $(shell uname -s)
 HOSTNAME=-D$(shell uname -n | sed 's/-/_/g' | sed 's/\./_/g')
 
+echo 'HELLO!!!!!'
+
 UTILS_DIR = ../utils/
 ifeq ($(MACHINE),Darwin)
     LIBS = -L/usr/lib/ -lglut -lgle -lgsl -lgslcblas -llshkit -L/opt/local/lib/ -lboost_program_options-mt
