@@ -425,9 +425,22 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 {
   //backup pieces in case collision checking infinite loops due to unsatisfiable system
   //cout << "backing up pieces" << endl; 
-
+	
+	/*cout << "_thread_pieces.size(): " << _thread_pieces.size() << endl;
+	for (int i=0; i<_thread_pieces.size(); i++) {
+		if (_thread_pieces[i]->_my_thread == NULL)
+			cout << "_thread_pieces[" << i << "]->_my_thread is NULL" << endl;
+		else if (_thread_pieces[i]->_my_thread == this)
+			cout << "_thread_pieces[" << i << "]->_my_thread is this" << endl;
+	}*/
+	
   if (COLLISION_CHECKING) { 
     save_thread_pieces_and_resize(_thread_pieces_collision_backup);
+    for (int i=0; i<threads_in_env.size(); i++) {
+    	//if (this == threads_in_env[i])
+    		//continue;
+    	threads_in_env[i]->save_thread_pieces_and_resize(threads_in_env[i]->_thread_pieces_collision_backup);
+    }
   }
   bool project_length_constraint_pass = true; 
 
@@ -549,9 +562,10 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 
     if (COLLISION_CHECKING) {
       vector<Self_Intersection> self_intersections;
+      vector<Thread_Intersection> thread_intersections;
       vector<Intersection> intersections;
       int intersection_iters = 0; 
-      while(check_for_intersection(self_intersections, intersections) && project_length_constraint_pass) {
+      while(check_for_intersection(self_intersections, thread_intersections, intersections) && project_length_constraint_pass) {
         fix_intersections();
         project_length_constraint_pass &= project_length_constraint();
         intersection_iters++;
@@ -582,8 +596,12 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
   if (!project_length_constraint_pass && COLLISION_CHECKING) {
     //cout << "reverting thread to prior state" << endl; 
     restore_thread_pieces_and_resize(_thread_pieces_collision_backup);
-    restore_constraints(_start_pos_backup, _start_rot_backup, 
-        _end_pos_backup, _end_rot_backup);
+    restore_constraints(_start_pos_backup, _start_rot_backup, _end_pos_backup, _end_rot_backup);
+    for (int i=0; i<threads_in_env.size(); i++) {
+    	//if (this == threads_in_env[i])
+    		//continue;
+    	threads_in_env[i]->restore_thread_pieces_and_resize(threads_in_env[i]->_thread_pieces_collision_backup);
+    }
   }
   /*
      cout << "Edges: " << endl; 
@@ -600,8 +618,9 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 
 void Thread::fix_intersections() {
     vector<Self_Intersection> self_intersections;
+    vector<Thread_Intersection> thread_intersections;
     vector<Intersection> intersections;
-    while(check_for_intersection(self_intersections, intersections)) {
+    while(check_for_intersection(self_intersections, thread_intersections, intersections)) {
         //restore_thread_pieces();
         //cout << "INTERSECTION FOUND, total current intersections is: " << (intersections.size() + self_intersections.size())<< endl;
         debugflag = true;
@@ -642,7 +661,37 @@ void Thread::fix_intersections() {
           }
  */
         }
+                
+        for (int i=0; i < thread_intersections.size(); i++)
+        {
+          int ind_a = thread_intersections[i]._piece_ind_a;
+          int ind_b = thread_intersections[i]._piece_ind_b;
+          int ind_t = thread_intersections[i]._thread_ind;
+          Vector3d cross = _thread_pieces[ind_a]->edge().cross(threads_in_env[ind_t]->_thread_pieces[ind_b]->edge());
+          cross.normalize();
 
+          double dist_a, dist_b;
+          if (ind_a == 0 || ind_a == _thread_pieces.size()-2) {
+            dist_a = 0.0;
+            dist_b = thread_intersections[i]._dist + INTERSECTION_PUSHBACK_EPS;
+          } else if (ind_b == 0 || ind_b == threads_in_env[ind_t]->_thread_pieces.size()-2) {
+            dist_a = thread_intersections[i]._dist + INTERSECTION_PUSHBACK_EPS;
+            dist_b = 0.0;
+          } else {
+            dist_a = dist_b = thread_intersections[i]._dist/2.0 + INTERSECTION_PUSHBACK_EPS;
+          }
+
+          _thread_pieces[ind_a]->offset_vertex(cross*dist_a); 
+          _thread_pieces[ind_a + 1]->offset_vertex(cross*dist_a);
+          threads_in_env[ind_t]->_thread_pieces[ind_b]->offset_vertex(-cross*dist_b); 
+          threads_in_env[ind_t]->_thread_pieces[ind_b + 1]->offset_vertex(-cross*dist_b);
+          if(thread_intersection(ind_a,ind_b,ind_t,THREAD_RADIUS)) {
+            _thread_pieces[ind_a]->offset_vertex(-2.0*cross*dist_a); 
+            _thread_pieces[ind_a + 1]->offset_vertex(-2.0*cross*dist_a);
+            threads_in_env[ind_t]->_thread_pieces[ind_b]->offset_vertex(2.0*cross*dist_b); 
+            threads_in_env[ind_t]->_thread_pieces[ind_b + 1]->offset_vertex(2.0*cross*dist_b);
+          }
+        }
 
         for (int i=0; i < intersections.size(); i++)
         {
@@ -676,16 +725,17 @@ void Thread::fix_intersections() {
     }
 }
 
-bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Intersection>& intersections)
+bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Thread_Intersection>& thread_intersections, vector<Intersection>& intersections)
 {
   double found = false; // count of number of intersections
   self_intersections.clear();
+  thread_intersections.clear();
   intersections.clear();
 
   //self intersections
   for(int i = 0; i < _thread_pieces.size() - 3; i++) {
     //+2 so you don't check the adjacent piece - bug?
-    for(int j = i + 2; j < _thread_pieces.size() - 2; j++) {
+    for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
       if(i == 0 && j == _thread_pieces.size() - 2) 
         continue;
       double intersection_dist = self_intersection(i,j,THREAD_RADIUS);
@@ -697,7 +747,28 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
       }
     }
   }
-
+	
+	//intersections between threads
+	for (int k=0; k < threads_in_env.size(); k++) {
+		//if (this == threads_in_env[k]) //check
+			//continue;
+		for(int i = 0; i < _thread_pieces.size()-1; i++) {
+	    for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
+	      if((i==0 && j==0) ||
+	      	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
+	      	 (i==_thread_pieces.size()-2 && j==0) ||
+	      	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
+	        continue;
+	      double intersection_dist = thread_intersection(i,j,k,THREAD_RADIUS);		//asumes other threads have same radius
+	      if(intersection_dist != 0) {
+	        //skip if both ends, since these are constraints
+	        found = true;
+	        thread_intersections.push_back(Thread_Intersection(i,j,k,intersection_dist));
+	      }
+	    }
+	  }
+	}
+		
   //intersections with objects
   for (int i=0; i < objects_in_env.size(); i++)
   {
@@ -720,6 +791,11 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
 double Thread::self_intersection(int i, int j, double radius)
 {
     return intersection(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, _thread_pieces[j]->vertex(), _thread_pieces[j+1]->vertex(), radius);
+}
+
+double Thread::thread_intersection(int i, int j, int k, double radius)
+{
+    return intersection(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, threads_in_env[k]->_thread_pieces[j]->vertex(), threads_in_env[k]->_thread_pieces[j+1]->vertex(), radius);
 }
 
 double Thread::obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius)
@@ -1717,8 +1793,9 @@ bool Thread::project_length_constraint(int recursive_depth)
     int intersection_iters = 0; 
     if (COLLISION_CHECKING) { 
       vector<Self_Intersection> self_intersections;
+      vector<Thread_Intersection> thread_intersections;
       vector<Intersection> intersections;
-      while(check_for_intersection(self_intersections, intersections)) {
+      while(check_for_intersection(self_intersections, thread_intersections, intersections)) {
         fix_intersections();
         intersection_iters++;
         //cout << "PLC: fixing for " << intersection_iters << " iterations."
@@ -2667,19 +2744,32 @@ Thread& Thread::operator=(const Thread& rhs)
 
 }
 
-
-
-
-
 void add_object_to_env(Intersection_Object& obj)
 {
   objects_in_env.push_back(obj);
 }
 
+void remove_objects_from_env(int ind0, int ind1)
+{
+	objects_in_env.erase(objects_in_env.begin()+ind0, objects_in_env.begin()+ind1);
+}
+
+void clear_objects_in_env()
+{
+	objects_in_env.clear();
+}
 
 //not sure why, couldn't look at static variable directly
 //so this gets the data
 vector<Intersection_Object>* get_objects_in_env()
 {
   return &objects_in_env;
+}
+
+void Thread::add_thread_to_env(Thread* thread) {  // check
+	threads_in_env.push_back(thread);
+}
+
+void Thread::clear_threads_in_env() {
+	threads_in_env.clear();
 }

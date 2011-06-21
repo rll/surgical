@@ -363,6 +363,14 @@ void ThreadConstrained::splitThread(int thread_num, int vertex_num) {
 	threads[thread_num] = thread0;
 	insertAt(threads, thread1, thread_num+1);
 	
+	for (int i=0; i<threads.size(); i++) {
+		threads[i]->clear_threads_in_env();
+		for (int j=0; j<threads.size(); j++) {
+			if (i!=j) 
+				threads[i]->add_thread_to_env(threads[j]);
+		}
+	}
+	
 	threads[thread_num]->minimize_energy();
 	threads[thread_num+1]->minimize_energy();
 	threads[thread_num]->get_thread_data(point0, twist_angle0);
@@ -396,6 +404,15 @@ void ThreadConstrained::mergeThread(int thread_num) {
 	delete threads[thread_num+1];
 	threads[thread_num] = thread;
 	threads.erase(threads.begin()+thread_num+1);
+	
+	for (int i=0; i<threads.size(); i++) {
+		threads[i]->clear_threads_in_env();
+		for (int j=0; j<threads.size(); j++) {
+			if (i!=j) 
+				threads[i]->add_thread_to_env(threads[j]);
+		}
+	}
+	
 	threads[thread_num]->minimize_energy();
 }
 

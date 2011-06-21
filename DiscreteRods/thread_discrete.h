@@ -36,7 +36,7 @@
 
 #endif
 
-#define DEFAULT_REST_LENGTH 6 /*default rest length for each threadpiece*/
+#define DEFAULT_REST_LENGTH 3 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
 #define INTERSECTION_PUSHBACK_EPS 0.03 
@@ -64,6 +64,20 @@ struct Self_Intersection
   Self_Intersection(const Self_Intersection& cpy)
     : _piece_ind_a(cpy._piece_ind_a), _piece_ind_b(cpy._piece_ind_b), _dist(cpy._dist) {}
   
+};
+
+struct Thread_Intersection
+{
+  int _piece_ind_a;
+  int _piece_ind_b;
+  int _thread_ind;
+  double _dist;
+
+  Thread_Intersection() {}
+  Thread_Intersection(int piece_ind_a, int piece_ind_b, int thread_ind, double dist)
+    : _piece_ind_a(piece_ind_a), _piece_ind_b(piece_ind_b), _thread_ind(thread_ind), _dist(dist) {}
+  Thread_Intersection(const Thread_Intersection& cpy)
+    : _piece_ind_a(cpy._piece_ind_a), _piece_ind_b(cpy._piece_ind_b), _thread_ind(cpy._thread_ind), _dist(cpy._dist) {}
 };
 
 struct Intersection
@@ -95,9 +109,9 @@ struct Intersection_Object
 
 static vector<Intersection_Object> objects_in_env;
 void add_object_to_env(Intersection_Object& obj);
+void remove_objects_from_env(int ind0, int ind1);
+void clear_objects_in_env();
 vector<Intersection_Object>* get_objects_in_env();
-
-
 
 class Thread
 {
@@ -268,11 +282,16 @@ class Thread
 
     //intersection
     double self_intersection(int i, int j, double radius); //do these two pieces intersect?
+    double thread_intersection(int i, int j, int k, double radius); //do these two pieces in different threads intersect?
     double obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius);
     double intersection(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius);
 
-    bool check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Intersection>& intersections);
+		bool check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Thread_Intersection>& thread_intersections, vector<Intersection>& intersections);
     void fix_intersections();
+    
+    vector<Thread*> threads_in_env;
+		void add_thread_to_env(Thread* threads);
+		void clear_threads_in_env();
 
   //protected:
     vector<ThreadPiece*> _thread_pieces;

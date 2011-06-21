@@ -27,6 +27,6 @@ void parse(string buf, vector<string> &vect);
 
 void connectionInit();
 
-void getDeviceState (double start_proxyxform[], bool &start_proxybutton, double end_proxyxform[], bool &end_proxybutton);
+void getDeviceState (double start_proxyxform[], bool start_proxybutton[], double end_proxyxform[], bool end_proxybutton[]);
 
 void getDeviceState (Vector3d &leftPosition, Matrix3d &leftRotation, Vector3d &rightPosition, Matrix3d &rightRotation);

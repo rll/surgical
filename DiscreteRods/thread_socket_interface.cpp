@@ -29,7 +29,7 @@ void connectionInit() {
     receiver.set_timeout(0);             // using recv()    
 }
 
-void getDeviceState (double start_proxyxform[], bool &start_proxybutton, double end_proxyxform[], bool &end_proxybutton) {
+void getDeviceState (double start_proxyxform[], bool start_proxybutton[], double end_proxyxform[], bool end_proxybutton[]) {
     if (receiver.recv(buf)) {
         while (receiver.recv(buf));
         
@@ -51,8 +51,10 @@ void getDeviceState (double start_proxyxform[], bool &start_proxybutton, double 
             end_proxyxform[i]   = boost::lexical_cast<double>(vect2[i].c_str());
         }
         //cout << vect1[16] << "\t" << vect2[16] << endl;
-        start_proxybutton = boost::lexical_cast<int>(vect1[16].c_str()); //? true : false;
-        end_proxybutton   = boost::lexical_cast<int>(vect2[16].c_str()); //? true : false;
+        start_proxybutton[0] = boost::lexical_cast<int>(vect1[16].c_str());
+        start_proxybutton[1] = boost::lexical_cast<int>(vect1[17].c_str());
+        end_proxybutton[0]  = boost::lexical_cast<int>(vect2[16].c_str());
+        end_proxybutton[1]  = boost::lexical_cast<int>(vect2[17].c_str());
     }
 }
 

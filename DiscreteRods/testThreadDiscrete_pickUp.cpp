@@ -39,6 +39,9 @@ void drawAxes(Vector3d pos, Matrix3d rot);
 void labelAxes(int constrained_vertex_num);
 void drawThread();
 void drawCylinder(Vector3d pos, Matrix3d rot, double h, double r, float color0, float color1, float color2);
+void addCylinderToEnv(Vector3d pos, Matrix3d rot, double r, double a[4][3]);
+void updateCylinder(Vector3d pos, Matrix3d rot, int ind);
+void drawObjectsInEnv();
 void drawGrip(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2);
 void drawEndEffector(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2);
 //void drawHapticEndEffector(int device_id, double degrees, float color0, float color1, float color2);
@@ -115,6 +118,7 @@ int start_haptic_vertex = -1, end_haptic_vertex = -1, start_haptic_vertex_ind = 
 Vector3d extra_end_effectors_pos = Vector3d(-40.0, -30.0, 0.0);
 Matrix3d extra_end_effectors_rot = Matrix3d::Identity();
 double grab_offset = 12.0;
+vector<Intersection_Object> temp_objects_in_env;
 
 Matrix3d rot_ztox, rot_ztonegx;
 
@@ -493,6 +497,7 @@ int main (int argc, char * argv[])
 
 void drawStuff (void)
 {
+	temp_objects_in_env.clear();
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glColor3f (0.8, 0.3, 0.6);
 
@@ -706,8 +711,18 @@ void drawStuff (void)
 	}
 	drawThread();
 	drawCylinder(extra_end_effectors_pos+Vector3d(20.0, -1.2, 0.0), (Matrix3d) AngleAxisd(0.5*M_PI, Vector3d::UnitZ()), 15, 8, 0.0, 1.0, 0.0);
-  drawEndEffector(extra_end_effectors_pos, extra_end_effectors_rot, 0, 0.7, 0.7, 0.7);
-  
+	drawEndEffector(extra_end_effectors_pos, extra_end_effectors_rot, 0, 0.7, 0.7, 0.7);
+	
+	clear_objects_in_env();
+	for(int i=0; i<temp_objects_in_env.size(); i++) {
+		add_object_to_env(temp_objects_in_env[i]);
+	}
+	
+	vector<Intersection_Object>* objects;
+  objects = get_objects_in_env();
+	
+	//drawObjectsInEnv();
+	
   glPopMatrix ();
   glutSwapBuffers ();
 }
@@ -831,7 +846,42 @@ void drawCylinder(Vector3d pos, Matrix3d rot, double h, double r, float color0, 
 	double cylinder[4][3] = { {-h-1.0, 0.0, 0.0} , {-h, 0.0, 0.0} , {0.0, 0.0, 0.0} ,
 															 {1.0, 0.0, 0.0} };
 	glePolyCylinder(4, cylinder, NULL, r);
+	addCylinderToEnv(pos, rot, r, cylinder);
 	glPopMatrix();
+}
+
+void addCylinderToEnv(Vector3d pos, Matrix3d rot, double r, double a[4][3]) {
+	Vector3d v1 = rot * Vector3d(a[1][0], a[1][1], a[1][2]) + pos;
+	Vector3d v2 = rot * Vector3d(a[2][0], a[2][1], a[2][2]) + pos;
+	Intersection_Object obj(r, v1, v2);
+	temp_objects_in_env.push_back(obj);
+}
+
+void drawObjectsInEnv()
+{
+  vector<Intersection_Object>* objects;
+  objects = get_objects_in_env();
+  
+  glColor3f(0.8, 0.05, 0.05);
+  Vector3d vector_array[4];
+  double point_array[4][3];
+  for (int obj_ind=0; obj_ind < objects->size(); obj_ind++)
+  {
+    vector_array[0] = objects->at(obj_ind)._start_pos - (objects->at(obj_ind)._end_pos - objects->at(obj_ind)._start_pos);
+    vector_array[1] = objects->at(obj_ind)._start_pos;
+    vector_array[2] = objects->at(obj_ind)._end_pos;
+    vector_array[3] = objects->at(obj_ind)._end_pos + (objects->at(obj_ind)._end_pos - objects->at(obj_ind)._start_pos);
+
+    for (int pt_ind = 0; pt_ind < 4; pt_ind++)
+    {
+      point_array[pt_ind][0] = vector_array[pt_ind](0);
+      point_array[pt_ind][1] = vector_array[pt_ind](1);
+      point_array[pt_ind][2] = vector_array[pt_ind](2);
+    }
+
+    glePolyCylinder(4, point_array, NULL, objects->at(obj_ind)._radius);
+
+   }
 }
 
 void drawEndEffector(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2) {
@@ -851,20 +901,28 @@ void drawEndEffector(Vector3d pos, Matrix3d rot, double degrees, float color0, f
 	glColor3f(0.3, 0.3, 0.0);
 	double cylinder[4][3] = { {grab_offset-4.0, 0.0, 0.0} , {grab_offset-3.0, 0.0, 0.0} , {grab_offset, 0.0, 0.0} ,
 														{grab_offset+1.0, 0.0, 0.0} };
-	glePolyCylinder(4, cylinder, NULL, 1.6);	
+	glePolyCylinder(4, cylinder, NULL, 1.6);
+	addCylinderToEnv(pos, rot, 1.6, cylinder);
 	
 	glColor3f(color0, color1, color2);
 	double grip_handle[4][3] = { {end-1.0, 0.0, 0.0} , {end, 0.0, 0.0} , {end+30.0, 0.0, 0.0} ,
 															 {end+31.0, 0.0, 0.0} };
 	glePolyCylinder(4, grip_handle, NULL, handle_r);
+	addCylinderToEnv(pos, rot, handle_r, grip_handle);
 	
 	glTranslatef(end, 0.0, 0.0);
 	glRotatef(-degrees, 0.0, 0.0, 1.0);
 	glTranslatef(-end, 0.0, 0.0);
+	Matrix3d open_rot = (Matrix3d) AngleAxisd(-degrees*M_PI/180, rot*Vector3d::UnitZ());
+	Vector3d new_pos;
+	Matrix3d new_rot;
 	for (int piece=0; piece<pieces; piece++) {
 		double r = 0.5+((double) piece)*((0.8*handle_r)-0.5)/((double) pieces-1);
 		gleDouble grip_tip[4][3] = { {start+((double) piece)*h-1.0, r, 0.0} , {start+((double) piece)*h, r, 0.0} , {start+((double) piece+1)*h, r, 0.0} , {start+((double) piece+1)*h+1.0, r, 0.0} };
- 		glePolyCylinder(4, grip_tip, NULL, r);
+ 		glePolyCylinder(4, grip_tip, NULL, r); 		
+		new_rot = open_rot * rot;
+		new_pos = open_rot * rot * Vector3d(-end, 0.0, 0.0) + rot * Vector3d(end, 0.0, 0.0) + pos;
+ 		addCylinderToEnv(new_pos, new_rot, r, grip_tip);
 	}
 	
 	glTranslatef(end, 0.0, 0.0);
@@ -874,49 +932,12 @@ void drawEndEffector(Vector3d pos, Matrix3d rot, double degrees, float color0, f
 		double r = 0.5+((double) piece)*((0.8*handle_r)-0.5)/((double) pieces-1);
 		gleDouble grip_tip[4][3] = { {start+((double) piece)*h-1.0, -r, 0.0} , {start+((double) piece)*h, -r, 0.0} , {start+((double) piece+1)*h, -r, 0.0} , {start+((double) piece+1)*h+1.0, -r, 0.0} };
  		glePolyCylinder(4, grip_tip, NULL, r);
+ 		new_rot = open_rot.transpose() * rot;
+		new_pos = open_rot.transpose() * rot * Vector3d(-end, 0.0, 0.0) + rot * Vector3d(end, 0.0, 0.0) + pos;
+ 		addCylinderToEnv(new_pos, new_rot, r, grip_tip);
 	}
 	glPopMatrix();
 }
-
-/*void drawHapticEndEffector(int device_id, double degrees, float color0, float color1, float color2) {
-	glPushMatrix();
-	if (device_id) {
-  	glMultMatrixd(end_proxyxform);
-  } else {
-  	glMultMatrixd(start_proxyxform);
-  }
-	glRotated(-90,0,1,0);
-	glColor3f(color0, color1, color2);
-	
-	int pieces = 6;
-	double h = 1.5;
-	double start = -3;
-	double handle_r = 1.2;
-	double end = ((double) pieces)*h + start;
-	glTranslated(-end-30,0,0);
-	double grip_handle[4][3] = { {end-1.0, 0.0, 0.0} , {end, 0.0, 0.0} , {end+30.0, 0.0, 0.0} ,
-															 {end+31.0, 0.0, 0.0} };
-	glePolyCylinder(4, grip_handle, NULL, handle_r);
-	
-	glTranslatef(end, 0.0, 0.0);
-	glRotatef(-degrees, 0.0, 0.0, 1.0);
-	glTranslatef(-end, 0.0, 0.0);
-	for (int piece=0; piece<pieces; piece++) {
-		double r = 0.5+((double) piece)*((0.8*handle_r)-0.5)/((double) pieces-1);
-		gleDouble grip_tip[4][3] = { {start+((double) piece)*h-1.0, r, 0.0} , {start+((double) piece)*h, r, 0.0} , {start+((double) piece+1)*h, r, 0.0} , {start+((double) piece+1)*h+1.0, r, 0.0} };
- 		glePolyCylinder(4, grip_tip, NULL, r);
-	}
-	
-	glTranslatef(end, 0.0, 0.0);
-	glRotatef(2*degrees, 0.0, 0.0, 1.0);
-	glTranslatef(-end, 0.0, 0.0);
-	for (int piece=0; piece<pieces; piece++) {
-		double r = 0.5+((double) piece)*((0.8*handle_r)-0.5)/((double) pieces-1);
-		gleDouble grip_tip[4][3] = { {start+((double) piece)*h-1.0, -r, 0.0} , {start+((double) piece)*h, -r, 0.0} , {start+((double) piece+1)*h, -r, 0.0} , {start+((double) piece+1)*h+1.0, -r, 0.0} };
- 		glePolyCylinder(4, grip_tip, NULL, r);
-	}
-	glPopMatrix();
-}*/
 
 void drawGrip(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2) {
 	glPushMatrix();
@@ -1094,7 +1115,7 @@ void initStuff (void)
 
 void initThread()
 {	
-	int num_vertices=25;
+	int num_vertices=15;
   thread = new ThreadConstrained(num_vertices);
   positions.resize(2);
   rotations.resize(2);
