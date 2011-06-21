@@ -1,10 +1,10 @@
 #ifndef _planner_lib_h_
 #define _planner_lib_h_
 
-#define NUM_INTERPOLATION 250
+#define NUM_INTERPOLATION 40
 #define NUM_NODES 30000
 #define RRT_L2_POINTS_THRESHOLD 2.0
-#define NUM_ITERS_SQP 5
+#define NUM_ITERS_SQP 3
 #define SUBSAMPLE_TO_THIS_NUMBER 100
 
 #include "planner_utils.h"

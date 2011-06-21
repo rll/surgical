@@ -21,7 +21,7 @@ b(end-size_each_state+1: end) = b_data(end-size_each_state+1:end) .* weight_vect
 num_points = (size_each_state-1)/3;
 
 weighted_state_diff_constraint = 1;
-control_diff_constraint = 1e-1;
+control_diff_constraint = 1;
 %min_control = 0.1;
 %consecutive_state_diff_constraint = 10;
 
@@ -33,9 +33,10 @@ cvx_begin
     variable u((num_threads-1))
     %variable consecutive_state_diff(num_threads)
     variable edge_constraints((num_threads-2)*num_points)
+    variable consecutive_control_diff(num_threads-2) 
     %minimize (square_pos(norm(A*x - b)) + 2*sum(sum(reshape(x((num_threads-2)*size_each_state+1:end), num_threads-1, size_each_control).^2,2)));
   
-    minimize(norm(A*x-b) + norm(edge_constraints-3,2)) %+ consectuve_state_diff_weight'*consecutive_state_diff)%norm(consecutive_state_diff,1)) %sum(w)
+    minimize(norm(A*x-b,2) + norm(edge_constraints-3,2) + norm(consecutive_control_diff, 2) + norm(u,2)) %+ consectuve_state_diff_weight'*consecutive_state_diff)%norm(consecutive_state_diff,1)) %sum(w)
     subject to
       
       for thread_num=1:num_threads-2
@@ -70,8 +71,13 @@ cvx_begin
       %end
       for thread_num=1:num_threads-1
         u(thread_num) >= norm( x(size_each_state*(num_threads-2) + (thread_num-1)*size_each_control +1 : size_each_state*(num_threads-2) + (thread_num)*size_each_control));
+        %x(size_each_state*(num_threads-2) + (thread_num-1)*size_each_control +4 : size_each_state*(num_threads-2) + (thread_num-1)*size_each_control + 6) == 0
+        %x(size_each_state*(num_threads-2) + (thread_num-1)*size_each_control +10 : size_each_state*(num_threads-2) + (thread_num-1)*size_each_control + 12) == 0
       end
-      u(1:end) < control_diff_constraint;
+      %u(1:end) < control_diff_constraint;
+      for thread_num=1:num_threads-2
+        consecutive_control_diff(thread_num) >= norm( x(size_each_state*(num_threads-2)+(thread_num-1)*size_each_control+1 : size_each_state*(num_threads-2) + (thread_num)*size_each_control) - x(size_each_state*(num_threads-2)+thread_num*size_each_control+1 : size_each_state*(num_threads-2) + (thread_num+1)*size_each_control))
+      end
       %u(1:end) > min_control;
 
 

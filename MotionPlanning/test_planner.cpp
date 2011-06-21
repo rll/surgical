@@ -282,10 +282,28 @@ void initializeSQP() {
                               glThreads[endThread]->getThread(),
                               interpTraj);
   
-  vector<Thread*> initialTraj;
-  linearizeViaTrajectory(interpTraj, initialTraj);
- 
+  vector<Thread*> initialTraj = interpTraj;
+ // linearizeViaTrajectory(interpTraj, initialTraj);
+//
+  double eps = 1.0e-1; 
+  VectorXd du(12);
+  du.setZero();
+  du(0) = eps;
+  du(1) = eps;
+  du(2) = eps;
+  du(6) = eps;
+  du(7) = eps;
+  du(8) = eps;
+
+  //initialTraj.resize(interpTraj.size()); 
+  //Thread* start_copy = new Thread(*glThreads[planThread]->getThread());
+  //initialTraj[0] = new Thread(*start_copy); 
+  //for (int i = 1; i < initialTraj.size(); i++) {
+  //  applyControl(start_copy, du);
+  //  initialTraj[i] = new Thread(*start_copy); 
+  //}
   initialTraj[initialTraj.size()-1] = initialTraj[initialTraj.size()-2];
+  
   vector<Thread*> SQPTraj; 
   vector<VectorXd> SQPControls;
   vector<Thread*> sqp_debug_data;
@@ -295,7 +313,7 @@ void initializeSQP() {
   vector<Thread*> OLCTraj; 
   openLoopController(SQPTraj, SQPControls, OLCTraj); 
   vector<vector<Thread*> > visualizationData;
-  //visualizationData.push_back(initialTraj);
+  visualizationData.push_back(initialTraj);
   visualizationData.push_back(sqp_debug_data);
 
   //visualizationData.push_back(SQPTraj);
