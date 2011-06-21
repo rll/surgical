@@ -37,7 +37,8 @@ On Ubuntu, try running the following commands:
         python-opencv opencv-doc libcv-dev libcvaux-dev libhighgui-dev libboost-dev
 
 On OS X, the easiest way to install libraries is through MacPorts
-  sudo port install eigen boost opencv
+
+    sudo port install eigen boost opencv
 
   You will also need to install gle from source from http://linas.org/gle/. The code will not compile unless you modify the source to #include malloc/malloc.h instead of malloc.h.
 
