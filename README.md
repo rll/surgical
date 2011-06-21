@@ -39,7 +39,7 @@ On Ubuntu, try running the following commands:
 On OS X, the easiest way to install libraries is through MacPorts
   sudo port install eigen boost opencv
 
-  You will also need to install gle from source from http://linas.org/gle/. The code will not compile unless you modify the source to #include <malloc/malloc.h> instead of <malloc.h>.
+  You will also need to install gle from source from http://linas.org/gle/. The code will not compile unless you modify the source to #include malloc/malloc.h instead of malloc.h.
 
 
 
