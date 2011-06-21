@@ -24,6 +24,7 @@ __Requirements__
 * [OpenCV 2.1](http://opencv.willowgarage.com)
 * [PvAPI](http://www.alliedvisiontec.com/us/products/software/windows/avt-pvapi-sdk.html)
 * [GLUT](http://www.opengl.org/resources/libraries/glut/)
+* [lshkit](http://lshkit.sourceforge.net)
 * ...
 
 
@@ -34,6 +35,12 @@ On Ubuntu, try running the following commands:
         libgle3 libgle3-dev fortran-compiler libglut3 libglut3-dev subversion git-core
         build-essential libavformat-dev ffmpeg libcv2.1 libcvaux2.1 libhighgui2.1
         python-opencv opencv-doc libcv-dev libcvaux-dev libhighgui-dev libboost-dev
+
+On OS X, the easiest way to install libraries is through MacPorts
+
+    sudo port install eigen boost opencv
+
+  You will also need to install gle from source from http://linas.org/gle/. The code will not compile unless you modify the source to #include malloc/malloc.h instead of malloc.h.
 
 
 
