@@ -697,7 +697,7 @@ void Thread::fix_intersections() {
         {
           int ind_piece = intersections[i]._piece_ind;
           int ind_obj = intersections[i]._object_ind;
-          Vector3d cross = _thread_pieces[ind_piece]->edge().cross(objects_in_env[ind_obj]._end_pos - objects_in_env[ind_obj]._start_pos);
+          Vector3d cross = _thread_pieces[ind_piece]->edge().cross(objects_in_env[ind_obj]->_end_pos - objects_in_env[ind_obj]->_start_pos);
           cross.normalize();
 
           cross *= intersections[i]._dist+INTERSECTION_PUSHBACK_EPS;
@@ -706,7 +706,7 @@ void Thread::fix_intersections() {
 
           _thread_pieces[ind_piece]->offset_vertex(cross); 
           _thread_pieces[ind_piece + 1]->offset_vertex(cross);
-          if(obj_intersection(ind_piece,THREAD_RADIUS, ind_obj,objects_in_env[ind_obj]._radius)) {
+          if(obj_intersection(ind_piece,THREAD_RADIUS, ind_obj,objects_in_env[ind_obj]->_radius)) {
         //  cout << "cross pointed wrong direction, trying other direction" << endl;
             _thread_pieces[ind_piece]->offset_vertex(-2.0*cross); 
             _thread_pieces[ind_piece + 1]->offset_vertex(-2.0*cross);
@@ -773,7 +773,7 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
   for (int i=0; i < objects_in_env.size(); i++)
   {
     for(int j = 2; j < _thread_pieces.size() - 3; j++) {
-      double intersection_dist = obj_intersection(j,THREAD_RADIUS, i, objects_in_env[i]._radius);
+      double intersection_dist = obj_intersection(j,THREAD_RADIUS, i, objects_in_env[i]->_radius);
       if(intersection_dist != 0) {
         found = true;
 
@@ -800,7 +800,7 @@ double Thread::thread_intersection(int i, int j, int k, double radius)
 
 double Thread::obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius)
 {
-  return intersection(objects_in_env[obj_ind]._start_pos, objects_in_env[obj_ind]._end_pos, objects_in_env[obj_ind]._radius,
+  return intersection(objects_in_env[obj_ind]->_start_pos, objects_in_env[obj_ind]->_end_pos, objects_in_env[obj_ind]->_radius,
             _thread_pieces[piece_ind]->vertex(), _thread_pieces[piece_ind+1]->vertex(),THREAD_RADIUS);
 }
 
@@ -2744,24 +2744,29 @@ Thread& Thread::operator=(const Thread& rhs)
 
 }
 
-void add_object_to_env(Intersection_Object& obj)
+void add_object_to_env(Intersection_Object* obj)
 {
   objects_in_env.push_back(obj);
 }
 
-void remove_objects_from_env(int ind0, int ind1)
+void remove_object_from_env(Intersection_Object* obj)
 {
-	objects_in_env.erase(objects_in_env.begin()+ind0, objects_in_env.begin()+ind1);
+	for (int i=0; i<objects_in_env.size(); i++) {
+		if (&(objects_in_env[i]) == &obj)
+			objects_in_env.erase(objects_in_env.begin()+i);
+	}
 }
 
 void clear_objects_in_env()
 {
+	for (int i=0; i<objects_in_env.size(); i++)
+		delete objects_in_env[i];
 	objects_in_env.clear();
 }
 
 //not sure why, couldn't look at static variable directly
 //so this gets the data
-vector<Intersection_Object>* get_objects_in_env()
+vector<Intersection_Object*>* get_objects_in_env()
 {
   return &objects_in_env;
 }

@@ -18,6 +18,7 @@
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
+#define IP "128.32.37.98"
 #define RECEIVE_PORT 9000
 #define SEND_PORT 9001
 
@@ -29,4 +30,6 @@ void connectionInit();
 
 void getDeviceState (double start_proxyxform[], bool start_proxybutton[], double end_proxyxform[], bool end_proxybutton[]);
 
-void getDeviceState (Vector3d &leftPosition, Matrix3d &leftRotation, Vector3d &rightPosition, Matrix3d &rightRotation);
+void sendDeviceState (double start_feedback_pos[], bool start_feedback_enabled, double end_feedback_pos[], bool end_feedback_enabled);
+
+//void getDeviceState (Vector3d &leftPosition, Matrix3d &leftRotation, Vector3d &rightPosition, Matrix3d &rightRotation);

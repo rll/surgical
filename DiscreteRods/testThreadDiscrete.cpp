@@ -668,7 +668,7 @@ void DrawStuff (void)
     updateThreadPoints();
 
 
-	vector<Vector3d> vertices;
+	/*vector<Vector3d> vertices;
 	vector<Matrix3d> material_frames;
 	vector<Matrix3d> bishop_frames;
 	thread->get_thread_data(vertices, material_frames);
@@ -676,7 +676,7 @@ void DrawStuff (void)
 	for(int vertex_num=0; vertex_num<vertices.size(); vertex_num++) {
 		drawAxesMaterial(vertices[vertex_num], material_frames[vertex_num]);
 		drawAxesBishop(vertices[vertex_num], bishop_frames[vertex_num]);
-	}
+	}*/
 
   //Draw Axes
 
@@ -871,7 +871,7 @@ void drawAxesMaterial(Vector3d pos, Matrix3d rot) {
 }
 
 void DrawObjectsInEnv()
-{
+{/*
   vector<Intersection_Object>* objects;
   objects = get_objects_in_env();
   
@@ -896,7 +896,7 @@ void DrawObjectsInEnv()
 
    }
 
-
+*/
 }
 
 
@@ -1030,9 +1030,9 @@ void initThread()
 
   Vector3d start_pos_obj(10.0, 5.0, -40.0);
   Vector3d end_pos_obj(10.0, 5.0, 40.0);
-  Intersection_Object obj(1.5, start_pos_obj, end_pos_obj);
+  //Intersection_Object obj(1.5, start_pos_obj, end_pos_obj);
 
-  add_object_to_env(obj);
+  //add_object_to_env(obj);
 
 
 

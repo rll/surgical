@@ -36,7 +36,7 @@
 
 #endif
 
-#define DEFAULT_REST_LENGTH 3 /*default rest length for each threadpiece*/
+#define DEFAULT_REST_LENGTH 5 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
 #define INTERSECTION_PUSHBACK_EPS 0.03 
@@ -107,11 +107,17 @@ struct Intersection_Object
 
 };
 
-static vector<Intersection_Object> objects_in_env;
+/*static vector<Intersection_Object> objects_in_env;
 void add_object_to_env(Intersection_Object& obj);
 void remove_objects_from_env(int ind0, int ind1);
 void clear_objects_in_env();
-vector<Intersection_Object>* get_objects_in_env();
+vector<Intersection_Object>* get_objects_in_env();*/
+
+static vector<Intersection_Object*> objects_in_env;
+void add_object_to_env(Intersection_Object* obj);
+void remove_object_from_env(Intersection_Object* obj);
+void clear_objects_in_env();
+vector<Intersection_Object*>* get_objects_in_env();
 
 class Thread
 {
