@@ -19,6 +19,10 @@
 #include <math.h>
 #include "thread_discrete.h"
 
+#define LIMITED_DISPLACEMENT true
+#define MAX_DISPLACEMENT 1 //(0.49*THREAD_RADIUS)
+#define MAX_ANGLE_CHANGE (0.05*M_PI)
+
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
@@ -65,6 +69,8 @@ class ThreadConstrained {
 		vector<double> zero_angle;
 		vector<Matrix3d> rot_diff;
 		vector<Matrix3d> rot_offset;
+		vector<Vector3d> last_pos;
+		vector<Matrix3d> last_rot;
     vector<int> constrained_vertices_nums;
 		void intermediateRotation(Matrix3d &inter_rot, Matrix3d end_rot, Matrix3d start_rot);
 		// Splits the thread threads[thread_num] into two threads, which are stored at threads[thread_num] and threads[thread_num+1].  Threads in threads that are stored after thread_num now have a new thread_num which is one unit more than before. The split is done at vertex vertex of thread[thread_num]
@@ -108,5 +114,5 @@ void mergeMultipleVector(vector<T> &v, vector<vector<T> > vectors);
 int insertSorted (vector<int> &v, int e);
 //Returns the position where the element was removed. Element to remove has to be in vector.
 int removeSorted (vector<int> &v, int e);
-//Returns the position of the element to be found. Element to find has to be in vector.
+//Returns the position of the element to be found.
 int find(vector<int> v, int e);

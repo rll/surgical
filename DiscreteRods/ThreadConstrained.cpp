@@ -10,7 +10,7 @@ ThreadConstrained::ThreadConstrained(int num_vertices_init) {
 	vector<double> angles;
 	Vector3d direction;
 
-	vertices.push_back(Vector3d::Zero());
+	vertices.push_back(Vector3d(-num_vertices,0,0));
 	angles.push_back(0.0);
 	//push back unitx so first tangent matches start_frame
 	vertices.push_back(Vector3d::UnitX()*DEFAULT_REST_LENGTH);
@@ -62,6 +62,12 @@ ThreadConstrained::ThreadConstrained(int num_vertices_init) {
 	for (int i=0; i<num_vertices-2; i++)
 		rot_offset.push_back((Matrix3d) (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
 	rot_offset.push_back(Matrix3d::Identity());
+	if (LIMITED_DISPLACEMENT) {
+		last_pos.push_back(vertices.front());
+		last_pos.push_back(vertices.back());
+		last_rot.push_back(threads[0]->start_rot() * rot_offset.front().transpose());
+		last_rot.push_back(threads[0]->end_rot() * rot_offset.back().transpose());
+	}
 	constrained_vertices_nums.push_back(0);
 	constrained_vertices_nums.push_back(num_vertices_init-1);
 }
@@ -148,6 +154,8 @@ void ThreadConstrained::setConstrainedTransforms(vector<Vector3d> positions, vec
 			rot_offset[vertex_num] = rotations[i].transpose() * material_frames[vertex_num];
 			rot_offset[vertex_num] = (Matrix3d) AngleAxisd(rot_offset[vertex_num]); // to fix numerical errors and rot_offset stays orthonormal
 		}
+		if (LIMITED_DISPLACEMENT)
+			last_rot[i] = rotations[i];
 	}
 }
 
@@ -174,6 +182,9 @@ void ThreadConstrained::setAllTransforms(vector<Vector3d> positions, vector<Matr
 	}
 	rot_offset[num_vertices-1] = rotations[num_vertices-1].transpose() * end_rot();
 	rot_offset[num_vertices-1] = (Matrix3d) AngleAxisd(rot_offset[num_vertices-1]); // to fix numerical errors and rot_offset stays orthonormal
+	if (LIMITED_DISPLACEMENT)
+		for (int i=0; i<constrained_vertices_nums.size(); i++)
+			last_rot[i] = rotations[constrained_vertices_nums[i]];
 }
 
 void ThreadConstrained::getConstrainedVerticesNums(vector<int> &vertices_nums) {
@@ -277,11 +288,61 @@ void ThreadConstrained::updateConstraints (vector<Vector3d> poss, vector<Matrix3
 		cout << "Internal Error: setConstraints: different number of positions and rotations" << endl;
 	if (poss.size() != threads.size()+1)
 		cout << "Internal Error: setConstraints: not the right number of transforms for current threads. addConstraint or removeConstraint first." << endl;
+	
+	bool wrong_positions = true;
+	int iters = 0;
+	while (wrong_positions) {
+		wrong_positions = false;
+		iters++;
+		for (int i=0; i<threads.size(); i++) {
+			Matrix3d new_start_rot = rots[i]*rot_offset[constrained_vertices_nums[i]];
+			Matrix3d new_end_rot 	 = rots[i+1]*rot_offset[constrained_vertices_nums[i+1]]*rot_diff[i+1];
+			wrong_positions = wrong_positions || threads[i]->check_fix_positions(poss[i], new_start_rot, poss[i+1], new_end_rot);
+		}
+		if (iters == 10) { break; }
+	}
+	
 	for (int i=0; i<threads.size(); i++) {
-		Matrix3d new_start_rot = rots[i]*rot_offset[constrained_vertices_nums[i]];
-		Matrix3d new_end_rot = rots[i+1]*rot_offset[constrained_vertices_nums[i+1]]*rot_diff[i+1];
+		Vector3d new_start_pos;
+		Vector3d new_end_pos;
+		Matrix3d new_start_rot;
+		Matrix3d new_end_rot;
+			
+		if (LIMITED_DISPLACEMENT) {
+			double start_displacement = (poss[i]-last_pos[i]).norm();
+			double end_displacement 	= (poss[i+1]-last_pos[i+1]).norm();
+			double start_angle_change	= 2*asin((rots[i].col(0) - last_rot[i].col(0)).norm()/2);
+			double end_angle_change		= 2*asin((rots[i+1].col(0) - last_rot[i+1].col(0)).norm()/2);
+			Quaterniond new_start_q(rots[i]);
+	 		Quaterniond last_start_q(last_rot[i]);
+			Quaterniond new_end_q(rots[i+1]);
+			Quaterniond last_end_q(last_rot[i+1]);		
+			if (start_displacement > MAX_DISPLACEMENT)
+				poss[i] = last_pos[i] + (MAX_DISPLACEMENT/start_displacement) * (poss[i]-last_pos[i]);
+			if (end_displacement > MAX_DISPLACEMENT)
+				poss[i+1] = last_pos[i+1] + (MAX_DISPLACEMENT/end_displacement) * (poss[i+1]-last_pos[i+1]);
+			if (start_angle_change > MAX_ANGLE_CHANGE) {
+				Quaterniond start_interp_q = last_start_q.slerp(MAX_ANGLE_CHANGE/start_angle_change, new_start_q);
+				rots[i] = start_interp_q.toRotationMatrix(); 
+			}
+			if (end_angle_change > MAX_ANGLE_CHANGE) {
+				Quaterniond end_interp_q = last_end_q.slerp(MAX_ANGLE_CHANGE/end_angle_change, new_end_q);
+				rots[i+1] = end_interp_q.toRotationMatrix();
+			}
+		}
+		new_start_pos = poss[i];
+		new_end_pos 	= poss[i+1];
+		new_start_rot = rots[i]*rot_offset[constrained_vertices_nums[i]];
+		new_end_rot 	= rots[i+1]*rot_offset[constrained_vertices_nums[i+1]]*rot_diff[i+1];
+				
 		zero_angle[i] += angle_mismatch(rots[i], threads[i]->start_rot());
-	  threads[i]->set_constraints_check(poss[i], new_start_rot, poss[i+1], new_end_rot);
+	  threads[i]->set_constraints_check(new_start_pos, new_start_rot, new_end_pos, new_end_rot);
+	  if (LIMITED_DISPLACEMENT) {
+			last_pos[i] 	= new_start_pos;
+			last_pos[i+1] = new_end_pos;
+			last_rot[i]		= rots[i]; 		//new_start_rot * rot_offset[constrained_vertices_nums[i]].transpose();
+			last_rot[i+1] = rots[i+1];	//new_end_rot * rot_diff[i+1].tranpose() * rot_offset[constrained_vertices_nums[i+1]].transpose();
+	  }
 	}
 }
 
@@ -356,6 +417,10 @@ void ThreadConstrained::splitThread(int thread_num, int vertex_num) {
   Matrix3d vertex_start_rot = threads[thread_num]->material_at_ind(vertex_num);
   Matrix3d rot_diff_matrix = vertex_start_rot.transpose()*vertex_end_rot;
  	insertAt(rot_diff, rot_diff_matrix, thread_num+1);
+ 	if (LIMITED_DISPLACEMENT) {
+	 	insertAt(last_pos, points[vertex_num], thread_num+1);
+	 	insertAt(last_rot, (Matrix3d) (vertex_start_rot * rot_offset[constrained_vertices_nums[thread_num+1]].transpose()), thread_num+1);
+ 	}
 
 	Thread* thread0 = new Thread(point0, twist_angle0, (Matrix3d&) (threads[thread_num])->start_rot(), vertex_end_rot);
 	Thread* thread1 = new Thread(point1, twist_angle1, vertex_start_rot, (Matrix3d&) (threads[thread_num])->end_rot());
@@ -398,6 +463,10 @@ void ThreadConstrained::mergeThread(int thread_num) {
 
 	zero_angle.erase(zero_angle.begin()+thread_num+1);
 	rot_diff.erase(rot_diff.begin() + thread_num+1);
+	if (LIMITED_DISPLACEMENT) {
+		last_pos.erase(last_pos.begin() + thread_num+1);
+		last_rot.erase(last_rot.begin() + thread_num+1);
+	}
 
 	Thread* thread = new Thread(point, twist_angle, (Matrix3d&) (threads[thread_num])->start_rot(), (Matrix3d&) (threads[thread_num+1])->end_rot());
 	delete threads[thread_num];

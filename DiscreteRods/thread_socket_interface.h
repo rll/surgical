@@ -28,6 +28,10 @@ void parse(string buf, vector<string> &vect);
 
 void connectionInit();
 
+void getDeviceState (Vector3d& start_proxy_pos, Matrix3d& start_proxy_rot, bool start_proxybutton[], Vector3d& end_proxy_pos, Matrix3d& end_proxy_rot, bool end_proxybutton[]);
+
+void sendDeviceState (const Vector3d& start_feedback_pos, bool start_feedback_enabled, const Vector3d& end_feedback_pos, bool end_feedback_enabled);
+
 void getDeviceState (double start_proxyxform[], bool start_proxybutton[], double end_proxyxform[], bool end_proxybutton[]);
 
 void sendDeviceState (double start_feedback_pos[], bool start_feedback_enabled, double end_feedback_pos[], bool end_feedback_enabled);
