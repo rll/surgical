@@ -20,7 +20,7 @@ ThreadPiece::ThreadPiece() :
 }
 
 	ThreadPiece::ThreadPiece(const Vector3d& vertex, const double angle_twist, const double rest_length, ThreadPiece* prev, ThreadPiece* next, Thread* my_thread)
-: _vertex(vertex), _angle_twist(angle_twist), _rest_length(rest_length) rot(Matrix3d::Zero()), _my_thread(my_thread)
+: _vertex(vertex), _angle_twist(angle_twist), _rest_length(rest_length), rot(Matrix3d::Zero()), _my_thread(my_thread)
 {
 	grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
 	grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);

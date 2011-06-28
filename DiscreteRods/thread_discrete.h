@@ -105,6 +105,7 @@ class Thread
     Thread();
     Thread(const VectorXd& vertices, const VectorXd& twists, const Matrix3d& start_rot);
     Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot);
+    Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, Matrix3d& end_rot);
     Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot);
     Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, const double rest_length);
     Thread(const Thread& rhs);
@@ -164,7 +165,7 @@ class Thread
     const double total_length(void) const {return _total_length;}
     const double start_rest_length(void) const {return _thread_pieces.front()->rest_length();}
     const double end_rest_length(void) const {return _thread_pieces[_thread_pieces.size()-2]->rest_length();}
-    const double rest_length_at_ind(void) const {return _thread_pieces[i]->rest_length();}
+    const double rest_length_at_ind(int i) const {return _thread_pieces[i]->rest_length();}
     const Vector3d& vertex_at_ind(int i) const {return _thread_pieces[i]->vertex();}
     const Vector3d& edge_at_ind(int i) const {return _thread_pieces[i]->edge();}
     const Matrix3d& bishop_at_ind(int i) const {return _thread_pieces[i]->bishop_frame();}

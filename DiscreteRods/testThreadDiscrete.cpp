@@ -880,12 +880,15 @@ void initThread()
 
   vector<Vector3d> vertices;
   vector<double> angles;
+  vector<double> lengths;
 
   vertices.push_back(Vector3d::Zero());
   angles.push_back(0.0);
+  lengths.push_back(3.0);
   //push back unitx so first tangent matches start_frame
-  vertices.push_back(Vector3d::UnitX()*DEFAULT_REST_LENGTH);
+  vertices.push_back(Vector3d::UnitX()*lengths.back());
   angles.push_back(0.0);
+  lengths.push_back(4.0);
 
   Vector3d direction;
   direction(0) = 1.0;
@@ -896,10 +899,10 @@ void initThread()
   {
     Vector3d noise( ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0);
     noise *= noise_factor;
-    Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*DEFAULT_REST_LENGTH;
+    Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*lengths.back();
     vertices.push_back(next_Vec);
     angles.push_back(0.0);
-
+    lengths.push_back((-7.0/(numInit-1))*((double) i)+8.0);
     //std::cout << positions[i] << std::endl << std::endl;
   }
 
@@ -915,18 +918,18 @@ void initThread()
   {
     Vector3d noise( ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0);
     noise *= noise_factor;
-    Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*DEFAULT_REST_LENGTH;
+    Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*lengths.back();
     vertices.push_back(next_Vec);
     angles.push_back(0.0);
-
+		lengths.push_back((7.0/(numInit-1))*((double) i)+1.0);
   }
 
   //push back unitx so last tangent matches end_frame
-  vertices.push_back(vertices.back()+Vector3d::UnitX()*DEFAULT_REST_LENGTH);
+  vertices.push_back(vertices.back()+Vector3d::UnitX()*lengths.back());
   angles.push_back(0.0);
-
-
-  angles.resize(vertices.size());
+	lengths.push_back(4.0);
+	
+  //angles.resize(vertices.size());
 
   rotations[0] = Matrix3d::Identity();
   rotations[1] = Matrix3d::Identity();
@@ -959,9 +962,13 @@ void initThread()
 
   std::cout << "energy: " << calculate_energy() << std::endl;
   */
-
-
-  thread = new Thread(vertices, angles, rotations[0], rotations[1]);
+	
+	cout << "rest_lengths: ";
+	for (int i=0; i<lengths.size(); i++)
+		cout << lengths[i] << " ";
+	cout << endl;
+	
+  thread = new Thread(vertices, angles, lengths, rotations[0], rotations[1]);
   updateThreadPoints();
 
 
@@ -974,12 +981,12 @@ void initThread()
   thread->set_coeffs_normalized(1.0, 3.0, 1e-4);
 #endif
 
-  Vector3d start_pos_obj(10.0, 5.0, -40.0);
+ /* Vector3d start_pos_obj(10.0, 5.0, -40.0);
   Vector3d end_pos_obj(10.0, 5.0, 40.0);
   Intersection_Object obj(1.5, start_pos_obj, end_pos_obj);
 
   add_object_to_env(obj);
-
+*/
 
 
 

@@ -26,7 +26,13 @@ Thread::Thread(const VectorXd& vertices, const VectorXd& twists, const Matrix3d&
   {
     _thread_pieces[i]->set_next(_thread_pieces[i+1]);
   }
-
+	
+	_total_length = 0;
+	for (int piece_ind = 0; piece_ind < _thread_pieces.size()-1; piece_ind++)
+	{
+		_total_length += _thread_pieces[piece_ind]->rest_length();
+	}
+	
   //setup backups
   for (int i=0; i < twists.size(); i++)
     {
@@ -79,6 +85,12 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
     _thread_pieces[i]->set_next(_thread_pieces[i+1]);
   }
 
+	_total_length = 0;
+	for (int piece_ind = 0; piece_ind < _thread_pieces.size()-1; piece_ind++)
+	{
+		_total_length += _thread_pieces[piece_ind]->rest_length();
+	}
+	
 	//setup backups
   for (int i=0; i < vertices.size(); i++)
   {
@@ -136,6 +148,12 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
   {
     _thread_pieces[i]->set_next(_thread_pieces[i+1]);
   }
+  
+  _total_length = 0;
+	for (int piece_ind = 0; piece_ind < _thread_pieces.size()-1; piece_ind++)
+	{
+		_total_length += _thread_pieces[piece_ind]->rest_length();
+	}
 
 	//setup backups
   for (int i=0; i < vertices.size(); i++)
@@ -196,10 +214,10 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
     _thread_pieces[i]->set_next(_thread_pieces[i+1]);
   }
   
-  double total_length = 0
+  _total_length = 0;
 	for (int piece_ind = 0; piece_ind < _thread_pieces.size()-1; piece_ind++)
 	{
-		total_length += _thread_pieces[piece_ind]->rest_length();
+		_total_length += _thread_pieces[piece_ind]->rest_length();
 	}
 
 	//setup backups
@@ -305,7 +323,59 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
 
 }
 
-Thread::Thread(const Thread& rhs) :
+
+Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, Matrix3d& end_rot)
+{
+  _thread_pieces_backup.resize(vertices.size());
+  _angle_twist_backup.resize(vertices.size());
+  _thread_pieces.resize(vertices.size());
+  for (int i=0; i < vertices.size(); i++)
+  {
+    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_lengths[i], this);
+  }
+
+  for (int i=1; i < vertices.size(); i++)
+  {
+    _thread_pieces[i]->set_prev(_thread_pieces[i-1]);
+  }
+
+  for (int i=0; i < vertices.size()-1; i++)
+  {
+    _thread_pieces[i]->set_next(_thread_pieces[i+1]);
+  }
+  
+  _total_length = 0;
+	for (int piece_ind = 0; piece_ind < _thread_pieces.size()-1; piece_ind++)
+	{
+		_total_length += _thread_pieces[piece_ind]->rest_length();
+	}
+
+	//setup backups
+  for (int i=0; i < vertices.size(); i++)
+  {
+    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_lengths[i], this);
+  }
+
+  for (int i=1; i < vertices.size(); i++)
+  {
+    _thread_pieces_backup[i]->set_prev(_thread_pieces_backup[i-1]);
+  }
+
+  for (int i=0; i < vertices.size()-1; i++)
+  {
+    _thread_pieces_backup[i]->set_next(_thread_pieces_backup[i+1]);
+  }
+
+  _thread_pieces.front()->set_bishop_frame(start_rot);
+  _thread_pieces.front()->set_material_frame(start_rot);
+
+  _thread_pieces.front()->initializeFrames();
+
+  set_constraints(vertices.front(), start_rot, vertices.back(), end_rot);
+}
+
+
+Thread::Thread(const Thread& rhs)
 {
   _thread_pieces.resize(rhs._thread_pieces.size());
   _thread_pieces_backup.resize(rhs._thread_pieces_backup.size());
@@ -327,7 +397,8 @@ Thread::Thread(const Thread& rhs) :
     _thread_pieces[i]->set_next(_thread_pieces[i+1]);
   }
 
-
+	_total_length = rhs._total_length;
+	
 	//setup backups
   for (int i=0; i < rhs._thread_pieces_backup.size(); i++)
   {
@@ -2609,7 +2680,7 @@ Thread& Thread::operator=(const Thread& rhs)
 
   set_constraints(start_pos, start_rot, end_pos, end_rot);
 
-  _rest_length = rhs._rest_length;
+  _total_length = rhs._total_length;
   //project_length_constraint();
 
 /*
