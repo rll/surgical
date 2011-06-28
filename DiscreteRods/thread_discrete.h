@@ -151,9 +151,9 @@ class Thread
     void unviolate_total_length_constraint();
     void copy_data_from_vector(VectorXd& toCopy);
     
-    void project_length_constraint_old();
+    //void project_length_constraint_old();
     bool project_length_constraint(int recursive_depth=250);
-    void project_length_constraint_slow();
+    //void project_length_constraint_slow();
 
     const Matrix3d& start_rot(void) const {return _thread_pieces.front()->material_frame();}
     const Matrix3d& end_rot(void) const {return _thread_pieces[_thread_pieces.size()-2]->material_frame();}
@@ -161,8 +161,10 @@ class Thread
     const double start_angle(void) const {return _thread_pieces.front()->angle_twist();}
     const double end_angle(void) const {return _thread_pieces[_thread_pieces.size()-2]->angle_twist();}
     const double angle_at_ind(int i) const {return _thread_pieces[i]->angle_twist();}
-    const double total_length(void) const {return _rest_length*((double)(num_edges()));}
-    const double rest_length(void) const {return _rest_length;}
+    const double total_length(void) const {return _total_length;}
+    const double start_rest_length(void) const {return _thread_pieces.front()->rest_length();}
+    const double end_rest_length(void) const {return _thread_pieces[_thread_pieces.size()-2]->rest_length();}
+    const double rest_length_at_ind(void) const {return _thread_pieces[i]->rest_length();}
     const Vector3d& vertex_at_ind(int i) const {return _thread_pieces[i]->vertex();}
     const Vector3d& edge_at_ind(int i) const {return _thread_pieces[i]->edge();}
     const Matrix3d& bishop_at_ind(int i) const {return _thread_pieces[i]->bishop_frame();}
@@ -259,10 +261,7 @@ class Thread
     //void set_twist_and_minimize(double twist);
     void set_twist_and_minimize(double twist, vector<Vector3d>& orig_pts);
 
-
-    void set_rest_length(double rest_length){_rest_length = rest_length;}
-
-    double _rest_length;
+    double _total_length;
 
     //intersection
     double self_intersection(int i, int j, double radius); //do these two pieces intersect?

@@ -28,8 +28,8 @@ class Thread;
 class ThreadPiece
 {
   public:
-    ThreadPiece(const Vector3d& vertex, const double angle_twist, Thread* my_thread);
-    ThreadPiece(const Vector3d& vertex, const double angle_twist, ThreadPiece* prev, ThreadPiece* next, Thread* my_thread);
+    ThreadPiece(const Vector3d& vertex, const double angle_twist, const double rest_length, Thread* my_thread);
+    ThreadPiece(const Vector3d& vertex, const double angle_twist, const double rest_length, ThreadPiece* prev, ThreadPiece* next, Thread* my_thread);
     ThreadPiece(const ThreadPiece& rhs);
     ThreadPiece(const ThreadPiece& rhs, Thread* my_thread);
 
@@ -41,6 +41,7 @@ class ThreadPiece
     void offset_vertex(const Vector3d& offset_vertex){_vertex += offset_vertex;}
     void set_angle_twist(double angle_twist){ _angle_twist = angle_twist;}
     void offset_angle_twist(const double offset_angle_twist){_angle_twist += offset_angle_twist;}
+    void set_rest_length(double rest_length){ _rest_length = rest_length;}
     void set_prev(ThreadPiece* prev);
     void set_next(ThreadPiece* next);
     void set_material_frame(const Matrix3d& material_frame){_material_frame = material_frame;}
@@ -103,6 +104,7 @@ class ThreadPiece
 
     const Vector3d& vertex(void) const {return _vertex;}
     const double angle_twist(void) const {return _angle_twist;}
+    const double rest_length(void) const {return _rest_length;}
 
  // protected:
     ThreadPiece* _prev_piece;
@@ -110,6 +112,7 @@ class ThreadPiece
 
     Vector3d _vertex;
     double _angle_twist;
+    double _rest_length;
 
     //calculated params (need to be updated)
     Vector3d _edge;
