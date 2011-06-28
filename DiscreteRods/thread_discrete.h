@@ -214,6 +214,7 @@ class Thread
 
     //energy and gradient functions
     double calculate_energy();
+    double calculate_energy_inefficient();
     void calculate_gradient(vector<Vector3d>& vertex_gradients, vector<double>& angle_twist_gradients);
     void calculate_gradient_vertices(vector<Vector3d>& vertex_gradients);
     void calculate_gradient_vertices_vectorized(VectorXd* vertex_gradients);

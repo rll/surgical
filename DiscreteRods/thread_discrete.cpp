@@ -491,6 +491,16 @@ double Thread::calculate_energy()
 #endif
 }
 
+double Thread::calculate_energy_inefficient()
+{
+  double energy = 0.0;
+  for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
+  {
+    energy += _thread_pieces[piece_ind]->energy();
+  }
+  return energy;
+}
+
 bool debugflag = false;
 bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
 {

@@ -88,7 +88,7 @@ double ThreadPiece::energy_twist()
 {
 #ifdef ISOTROPIC
  // std::cout << "SHOULD NOT BE CALLING THIS - very inefficient" << std::endl;
-  if (_prev_piece == NULL || _next_piece == NULL)
+  if (_prev_piece == NULL || _next_piece == NULL || _next_piece->_next_piece == NULL)
   {
     return 0.0; //same - since the first twist is set to be zero (aligning bishop to initial material frame)
   } else {

@@ -24,9 +24,10 @@
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
-
+void init_contour();
 void InitStuff();
 void DrawStuff();
+void drawSphere(Vector3d position, float radius, float color0, float color1, float color2);
 void DrawObjectsInEnv();
 void updateThreadPoints();
 void initThread();
@@ -77,6 +78,11 @@ Vector3d tangents[2];
 Matrix3d rotations[3];
 
 key_code key_pressed;
+bool examine_mode = true;
+bool print_mode_permanent = false;
+bool print_mode_instant = false;
+bool only_hor_spin = false;
+bool only_ver_spin = false;
 
 #define NUM_STEPS_FEW 10
 bool few_minimization_steps = false;
@@ -146,10 +152,11 @@ void processLeft(int x, int y)
   {
     tangent_rotation_start[0] += (x-lastx_L)*ROTATE_TAN_CONST;
     tangent_rotation_start[1] += (lasty_L-y)*ROTATE_TAN_CONST;
-  }
-  else {
-    rotate_frame[0] += x-lastx_L;
-    rotate_frame[1] += lasty_L-y;
+  } else {
+  	if (!only_ver_spin)
+	    rotate_frame[0] += x-lastx_L;
+    if (!only_hor_spin)
+    	rotate_frame[1] += lasty_L-y;
   }
 
   lastx_L = x;
@@ -185,9 +192,11 @@ void processRight(int x, int y)
   {
     tangent_rotation_start[0] += (x-lastx_L)*ROTATE_TAN_CONST;
     tangent_rotation_start[1] += (lasty_L-y)*ROTATE_TAN_CONST;
-  }   else {
-    rotate_frame[0] += x-lastx_L;
-    rotate_frame[1] += lasty_L-y;
+  } else {
+  	if (!only_ver_spin)
+	    rotate_frame[0] += x-lastx_L;
+    if (!only_hor_spin)
+	    rotate_frame[1] += lasty_L-y;
   }
 
   lastx_L = x;
@@ -286,8 +295,25 @@ void processNormalKeys(unsigned char key, int x, int y)
     cout << "Stepping though project length constraint" << endl;
     thread->project_length_constraint();
     DrawStuff();
+  } else if(key == 'e') {
+  	examine_mode = !examine_mode;
+  	init_contour();
+  	glutPostRedisplay ();
+  } else if(key == 'p') {
+  	print_mode_permanent = !print_mode_permanent;
+  	glutPostRedisplay ();
+  } else if(key == 'o') {
+  	print_mode_instant = !print_mode_instant;
+  	glutPostRedisplay ();
+  } else if(key == 'h' || key == 'H') {
+  	only_hor_spin = !only_hor_spin;
+  } else if(key == 'v' || key == 'V') {
+  	only_ver_spin = !only_ver_spin;
+  } else if (key == 'w') {
+    rotate_frame[0] = 0.0;
+    rotate_frame[1] = -111.0;
+    glutPostRedisplay ();
   }
-
 
   lastx_R = x;
   lasty_R = y;
@@ -323,7 +349,9 @@ void init_contour (void)
   gleSetJoinStyle (style);
 
    int i;
-   double contour_scale_factor = 0.3;
+   double contour_scale_factor= 0.3;
+   if (examine_mode)
+    contour_scale_factor = 0.05;
 
 #ifdef ISOTROPIC
    // outline of extrusion
@@ -466,7 +494,10 @@ int main (int argc, char * argv[])
   updateThreadPoints();
   thread_saved = new Thread(*thread);
 
-  zero_location = points[0];
+  //zero_location = points[0];
+  zero_location = points[0];// + 0.5*(points[0] + points.back());
+  zero_location[0] += 0.5*(points[points.size()-1][0] - points[0][0]);
+  zero_location[2] += 0.5*(points[(points.size()-1)/2][2] - points[0][2]);
   zero_angle = 0.0;
 
 
@@ -665,6 +696,16 @@ void DrawStuff (void)
   }
     updateThreadPoints();
 
+	//print stuff
+	if (print_mode_permanent || print_mode_instant) {
+		cout << "_total_length: " << thread->_total_length << endl;
+		cout << "calculate_energy(): " << thread->calculate_energy() << endl;
+		cout << "calculate_energy_inefficient(): " << thread->calculate_energy_inefficient() << endl;
+		
+		print_mode_instant = false;
+	}
+
+
   //Draw Axes
 
 
@@ -806,7 +847,9 @@ void DrawStuff (void)
       0x0,
       twist_cpy);
 
-
+	if (examine_mode)
+		for (int i=0; i<points.size(); i++)
+			drawSphere(points[i]-zero_location, 0.7, 0.0, 0.5, 0.5);
 
   DrawObjectsInEnv();
 
@@ -815,6 +858,20 @@ void DrawStuff (void)
   glutSwapBuffers ();
 }
 
+void drawSphere(Vector3d position, float radius, float color0, float color1, float color2) {
+	glPushMatrix();
+	double transform[16] = {1,0,0,0,
+													0,1,0,0,
+													0,0,1,0,
+													position(0), position(1), position(2), 1};
+	glMultMatrixd(transform);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_COLOR_MATERIAL);
+  glColor3f(color0, color1, color2);
+  glutSolidSphere(radius, 20, 16);
+  //glFlush ();
+  glPopMatrix();
+}
 
 void DrawObjectsInEnv()
 {
@@ -875,38 +932,53 @@ void updateThreadPoints()
 
 void initThread()
 {
-  int numInit = 10;
+  int numInit = 8;
   double noise_factor = 0.0;
+
+	double end_length = 3.0;
+	double start = end_length;//8.0;
+	double end = end_length;//1.0;
+	double m = (start-end)/(numInit-1);
 
   vector<Vector3d> vertices;
   vector<double> angles;
   vector<double> lengths;
+  
+  int i;
+  Vector3d next_Vec;
 
   vertices.push_back(Vector3d::Zero());
   angles.push_back(0.0);
-  lengths.push_back(3.0);
+  lengths.push_back(end_length);
   //push back unitx so first tangent matches start_frame
   vertices.push_back(Vector3d::UnitX()*lengths.back());
   angles.push_back(0.0);
-  lengths.push_back(4.0);
+  lengths.push_back(end_length);
 
   Vector3d direction;
   direction(0) = 1.0;
   direction(1) = 0.0;
   direction(2) = -2.0;
   direction.normalize();
-  for (int i=0; i < numInit; i++)
+  for (i=0; i < numInit; i++)
   {
     Vector3d noise( ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0);
     noise *= noise_factor;
-    Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*lengths.back();
+    if (i==0)
+    	next_Vec = vertices.back()+Vector3d::UnitX()*lengths.back();
+    else
+    	next_Vec = vertices.back()+(direction+noise).normalized()*lengths.back();
     vertices.push_back(next_Vec);
     angles.push_back(0.0);
-    lengths.push_back((-7.0/(numInit-1))*((double) i)+8.0);
+    lengths.push_back(-m*((double) i)+start);
     //std::cout << positions[i] << std::endl << std::endl;
   }
-
-
+	
+	i = 0;
+	next_Vec = vertices.back()+(direction).normalized()*lengths.back();
+  vertices.push_back(next_Vec);
+  angles.push_back(0.0);
+  lengths.push_back(m*((double) i)+end);
 
   //change direction
   direction(0) = 1.0;
@@ -914,20 +986,29 @@ void initThread()
   direction(2) = 2.0;
   direction.normalize();
 
-  for (int i=0; i < numInit; i++)
+  for (i=1; i < numInit; i++)
   {
     Vector3d noise( ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0, ((double)(rand()%10000)) / 10000.0);
     noise *= noise_factor;
-    Vector3d next_Vec = vertices.back()+(direction+noise).normalized()*lengths.back();
+    next_Vec = vertices.back()+(direction+noise).normalized()*lengths.back();
     vertices.push_back(next_Vec);
     angles.push_back(0.0);
-		lengths.push_back((7.0/(numInit-1))*((double) i)+1.0);
+		lengths.push_back(m*((double) i)+end);
   }
-
+	
+	next_Vec = vertices.back()+(direction).normalized()*lengths.back();
+	vertices.push_back(next_Vec);
+  angles.push_back(0.0);
+	lengths.push_back(end_length);
+	
+	vertices.push_back(vertices.back()+Vector3d::UnitX()*lengths.back());
+  angles.push_back(0.0);
+	lengths.push_back(end_length);
+	
   //push back unitx so last tangent matches end_frame
   vertices.push_back(vertices.back()+Vector3d::UnitX()*lengths.back());
   angles.push_back(0.0);
-	lengths.push_back(4.0);
+	lengths.push_back(end_length);
 	
   //angles.resize(vertices.size());
 
