@@ -9,7 +9,7 @@ ifeq ($(MACHINE),Darwin)
     INCLUDES = -I/usr/local/include/ -I/usr/include/ -I $(UTILS_DIR) -I/opt/local/include/eigen2/ -I/opt/local/include/
 else
     LIBS = -L/usr/lib/ -lglut -lgle
-    ILNCLUDES = -I/usr/local/include/ -I/usr/include/ -I $(UTILS_DIR) -I/usr/include/eigen2
+    INCLUDES = -I/usr/local/include/ -I/usr/include/ -I $(UTILS_DIR) -I/usr/include/eigen2
     COMPILEFLAG=
     LDFLAG=
 endif
