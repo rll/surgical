@@ -204,6 +204,13 @@ class Thread
         vec->segment<3>(3*i) = _thread_pieces[i]->curvature_binormal();
       }
     }
+    
+    void getCurvatureBinormalNorm(vector<double>& vec) const {
+      vec.resize(num_pieces());
+      for (int i = 0; i < num_pieces(); i++) { 
+        vec[i] = (_thread_pieces[i]->curvature_binormal()).norm();
+      }
+    }
     //debugging tools
     bool is_consistent();
     double calculate_holonomy();
@@ -272,6 +279,10 @@ class Thread
 
     bool check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Intersection>& intersections);
     void fix_intersections();
+    
+    //variable-length thread_pieces
+    void split_thread_piece(ThreadPiece* thread_piece);
+    void merge_thread_piece(ThreadPiece* thread_piece);
 
   //protected:
     vector<ThreadPiece*> _thread_pieces;

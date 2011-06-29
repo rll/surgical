@@ -701,6 +701,12 @@ void DrawStuff (void)
 		cout << "_total_length: " << thread->_total_length << endl;
 		cout << "calculate_energy(): " << thread->calculate_energy() << endl;
 		cout << "calculate_energy_inefficient(): " << thread->calculate_energy_inefficient() << endl;
+		vector<double> curvature_binormal_norm;
+		thread->getCurvatureBinormalNorm(curvature_binormal_norm);
+		cout << "curvature_binormal_norm: ";
+		for(int i=0; i<curvature_binormal_norm.size(); i++)
+			cout << curvature_binormal_norm[i] << " ";
+		cout << endl;
 		
 		print_mode_instant = false;
 	}
@@ -932,12 +938,12 @@ void updateThreadPoints()
 
 void initThread()
 {
-  int numInit = 8;
+  int numInit = 9;
   double noise_factor = 0.0;
 
 	double end_length = 3.0;
-	double start = end_length;//8.0;
-	double end = end_length;//1.0;
+	double start = 3.0;//8.0;
+	double end = 3.0;//1.0;
 	double m = (start-end)/(numInit-1);
 
   vector<Vector3d> vertices;
@@ -1011,6 +1017,8 @@ void initThread()
 	lengths.push_back(end_length);
 	
   //angles.resize(vertices.size());
+  
+ 	cout << "vertices.size(): " << vertices.size() << endl;
 
   rotations[0] = Matrix3d::Identity();
   rotations[1] = Matrix3d::Identity();
