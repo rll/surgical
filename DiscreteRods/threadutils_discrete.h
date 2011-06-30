@@ -48,6 +48,7 @@ double distance_between_points(Vector3d point1, Vector3d point2);
 double angle_between(const Vector3d& tan1, const Vector3d& tan2);
 void rotation_from_euler_angles(Matrix3d& rotation, double angZ, double angY, double angX);
 void euler_angles_from_rotation(const Matrix3d& rotation, double& angZ, double& angY, double& angX);
+void intermediate_rotation(Matrix3d &inter_rot, const Matrix3d& end_rot, const Matrix3d& start_rot);
 
 void writeParams(std::string file, double* towrite);
 void readParams(std::string file, double* out);

@@ -932,6 +932,134 @@ double Thread::intersection(const Vector3d& a_start_in, const Vector3d& a_end_in
 
 }
 
+/*********************************************************************************/
+//variable-length thread_pieces
+
+/*void Thread::split_thread_piece(int thread_piece_ind)
+{
+	ThreadPiece* this_piece = _thread_pieces[thread_piece_ind];
+	ThreadPiece* this_piece_backup = _thread_pieces_backup[thread_piece_ind];
+	ThreadPiece* new_piece = new ThreadPiece();
+	ThreadPiece* new_piece_backup = new ThreadPiece();
+	this_piece->splitPiece(new_piece);
+	this_piece_backup->copyData(*this_piece);
+	new_piece_backup->copyData(*new_piece);
+	
+	_thread_pieces.insert(_thread_pieces.begin() + thread_piece_ind + 1, new_piece);
+	_thread_pieces_backup.insert(_thread_pieces_backup.begin() + thread_piece_ind + 1, new_piece_backup);
+	
+	//minimize_energy();
+}
+
+void Thread::merge_thread_piece(int thread_piece_ind)
+{
+	ThreadPiece* this_piece = _thread_pieces[thread_piece_ind];
+	ThreadPiece* this_piece_backup = _thread_pieces_backup[thread_piece_ind];
+	this_piece->mergePiece(_thread_pieces[thread_piece_ind+1]);
+	this_piece_backup->copyData(*this_piece);
+	
+	delete _thread_pieces[thread_piece_ind+1];	
+	delete _thread_pieces_backup[thread_piece_ind+1];
+	_thread_pieces[thread_piece_ind+1] = NULL;
+	_thread_pieces_backup[thread_piece_ind+1] = NULL;
+	_thread_pieces.erase(_thread_pieces.begin() + thread_piece_ind + 1);
+	_thread_pieces_backup.erase(_thread_pieces_backup.begin() + thread_piece_ind + 1);
+	
+	//minimize_energy();
+}*/
+
+//NATURAL_REST_LENGTH 3.0
+//REFINEMENT_DEPTH 4
+
+void Thread::split_thread_piece(ThreadPiece* this_piece, ThreadPiece* this_piece_backup)
+{
+	ThreadPiece* new_piece = new ThreadPiece();
+	ThreadPiece* new_piece_backup = new ThreadPiece();
+	this_piece->splitPiece(new_piece);
+	this_piece_backup->copyData(*this_piece);
+	new_piece_backup->copyData(*new_piece);	
+	this_piece_backup->fixPointersSplit(new_piece_backup);
+	
+	int piece_ind;
+	for (piece_ind=0; piece_ind<_thread_pieces.size() && _thread_pieces[piece_ind]!=this_piece; piece_ind++) {}
+	if (piece_ind==_thread_pieces.size())
+		cout << "Internal error: Thread::split_thread_piece: this_piece is not in _thread_pieces." << endl;
+	
+	_thread_pieces.insert(_thread_pieces.begin() + piece_ind + 1, new_piece);
+	_thread_pieces_backup.insert(_thread_pieces_backup.begin() + piece_ind + 1, new_piece_backup);
+}
+
+void Thread::merge_thread_piece(ThreadPiece* this_piece, ThreadPiece* this_piece_backup)
+{	
+	this_piece->mergePiece();
+	this_piece_backup->copyData(*this_piece);
+	this_piece_backup->fixPointersMerge();
+	
+	int piece_ind;
+	for (piece_ind=0; piece_ind<_thread_pieces.size() && _thread_pieces[piece_ind]!=this_piece; piece_ind++) {}
+	if (piece_ind==_thread_pieces.size())
+		cout << "Internal error: Thread::merge_thread_piece: this piece is not in _thread_pieces." << endl;
+	
+	delete _thread_pieces[piece_ind-1];
+	_thread_pieces[piece_ind-1] = NULL;
+	_thread_pieces.erase(_thread_pieces.begin() + piece_ind - 1);
+	delete _thread_pieces_backup[piece_ind-1];
+	_thread_pieces_backup[piece_ind-1] = NULL;
+	_thread_pieces_backup.erase(_thread_pieces_backup.begin() + piece_ind - 1);
+}
+
+void Thread::adapt_links()
+{
+	refine_links();
+	unrefine_links();
+}
+
+void Thread::refine_links()
+{
+	ThreadPiece * curr_piece, * curr_piece_backup;
+	ThreadPiece * next_piece = _thread_pieces[1], * next_piece_backup = _thread_pieces_backup[1];
+	if (next_piece == NULL)
+		cout << "Internal error: Thread::refine_links." << endl;
+	while (next_piece->_next_piece!=NULL) {
+		curr_piece = next_piece;
+		curr_piece_backup = next_piece_backup;
+		next_piece = next_piece->_next_piece;
+		next_piece_backup = next_piece_backup->_next_piece;
+		if ((curr_piece->curvature_binormal_norm() > REFINE_THRESHHOLD) &&
+				(curr_piece->_next_piece->curvature_binormal_norm() > REFINE_THRESHHOLD)) {
+			split_thread_piece(curr_piece, curr_piece_backup);
+			minimize_energy();
+		} else if (curr_piece->curvature_binormal_norm() > REFINE_SINGLE_THRESHHOLD) {
+			if (curr_piece->_next_piece->curvature_binormal_norm() > curr_piece->_prev_piece->curvature_binormal_norm()) {
+				split_thread_piece(curr_piece, curr_piece_backup);
+			} else {
+				split_thread_piece(curr_piece->_prev_piece, curr_piece_backup->_prev_piece);
+			}
+			minimize_energy();
+		}
+	}
+}
+
+void Thread::unrefine_links()
+{
+	ThreadPiece * curr_piece, * curr_piece_backup;
+	ThreadPiece * next_piece = _thread_pieces[2], * next_piece_backup = _thread_pieces_backup[2];
+	if (next_piece == NULL || next_piece->_next_piece==NULL)
+		cout << "Internal error: Thread::unrefine_links." << endl;
+	while (next_piece->_next_piece->_next_piece!=NULL) {
+		curr_piece = next_piece;
+		curr_piece_backup = next_piece_backup;
+		next_piece = next_piece->_next_piece;
+		next_piece_backup = next_piece_backup->_next_piece;
+		if (curr_piece->curvature_binormal_norm() < UNREFINE_THRESHHOLD) {
+			merge_thread_piece(curr_piece, curr_piece_backup);
+			minimize_energy();
+		}
+	}
+}
+//end variable-length thread_pieces
+/*********************************************************************************/
+
 void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
 {
   double max_movement_vertices = max_move_vert;
@@ -2170,6 +2298,17 @@ void Thread::get_thread_data(vector<Vector3d>& points, vector<double>& twist_ang
     points[piece_ind] = _thread_pieces[piece_ind]->vertex();
     twist_angles[piece_ind] = _thread_pieces[piece_ind]->angle_twist();
     material_frames[piece_ind] = _thread_pieces[piece_ind]->material_frame();
+  }
+}
+
+void Thread::get_thread_data(vector<double>& lengths, vector<double>& edge_norms)
+{
+  lengths.resize(_thread_pieces.size());
+  edge_norms.resize(_thread_pieces.size());
+  for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
+  {
+    lengths[piece_ind] = _thread_pieces[piece_ind]->rest_length();
+    edge_norms[piece_ind] = _thread_pieces[piece_ind]->edge_norm();
   }
 }
 

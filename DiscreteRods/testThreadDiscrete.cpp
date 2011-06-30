@@ -686,6 +686,7 @@ void DrawStuff (void)
       thread->minimize_energy();
     }
 
+		thread->adapt_links();
 
     //std::cout <<"ACTUAL END:\n" << thread->end_rot() << std::endl;
 
@@ -698,9 +699,39 @@ void DrawStuff (void)
 
 	//print stuff
 	if (print_mode_permanent || print_mode_instant) {
-		cout << "_total_length: " << thread->_total_length << endl;
-		cout << "calculate_energy(): " << thread->calculate_energy() << endl;
-		cout << "calculate_energy_inefficient(): " << thread->calculate_energy_inefficient() << endl;
+		cout << "***********************************************" << endl;
+		thread->get_thread_data(points);
+		cout << "vertices.size(): " << points.size() << endl;
+		vector<double> lengths;
+		vector<double> edge_norms;
+		thread->get_thread_data(lengths, edge_norms);
+		cout << "rest_lengths: ";
+		for (int i=0; i<lengths.size()-1; i++)
+			cout << lengths[i] << " ";
+		cout << endl;
+		cout << "edge_norms: ";
+		for (int i=0; i<edge_norms.size()-1; i++)
+			cout << edge_norms[i] << " ";
+		cout << endl;
+		bool too_different = false;
+		for (int i=0; i<lengths.size()-1; i++) {
+			bool too_diff_local = (abs(lengths[i] - edge_norms[i]) > 1.0e-05);
+			if (too_diff_local)
+				cout << "thread_piece " << i << " is too different by " << abs(lengths[i] - edge_norms[i]) << endl;
+			too_different |= too_diff_local;
+		}
+		cout << "any edge norm too different from rest_length?: " << too_different << endl;
+	
+		double total_rest_length = 0;
+		double total_edge_norm = 0;
+		for (int i=0; i<lengths.size()-1; i++) {
+			total_rest_length += lengths[i];
+			total_edge_norm += edge_norms[i];
+		}
+		cout << "_total_length: " << thread->_total_length << "\t" << "total_rest_length: " << total_rest_length << "\t" << "total_edge_norm: " << total_edge_norm << endl;
+		
+		/*cout << "calculate_energy(): " << thread->calculate_energy() << endl;
+		cout << "calculate_energy_inefficient(): " << thread->calculate_energy_inefficient() << endl;*/
 		vector<double> curvature_binormal_norm;
 		thread->getCurvatureBinormalNorm(curvature_binormal_norm);
 		cout << "curvature_binormal_norm: ";

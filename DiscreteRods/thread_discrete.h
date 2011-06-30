@@ -39,13 +39,18 @@
 #define DEFAULT_REST_LENGTH 3 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
+#define REFINE_THRESHHOLD 0.5
+#define REFINE_SINGLE_THRESHHOLD 0.7
+#define UNREFINE_THRESHHOLD 0.2 /*must be smaller than REFINE_THRESHHOLD otherwise thread will be unstable */
+#define NATURAL_REST_LENGTH 3.0
+#define REFINEMENT_DEPTH 4
+
 #define INTERSECTION_PUSHBACK_EPS 0.03 
 //#define NUM_THREADS_PARALLEL_FOR 2
 #define num_iters_twist_est_max 0
 
 #define THREAD_RADIUS 0.2     /* MUST BE ATLEAST MAX_MOVEMENT_VERTICES */
 #define COLLISION_CHECKING true
-
 
 
 using namespace std;
@@ -116,6 +121,7 @@ class Thread
     void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles);
     void get_thread_data(vector<Vector3d>& points, vector<Matrix3d>& material_frames);
     void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<Matrix3d>& material_frames);
+    void get_thread_data(vector<double>& lengths, vector<double>& edge_norms);
     void set_all_angles_zero();
     void set_all_pieces_mythread();
 
@@ -281,8 +287,14 @@ class Thread
     void fix_intersections();
     
     //variable-length thread_pieces
-    void split_thread_piece(ThreadPiece* thread_piece);
-    void merge_thread_piece(ThreadPiece* thread_piece);
+    //void split_thread_piece(int thread_piece_ind);
+    //void merge_thread_piece(int thread_piece_ind);
+    
+    void split_thread_piece(ThreadPiece* this_piece, ThreadPiece* this_piece_backup);
+    void merge_thread_piece(ThreadPiece* this_piece, ThreadPiece* this_piece_backup);
+    void adapt_links();
+    void refine_links();
+    void unrefine_links();
 
   //protected:
     vector<ThreadPiece*> _thread_pieces;

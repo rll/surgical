@@ -53,6 +53,7 @@ class ThreadPiece
 		const Vector3d& edge(void) const {return _edge;}
 		const double edge_norm(void) const {return _edge_norm;}
 		const Vector3d& curvature_binormal(void) const {return _curvature_binormal;}
+		const double curvature_binormal_norm(void) const {return _curvature_binormal.norm();}
 
     //Geometry
     void initializeFrames();
@@ -93,11 +94,15 @@ class ThreadPiece
     void update_material_frame();
 		//double calculate_holonomy();
 
+    //variable-length thread_pieces
+    void splitPiece(ThreadPiece* new_piece);
+    void mergePiece();
+    void fixPointersSplit(ThreadPiece* new_piece);
+		void fixPointersMerge();
 
 		void copyData(const ThreadPiece& rhs);
     void set_my_thread(Thread* my_thread){_my_thread = my_thread;};
-
-
+    
     //overload operators
     ThreadPiece& operator=(const ThreadPiece& rhs);
 
@@ -124,7 +129,8 @@ class ThreadPiece
     Thread* _my_thread;
 
 
-    void calculateBinormal(const Vector3d& edge_prev, const Vector3d& edge_after, Vector3d& binormal);
+    void calculateBinormal(const double rest_length_prev, const Vector3d& edge_prev, 
+													 const double rest_length_after, const Vector3d& edge_after, Vector3d& binormal);
 		void calculateBinormal();
 		void calculateBinormal_withLength(const Vector3d& edge_prev, const Vector3d& edge_after, Vector3d& binormal);
 		void calculateBinormal_withLength();

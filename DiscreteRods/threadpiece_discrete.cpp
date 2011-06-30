@@ -758,12 +758,13 @@ double ThreadPiece::twist_angle_error()
 }
 
 
-void ThreadPiece::calculateBinormal(const Vector3d& edge_prev, const Vector3d& edge_after, Vector3d& binormal)
+void ThreadPiece::calculateBinormal(const double rest_length_prev, const Vector3d& edge_prev, 
+																		const double rest_length_after, const Vector3d& edge_after, Vector3d& binormal)
 {
 	if (_prev_piece == NULL) 
 		cout << "Internal error: ThreadPiece::calculateBinormal() : _prev_piece is NULL." << endl;
   binormal = 2.0*edge_prev.cross(edge_after);
-  binormal /= ((_prev_piece->_rest_length * _rest_length) + edge_prev.dot(edge_after));
+  binormal /= ((rest_length_prev * rest_length_after) + edge_prev.dot(edge_after));
 }
 
 void ThreadPiece::calculateBinormal()
@@ -786,8 +787,66 @@ void ThreadPiece::calculateBinormal_withLength()
   _curvature_binormal /= (_prev_piece->_edge_norm*_edge_norm + _prev_piece->_edge.dot(_edge));
 }
 
+//variable-length thread_pieces
+// Splits the edge between this->vertex and this->_next_piece->_vertex, i.e. splits this into this and new_piece.
+// this->_vertex shouldn't be any of the first or last vertices of the thread.
+void ThreadPiece::splitPiece(ThreadPiece* new_piece)
+{	
+	if (_prev_piece==NULL)
+		cout << "Internal error: ThreadPiece::splitPiece: this->_vertex cannot be the first vertex." << endl;
+	if (_next_piece==NULL || _next_piece->_next_piece==NULL)
+		cout << "Internal error: ThreadPiece::splitPiece: this->_vertex cannot be the last or second to last vertex." << endl;
+	new_piece->_vertex = (_vertex + _next_piece->_vertex)/2.0;
+  new_piece->_angle_twist = _angle_twist;
+  //_edge, _edge_norm and _curvature_binormal are updated late
+	new_piece->_bishop_frame = _bishop_frame;
+	new_piece->_material_frame = _material_frame;
+	new_piece->_rest_length = _rest_length = _rest_length/2.0;
+	
+	fixPointersSplit(new_piece);
+	
+	update_edge();
+	new_piece->update_edge();
+	calculateBinormal();
+	new_piece->calculateBinormal();
+}
 
+// Merges the edges adjacent to this->_vertex, i.e. merges this->_prev_piece with this and puts it into this.
+// this->_vertex shouldn't be any of the first two or last two vertices of the thread.
+void ThreadPiece::mergePiece()
+{
+	if (_prev_piece==NULL || _prev_piece->_prev_piece == NULL)
+		cout << "Internal error: ThreadPiece::mergePiece: this->_vertex cannot be the first or second vertex." << endl;
+	else if (_next_piece==NULL || _next_piece->_next_piece == NULL)
+		cout << "Internal error: ThreadPiece::mergePiece: this->_vertex cannot be the last or second to last vertex." << endl;
+	
+	_vertex = _prev_piece->_vertex;
+  _angle_twist = _prev_piece->_angle_twist;
+	//_edge, _edge_norm and _curvature_binormal are updated later
+	intermediate_rotation(_bishop_frame, _prev_piece->_bishop_frame, _bishop_frame);
+	intermediate_rotation(_material_frame, _prev_piece->_material_frame, _material_frame);
+	_rest_length = _prev_piece->_rest_length + _rest_length;
+	
+	fixPointersMerge();
+	
+	update_edge();
+	calculateBinormal();
+}
 
+void ThreadPiece::fixPointersSplit(ThreadPiece* new_piece)
+{
+	this->_next_piece->_prev_piece = new_piece;
+	new_piece->_prev_piece = this;
+	new_piece->_next_piece = _next_piece;
+	this->_next_piece = new_piece;
+	new_piece->_my_thread = _my_thread;
+}
+
+void ThreadPiece::fixPointersMerge()
+{
+	this->_prev_piece->_prev_piece->_next_piece = this;
+	this->_prev_piece = _prev_piece->_prev_piece;
+}
 
 ThreadPiece& ThreadPiece::operator=(const ThreadPiece& rhs)
 {
@@ -798,6 +857,7 @@ ThreadPiece& ThreadPiece::operator=(const ThreadPiece& rhs)
 	_curvature_binormal = rhs._curvature_binormal;
 	_bishop_frame = rhs._bishop_frame;
 	_material_frame = rhs._material_frame;
+	_rest_length = rhs._rest_length;
 
   _prev_piece = rhs._prev_piece;
   _next_piece = rhs._next_piece;
@@ -818,7 +878,7 @@ void ThreadPiece::copyData(const ThreadPiece& rhs)
 	_curvature_binormal = rhs._curvature_binormal;
 	_bishop_frame = rhs._bishop_frame;
 	_material_frame = rhs._material_frame;
-  
+  _rest_length = rhs._rest_length;
 
 
 }
