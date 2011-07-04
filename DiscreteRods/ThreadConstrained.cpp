@@ -86,7 +86,14 @@ void ThreadConstrained::get_thread_data(vector<Vector3d> &absolute_points, vecto
 		threads[thread_num]->get_thread_data(points[thread_num], twist_angles[thread_num]);
 		twist_angles[thread_num].back() = 2.0*twist_angles[thread_num][twist_angles[thread_num].size()-2] - twist_angles[thread_num][twist_angles[thread_num].size()-3];
 		mapAdd(twist_angles[thread_num], zero_angle[thread_num]);
- 	}  	
+ 	}
+ 	for (int i=0; i<twist_angles.size(); i++) {
+ 		cout << "get_thread_data: twist_angles:" << endl;
+ 		for (int j; j<twist_angles[i].size(); j++) {
+		 	cout << twist_angles[i][j] << " ";
+		}
+		cout << endl;
+	}
 	mergeMultipleVector(absolute_points, points);
 	mergeMultipleVector(absolute_twist_angles, twist_angles);
 }
@@ -416,17 +423,17 @@ void ThreadConstrained::splitThread(int thread_num, int vertex_num) {
   Matrix3d vertex_end_rot = threads[thread_num]->material_at_ind(vertex_num-1);
   Matrix3d vertex_start_rot = threads[thread_num]->material_at_ind(vertex_num);
   Matrix3d rot_diff_matrix = vertex_start_rot.transpose()*vertex_end_rot;
- 	insertAt(rot_diff, rot_diff_matrix, thread_num+1);
+  rot_diff.insert(rot_diff.begin()+thread_num+1, rot_diff_matrix);
  	if (LIMITED_DISPLACEMENT) {
-	 	insertAt(last_pos, points[vertex_num], thread_num+1);
-	 	insertAt(last_rot, (Matrix3d) (vertex_start_rot * rot_offset[constrained_vertices_nums[thread_num+1]].transpose()), thread_num+1);
+ 		last_pos.insert(last_pos.begin()+thread_num+1, points[vertex_num]);
+ 		last_rot.insert(last_rot.begin()+thread_num+1, (Matrix3d) (vertex_start_rot * rot_offset[constrained_vertices_nums[thread_num+1]].transpose()));
  	}
 
 	Thread* thread0 = new Thread(point0, twist_angle0, (Matrix3d&) (threads[thread_num])->start_rot(), vertex_end_rot);
 	Thread* thread1 = new Thread(point1, twist_angle1, vertex_start_rot, (Matrix3d&) (threads[thread_num])->end_rot());
 	delete threads[thread_num];
 	threads[thread_num] = thread0;
-	insertAt(threads, thread1, thread_num+1);
+	threads.insert(threads.begin()+thread_num+1, thread1);
 	
 	for (int i=0; i<threads.size(); i++) {
 		threads[i]->clear_threads_in_env();
@@ -444,7 +451,7 @@ void ThreadConstrained::splitThread(int thread_num, int vertex_num) {
 	twist_angle0.back() = 2.0*twist_angle0[twist_angle0.size()-2] - twist_angle0[twist_angle0.size()-3];
 	twist_angle1.back() = 2.0*twist_angle1[twist_angle1.size()-2] - twist_angle1[twist_angle1.size()-3];
 	
-  insertAt(zero_angle, zero_angle[thread_num] + twist_angle0.back(), thread_num+1);
+	zero_angle.insert(zero_angle.begin()+thread_num+1, zero_angle[thread_num] + twist_angle0.back());
 }
 
 // Merges the threads threads[thread_num] and threads[thread_num+1] into one thread, which is stored at threads[thread_num]. Threads in threads that are stored after thread_num+1 now have a new thread_num which is one unit less than before.
@@ -459,7 +466,8 @@ void ThreadConstrained::mergeThread(int thread_num) {
 	vector<double> twist_angle(twist_angles0.size()+twist_angles1.size()-1);
 
 	mergeVector(point, points0, points1);
-	//mergeVector(twist_angle, twist_angles0, twist_angles1);
+	mergeVector(twist_angle, twist_angles0, twist_angles1);
+	cout << "twist_angles0.back()=" << twist_angles0.back() << "is discarded since it should be equal to twist_angles1.front()=" << twist_angles1.front() << endl;
 
 	zero_angle.erase(zero_angle.begin()+thread_num+1);
 	rot_diff.erase(rot_diff.begin() + thread_num+1);
@@ -631,11 +639,11 @@ void mapAdd (vector<T> &v, T num) {
 		v[i] = v[i] + num;
 }
 
-// Inserts an element at index index. The elements after index index are moved one position to the right in vector.
+/*// Inserts an element at index index. The elements after index index are moved one position to the right in vector.
 template<typename T>
 void insertAt (vector<T> &v, T e, int index) {
 	v.insert(v.begin()+index, e);
-}
+}*/
 
 // Last element of v1 and first element of v2 are equal to v[index].
 template<typename T>
