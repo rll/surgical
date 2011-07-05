@@ -518,14 +518,12 @@ void drawStuff (void)
 		}
 		for (int i=0; i<constrained_vertices_nums.size(); i++) {
 			constrained_ee[i]->setTransform(all_positions[constrained_vertices_nums[i]], all_rotations[constrained_vertices_nums[i]]);
-			//drawEndEffector(all_positions[constrained_vertices_nums[i]], all_rotations[constrained_vertices_nums[i]], 0, 0.7, 0.7, 0.7);
 		}
 	  int selected_vertex_ind = find(constrained_vertices_nums, selected_vertex_num);
 		if (constrained_or_free[toggle]) {
 	  	drawSphere(all_positions[selected_vertex_num], 1.4, 0.5, 0.0, 0.0);
 	  	if (selected_vertex_ind == -1)
 	  		cout << "Internal error: drawStuff(): if (constrained_or_free[toggle]): selected vertex should be constrained by an end effector." << endl;
-	  	//drawEndEffector(all_positions[selected_vertex_num], all_rotations[selected_vertex_num], 0, 0.4, 0.4, 0.4);
 	  	constrained_ee[selected_vertex_ind]->highlight();
 	  } else {
 	  	drawSphere(all_positions[selected_vertex_num], 1.4, 0.0, 0.5, 0.0);
@@ -536,8 +534,6 @@ void drawStuff (void)
 	} else {
 		// starts non-choose mode
   	if (HAPTICS) {
-  		//start_tip_pos = start_proxy_pos - grab_offset * start_proxy_rot.col(0);
-  		//end_tip_pos = end_proxy_pos - grab_offset * end_proxy_rot.col(0);
   		updateState(start_proxy_pos, start_proxy_rot, cursor0);
   		updateState(end_proxy_pos, end_proxy_rot, cursor1);
 		}
@@ -553,11 +549,11 @@ void drawStuff (void)
 		
 		if (HAPTICS) {
 		  if (cursor0->isAttached() && cursor0->end_eff->constraint_ind>=0) {
-		  	positionConstraints[cursor0->end_eff->constraint_ind] = start_proxy_pos - grab_offset * start_proxy_rot.col(0); //start_tip_pos;
+		  	positionConstraints[cursor0->end_eff->constraint_ind] = start_proxy_pos - grab_offset * start_proxy_rot.col(0);
 		  	rotationConstraints[cursor0->end_eff->constraint_ind] = start_proxy_rot;
 		  }
 		  if (cursor1->isAttached() && cursor1->end_eff->constraint_ind>=0) {
-		  	positionConstraints[cursor1->end_eff->constraint_ind] = end_proxy_pos - grab_offset * end_proxy_rot.col(0); //end_tip_pos;
+		  	positionConstraints[cursor1->end_eff->constraint_ind] = end_proxy_pos - grab_offset * end_proxy_rot.col(0);
 		  	rotationConstraints[cursor1->end_eff->constraint_ind] = end_proxy_rot;
 		  }
 		}
@@ -576,9 +572,6 @@ void drawStuff (void)
 		cursor0->draw();
 		cursor1->draw();
 	}
-	//vector<Intersection_Object*>* objects;
-  //objects = get_objects_in_env();
-	//cout << "objects->size(): " << objects->size() << endl;	
 	
 	drawThread();
 	base->draw();
@@ -732,20 +725,17 @@ void drawThread() {
     pts_cpy[i+1][1] = points[i](1)-(double)zero_location(1);
     pts_cpy[i+1][2] = points[i](2)-(double)zero_location(2);
    	twist_cpy[i+1] = -(360.0/(2.0*M_PI))*(twist_angles[i]);
-    //twist_cpy[i+1] = -(360.0/(2.0*M_PI))*(twist_angles[i]+zero_angle);
   }
   //add first and last point
   pts_cpy[0][0] = 2*pts_cpy[1][0] - pts_cpy[2][0];//pts_cpy[1][0]-rotations[0](0,0);
   pts_cpy[0][1] = 2*pts_cpy[1][1] - pts_cpy[2][1];//pts_cpy[1][1]-rotations[0](1,0);
   pts_cpy[0][2] = 2*pts_cpy[1][2] - pts_cpy[2][2];//pts_cpy[1][2]-rotations[0](2,0);
-  twist_cpy[0] = twist_cpy[1]; //-(360.0/(2.0*M_PI))*(twist_angles[0]);
-  //twist_cpy[0] = -(360.0/(2.0*M_PI))*(zero_angle);
+  twist_cpy[0] = twist_cpy[1];
 
   pts_cpy[points.size()+1][0] = 2*pts_cpy[points.size()][0] - pts_cpy[points.size()-1][0];//pts_cpy[points.size()][0]+rotations[1](0,0);
   pts_cpy[points.size()+1][1] = 2*pts_cpy[points.size()][1] - pts_cpy[points.size()-1][1];//pts_cpy[points.size()][1]+rotations[1](1,0);
   pts_cpy[points.size()+1][2] = 2*pts_cpy[points.size()][2] - pts_cpy[points.size()-1][2];//pts_cpy[points.size()][2]+rotations[1](2,0);
-  twist_cpy[points.size()+1] = twist_cpy[points.size()];//twist_cpy[points.size()]-(360.0/(2.0*M_PI))*(twist_angles[0]);
-  //twist_cpy[points.size()+1] = twist_cpy[points.size()]-(360.0/(2.0*M_PI))*zero_angle;
+  twist_cpy[points.size()+1] = twist_cpy[points.size()];
 
   gleTwistExtrusion(20,
       contour,
@@ -1032,7 +1022,7 @@ void initGL()
   glLightModelfv(GL_LIGHT_MODEL_AMBIENT, light_model_ambient);
   glLightfv (GL_LIGHT0, GL_POSITION, lightOnePosition);
 	glLightfv (GL_LIGHT0, GL_DIFFUSE, lightOneColor);
-	//glEnable (GL_LIGHT0);
+	//glEnable (GL_LIGHT0);		// uncomment this if you want another source of light
 	glLightfv (GL_LIGHT1, GL_POSITION, lightTwoPosition);
 	glLightfv (GL_LIGHT1, GL_DIFFUSE, lightTwoColor);
 	glEnable (GL_LIGHT1);

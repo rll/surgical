@@ -66,7 +66,7 @@ class ThreadConstrained {
 	private:
 		int num_vertices;
 		vector<Thread*> threads;
-		vector<double> zero_angle;
+		double zero_angle;
 		vector<Matrix3d> rot_diff;
 		vector<Matrix3d> rot_offset;
 		vector<Vector3d> last_pos;
@@ -87,20 +87,8 @@ class ThreadConstrained {
 void invalidateAroundConstraintsNums(vector<int> &v, vector<int> constraintsNums);
 // Invalidates (sets to -1) the elements of v at indices i. Indices i are specified by constraintsNums. Indices in constraintsNums have to be in the range of v.
 void invalidateConstraintsNums(vector<int> &v, vector<int> constraintsNums);
-/*// Elements v[i-1], v[i] and v[i+1] are removed from v, where the indices i are specified in invalidElements. invalidElements have to be sorted. The difference between adjacent elements in invalidElements have to be of at least 3.
-template<typename T>
-void removeInvalidSortedElements(vector<T> &v, vector<int> invalidElements);
-// Elements v[i-1] and v[i+1] are removed from v, where the indices i are specified in invalidElements. invalidElements have to be sorted. The difference between adjacent elements in invalidElements have to be of at least 3.
-template<typename T>
-void removeAdjacentInvalidSortedElements(vector<T> &v, vector<int> invalidElements);
-// Elements v[i] are invalidated (set to -1), where the indices i are specified in invalidElements. invalidElements have to be sorted.
-template<typename T>
-void invalidateSortedElements(vector<T> &v, vector<int> invalidElements);*/
 template<typename T>
 void mapAdd (vector<T> &v, T num);
-// Inserts an element at index index. The elements after index index are moved one position to the right in vector.
-//template<typename T>
-//void insertAt (vector<T> &v, T e, int index);
 // Last element of v1 and first element of v2 are equal to v[index].
 template<typename T>
 void splitVector (vector<T> &v1, vector<T> &v2, vector<T> v, int index);

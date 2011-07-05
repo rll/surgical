@@ -55,7 +55,7 @@ ThreadConstrained::ThreadConstrained(int num_vertices_init) {
 
 	thread->minimize_energy();
 
-	zero_angle.push_back(0.0);
+	zero_angle = 0.0;
 	rot_diff.push_back(Matrix3d::Identity());
 	rot_diff.push_back(Matrix3d::Identity());
 	rot_offset.push_back((Matrix3d) (AngleAxisd(M_PI, Vector3d::UnitZ())));
@@ -73,7 +73,7 @@ ThreadConstrained::ThreadConstrained(int num_vertices_init) {
 }
 
 void ThreadConstrained::get_thread_data(vector<Vector3d> &absolute_points) {
-	vector<vector<Vector3d> > points(threads.size());   //check
+	vector<vector<Vector3d> > points(threads.size());
 	for (int thread_num=0; thread_num<threads.size(); thread_num++)
 		threads[thread_num]->get_thread_data(points[thread_num]);
 	mergeMultipleVector(absolute_points, points);
@@ -85,15 +85,11 @@ void ThreadConstrained::get_thread_data(vector<Vector3d> &absolute_points, vecto
 	for (int thread_num=0; thread_num<threads.size(); thread_num++) {
 		threads[thread_num]->get_thread_data(points[thread_num], twist_angles[thread_num]);
 		twist_angles[thread_num].back() = 2.0*twist_angles[thread_num][twist_angles[thread_num].size()-2] - twist_angles[thread_num][twist_angles[thread_num].size()-3];
-		mapAdd(twist_angles[thread_num], zero_angle[thread_num]);
+		if (thread_num==0)
+			mapAdd(twist_angles[thread_num], zero_angle);
+		else
+			mapAdd(twist_angles[thread_num], twist_angles[thread_num-1].back());
  	}
- 	for (int i=0; i<twist_angles.size(); i++) {
- 		cout << "get_thread_data: twist_angles:" << endl;
- 		for (int j; j<twist_angles[i].size(); j++) {
-		 	cout << twist_angles[i][j] << " ";
-		}
-		cout << endl;
-	}
 	mergeMultipleVector(absolute_points, points);
 	mergeMultipleVector(absolute_twist_angles, twist_angles);
 }
@@ -105,7 +101,10 @@ void ThreadConstrained::get_thread_data(vector<Vector3d> &absolute_points, vecto
 	for (int thread_num=0; thread_num<threads.size(); thread_num++) {
 		threads[thread_num]->get_thread_data(points[thread_num], twist_angles[thread_num], material_frames[thread_num]);
 		twist_angles[thread_num].back() = 2.0*twist_angles[thread_num][twist_angles[thread_num].size()-2] - twist_angles[thread_num][twist_angles[thread_num].size()-3];
-	 	mapAdd(twist_angles[thread_num], zero_angle[thread_num]);
+	 	if (thread_num==0)
+			mapAdd(twist_angles[thread_num], zero_angle);
+		else
+			mapAdd(twist_angles[thread_num], twist_angles[thread_num-1].back());
   }
 	mergeMultipleVector(absolute_points, points);
 	mergeMultipleVector(absolute_twist_angles, twist_angles);
@@ -296,6 +295,7 @@ void ThreadConstrained::updateConstraints (vector<Vector3d> poss, vector<Matrix3
 	if (poss.size() != threads.size()+1)
 		cout << "Internal Error: setConstraints: not the right number of transforms for current threads. addConstraint or removeConstraint first." << endl;
 	
+	//the following loop is to synchronize the end positions of two threads held by the same end-effector
 	bool wrong_positions = true;
 	int iters = 0;
 	while (wrong_positions) {
@@ -342,13 +342,15 @@ void ThreadConstrained::updateConstraints (vector<Vector3d> poss, vector<Matrix3
 		new_start_rot = rots[i]*rot_offset[constrained_vertices_nums[i]];
 		new_end_rot 	= rots[i+1]*rot_offset[constrained_vertices_nums[i+1]]*rot_diff[i+1];
 				
-		zero_angle[i] += angle_mismatch(rots[i], threads[i]->start_rot());
+		double angle_change = angle_mismatch(new_start_rot, threads[i]->start_rot());
+		if (i==0)
+			zero_angle += angle_change - M_PI*((int) (angle_change/M_PI));
 	  threads[i]->set_constraints_check(new_start_pos, new_start_rot, new_end_pos, new_end_rot);
 	  if (LIMITED_DISPLACEMENT) {
 			last_pos[i] 	= new_start_pos;
 			last_pos[i+1] = new_end_pos;
-			last_rot[i]		= rots[i]; 		//new_start_rot * rot_offset[constrained_vertices_nums[i]].transpose();
-			last_rot[i+1] = rots[i+1];	//new_end_rot * rot_diff[i+1].tranpose() * rot_offset[constrained_vertices_nums[i+1]].transpose();
+			last_rot[i]		= rots[i];
+			last_rot[i+1] = rots[i+1];
 	  }
 	}
 }
@@ -413,12 +415,13 @@ void ThreadConstrained::splitThread(int thread_num, int vertex_num) {
 	vector<Vector3d> point0;
 	vector<Vector3d> point1;
 	vector<Vector3d> points;
+	vector<double> twist_angle0;
+	vector<double> twist_angle1;
 	vector<double> twist_angles;
 	threads[thread_num]->get_thread_data(points, twist_angles);
-	vector<double> twist_angle0(vertex_num+1, 0.0);
-	vector<double> twist_angle1(twist_angles.size()-vertex_num, 0.0);
 
 	splitVector(point0, point1, points, vertex_num);
+	splitVector(twist_angle0, twist_angle1, twist_angles, vertex_num);
 
   Matrix3d vertex_end_rot = threads[thread_num]->material_at_ind(vertex_num-1);
   Matrix3d vertex_start_rot = threads[thread_num]->material_at_ind(vertex_num);
@@ -428,7 +431,11 @@ void ThreadConstrained::splitThread(int thread_num, int vertex_num) {
  		last_pos.insert(last_pos.begin()+thread_num+1, points[vertex_num]);
  		last_rot.insert(last_rot.begin()+thread_num+1, (Matrix3d) (vertex_start_rot * rot_offset[constrained_vertices_nums[thread_num+1]].transpose()));
  	}
-
+	
+	mapAdd(twist_angle1, -twist_angle1.front());
+	twist_angle0.back() = 2.0*twist_angle0[twist_angle0.size()-2] - twist_angle0[twist_angle0.size()-3];
+	twist_angle1.back() = 2.0*twist_angle1[twist_angle1.size()-2] - twist_angle1[twist_angle1.size()-3];
+	
 	Thread* thread0 = new Thread(point0, twist_angle0, (Matrix3d&) (threads[thread_num])->start_rot(), vertex_end_rot);
 	Thread* thread1 = new Thread(point1, twist_angle1, vertex_start_rot, (Matrix3d&) (threads[thread_num])->end_rot());
 	delete threads[thread_num];
@@ -447,11 +454,6 @@ void ThreadConstrained::splitThread(int thread_num, int vertex_num) {
 	threads[thread_num+1]->minimize_energy();
 	threads[thread_num]->get_thread_data(point0, twist_angle0);
 	threads[thread_num+1]->get_thread_data(point1, twist_angle1);
-
-	twist_angle0.back() = 2.0*twist_angle0[twist_angle0.size()-2] - twist_angle0[twist_angle0.size()-3];
-	twist_angle1.back() = 2.0*twist_angle1[twist_angle1.size()-2] - twist_angle1[twist_angle1.size()-3];
-	
-	zero_angle.insert(zero_angle.begin()+thread_num+1, zero_angle[thread_num] + twist_angle0.back());
 }
 
 // Merges the threads threads[thread_num] and threads[thread_num+1] into one thread, which is stored at threads[thread_num]. Threads in threads that are stored after thread_num+1 now have a new thread_num which is one unit less than before.
@@ -467,9 +469,7 @@ void ThreadConstrained::mergeThread(int thread_num) {
 
 	mergeVector(point, points0, points1);
 	mergeVector(twist_angle, twist_angles0, twist_angles1);
-	cout << "twist_angles0.back()=" << twist_angles0.back() << "is discarded since it should be equal to twist_angles1.front()=" << twist_angles1.front() << endl;
-
-	zero_angle.erase(zero_angle.begin()+thread_num+1);
+	
 	rot_diff.erase(rot_diff.begin() + thread_num+1);
 	if (LIMITED_DISPLACEMENT) {
 		last_pos.erase(last_pos.begin() + thread_num+1);
@@ -493,7 +493,7 @@ void ThreadConstrained::mergeThread(int thread_num) {
 	threads[thread_num]->minimize_energy();
 }
 
-// Returns the thread number that owns the absolute_vertex_num. absolute_vertex_num must not be a constrained vertex
+// Returns the thread number that owns the absolute_vertex_num. absolute_vertex_num must not be a constrained vertex. Might be buggy?
 int ThreadConstrained::threadOwner(int absolute_vertex_num) {
 	int thread_num;
 	int num_absolute_vertices = 1;
@@ -563,87 +563,11 @@ void invalidateConstraintsNums(vector<int> &v, vector<int> constraintsNums) {
 	}
 }
 
-/*// Elements v[i-1], v[i] and v[i+1] are removed from v, where the indices i are specified in invalidElements. invalidElements have to be sorted. The difference between adjacent elements in invalidElements have to be of at least 3.
-template<typename T>
-void removeInvalidSortedElements(vector<T> &v, vector<int> invalidElements) {
-	if (invalidElements.size()) {
-		vector<int>::reverse_iterator invIt = invalidElements.rbegin();
-		int i = invalidElements.size() - 1;
-		int vect_size = v.size();
-		while (invIt < invalidElements.rend()) {
-			if (invalidElements[i]==vect_size-1) {
-				v.erase(v.begin()+invalidElements[i]-1, v.begin()+invalidElements[i]+1);
-			}	else if (invalidElements[i]==0) {
-				v.erase(v.begin()+invalidElements[i], v.begin()+invalidElements[i]+2);
-			} else {
-				v.erase(v.begin()+invalidElements[i]-1, v.begin()+invalidElements[i]+2);
-			}
-			invIt++;
-			i--;
-		}
-	}
-}
-
-// Elements v[i-1] and v[i+1] are removed from v, where the indices i are specified in invalidElements. invalidElements have to be sorted. The difference between adjacent elements in invalidElements have to be of at least 3.
-template<typename T>
-void removeAdjacentInvalidSortedElements(vector<T> &v, vector<int> invalidElements) {
-	if (invalidElements.size()) {
-		vector<int>::reverse_iterator invIt = invalidElements.rbegin();
-		int i = invalidElements.size() - 1;
-		int vect_size = v.size();
-		while (invIt < invalidElements.rend()) {
-			if (invalidElements[i]==vect_size-1) {
-				v.erase(v.begin()+invalidElements[i]-2, v.begin()+invalidElements[i]);
-			}	else if (invalidElements[i]==0) {
-				v.erase(v.begin()+invalidElements[i]+1, v.begin()+invalidElements[i]+3);
-			} else if (invalidElements[i]==vect_size-2) {			
-				v.erase(v.begin()+invalidElements[i]+1);
-				v.erase(v.begin()+invalidElements[i]-2, v.begin()+invalidElements[i]);
-			}	else if (invalidElements[i]==1) {			
-				v.erase(v.begin()+invalidElements[i]+1, v.begin()+invalidElements[i]+3);
-				v.erase(v.begin()+invalidElements[i]-1);
-			} else {
-				v.erase(v.begin()+invalidElements[i]+1, v.begin()+invalidElements[i]+3);
-				v.erase(v.begin()+invalidElements[i]-2, v.begin()+invalidElements[i]);
-			}
-			invIt++;
-			i--;
-		}
-	}
-}
-
-// Elements v[i] are invalidated (set to -1), where the indices i are specified in invalidElements. invalidElements have to be sorted.
-template<typename T>
-void invalidateSortedElements(vector<T> &v, vector<int> invalidElements) {
-	if (invalidElements.size()) {
-		vector<int>::reverse_iterator invIt = invalidElements.rbegin();
-		int i = invalidElements.size() - 1;
-		int vect_size = v.size();
-		while (invIt < invalidElements.rend()) {
-			if (invalidElements[i]==vect_size-1) {
-				v[invalidElements[i]-1] = v[invalidElements[i]] = -1;
-			}	else if (invalidElements[i]==0) {
-				v[invalidElements[i]] = v[invalidElements[i]+1] = -1;
-			} else {
-				v[invalidElements[i]-1] = v[invalidElements[i]] = v[invalidElements[i]+1] = -1;
-			}
-			invIt++;
-			i--;
-		}
-	}
-}*/
-
 template<typename T>
 void mapAdd (vector<T> &v, T num) {
 	for (int i=0; i<v.size(); i++)
 		v[i] = v[i] + num;
 }
-
-/*// Inserts an element at index index. The elements after index index are moved one position to the right in vector.
-template<typename T>
-void insertAt (vector<T> &v, T e, int index) {
-	v.insert(v.begin()+index, e);
-}*/
 
 // Last element of v1 and first element of v2 are equal to v[index].
 template<typename T>
