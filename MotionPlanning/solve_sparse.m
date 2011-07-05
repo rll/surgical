@@ -4,6 +4,12 @@ function [] = solve_sparse(A_m, A_n, A_file, b_m, b_n, b_file, x_file, num_threa
 
 A_data = load(A_file);
 A = sparse(A_data(:, 1), A_data(:, 2), A_data(:, 3), A_m, A_n);
+J_diag_block = full(A(:, size_each_state*(num_threads-2)+1:end));
+J_block = zeros(size_each_state, size_each_control*(num_threads-1));
+
+for i = 1:num_threads-1
+  J_block(1:end,size_each_control*(i-1)+1:size_each_control*i) = J_diag_block(size_each_state*(i-1)+1:size_each_state*i, size_each_control*(i-1)+1:size_each_control*i);
+end
 
 b_data = load(b_file);
 
@@ -13,14 +19,14 @@ for i=1:size_each_state
 end
 
 b = zeros(size_each_state*(num_threads-1),1);
-goal_state = b(end-size_each_state+1: end);
-goal_state = repmat(goal_state, num_threads-2, 1);
 b(1:size_each_state) = b_data(1:size_each_state) .* -weight_vector;
 b(end-size_each_state+1: end) = b_data(end-size_each_state+1:end) .* weight_vector;
+initial_state = -b(1:size_each_state);
+goal_state = b(end-size_each_state+1: end);
 
 num_points = (size_each_state-1)/3;
 
-weighted_state_diff_constraint = 1;
+weighted_state_diff_constraint = 5e-1;
 control_diff_constraint = 1;
 %min_control = 0.1;
 %consecutive_state_diff_constraint = 10;
@@ -32,23 +38,31 @@ cvx_begin
     variable x(A_n)
     variable u((num_threads-1))
     %variable consecutive_state_diff(num_threads)
-    variable edge_constraints((num_threads-2)*num_points)
+    variable edge_violations((num_threads-2)*num_points)
     variable consecutive_control_diff(num_threads-2) 
+    variable u_block(size_each_control*(num_threads-1))
+    variable forward_scores((num_threads-1)*size_each_state)
     %minimize (square_pos(norm(A*x - b)) + 2*sum(sum(reshape(x((num_threads-2)*size_each_state+1:end), num_threads-1, size_each_control).^2,2)));
   
-    minimize(norm(A*x-b,2) + norm(edge_constraints-3,2) + norm(consecutive_control_diff, 2) + norm(u,2)) %+ consectuve_state_diff_weight'*consecutive_state_diff)%norm(consecutive_state_diff,1)) %sum(w)
+    minimize(norm(A*x-b) + norm(edge_violations,2) + norm(consecutive_control_diff, 2) + norm(u,2) + norm(forward_scores)) %+ consectuve_state_diff_weight'*consecutive_state_diff)%norm(consecutive_state_diff,1)) %sum(w)
     subject to
-      
+     
+      for j = 1:num_threads-2
+        forward_scores(size_each_state*(j-1)+1:size_each_state*j) == J_block(:,1:size_each_control*j)*u_block(1:size_each_control*j) + initial_state - x(size_each_state*(j-1)+1 : size_each_state*j); 
+      end
+
+      forward_scores((num_threads-2)*size_each_state+1:end) == J_block*u_block + initial_state - goal_state;
+
       for thread_num=1:num_threads-2
         for vertex_num = 1:num_points-1
-          norm(x(size_each_state*(thread_num-1) + 3*(vertex_num-1)+1 : size_each_state*(thread_num-1) + 3*vertex_num) - x(size_each_state*(thread_num-1) + 3*(vertex_num)+1 : size_each_state*(thread_num-1)+3*(vertex_num+1))) < edge_constraints((thread_num-1)*(num_points-1)+vertex_num)
+          norm(x(size_each_state*(thread_num-1) + 3*(vertex_num-1)+1 : size_each_state*(thread_num-1) + 3*vertex_num) - x(size_each_state*(thread_num-1) + 3*(vertex_num)+1 : size_each_state*(thread_num-1)+3*(vertex_num+1))) < edge_violations((thread_num-1)*(num_points-1)+vertex_num) + 3
         end
       end
 
       %% b_data contains all the state info from prev iteration
-      %for thread_num=1:num_threads-2
-      %  norm( weight_vector.* x(size_each_state*(thread_num-1) + 1: size_each_state*(thread_num)) - weight_vector.* b_data((thread_num*size_each_state)+1 : (thread_num+1)*size_each_state)) < weighted_state_diff_constraint;
-      %end
+      for thread_num=1:num_threads-2
+        weight_vector.* x(size_each_state*(thread_num-1) + 1: size_each_state*(thread_num)) - weight_vector.* b_data((thread_num*size_each_state)+1 : (thread_num+1)*size_each_state) < weighted_state_diff_constraint;
+      end
       
       %for thread_num = 1:num_threads-2
       %  consecutive_state_diff(thread_num+1) > norm(weight_vector .* x(size_each_state*(thread_num-1) + 1 : size_each_state*(thread_num)) - weight_vector .* x(size_each_state*(thread_num) + 1 : size_each_state*(thread_num+1)));
@@ -78,6 +92,8 @@ cvx_begin
       for thread_num=1:num_threads-2
         consecutive_control_diff(thread_num) >= norm( x(size_each_state*(num_threads-2)+(thread_num-1)*size_each_control+1 : size_each_state*(num_threads-2) + (thread_num)*size_each_control) - x(size_each_state*(num_threads-2)+thread_num*size_each_control+1 : size_each_state*(num_threads-2) + (thread_num+1)*size_each_control))
       end
+
+      u_block(1:end) == x(size_each_state*(num_threads-2)+1:end)
       %u(1:end) > min_control;
 
 

@@ -295,26 +295,29 @@ void initializeSQP() {
   du(7) = eps;
   du(8) = eps;
 
-  //initialTraj.resize(interpTraj.size()); 
-  //Thread* start_copy = new Thread(*glThreads[planThread]->getThread());
-  //initialTraj[0] = new Thread(*start_copy); 
-  //for (int i = 1; i < initialTraj.size(); i++) {
-  //  applyControl(start_copy, du);
-  //  initialTraj[i] = new Thread(*start_copy); 
-  //}
-  initialTraj[initialTraj.size()-1] = initialTraj[initialTraj.size()-2];
+  initialTraj.resize(interpTraj.size()); 
+  Thread* start_copy = new Thread(*glThreads[planThread]->getThread());
+  initialTraj[0] = new Thread(*start_copy); 
+  for (int i = 1; i < initialTraj.size()-1; i++) {
+    applyControl(start_copy, du);
+    initialTraj[i] = new Thread(*start_copy); 
+  }
+  initialTraj[initialTraj.size()-1] = new Thread(*glThreads[endThread]->getThread());
   
   vector<Thread*> SQPTraj; 
   vector<VectorXd> SQPControls;
-  vector<Thread*> sqp_debug_data;
+  vector<vector<Thread*> >sqp_debug_data;
   string namestring = "sqp_debug"; 
   solveSQP(initialTraj, SQPTraj, SQPControls, sqp_debug_data, namestring.c_str());   
   
   vector<Thread*> OLCTraj; 
   openLoopController(SQPTraj, SQPControls, OLCTraj); 
+  //openLoopController(sqp_debug_data, SQPControls, OLCTraj);
   vector<vector<Thread*> > visualizationData;
-  visualizationData.push_back(initialTraj);
-  visualizationData.push_back(sqp_debug_data);
+  //visualizationData.push_back(initialTraj);
+  for (int i = 0; i < sqp_debug_data.size(); i++) { 
+    visualizationData.push_back(sqp_debug_data[i]);
+  }
 
   //visualizationData.push_back(SQPTraj);
   visualizationData.push_back(OLCTraj); 
@@ -541,7 +544,7 @@ void SQPPlanner() {
 	int num_iters = 3; 
   Thread* start = new Thread(*glThreads[planThread]->getThread());
   Thread* end = new Thread(*glThreads[endThread]->getThread());
-  numApprox = 100;
+  numApprox = 40;
   vector<Thread*> traj;
   traj.resize(numApprox);
   traj[0] = new Thread(*start);
@@ -573,13 +576,9 @@ void SQPPlanner() {
     motion_wrapper.push_back(U[i]);
     thread_control_data.push_back(motion_wrapper);
   }
-  Trajectory_Follower *pathFollower = 
-    new Trajectory_Follower(traj, thread_control_data, start); 
-
-  pathFollower->control_to_finish();
-
   vector<Thread*> control_traj;
-  pathFollower->getReachedStates(control_traj);
+  openLoopController(traj, U, control_traj); 
+  
   thread_visualization_data.push_back(traj);
   thread_visualization_data.push_back(control_traj);
   setThreads(thread_visualization_data);

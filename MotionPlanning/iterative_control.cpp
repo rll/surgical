@@ -35,13 +35,13 @@ void Iterative_Control::resize_controller(int num_threads, int num_vertices)
 
 
 bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vector<VectorXd>& controls, int num_opts) { 
-  vector<Thread*> sqp_debug_data;
+  vector<vector<Thread*> > sqp_debug_data;
   return iterative_control_opt(trajectory, controls, sqp_debug_data, num_opts);
 }
 
 
 
-bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vector<VectorXd>& controls, vector<Thread*>& sqp_debug_data, int num_opts) 
+bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vector<VectorXd>& controls, vector<vector<Thread*> >& sqp_debug_data, int num_opts) 
 {
   if (trajectory.size() != _num_threads && trajectory.front()->num_pieces() != _num_vertices)
     return false;
@@ -58,6 +58,8 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
 
   char filename_alltrans[256];
   sprintf(filename_alltrans, "%s/%s_%s", SQP_BASE_FOLDER, _namestring, FILENAME_ALLTRANS);
+
+  sqp_debug_data.resize(0); 
 
 
   for (int opt_iter=0; opt_iter < num_opts; opt_iter++)
@@ -104,20 +106,23 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
 
     cout << "Minimizing Threads returned from MATLAB" << endl; 
     boost::progress_display progress(trajectory.size()-2);
-    sqp_debug_data.resize(trajectory.size());
-    sqp_debug_data[0] = new Thread(*trajectory[0]);
-    sqp_debug_data[trajectory.size()-1] = new Thread(*trajectory[trajectory.size()-1]);
+    vector<Thread*> sqp_debug_data_iter;
+    sqp_debug_data_iter.resize(trajectory.size());
+    sqp_debug_data_iter[0] = new Thread(*trajectory[0]);
+    sqp_debug_data_iter[trajectory.size()-1] = new Thread(*trajectory[trajectory.size()-1]);
     #pragma omp parallel for num_threads(NUM_CPU_THREADS)
     for (int i=1; i < trajectory.size()-1; i++)
     {
       VectorXd to_copy = new_states.segment(_size_each_state*(i-1), _size_each_state);
       trajectory[i]->copy_data_from_vector(to_copy);
-      sqp_debug_data[i] = new Thread(*trajectory[i]); 
+      sqp_debug_data_iter[i] = new Thread(*trajectory[i]); 
       trajectory[i]->unviolate_total_length_constraint();
       trajectory[i]->project_length_constraint();
       trajectory[i]->minimize_energy(150000000);
       ++progress;
     }
+
+    sqp_debug_data.push_back(sqp_debug_data_iter);
 
     //copy out control
     controls.resize(_num_threads-1);
