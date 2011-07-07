@@ -1239,14 +1239,16 @@ double Thread::one_step_grad_change(double step_size)
 void Thread::minimize_energy_twist_angles()
 {
 #ifdef ISOTROPIC
-  double angle_per = (_thread_pieces[_thread_pieces.size()-2]->angle_twist())/((double)_thread_pieces.size()-2);
-
+  double accum_rest_length = rest_length_at_ind(0);
+  double angle_per_length = end_angle() / (_total_length - end_rest_length());
+  
   //#pragma omp parallel for num_threads(NUM_THREADS_PARALLEL_FOR)
   for (int piece_ind = 1; piece_ind < _thread_pieces.size()-2; piece_ind++)
-  {
-    _thread_pieces[piece_ind]->set_angle_twist(angle_per*piece_ind);
+ 	{
+ 		_thread_pieces[piece_ind]->set_angle_twist(angle_per_length*accum_rest_length);
     _thread_pieces[piece_ind]->updateFrames_twistOnly();
-  }
+ 		accum_rest_length += rest_length_at_ind(piece_ind);
+ 	}
 
 #else
   double step_in_grad_dir_twist = 1.0;
@@ -2275,6 +2277,11 @@ void Thread::get_thread_data(vector<Vector3d>& points, vector<double>& twist_ang
     points[piece_ind] = _thread_pieces[piece_ind]->vertex();
     twist_angles[piece_ind] = _thread_pieces[piece_ind]->angle_twist();
   }
+#ifdef ISOTROPIC
+  twist_angles.back() = twist_angles[twist_angles.size()-2] * (_total_length/(_total_length-end_rest_length()));
+#else
+	cout << "Internal error: Thread::get_thread_data() : wrong end twist angle for anisotropic case." << endl;
+#endif
 }
 
 void Thread::get_thread_data(vector<Vector3d>& points, vector<Matrix3d>& material_frames)
@@ -2299,6 +2306,11 @@ void Thread::get_thread_data(vector<Vector3d>& points, vector<double>& twist_ang
     twist_angles[piece_ind] = _thread_pieces[piece_ind]->angle_twist();
     material_frames[piece_ind] = _thread_pieces[piece_ind]->material_frame();
   }
+#ifdef ISOTROPIC
+  twist_angles.back() = twist_angles[twist_angles.size()-2] * (_total_length/(_total_length-end_rest_length()));
+#else
+	cout << "Internal error: Thread::get_thread_data() : wrong end twist angle for anisotropic case." << endl;
+#endif
 }
 
 void Thread::get_thread_data(vector<double>& lengths, vector<double>& edge_norms)
