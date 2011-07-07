@@ -725,11 +725,8 @@ void Thread::fix_intersections() {
     }
 }
 
-bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Thread_Intersection>& thread_intersections, vector<Intersection>& intersections)
-{
-  time_t start, end;
-  time (&start);
-   	
+/*bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Thread_Intersection>& thread_intersections, vector<Intersection>& intersections)
+{   	
   double found = false; // count of number of intersections
   self_intersections.clear();
   thread_intersections.clear();
@@ -787,11 +784,144 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
 
   }
 
-	time (&end);
-  cout << "total time: " << (double) (difftime(end, start))*1000 << " ms" << endl;
-
   return found;
+}*/
+
+
+bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Thread_Intersection>& thread_intersections, vector<Intersection>& intersections)
+{ 
+	timespec start_exp, end_exp;
+  clock_gettime(CLOCK_REALTIME, &start_exp);
+   
+  double found_exp = false; // count of number of intersections
+  self_intersections.clear();
+  thread_intersections.clear();
+  intersections.clear();
+
+  //self intersections
+  for(int i = 0; i < _thread_pieces.size() - 3; i++) {
+    //+2 so you don't check the adjacent piece - bug?
+    for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
+      if(i == 0 && j == _thread_pieces.size() - 2) 
+        continue;
+      double intersection_dist = self_intersection_exp(i,j,THREAD_RADIUS);
+      if(intersection_dist != 0) {
+        //skip if both ends, since these are constraints
+        found_exp = true;
+
+        self_intersections.push_back(Self_Intersection(i,j,intersection_dist));
+      }
+    }
+  }
+	
+	//intersections between threads
+	for (int k=0; k < threads_in_env.size(); k++) {
+		//if (this == threads_in_env[k]) //check
+			//continue;
+		for(int i = 0; i < _thread_pieces.size()-1; i++) {
+	    for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
+	      if((i==0 && j==0) ||
+	      	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
+	      	 (i==_thread_pieces.size()-2 && j==0) ||
+	      	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
+	        continue;
+	      double intersection_dist = thread_intersection_exp(i,j,k,THREAD_RADIUS);		//asumes other threads have same radius
+	      if(intersection_dist != 0) {
+	        //skip if both ends, since these are constraints
+	        found_exp = true;
+	        thread_intersections.push_back(Thread_Intersection(i,j,k,intersection_dist));
+	      }
+	    }
+	  }
+	}
+		
+  //intersections with objects
+  for (int i=0; i < objects_in_env.size(); i++)
+  {
+    for(int j = 2; j < _thread_pieces.size() - 3; j++) {
+    //for(int j = 0; j < _thread_pieces.size() - 1; j++) {
+      double intersection_dist = obj_intersection_exp(j,THREAD_RADIUS, i, objects_in_env[i]->_radius);
+      if(intersection_dist != 0) {
+        found_exp = true;
+
+        intersections.push_back(Intersection(j,i,intersection_dist));
+      }
+    }
+
+  }
+	
+	clock_gettime(CLOCK_REALTIME, &end_exp);
+	
+	
+	timespec start, end;
+  clock_gettime(CLOCK_REALTIME, &start);
+   
+  double found = false; // count of number of intersections
+  self_intersections.clear();
+  thread_intersections.clear();
+  intersections.clear();
+
+  //self intersections
+  for(int i = 0; i < _thread_pieces.size() - 3; i++) {
+    //+2 so you don't check the adjacent piece - bug?
+    for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
+      if(i == 0 && j == _thread_pieces.size() - 2) 
+        continue;
+      double intersection_dist = self_intersection(i,j,THREAD_RADIUS);
+      if(intersection_dist != 0) {
+        //skip if both ends, since these are constraints
+        found = true;
+
+        self_intersections.push_back(Self_Intersection(i,j,intersection_dist));
+      }
+    }
+  }
+	
+	//intersections between threads
+	for (int k=0; k < threads_in_env.size(); k++) {
+		//if (this == threads_in_env[k]) //check
+			//continue;
+		for(int i = 0; i < _thread_pieces.size()-1; i++) {
+	    for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
+	      if((i==0 && j==0) ||
+	      	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
+	      	 (i==_thread_pieces.size()-2 && j==0) ||
+	      	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
+	        continue;
+	      double intersection_dist = thread_intersection(i,j,k,THREAD_RADIUS);		//asumes other threads have same radius
+	      if(intersection_dist != 0) {
+	        //skip if both ends, since these are constraints
+	        found = true;
+	        thread_intersections.push_back(Thread_Intersection(i,j,k,intersection_dist));
+	      }
+	    }
+	  }
+	}
+		
+  //intersections with objects
+  for (int i=0; i < objects_in_env.size(); i++)
+  {
+    for(int j = 2; j < _thread_pieces.size() - 3; j++) {
+    //for(int j = 0; j < _thread_pieces.size() - 1; j++) {
+      double intersection_dist = obj_intersection(j,THREAD_RADIUS, i, objects_in_env[i]->_radius);
+      if(intersection_dist != 0) {
+        found = true;
+
+        intersections.push_back(Intersection(j,i,intersection_dist));
+      }
+    }
+
+  }
+	
+	clock_gettime(CLOCK_REALTIME, &end);
+	
+	cout << "time: \t" << end.tv_nsec-start.tv_nsec << "\t" << end_exp.tv_nsec -start_exp.tv_nsec  << "\t" << found << "\t" << found_exp << "\t" << (found == found_exp) << endl;
+	
+  return found_exp;
 }
+
+
+
 //define an epsilon
 double Thread::self_intersection(int i, int j, double radius)
 {
@@ -809,6 +939,22 @@ double Thread::obj_intersection(int piece_ind, double piece_radius, int obj_ind,
             _thread_pieces[piece_ind]->vertex(), _thread_pieces[piece_ind+1]->vertex(),THREAD_RADIUS);
 }
 
+double Thread::self_intersection_exp(int i, int j, double radius)
+{
+    return  intersection_experimental(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, _thread_pieces[j]->vertex(), _thread_pieces[j+1]->vertex(), radius);
+}
+
+double Thread::thread_intersection_exp(int i, int j, int k, double radius)
+{
+		return intersection_experimental(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, threads_in_env[k]->_thread_pieces[j]->vertex(), threads_in_env[k]->_thread_pieces[j+1]->vertex(), radius);
+}
+
+double Thread::obj_intersection_exp(int piece_ind, double piece_radius, int obj_ind, double obj_radius)
+{
+  	return intersection_experimental(objects_in_env[obj_ind]->_start_pos, objects_in_env[obj_ind]->_end_pos, objects_in_env[obj_ind]->_radius,
+            _thread_pieces[piece_ind]->vertex(), _thread_pieces[piece_ind+1]->vertex(),THREAD_RADIUS);
+}
+
 #define INTERSECTION_EDGE_LENGTH_FACTOR 1.5
 #define INTERSECTION_HEIGHT_FACTOR 0.5
 #define INTERSECTION_PARALLEL_CHECK_FACTOR 1e-5
@@ -822,7 +968,7 @@ double Thread::intersection(const Vector3d& a_start_in, const Vector3d& a_end_in
   bool trivial_reject = false;
   double total_radius = a_radius + b_radius;
 
-  /*Vector3d a_mid = (a_start + a_end)/2.0;
+  Vector3d a_mid = (a_start + a_end)/2.0;
   double edgeLen = max((a_end - a_start).norm() * INTERSECTION_EDGE_LENGTH_FACTOR,(b_end-b_start).norm()*INTERSECTION_EDGE_LENGTH_FACTOR);
   //check distance to b_start and b_end
   double distb_start = (b_start-a_mid).norm();
@@ -831,23 +977,8 @@ double Thread::intersection(const Vector3d& a_start_in, const Vector3d& a_end_in
     // cout << "false (trivial rejected)" << endl;
     trivial_reject = true;
     return 0;
-  }*/
-
-	Vector3d a_mid = (a_start + a_end)/2.0;
-	double a_norm_squared = (a_end - a_start).squaredNorm();
-	double b_norm_squared = (b_end - b_start).squaredNorm();
-  double edgeLen = max(a_norm_squared, b_norm_squared);
-  edgeLen = sqrt(edgeLen) * INTERSECTION_EDGE_LENGTH_FACTOR;
-  //check distance to b_start and b_end
-  double distb_start_squared = (b_start-a_mid).squaredNorm();
-  double distb_end_squared = (b_end - a_mid).squaredNorm();
-  double compare = pow(edgeLen / 2.0 + total_radius, 2);
-  if((distb_start_squared > compare) && (distb_end_squared > compare)) {
-    // cout << "false (trivial rejected)" << endl;
-    trivial_reject = true;
-    return 0;
   }
-
+  
   // move 'a_start' to origin and move everything else relative
   a_end = a_end - a_start;
   b_start = b_start - a_start;
@@ -870,7 +1001,6 @@ double Thread::intersection(const Vector3d& a_start_in, const Vector3d& a_end_in
       (b_start[2] < -INTERSECTION_HEIGHT_FACTOR && b_end[2] < -INTERSECTION_HEIGHT_FACTOR)) {
     return 0;
   }
-
 
   // checks for parallel edges
   // can do this check because we rotated to unit Z
@@ -944,6 +1074,110 @@ double Thread::intersection(const Vector3d& a_start_in, const Vector3d& a_end_in
 
   //////cout << "bs, be, ae: " << bs << endl << endl << 
 
+}
+
+//Based on http://softsurfer.com/Archive/algorithm_0106/algorithm_0106.htm
+double Thread::intersection_experimental(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, 
+														const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius)
+{
+	Vector3d u = a_end_in - a_start_in;
+	Vector3d v = b_end_in - b_start_in;
+	bool trivial_reject = false;
+	  
+	Vector3d a_mid = (a_start_in + a_end_in)/2.0;
+	double a_squared_norm = u.squaredNorm();
+	double b_squared_norm = v.squaredNorm();
+  double edgeLen = max(a_squared_norm, b_squared_norm);
+  edgeLen = sqrt(edgeLen) * INTERSECTION_EDGE_LENGTH_FACTOR;
+  //check distance to b_start and b_end
+  double distb_start_squared = (b_start_in - a_mid).squaredNorm();
+  double distb_end_squared = (b_end_in - a_mid).squaredNorm();
+  double compare = pow(edgeLen / 2.0 + a_radius + b_radius, 2);
+  if((distb_start_squared > compare) && (distb_end_squared > compare)) {
+    // cout << "false (trivial rejected)" << endl;
+    trivial_reject = true;
+    return 0;
+  }
+  
+  // check if z values of b allow for trivial rejection (both points far enough away)
+	Vector3d a_dir = INTERSECTION_HEIGHT_FACTOR * u.normalized();
+	Vector3d a_end_free 	= a_end_in 	 + INTERSECTION_HEIGHT_FACTOR * a_dir;
+	Vector3d a_start_free = a_start_in - INTERSECTION_HEIGHT_FACTOR * a_dir;
+	if(((b_start_in[0] > a_end_free[0]) && (b_end_in[0] > a_end_free[0]) &&
+		 	(b_start_in[1] > a_end_free[1]) && (b_end_in[1] > a_end_free[1]) &&
+		 	(b_start_in[2] > a_end_free[2]) && (b_end_in[2] > a_end_free[2])) ||
+		 ((b_start_in[0] > a_start_free[0]) && (b_end_in[0] > a_start_free[0]) &&
+		 	(b_start_in[1] > a_start_free[1]) && (b_end_in[1] > a_start_free[1]) &&
+		 	(b_start_in[2] > a_start_free[2]) && (b_end_in[2] > a_start_free[2]))) {
+		return 0;
+	}
+	
+	// Line parametrization
+	// L1 : P(s) = a_start_in + s * (a_end_in - a_start_in) = a_start_in + s * u
+	// L2 : Q(t) = b_start_in + t * (b_end_in - b_start_in) = b_start_in + t * v
+	//Vector3d u = a_end_in - a_start_in;
+	//Vector3d v = b_end_in - b_start_in;
+	Vector3d w = a_start_in - b_start_in;
+	double a = u.dot(u);        // always >= 0
+	double b = u.dot(v);
+	double c = v.dot(v);        // always >= 0
+	double d = u.dot(w);
+	double e = v.dot(w);
+	double D = a*c-b*b;       	// always >= 0
+	double sc, sN, sD = D;      // sc = sN / sD, default sD = D >= 0
+	double tc, tN, tD = D;      // tc = tN / tD, default tD = D >= 0
+
+  // compute the line parameters of the two closest points
+  if (D < INTERSECTION_PARALLEL_CHECK_FACTOR) { 			// the lines are almost parallel
+    sN = 0.0;       				// force using point P0 on segment S1
+    sD = 1.0;       				// to prevent possible division by 0.0 later
+    tN = e;
+    tD = c;
+  } else {                	// get the closest points on the infinite lines
+    sN = (b*e - c*d);
+    tN = (a*e - b*d);
+    if (sN < 0.0) {       	// sc < 0 => the s=0 edge is visible
+      sN = 0.0;
+      tN = e;
+      tD = c;
+    } else if (sN > sD) { 	// sc > 1 => the s=1 edge is visible
+      sN = sD;
+      tN = e + b;
+      tD = c;
+    }
+  }
+
+  if (tN < 0.0) {           // tc < 0 => the t=0 edge is visible
+    tN = 0.0;
+    // recompute sc for this edge
+    if (-d < 0.0)
+      sN = 0.0;
+    else if (-d > a)
+      sN = sD;
+    else {
+		  sN = -d;
+		  sD = a;
+    }
+  } else if (tN > tD) {      // tc > 1 => the t=1 edge is visible
+    tN = tD;
+    // recompute sc for this edge
+    if ((-d + b) < 0.0)
+      sN = 0.0;
+    else if ((-d + b) > a)
+      sN = sD;
+    else {
+      sN = (-d + b);
+      sD = a;
+    }
+  }
+  // finally do the division to get sc and tc
+  sc = (abs(sN) < INTERSECTION_PARALLEL_CHECK_FACTOR ? 0.0 : sN / sD);
+  tc = (abs(tN) < INTERSECTION_PARALLEL_CHECK_FACTOR ? 0.0 : tN / tD);
+
+  // get the difference of the two closest points
+  double dist = (w + (sc * u) - (tc * v)).norm();  // = S1(sc) - S2(tc)
+
+  return max(0.0, a_radius + b_radius - dist);   // return the overlapping distance
 }
 
 void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
@@ -1699,7 +1933,6 @@ void Thread::project_length_constraint_old()
 //this function might introduce intersections. fix_intersections should be called (with caution) afterwards. 
 bool Thread::project_length_constraint(int recursive_depth)
 {
-
   if (recursive_depth <= 0) {
     //cout << "project length constraint recursively called too much!" << endl;
     return false; 

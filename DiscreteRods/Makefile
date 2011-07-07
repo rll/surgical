@@ -8,7 +8,7 @@ ifeq ($(MACHINE),Darwin)
 else
     LIBS = -L/usr/lib/ -lglut -lgle
     COMPILEFLAG=
-    LDFLAG=
+    LDFLAG=-lrt
 endif
 
 VISION_LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lPvAPI -lrt

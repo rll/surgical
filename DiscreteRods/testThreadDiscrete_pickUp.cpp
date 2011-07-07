@@ -971,7 +971,7 @@ void initStuff (void)
 
 void initThread()
 {	
-	int num_vertices=20;
+	int num_vertices=15;
   thread = new ThreadConstrained(num_vertices);
   positions.resize(2);
   rotations.resize(2);

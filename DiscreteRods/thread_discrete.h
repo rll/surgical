@@ -14,7 +14,7 @@
 #include <time.h>
 
 #ifdef ISOTROPIC 
-    #define MAX_MOVEMENT_VERTICES 0.09
+    #define MAX_MOVEMENT_VERTICES 0.2
     #define MAX_ROTATION_TWIST (M_PI/30.0)
     #define MOMENTUM_CONSTANT 0.0 /*how much of the last gradient do we use*/
 
@@ -292,7 +292,12 @@ class Thread
     double self_intersection(int i, int j, double radius); //do these two pieces intersect?
     double thread_intersection(int i, int j, int k, double radius); //do these two pieces in different threads intersect?
     double obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius);
+    double self_intersection_exp(int i, int j, double radius); //do these two pieces intersect?
+    double thread_intersection_exp(int i, int j, int k, double radius); //do these two pieces in different threads intersect?
+    double obj_intersection_exp(int piece_ind, double piece_radius, int obj_ind, double obj_radius);
+    
     double intersection(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius);
+		double intersection_experimental(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius);
 
 		bool check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Thread_Intersection>& thread_intersections, vector<Intersection>& intersections);
     void fix_intersections();
