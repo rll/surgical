@@ -727,6 +727,9 @@ void Thread::fix_intersections() {
 
 bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Thread_Intersection>& thread_intersections, vector<Intersection>& intersections)
 {
+  time_t start, end;
+  time (&start);
+   	
   double found = false; // count of number of intersections
   self_intersections.clear();
   thread_intersections.clear();
@@ -773,6 +776,7 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
   for (int i=0; i < objects_in_env.size(); i++)
   {
     for(int j = 2; j < _thread_pieces.size() - 3; j++) {
+    //for(int j = 0; j < _thread_pieces.size() - 1; j++) {
       double intersection_dist = obj_intersection(j,THREAD_RADIUS, i, objects_in_env[i]->_radius);
       if(intersection_dist != 0) {
         found = true;
@@ -783,24 +787,25 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
 
   }
 
-
+	time (&end);
+  cout << "total time: " << (double) (difftime(end, start))*1000 << " ms" << endl;
 
   return found;
 }
 //define an epsilon
 double Thread::self_intersection(int i, int j, double radius)
 {
-    return intersection(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, _thread_pieces[j]->vertex(), _thread_pieces[j+1]->vertex(), radius);
+    return  intersection(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, _thread_pieces[j]->vertex(), _thread_pieces[j+1]->vertex(), radius);
 }
 
 double Thread::thread_intersection(int i, int j, int k, double radius)
 {
-    return intersection(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, threads_in_env[k]->_thread_pieces[j]->vertex(), threads_in_env[k]->_thread_pieces[j+1]->vertex(), radius);
+		return intersection(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, threads_in_env[k]->_thread_pieces[j]->vertex(), threads_in_env[k]->_thread_pieces[j+1]->vertex(), radius);
 }
 
 double Thread::obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius)
 {
-  return intersection(objects_in_env[obj_ind]->_start_pos, objects_in_env[obj_ind]->_end_pos, objects_in_env[obj_ind]->_radius,
+  	return intersection(objects_in_env[obj_ind]->_start_pos, objects_in_env[obj_ind]->_end_pos, objects_in_env[obj_ind]->_radius,
             _thread_pieces[piece_ind]->vertex(), _thread_pieces[piece_ind+1]->vertex(),THREAD_RADIUS);
 }
 
@@ -817,7 +822,7 @@ double Thread::intersection(const Vector3d& a_start_in, const Vector3d& a_end_in
   bool trivial_reject = false;
   double total_radius = a_radius + b_radius;
 
-  Vector3d a_mid = (a_start + a_end)/2.0;
+  /*Vector3d a_mid = (a_start + a_end)/2.0;
   double edgeLen = max((a_end - a_start).norm() * INTERSECTION_EDGE_LENGTH_FACTOR,(b_end-b_start).norm()*INTERSECTION_EDGE_LENGTH_FACTOR);
   //check distance to b_start and b_end
   double distb_start = (b_start-a_mid).norm();
@@ -826,8 +831,22 @@ double Thread::intersection(const Vector3d& a_start_in, const Vector3d& a_end_in
     // cout << "false (trivial rejected)" << endl;
     trivial_reject = true;
     return 0;
-  }
+  }*/
 
+	Vector3d a_mid = (a_start + a_end)/2.0;
+	double a_norm_squared = (a_end - a_start).squaredNorm();
+	double b_norm_squared = (b_end - b_start).squaredNorm();
+  double edgeLen = max(a_norm_squared, b_norm_squared);
+  edgeLen = sqrt(edgeLen) * INTERSECTION_EDGE_LENGTH_FACTOR;
+  //check distance to b_start and b_end
+  double distb_start_squared = (b_start-a_mid).squaredNorm();
+  double distb_end_squared = (b_end - a_mid).squaredNorm();
+  double compare = pow(edgeLen / 2.0 + total_radius, 2);
+  if((distb_start_squared > compare) && (distb_end_squared > compare)) {
+    // cout << "false (trivial rejected)" << endl;
+    trivial_reject = true;
+    return 0;
+  }
 
   // move 'a_start' to origin and move everything else relative
   a_end = a_end - a_start;

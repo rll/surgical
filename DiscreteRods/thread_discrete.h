@@ -11,9 +11,10 @@
 #include <Eigen/LU>
 #include <Eigen/SVD>
 #include <Eigen/Geometry>
+#include <time.h>
 
 #ifdef ISOTROPIC 
-    #define MAX_MOVEMENT_VERTICES 0.2
+    #define MAX_MOVEMENT_VERTICES 0.09
     #define MAX_ROTATION_TWIST (M_PI/30.0)
     #define MOMENTUM_CONSTANT 0.0 /*how much of the last gradient do we use*/
 

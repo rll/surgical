@@ -623,6 +623,13 @@ void updateState(const Vector3d& proxy_pos, const Matrix3d& proxy_rot, Cursor* c
 		}
 		if (cursor->attach_dettach_attempt) {
 			cursor->dettach();
+			thread->getConstrainedVerticesNums(constrained_vertices_nums);
+			if (cursor==cursor0 && cursor1->end_eff!=NULL)
+				cursor1->end_eff->constraint_ind = find(constrained_vertices_nums, cursor1->end_eff->constraint);
+			else if (cursor==cursor1 && cursor0->end_eff!=NULL)
+				cursor0->end_eff->constraint_ind = find(constrained_vertices_nums, cursor0->end_eff->constraint);
+			else if ((cursor != cursor0) && (cursor != cursor1))
+				cout << "Internal error: updateState(): (cursor->attach_dettach_attempt): assumes there's only two cursors." << endl;
 		}
 	} else {																				// cursor doesn't have an end effector, THUS it isn't holding the thread i.e. ee->constraint = ee->constraint_ind = -1;
   	if (cursor->attach_dettach_attempt && closeEnough(tip_pos, proxy_rot, extra_end_effectors_pos, extra_end_effectors_rot)) {
@@ -964,7 +971,7 @@ void initStuff (void)
 
 void initThread()
 {	
-	int num_vertices=15;
+	int num_vertices=20;
   thread = new ThreadConstrained(num_vertices);
   positions.resize(2);
   rotations.resize(2);
