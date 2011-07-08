@@ -725,7 +725,7 @@ void Thread::fix_intersections() {
     }
 }
 
-/*bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Thread_Intersection>& thread_intersections, vector<Intersection>& intersections)
+bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Thread_Intersection>& thread_intersections, vector<Intersection>& intersections)
 {   	
   double found = false; // count of number of intersections
   self_intersections.clear();
@@ -785,142 +785,7 @@ void Thread::fix_intersections() {
   }
 
   return found;
-}*/
-
-
-bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Thread_Intersection>& thread_intersections, vector<Intersection>& intersections)
-{ 
-	timespec start_exp, end_exp;
-  clock_gettime(CLOCK_REALTIME, &start_exp);
-   
-  double found_exp = false; // count of number of intersections
-  self_intersections.clear();
-  thread_intersections.clear();
-  intersections.clear();
-
-  //self intersections
-  for(int i = 0; i < _thread_pieces.size() - 3; i++) {
-    //+2 so you don't check the adjacent piece - bug?
-    for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
-      if(i == 0 && j == _thread_pieces.size() - 2) 
-        continue;
-      double intersection_dist = self_intersection_exp(i,j,THREAD_RADIUS);
-      if(intersection_dist != 0) {
-        //skip if both ends, since these are constraints
-        found_exp = true;
-
-        self_intersections.push_back(Self_Intersection(i,j,intersection_dist));
-      }
-    }
-  }
-	
-	//intersections between threads
-	for (int k=0; k < threads_in_env.size(); k++) {
-		//if (this == threads_in_env[k]) //check
-			//continue;
-		for(int i = 0; i < _thread_pieces.size()-1; i++) {
-	    for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
-	      if((i==0 && j==0) ||
-	      	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
-	      	 (i==_thread_pieces.size()-2 && j==0) ||
-	      	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
-	        continue;
-	      double intersection_dist = thread_intersection_exp(i,j,k,THREAD_RADIUS);		//asumes other threads have same radius
-	      if(intersection_dist != 0) {
-	        //skip if both ends, since these are constraints
-	        found_exp = true;
-	        thread_intersections.push_back(Thread_Intersection(i,j,k,intersection_dist));
-	      }
-	    }
-	  }
-	}
-		
-  //intersections with objects
-  for (int i=0; i < objects_in_env.size(); i++)
-  {
-    for(int j = 2; j < _thread_pieces.size() - 3; j++) {
-    //for(int j = 0; j < _thread_pieces.size() - 1; j++) {
-      double intersection_dist = obj_intersection_exp(j,THREAD_RADIUS, i, objects_in_env[i]->_radius);
-      if(intersection_dist != 0) {
-        found_exp = true;
-
-        intersections.push_back(Intersection(j,i,intersection_dist));
-      }
-    }
-
-  }
-	
-	clock_gettime(CLOCK_REALTIME, &end_exp);
-	
-	
-	timespec start, end;
-  clock_gettime(CLOCK_REALTIME, &start);
-   
-  double found = false; // count of number of intersections
-  self_intersections.clear();
-  thread_intersections.clear();
-  intersections.clear();
-
-  //self intersections
-  for(int i = 0; i < _thread_pieces.size() - 3; i++) {
-    //+2 so you don't check the adjacent piece - bug?
-    for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
-      if(i == 0 && j == _thread_pieces.size() - 2) 
-        continue;
-      double intersection_dist = self_intersection(i,j,THREAD_RADIUS);
-      if(intersection_dist != 0) {
-        //skip if both ends, since these are constraints
-        found = true;
-
-        self_intersections.push_back(Self_Intersection(i,j,intersection_dist));
-      }
-    }
-  }
-	
-	//intersections between threads
-	for (int k=0; k < threads_in_env.size(); k++) {
-		//if (this == threads_in_env[k]) //check
-			//continue;
-		for(int i = 0; i < _thread_pieces.size()-1; i++) {
-	    for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
-	      if((i==0 && j==0) ||
-	      	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
-	      	 (i==_thread_pieces.size()-2 && j==0) ||
-	      	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
-	        continue;
-	      double intersection_dist = thread_intersection(i,j,k,THREAD_RADIUS);		//asumes other threads have same radius
-	      if(intersection_dist != 0) {
-	        //skip if both ends, since these are constraints
-	        found = true;
-	        thread_intersections.push_back(Thread_Intersection(i,j,k,intersection_dist));
-	      }
-	    }
-	  }
-	}
-		
-  //intersections with objects
-  for (int i=0; i < objects_in_env.size(); i++)
-  {
-    for(int j = 2; j < _thread_pieces.size() - 3; j++) {
-    //for(int j = 0; j < _thread_pieces.size() - 1; j++) {
-      double intersection_dist = obj_intersection(j,THREAD_RADIUS, i, objects_in_env[i]->_radius);
-      if(intersection_dist != 0) {
-        found = true;
-
-        intersections.push_back(Intersection(j,i,intersection_dist));
-      }
-    }
-
-  }
-	
-	clock_gettime(CLOCK_REALTIME, &end);
-	
-	cout << "time: \t" << end.tv_nsec-start.tv_nsec << "\t" << end_exp.tv_nsec -start_exp.tv_nsec  << "\t" << found << "\t" << found_exp << "\t" << (found == found_exp) << endl;
-	
-  return found_exp;
 }
-
-
 
 //define an epsilon
 double Thread::self_intersection(int i, int j, double radius)
@@ -936,22 +801,6 @@ double Thread::thread_intersection(int i, int j, int k, double radius)
 double Thread::obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius)
 {
   	return intersection(objects_in_env[obj_ind]->_start_pos, objects_in_env[obj_ind]->_end_pos, objects_in_env[obj_ind]->_radius,
-            _thread_pieces[piece_ind]->vertex(), _thread_pieces[piece_ind+1]->vertex(),THREAD_RADIUS);
-}
-
-double Thread::self_intersection_exp(int i, int j, double radius)
-{
-    return  intersection_experimental(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, _thread_pieces[j]->vertex(), _thread_pieces[j+1]->vertex(), radius);
-}
-
-double Thread::thread_intersection_exp(int i, int j, int k, double radius)
-{
-		return intersection_experimental(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, threads_in_env[k]->_thread_pieces[j]->vertex(), threads_in_env[k]->_thread_pieces[j+1]->vertex(), radius);
-}
-
-double Thread::obj_intersection_exp(int piece_ind, double piece_radius, int obj_ind, double obj_radius)
-{
-  	return intersection_experimental(objects_in_env[obj_ind]->_start_pos, objects_in_env[obj_ind]->_end_pos, objects_in_env[obj_ind]->_radius,
             _thread_pieces[piece_ind]->vertex(), _thread_pieces[piece_ind+1]->vertex(),THREAD_RADIUS);
 }
 
@@ -1111,7 +960,7 @@ double Thread::intersection_experimental(const Vector3d& a_start_in, const Vecto
 		 	(b_start_in[2] > a_start_free[2]) && (b_end_in[2] > a_start_free[2]))) {
 		return 0;
 	}
-	
+
 	// Line parametrization
 	// L1 : P(s) = a_start_in + s * (a_end_in - a_start_in) = a_start_in + s * u
 	// L2 : Q(t) = b_start_in + t * (b_end_in - b_start_in) = b_start_in + t * v
