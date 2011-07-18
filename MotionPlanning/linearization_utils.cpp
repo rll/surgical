@@ -8,7 +8,7 @@ void applyControl(Thread* start, const VectorXd& u, const movement_mode movement
   control_to_TwoMotion(u, motions, movement);
   for (int i=0; i < motions.size(); i++)
   {
-    start->apply_motion_nearEnds(*motions[i]);
+    start->apply_motion(*motions[i]);
   }
 
  // start->minimize_energy(); 

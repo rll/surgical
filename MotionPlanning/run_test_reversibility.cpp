@@ -69,16 +69,27 @@ int main(int argc, char* argv[]) {
       VectorXd reverseCtrl(12); 
       reverseControl(all_controls[i], reverseCtrl); 
 
-      applyControl(copy_thread, all_controls[0]);
+      applyControl(copy_thread, all_controls[i]);
       results_file << "M " <<  thread_ind << " " << i << " " 
         << cost_metric(copy_thread, initial_thread) << endl; 
-
+      
 
       applyControl(copy_thread, reverseCtrl);
-      cout << cost_metric(copy_thread, initial_thread)
-        << endl; 
+      //cout << cost_metric(copy_thread, initial_thread)
+      //  << endl; 
       results_file << "R " <<  thread_ind << " " << i << " " 
         << cost_metric(copy_thread, initial_thread) << endl;
+      /*cout << copy_thread->start_pos().transpose() << endl; 
+      cout << initial_thread->start_pos().transpose() << endl;
+      cout << copy_thread->end_pos().transpose() << endl; 
+      cout << initial_thread->end_pos().transpose() << endl; 
+    
+      cout << endl << endl; 
+      cout << copy_thread->start_rot() << endl; 
+      cout << initial_thread->start_rot() << endl; 
+      cout << copy_thread->end_rot() << endl; 
+      cout << initial_thread->end_rot() << endl; 
+      */ 
     }
   } 
 
