@@ -88,7 +88,7 @@ double ThreadPiece::energy_twist()
 {
 #ifdef ISOTROPIC
  // std::cout << "SHOULD NOT BE CALLING THIS - very inefficient" << std::endl;
-  if (_prev_piece == NULL || _next_piece == NULL || _next_piece->_next_piece == NULL)
+  if (_prev_piece == NULL || _next_piece == NULL) //check || _next_piece->_next_piece == NULL)
   {
     return 0.0; //same - since the first twist is set to be zero (aligning bishop to initial material frame)
   } else {
@@ -164,7 +164,7 @@ double ThreadPiece::get_grav_coeff() {return GRAV_COEFF;}
 
 void ThreadPiece::gradient_twist(double& grad)
 {
-  grad = (_angle_twist - _next_piece->_angle_twist)/(2.0*(_rest_length + _next_piece->_rest_length));
+  grad = -(_next_piece->_angle_twist - _angle_twist)/(_rest_length + _next_piece->_rest_length);
 
   if (_prev_piece != NULL)
   {
@@ -193,7 +193,7 @@ void ThreadPiece::gradient_twist(double& grad)
 void ThreadPiece::gradient_vertex(Vector3d& grad)
 {
 #ifdef ISOTROPIC
-	double beta_angle_diff_over_L = TWIST_COEFF*(_my_thread->end_angle() - _my_thread->start_angle())/(_my_thread->total_length() - ((_my_thread->start_rest_length()+_my_thread->end_rest_length())/2));
+	double beta_angle_diff_over_L = TWIST_COEFF*(_my_thread->end_angle() - _my_thread->start_angle())/(_my_thread->total_length() - ((_my_thread->start_rest_length()+_my_thread->end_rest_length())/2.0));
 
 		Matrix3d skew_i;
 		Matrix3d skew_i_im1;
@@ -797,18 +797,22 @@ void ThreadPiece::splitPiece(ThreadPiece* new_piece)
 	if (_next_piece==NULL || _next_piece->_next_piece==NULL)
 		cout << "Internal error: ThreadPiece::splitPiece: this->_vertex cannot be the last or second to last vertex." << endl;
 	new_piece->_vertex = (_vertex + _next_piece->_vertex)/2.0;
-  new_piece->_angle_twist = _angle_twist;
-  //_edge, _edge_norm and _curvature_binormal are updated late
-	new_piece->_bishop_frame = _bishop_frame;
-	new_piece->_material_frame = _material_frame;
+  new_piece->_angle_twist = _angle_twist/2.0;
+  //_edge, _edge_norm and _curvature_binormal are updated later
+	//new_piece->_bishop_frame = _bishop_frame;
+	//new_piece->_material_frame = _material_frame;
 	new_piece->_rest_length = _rest_length = _rest_length/2.0;
 	
 	fixPointersSplit(new_piece);
 	
 	update_edge();
-	new_piece->update_edge();
 	calculateBinormal();
+	//update_bishop_frame();
+	//update_material_frame();
+	new_piece->update_edge();
 	new_piece->calculateBinormal();
+	new_piece->update_bishop_frame();
+	new_piece->update_material_frame();
 }
 
 // Merges the edges adjacent to this->_vertex, i.e. merges this->_prev_piece with this and puts it into this.
@@ -823,14 +827,16 @@ void ThreadPiece::mergePiece()
 	_vertex = _prev_piece->_vertex;
   _angle_twist = _prev_piece->_angle_twist;
 	//_edge, _edge_norm and _curvature_binormal are updated later
-	intermediate_rotation(_bishop_frame, _prev_piece->_bishop_frame, _bishop_frame);
-	intermediate_rotation(_material_frame, _prev_piece->_material_frame, _material_frame);
+	//intermediate_rotation(_bishop_frame, _prev_piece->_bishop_frame, _bishop_frame);
+	//intermediate_rotation(_material_frame, _prev_piece->_material_frame, _material_frame);
 	_rest_length = _prev_piece->_rest_length + _rest_length;
 	
 	fixPointersMerge();
 	
 	update_edge();
 	calculateBinormal();
+	update_bishop_frame();
+	update_material_frame();
 }
 
 void ThreadPiece::fixPointersSplit(ThreadPiece* new_piece)
@@ -879,6 +885,4 @@ void ThreadPiece::copyData(const ThreadPiece& rhs)
 	_bishop_frame = rhs._bishop_frame;
 	_material_frame = rhs._material_frame;
   _rest_length = rhs._rest_length;
-
-
 }
