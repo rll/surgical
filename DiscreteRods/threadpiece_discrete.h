@@ -52,8 +52,12 @@ class ThreadPiece
     const ThreadPiece* next_piece(void) const {return _next_piece;} //only makes sense for first piece
 		const Vector3d& edge(void) const {return _edge;}
 		const double edge_norm(void) const {return _edge_norm;}
-		const Vector3d& curvature_binormal(void) const {return _curvature_binormal;}
-		const double curvature_binormal_norm(void) const {return _curvature_binormal.norm();}
+		const Vector3d& curvature_binormal(void) { 
+			if (_prev_piece == NULL) { _curvature_binormal = Vector3d::Zero(); return _curvature_binormal; }
+			else if (_next_piece == NULL) { _curvature_binormal = Vector3d::Zero(); return _curvature_binormal; }
+			else { calculateBinormal(); return _curvature_binormal; } //const {return _curvature_binormal;}
+		}
+		const double curvature_binormal_norm(void) { return (curvature_binormal()).norm(); } //const {return _curvature_binormal.norm();}
 
     //Geometry
     void initializeFrames();
@@ -129,11 +133,11 @@ class ThreadPiece
     Thread* _my_thread;
 
 
-    void calculateBinormal(const double rest_length_prev, const Vector3d& edge_prev, 
-													 const double rest_length_after, const Vector3d& edge_after, Vector3d& binormal);
+    //void calculateBinormal(const double rest_length_prev, const Vector3d& edge_prev, 
+		//											 const double rest_length_after, const Vector3d& edge_after, Vector3d& binormal);
 		void calculateBinormal();
-		void calculateBinormal_withLength(const Vector3d& edge_prev, const Vector3d& edge_after, Vector3d& binormal);
-		void calculateBinormal_withLength();
+		//void calculateBinormal_withLength(const Vector3d& edge_prev, const Vector3d& edge_after, Vector3d& binormal);
+		//void calculateBinormal_withLength();
     double twist_angle_error();
     void offset_and_update_locally(const Vector3d& offset);
     void offset_and_update(const Vector3d& offset);

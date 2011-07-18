@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 
 #ifdef MAC
@@ -33,6 +34,10 @@ void updateThreadPoints();
 void initThread();
 void initThread_closedPolygon();
 
+Trajectory_Recorder* recorder = new Trajectory_Recorder();
+int filename_counter = 0;
+string filename = "variable_length";
+bool recording = false;
 
 #define NUM_PTS 500
 #define THREAD_RADII 1.0
@@ -248,8 +253,70 @@ void processNormalKeys(unsigned char key, int x, int y)
     key_pressed = MOVEPOSSTART;
   else if (key == 'R')
     key_pressed = ROTATETANSTART;
-  else if (key == 's')
-  {
+  else if ((key == '1') || (key == '2') || (key == '3') || (key == '4') || (key == '5') || 
+  				 (key == '6') || (key == '7') || (key == '8') || (key == '9') || (key == '0')) {
+  	Trajectory_Reader traj_reader;
+  	char *fullPath = new char[256];
+  	if (key == '1')
+	    sprintf(fullPath, "%s%s", "saved_threads/", "demo1");
+	  else if (key == '2')
+	  	sprintf(fullPath, "%s%s", "saved_threads/", "demo2");
+	  else if (key == '3')
+	  	sprintf(fullPath, "%s%s", "saved_threads/", "demo3");
+	  else if (key == '4')
+	  	sprintf(fullPath, "%s%s", "saved_threads/", "demo4");
+	  else if (key == '5')
+	  	sprintf(fullPath, "%s%s", "saved_threads/", "demo5");
+	  else if (key == '6')
+	  	sprintf(fullPath, "%s%s", "saved_threads/", "demo6");
+	  else if (key == '7')
+	  	sprintf(fullPath, "%s%s", "saved_threads/", "demo7");
+	  else if (key == '8')
+	  	sprintf(fullPath, "%s%s", "saved_threads/", "demo8");
+	  else if (key == '9')
+	  	sprintf(fullPath, "%s%s", "saved_threads/", "demo9");
+	  else
+	  	sprintf(fullPath, "%s%s", "saved_threads/", "demo0");
+    traj_reader.set_file(fullPath);
+    if (traj_reader.read_threads_from_file() == 0) {
+			vector<Thread*> threads_out;
+			threads_out.clear();
+			traj_reader.get_all_threads(threads_out);
+			if (threads_out.size() > 0) {    
+				delete thread;
+				thread = new Thread(*(threads_out.front()));
+				cout << "Thread loading was sucessful." << endl;
+				updateThreadPoints();
+			  glutPostRedisplay();  
+			} else {	
+				cout << "Specified file does not have a thread. Failed to load thread from file." << endl;
+			}
+		}    	
+  }
+	else if (key == 'a') {
+  	Trajectory_Reader traj_reader;
+  	cout << "Loading...\n";
+    cout << "Please enter source file name (without extension): ";
+    char *srcFileName = new char[256];
+    cin >> srcFileName;
+    char *fullPath = new char[256];
+    sprintf(fullPath, "%s%s", "saved_threads/", srcFileName);
+    traj_reader.set_file(fullPath);
+    if (traj_reader.read_threads_from_file() == 0) {
+			vector<Thread*> threads_out;
+			threads_out.clear();
+			traj_reader.get_all_threads(threads_out);
+			if (threads_out.size() > 0) {    
+				delete thread;
+				thread = new Thread(*(threads_out.front()));
+				cout << "Thread loading was sucessful." << endl;
+				updateThreadPoints();
+			  glutPostRedisplay();  
+			} else {	
+				cout << "Specified file does not have a thread. Failed to load thread from file." << endl;
+			}
+		}    	
+  } else if (key == 's') {
     delete thread_saved;
     thread_saved = new Thread(*thread);
     /* Save current trajectory */
@@ -259,7 +326,7 @@ void processNormalKeys(unsigned char key, int x, int y)
     char *dstFileName = new char[256];
     cin >> dstFileName;
     char *fullPath = new char[256];
-    sprintf(fullPath, "%s%s", "../ThreadVision_DiscreteRods/saved_threads/", dstFileName);
+    sprintf(fullPath, "%s%s", "saved_threads/", dstFileName);
     traj_recorder.setFileName(fullPath);
     Thread *newThread = thread_saved;
     Thread copiedThread(*newThread);
@@ -491,6 +558,11 @@ int main (int argc, char * argv[])
   //thread->stepping = false;
   //thread->step = false;
 	thread->minimize_energy();
+	if (recording) {
+		Thread *newThread = thread;
+    Thread copiedThread(*newThread);
+    recorder->add_thread_to_list(copiedThread);
+	}
   updateThreadPoints();
   thread_saved = new Thread(*thread);
 
@@ -684,6 +756,11 @@ void DrawStuff (void)
     //thread->set_end_constraint(positions[1], rotations[1]);
     if(!few_minimization_steps) {
       thread->minimize_energy();
+      if (recording) {
+				Thread *newThread = thread;
+				Thread copiedThread(*newThread);
+				recorder->add_thread_to_list(copiedThread);
+			}
     }
 
 		thread->adapt_links();
@@ -1048,8 +1125,6 @@ void initThread()
 	lengths.push_back(end_length);
 	
   //angles.resize(vertices.size());
-  
- 	cout << "vertices.size(): " << vertices.size() << endl;
 
   rotations[0] = Matrix3d::Identity();
   rotations[1] = Matrix3d::Identity();
@@ -1082,11 +1157,6 @@ void initThread()
 
   std::cout << "energy: " << calculate_energy() << std::endl;
   */
-	
-	cout << "rest_lengths: ";
-	for (int i=0; i<lengths.size(); i++)
-		cout << lengths[i] << " ";
-	cout << endl;
 	
   thread = new Thread(vertices, angles, lengths, rotations[0], rotations[1]);
   updateThreadPoints();

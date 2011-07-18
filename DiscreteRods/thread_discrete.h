@@ -40,10 +40,11 @@
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
 #define REFINE_THRESHHOLD 0.5
-#define REFINE_SINGLE_THRESHHOLD 0.7
+#define REFINE_SINGLE_THRESHHOLD 0.6
 #define UNREFINE_THRESHHOLD 0.2 /*must be smaller than REFINE_THRESHHOLD otherwise thread will be unstable */
 #define NATURAL_REST_LENGTH 3.0
 #define REFINEMENT_DEPTH 4
+#define MIN_REST_LENGTH 0.1
 
 #define INTERSECTION_PUSHBACK_EPS 0.03 
 //#define NUM_THREADS_PARALLEL_FOR 2
@@ -113,12 +114,14 @@ class Thread
     Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, Matrix3d& end_rot);
     Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot);
     Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, const double rest_length);
+    Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot);
     Thread(const Thread& rhs);
     virtual ~Thread();
 
     //getting thread configuration
     void get_thread_data(vector<Vector3d>& points);
     void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles);
+    void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<double>& rest_lengths);
     void get_thread_data(vector<Vector3d>& points, vector<Matrix3d>& material_frames);
     void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<Matrix3d>& material_frames);
     void get_thread_data(vector<double>& lengths, vector<double>& edge_norms);

@@ -549,7 +549,6 @@ void ThreadPiece::updateFrames_lastpiece()
 void ThreadPiece::update_bishop_frame()
 {
 	calculateBinormal();
-  //calculateBinormal_withLength(); //check: shouldn't this be used instead?
   //now rotate frame
   double curvature_binormal_norm = _curvature_binormal.norm();
   Vector3d toRotAround = _curvature_binormal/curvature_binormal_norm;
@@ -758,24 +757,24 @@ double ThreadPiece::twist_angle_error()
 }
 
 
-void ThreadPiece::calculateBinormal(const double rest_length_prev, const Vector3d& edge_prev, 
+/*void ThreadPiece::calculateBinormal(const double rest_length_prev, const Vector3d& edge_prev, 
 																		const double rest_length_after, const Vector3d& edge_after, Vector3d& binormal)
 {
 	if (_prev_piece == NULL) 
 		cout << "Internal error: ThreadPiece::calculateBinormal() : _prev_piece is NULL." << endl;
   binormal = 2.0*edge_prev.cross(edge_after);
   binormal /= ((rest_length_prev * rest_length_after) + edge_prev.dot(edge_after));
-}
+}*/
 
 void ThreadPiece::calculateBinormal()
 {
 	if (_prev_piece == NULL) 
 		cout << "Internal error: ThreadPiece::calculateBinormal() : _prev_piece is NULL." << endl;
   _curvature_binormal = 2.0*_prev_piece->_edge.cross(_edge);
-  _curvature_binormal /= ((_prev_piece->_rest_length * _rest_length) + _prev_piece->_edge.dot(_edge));
+  _curvature_binormal /= (_prev_piece->_edge_norm*_edge_norm + _prev_piece->_edge.dot(_edge));
 }
 
-void ThreadPiece::calculateBinormal_withLength(const Vector3d& edge_prev, const Vector3d& edge_after, Vector3d& binormal)
+/*void ThreadPiece::calculateBinormal_withLength(const Vector3d& edge_prev, const Vector3d& edge_after, Vector3d& binormal)
 {
   binormal = 2.0*edge_prev.cross(edge_after);
   binormal /= (edge_prev.norm()*edge_after.norm() + edge_prev.dot(edge_after));
@@ -785,7 +784,7 @@ void ThreadPiece::calculateBinormal_withLength()
 {
   _curvature_binormal = 2.0*_prev_piece->_edge.cross(_edge);
   _curvature_binormal /= (_prev_piece->_edge_norm*_edge_norm + _prev_piece->_edge.dot(_edge));
-}
+}*/
 
 //variable-length thread_pieces
 // Splits the edge between this->vertex and this->_next_piece->_vertex, i.e. splits this into this and new_piece.
