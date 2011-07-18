@@ -34,11 +34,6 @@ void updateThreadPoints();
 void initThread();
 void initThread_closedPolygon();
 
-Trajectory_Recorder* recorder = new Trajectory_Recorder();
-int filename_counter = 0;
-string filename = "variable_length";
-bool recording = false;
-
 #define NUM_PTS 500
 #define THREAD_RADII 1.0
 #define MOVE_POS_CONST 1.0
@@ -258,25 +253,25 @@ void processNormalKeys(unsigned char key, int x, int y)
   	Trajectory_Reader traj_reader;
   	char *fullPath = new char[256];
   	if (key == '1')
-	    sprintf(fullPath, "%s%s", "saved_threads/", "demo1");
+	    sprintf(fullPath, "%s%s", "saved_threads/", "vl_demo1");
 	  else if (key == '2')
-	  	sprintf(fullPath, "%s%s", "saved_threads/", "demo2");
+	  	sprintf(fullPath, "%s%s", "saved_threads/", "vl_demo2");
 	  else if (key == '3')
-	  	sprintf(fullPath, "%s%s", "saved_threads/", "demo3");
+	  	sprintf(fullPath, "%s%s", "saved_threads/", "vl_demo3");
 	  else if (key == '4')
-	  	sprintf(fullPath, "%s%s", "saved_threads/", "demo4");
+	  	sprintf(fullPath, "%s%s", "saved_threads/", "vl_demo4");
 	  else if (key == '5')
-	  	sprintf(fullPath, "%s%s", "saved_threads/", "demo5");
+	  	sprintf(fullPath, "%s%s", "saved_threads/", "vl_demo5");
 	  else if (key == '6')
-	  	sprintf(fullPath, "%s%s", "saved_threads/", "demo6");
+	  	sprintf(fullPath, "%s%s", "saved_threads/", "vl_demo6");
 	  else if (key == '7')
-	  	sprintf(fullPath, "%s%s", "saved_threads/", "demo7");
+	  	sprintf(fullPath, "%s%s", "saved_threads/", "vl_demo7");
 	  else if (key == '8')
-	  	sprintf(fullPath, "%s%s", "saved_threads/", "demo8");
+	  	sprintf(fullPath, "%s%s", "saved_threads/", "vl_demo8");
 	  else if (key == '9')
-	  	sprintf(fullPath, "%s%s", "saved_threads/", "demo9");
+	  	sprintf(fullPath, "%s%s", "saved_threads/", "vl_demo9");
 	  else
-	  	sprintf(fullPath, "%s%s", "saved_threads/", "demo0");
+	  	sprintf(fullPath, "%s%s", "saved_threads/", "vl_demo0");
     traj_reader.set_file(fullPath);
     if (traj_reader.read_threads_from_file() == 0) {
 			vector<Thread*> threads_out;
@@ -292,8 +287,7 @@ void processNormalKeys(unsigned char key, int x, int y)
 				cout << "Specified file does not have a thread. Failed to load thread from file." << endl;
 			}
 		}    	
-  }
-	else if (key == 'a') {
+  }	else if (key == 'a') {
   	Trajectory_Reader traj_reader;
   	cout << "Loading...\n";
     cout << "Please enter source file name (without extension): ";
@@ -558,11 +552,6 @@ int main (int argc, char * argv[])
   //thread->stepping = false;
   //thread->step = false;
 	thread->minimize_energy();
-	if (recording) {
-		Thread *newThread = thread;
-    Thread copiedThread(*newThread);
-    recorder->add_thread_to_list(copiedThread);
-	}
   updateThreadPoints();
   thread_saved = new Thread(*thread);
 
@@ -756,11 +745,6 @@ void DrawStuff (void)
     //thread->set_end_constraint(positions[1], rotations[1]);
     if(!few_minimization_steps) {
       thread->minimize_energy();
-      if (recording) {
-				Thread *newThread = thread;
-				Thread copiedThread(*newThread);
-				recorder->add_thread_to_list(copiedThread);
-			}
     }
 
 		thread->adapt_links();
@@ -809,12 +793,12 @@ void DrawStuff (void)
 		
 		/*cout << "calculate_energy(): " << thread->calculate_energy() << endl;
 		cout << "calculate_energy_inefficient(): " << thread->calculate_energy_inefficient() << endl;*/
-		vector<double> curvature_binormal_norm;
+		/*vector<double> curvature_binormal_norm;
 		thread->getCurvatureBinormalNorm(curvature_binormal_norm);
 		cout << "curvature_binormal_norm: ";
 		for(int i=0; i<curvature_binormal_norm.size(); i++)
 			cout << curvature_binormal_norm[i] << " ";
-		cout << endl;
+		cout << endl;*/
 		
 		print_mode_instant = false;
 	}
@@ -919,7 +903,6 @@ void DrawStuff (void)
       twist_cpy);
 */
 
-
   double pts_cpy[points.size()+2][3];
   double twist_cpy[points.size()+2];
  /* pts_cpy[1][0] = 0.0;
@@ -939,7 +922,7 @@ void DrawStuff (void)
   pts_cpy[0][0] = pts_cpy[1][0]-rotations[0](0,0);
   pts_cpy[0][1] = pts_cpy[1][1]-rotations[0](1,0);
   pts_cpy[0][2] = pts_cpy[1][2]-rotations[0](2,0);
-  twist_cpy[0] = -(360.0/(2.0*M_PI))*(zero_angle);
+  twist_cpy[0] = twist_cpy[1]; //-(360.0/(2.0*M_PI))*(zero_angle);
 
 /* pts_cpy[points.size()][0] = (double)positions[1](0)-(double)zero_location(0);
  pts_cpy[points.size()][1] = (double)positions[1](1)-(double)zero_location(1);
@@ -950,7 +933,7 @@ void DrawStuff (void)
   pts_cpy[points.size()+1][0] = pts_cpy[points.size()][0]+rotations[1](0,0);
   pts_cpy[points.size()+1][1] = pts_cpy[points.size()][1]+rotations[1](1,0);
   pts_cpy[points.size()+1][2] = pts_cpy[points.size()][2]+rotations[1](2,0);
-  twist_cpy[points.size()+1] = twist_cpy[points.size()]-(360.0/(2.0*M_PI))*zero_angle;
+  twist_cpy[points.size()+1] = twist_cpy[points.size()]; //twist_cpy[points.size()]-(360.0/(2.0*M_PI))*zero_angle;
 
   gleTwistExtrusion(20,
       contour,
@@ -1046,12 +1029,12 @@ void updateThreadPoints()
 
 void initThread()
 {
-  int numInit = 9;
+  int numInit = 8;//(3*3)/DEFAULT_REST_LENGTH;
   double noise_factor = 0.0;
 
-	double end_length = 3.0;
-	double start = 3.0;//8.0;
-	double end = 3.0;//1.0;
+	double end_length = DEFAULT_REST_LENGTH;
+	double start = DEFAULT_REST_LENGTH;//8.0;
+	double end = DEFAULT_REST_LENGTH;//1.0;
 	double m = (start-end)/(numInit-1);
 
   vector<Vector3d> vertices;
@@ -1063,7 +1046,7 @@ void initThread()
 
   vertices.push_back(Vector3d::Zero());
   angles.push_back(0.0);
-  lengths.push_back(end_length);
+  lengths.push_back(end_length/4.0);
   //push back unitx so first tangent matches start_frame
   vertices.push_back(Vector3d::UnitX()*lengths.back());
   angles.push_back(0.0);
@@ -1117,12 +1100,12 @@ void initThread()
 	
 	vertices.push_back(vertices.back()+Vector3d::UnitX()*lengths.back());
   angles.push_back(0.0);
-	lengths.push_back(end_length);
+	lengths.push_back(end_length/4.0);
 	
   //push back unitx so last tangent matches end_frame
   vertices.push_back(vertices.back()+Vector3d::UnitX()*lengths.back());
   angles.push_back(0.0);
-	lengths.push_back(end_length);
+	lengths.push_back(end_length/4.0);
 	
   //angles.resize(vertices.size());
 
@@ -1186,7 +1169,7 @@ void initThread()
 
 void initThread_closedPolygon()
 {
-  int numVertices = 20;
+  int numVertices = 15;
   double angle_between = M_PI - (((double)(numVertices-2))*(M_PI))/((double)numVertices);
   //note that edge length is equal to rest_length
 
