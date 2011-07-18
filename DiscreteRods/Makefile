@@ -118,6 +118,8 @@ UDPSocket.o : $(SOCKETS_DIR)/UDPSocket.cpp $(SOCKETS_DIR)/UDPSocket.h
 thread_socket_interface.o: thread_socket_interface.cpp thread_socket_interface.h
 	$(CC) $(INCLUDES) $(DEBUG) -c thread_socket_interface.cpp $(PROFILER)
 
+controls_reader.o: controls_reader.cpp controls_reader.h
+	$(CC) $(INCLUDES) $(DEBUG) -c controls_reader.cpp $(PROFILER)
 clean:
 	rm -r *.o *.gch testThreadDiscrete testThreadDiscrete_noniso testThreadDiscrete_phantom saveThreadTrajectory recordThreadVideo thread_visualize_and_save thread_visualize_and_save_noniso *.dSYM
 

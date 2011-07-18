@@ -17,11 +17,11 @@
     #define MAX_ROTATION_TWIST (M_PI/30.0)
     #define MOMENTUM_CONSTANT 0.0 /*how much of the last gradient do we use*/
 
-    #define MIN_MOVEMENT_VERTICES 1e-9 //speedy at 1e-4
-    #define MIN_ROTATION_TWIST (M_PI/1000.0)
+    #define MIN_MOVEMENT_VERTICES 1e-15 //speedy at 1e-4
+    #define MIN_ROTATION_TWIST (M_PI/4000.0)
     
-    #define ENERGY_FOR_CONVERGENCE 1e-9 //speedy at 1e-5
-    #define NUM_MAX_ITERS 10000 //speedy at 6000
+    #define ENERGY_FOR_CONVERGENCE 1e-20 //speedy at 1e-5
+    #define NUM_MAX_ITERS 500000 //speedy at 6000
 #else
 
     #define MAX_MOVEMENT_VERTICES 0.2

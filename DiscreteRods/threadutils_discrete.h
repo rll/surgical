@@ -19,6 +19,8 @@
   #define NUM_CPU_THREADS 12
 #elif surgical3
   #define NUM_CPU_THREADS 6
+#elif surgical_macbook_local
+  #define NUM_CPU_THREADS 4
 #elif surgical_macbook
   #define NUM_CPU_THREADS 4
 #else
