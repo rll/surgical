@@ -173,6 +173,62 @@ void increaseDimension() {
   glutPostRedisplay();
 }
 
+
+void reverseControl(const VectorXd& in_control, VectorXd& out_control)
+{
+  Matrix3d start_rot, end_rot, start_rot_rev, end_rot_rev; 
+  out_control = in_control;
+  out_control(0) = -1 * in_control(0);
+  out_control(1) = -1 * in_control(1);
+  out_control(2) = -1 * in_control(2);
+  rotation_from_euler_angles(start_rot, in_control(3), in_control(4), in_control(5)); 
+  start_rot_rev = start_rot.transpose(); 
+  euler_angles_from_rotation(start_rot_rev, out_control(3), out_control(4), out_control(5)); 
+
+  rotation_from_euler_angles(start_rot_rev, out_control(3), out_control(4), out_control(5)); 
+  //cout << start_rot * start_rot_rev << endl; 
+
+  
+
+  out_control(6) = -1 * in_control(6);
+  out_control(7) = -1 * in_control(7);
+  out_control(8) = -1 * in_control(8);
+  rotation_from_euler_angles(end_rot, in_control(9), in_control(10), in_control(11)); 
+  end_rot_rev = end_rot.transpose(); 
+  euler_angles_from_rotation(end_rot_rev, out_control(9), out_control(10), out_control(11));
+
+  rotation_from_euler_angles(end_rot_rev, out_control(9), out_control(10), out_control(11));
+  //cout << end_rot * end_rot_rev << endl; 
+
+
+  //std::cout << out_control.transpose() <<  std::endl; 
+
+
+}
+
+void testReversibility() {
+  VectorXd ctrl(12);
+  initialized = true; 
+  for (int i = 0; i < 12; i++) { 
+    ctrl(i) = drand48();
+  }
+
+  VectorXd reverseCtrl(12); 
+  reverseControl(ctrl, reverseCtrl);
+
+  glThreads[4]->setThread(new Thread(*glThreads[curThread]->getThread())); 
+  applyControl(glThreads[curThread]->getThread(), ctrl);
+  glThreads[5]->setThread(new Thread(*glThreads[curThread]->getThread()));
+  applyControl(glThreads[curThread]->getThread(), reverseCtrl);
+  glThreads[6]->setThread(new Thread(*glThreads[curThread]->getThread()));
+
+  cout << "reversibility score: " <<  cost_metric(glThreads[4]->getThread(), glThreads[6]->getThread()) << endl;  
+
+
+  glutPostRedisplay(); 
+
+}
+
 void setThreads(vector<vector<Thread*> > thread_data) { 
 
   numApprox = thread_data.size(); 
@@ -948,6 +1004,9 @@ void processNormalKeys(unsigned char key, int x, int y)
   } 
   else if (key == '<') {
     stepTrajectoryFollower(false); 
+  }
+  else if (key =='B') { 
+    testReversibility(); 
   }
   else if (key == 27)
   {
