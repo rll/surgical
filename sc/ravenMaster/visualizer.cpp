@@ -219,10 +219,10 @@ void drawStuff() {
   	pos_ori.push_back(data[data_i][i]);
   }
   
-  Matrix3d other_rot, rot;
-	other_rot = Eigen::AngleAxisd(pos_ori[5], Vector3d::UnitX())
+  Matrix3d other_rot, rot, rot2, rot3;
+	other_rot = Eigen::AngleAxisd(pos_ori[5], Vector3d::UnitZ())
   			* Eigen::AngleAxisd(pos_ori[4], Vector3d::UnitY())
-  			* Eigen::AngleAxisd(pos_ori[3], Vector3d::UnitZ());
+  			* Eigen::AngleAxisd(pos_ori[3], Vector3d::UnitX());
 	rot = other_rot.transpose();
 	double transformYPR[16] = { rot(0,0) 				, rot(1,0) 					, rot(2,0) 					, 0 ,
 		 											 rot(0,1) 				, rot(1,1) 					, rot(2,1) 					, 0 ,
@@ -250,41 +250,6 @@ unsigned int byteswap (unsigned int nLongNumber) {
 	return (((nLongNumber&0x000000FF)<<24)+((nLongNumber&0x0000FF00)<<8)+
 					((nLongNumber&0x00FF0000)>>8)+((nLongNumber&0xFF000000)>>24));
 }
-
-void parseLine(const char* line, struct robot_device &rdev) {
-  memset(&rdev, 0, sizeof(rdev));
-  memcpy(&rdev, line, sizeof(rdev)); 
-
-  if (rdev.Ox12345678 == 0x12345678) {
-    //printf("fine\n");
-  } else if (rdev.Ox12345678 == 0x78563412) {
-    //printf("opposite endianness\n");
-    unsigned int *ip_first, *ip_last, *ip;
-    if ( ((char) (rdev.Ox12345678)) != 0x78) // Data received in other endianness
-    {				
-      ip_first = (unsigned int*) &(rdev.Ox12345678);
-      ip_last  = (unsigned int*) &(rdev.ending_int);
-      for (ip = ip_first; ip <= ip_last; ip++)
-      {
-        *ip = byteswap(*ip);
-      }
-    }
-  } else {
-    //printf("ERROR: Unsupported endianness\n");
-  }
-
-    int i = 2;
-    printf("%f %f %f %f %f %f\n", 
-        ((double)rdev.mech[i].pos.x) / MICROMETERS_PER_METER,
-        ((double)rdev.mech[i].pos.y) / MICROMETERS_PER_METER,
-        ((double)rdev.mech[i].pos.z) / MICROMETERS_PER_METER,
-        ((double)rdev.mech[i].ori.yaw) / MICRORADS_PER_RAD,
-        ((double)rdev.mech[i].ori.pitch) / MICRORADS_PER_RAD,
-        ((double)rdev.mech[i].ori.roll) / MICRORADS_PER_RAD
-        );
-
-}
-
 void loadParsedFile(const char* fileName, vector<vector<double> >& data) {
   ifstream parsedFile(fileName, ios::in);
   data.resize(0); 

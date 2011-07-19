@@ -2,7 +2,7 @@
 #define _runCalibFromFiles_h
 
 #include "checkerboard_data_vis.h"
-#include "../threadenergy/thread_utils.h"
+#include "../../legacy/threadenergy/thread_utils.h"
 #include <iostream>
 #include <fstream>
 
