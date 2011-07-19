@@ -4,14 +4,13 @@
 
 void applyControl(Thread* start, const VectorXd& u, const movement_mode movement) { 
   vector<Two_Motions*> motions;
-
   control_to_TwoMotion(u, motions, movement);
   for (int i=0; i < motions.size(); i++)
   {
-    start->apply_motion(*motions[i]);
+    start->apply_motion_nearEnds(*motions[i]);
   }
 
- // start->minimize_energy(); 
+  start->minimize_energy(); 
 }
 
 /*

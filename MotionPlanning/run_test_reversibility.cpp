@@ -51,10 +51,15 @@ int main(int argc, char* argv[]) {
   controls_reader.read_controls_from_file();
   controls_reader.get_all_controls(all_controls); 
  
-    char results_filename[256]; 
-    ofstream results_file; 
-    sprintf(results_filename, "reversibility/controls_%d_results.txt", num_links);
-    results_file.open(results_filename);
+  char results_r_filename[256]; 
+  ofstream results_r_file; 
+  sprintf(results_r_filename, "reversibility/controls_%d_results_r.txt", num_links);
+  results_r_file.open(results_r_filename);
+
+  char results_m_filename[256]; 
+  ofstream results_m_file; 
+  sprintf(results_m_filename, "reversibility/controls_%d_results_m.txt", num_links);
+  results_m_file.open(results_m_filename);
 
   cout << "Running with threads = " << NUM_CPU_THREADS << endl;
 #pragma omp parallel for num_threads(NUM_CPU_THREADS) 
@@ -63,27 +68,31 @@ int main(int argc, char* argv[]) {
     Thread* initial_thread = new Thread(*start_threads[thread_ind]);
     initial_thread->minimize_energy();
 
+    //cout << initial_thread->start_pos().transpose() << endl; 
     for (int i = 0; i < all_controls.size(); i++) { 
 
       Thread* copy_thread = new Thread(*initial_thread); 
       VectorXd reverseCtrl(12); 
       reverseControl(all_controls[i], reverseCtrl); 
 
+      //cout << all_controls[i].transpose() << endl; 
       applyControl(copy_thread, all_controls[i]);
-      results_file << "M " <<  thread_ind << " " << i << " " 
-        << cost_metric(copy_thread, initial_thread) << endl; 
-      
+      //cout << copy_thread->start_pos().transpose() << endl; 
 
+      results_m_file << "M " <<  thread_ind << " " << i << " " 
+        << cost_metric(copy_thread, initial_thread) << endl;
       applyControl(copy_thread, reverseCtrl);
       //cout << cost_metric(copy_thread, initial_thread)
       //  << endl; 
-      results_file << "R " <<  thread_ind << " " << i << " " 
+      results_r_file << "R " <<  thread_ind << " " << i << " " 
         << cost_metric(copy_thread, initial_thread) << endl;
-      /*cout << copy_thread->start_pos().transpose() << endl; 
+      /*
+      cout << copy_thread->start_pos().transpose() << endl; 
       cout << initial_thread->start_pos().transpose() << endl;
       cout << copy_thread->end_pos().transpose() << endl; 
       cout << initial_thread->end_pos().transpose() << endl; 
-    
+    */
+    /*
       cout << endl << endl; 
       cout << copy_thread->start_rot() << endl; 
       cout << initial_thread->start_rot() << endl; 
@@ -93,7 +102,8 @@ int main(int argc, char* argv[]) {
     }
   } 
 
-    results_file.close();
+    results_m_file.close();
+    results_r_file.close();
 
 }
 

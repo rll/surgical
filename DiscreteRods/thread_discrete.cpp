@@ -525,7 +525,7 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
     next_energy = calculate_energy();
 
 
-    //std::cout << "curr energy: " << curr_energy << "   next energy: " << next_energy << "  before projection: " << energy_before_projection << "  last step: " << step_in_grad_dir_vertices <<  std::endl;
+   //std::cout << "curr energy: " << curr_energy << "   next energy: " << next_energy << "  before projection: " << energy_before_projection << "  last step: " << step_in_grad_dir_vertices <<  std::endl;
 
     recalc_vertex_grad = true;
     if (next_energy + energy_error_for_convergence > curr_energy)
@@ -580,7 +580,7 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
   next_energy = calculate_energy();
 
   if (!project_length_constraint_pass && COLLISION_CHECKING) {
-    //cout << "reverting thread to prior state" << endl; 
+    cout << "reverting thread to prior state" << endl; 
     restore_thread_pieces_and_resize(_thread_pieces_collision_backup);
     restore_constraints(_start_pos_backup, _start_rot_backup, 
         _end_pos_backup, _end_rot_backup);
@@ -2331,6 +2331,7 @@ void Thread::apply_motion(Two_Motions& motion)
   Matrix3d end_rot = this->end_rot();
   motion._start.applyMotion(start_pos, start_rot);
   motion._end.applyMotion(end_pos, end_rot);
+
   set_constraints(start_pos, start_rot, end_pos, end_rot);
   minimize_energy();
 }
