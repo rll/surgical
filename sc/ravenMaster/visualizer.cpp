@@ -93,7 +93,8 @@ void processNormalKeys(unsigned char key, int x, int y) {
 	
 	if (key == 'n') {
 		if (data_i < data.size()-1) {
-			data_i++;
+			data_i+=10;
+      cout << data_i << endl; 
 			glutPostRedisplay();
 		} else {
 			cout << "There is no next data" << endl;
@@ -161,6 +162,48 @@ void initGL() {
 	glEnable (GL_COLOR_MATERIAL);
 }
 
+void drawCylinder(double transform[16], float color0, float color1, float color2) {
+  static const double kCursorRadius = 1;
+  static const double kCursorHeight = 1;
+  static const int kCursorTess = 4;
+  
+  GLUquadricObj *qobj = 0;
+
+  glPushAttrib(GL_CURRENT_BIT | GL_ENABLE_BIT | GL_LIGHTING_BIT);
+  glPushMatrix();
+
+  if (!gCursorDisplayList) {
+    gCursorDisplayList = glGenLists(1);
+    glNewList(gCursorDisplayList, GL_COMPILE);
+    qobj = gluNewQuadric();
+            
+    gluCylinder(qobj, 0.0, kCursorRadius, kCursorHeight,
+                kCursorTess, kCursorTess);
+    glTranslated(0.0, 0.0, kCursorHeight);
+    gluCylinder(qobj, kCursorRadius, 0.0, kCursorHeight,
+                kCursorTess, kCursorTess);
+
+    gluDeleteQuadric(qobj);
+    glEndList();
+  }
+
+
+  // Get the proxy transform in world coordinates
+ 	glMultMatrixd(transform);
+
+  // Apply the local cursor scale factor.
+  double gDiamondScale = 0.5;
+  glScaled(gDiamondScale, gDiamondScale, gDiamondScale);
+
+  glEnable(GL_COLOR_MATERIAL);
+  glColor3f(color0, color1, color2);
+
+  glCallList(gCursorDisplayList);
+  
+  glPopMatrix();
+  glPopAttrib();
+}
+
 void drawCursor(double transform[16], float color0, float color1, float color2) {
   static const double kCursorRadius = 0.5;
   static const double kCursorHeight = 1.5;
@@ -185,7 +228,8 @@ void drawCursor(double transform[16], float color0, float color1, float color2) 
     gluDeleteQuadric(qobj);
     glEndList();
   }
-  
+
+
   // Get the proxy transform in world coordinates
  	glMultMatrixd(transform);
 
@@ -202,12 +246,33 @@ void drawCursor(double transform[16], float color0, float color1, float color2) 
   glPopAttrib();
 }
 
+void createTransform(vector<double>& pos_ori, double transform[16]) { 
+  Matrix3d rot;
+  rot = Eigen::AngleAxisd(pos_ori[3], Vector3d::UnitZ())
+  			* Eigen::AngleAxisd(pos_ori[4], Vector3d::UnitY())
+  			* Eigen::AngleAxisd(pos_ori[5], Vector3d::UnitX());
+  transform[0] = rot(0,0);
+  transform[1] = rot(1,0);
+  transform[2] = rot(2,0);
+  transform[3] = 0;
+  transform[4] = rot(0,1);
+  transform[5] = rot(1,1);
+  transform[6] = rot(2,1);;
+  transform[7] = 0;
+  transform[8] = rot(0,2);
+  transform[9] = rot(1,2);
+  transform[10] = rot(2,2);
+  transform[11] = 0;
+  transform[12] = pos_ori[0]*200;
+  transform[13] = pos_ori[1]*200;
+  transform[14] = pos_ori[2]*200; 
+  transform[15] = 1; 
+}
+
 void drawStuff() {
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glColor3f (0.8, 0.3, 0.6);
-  
-  glPushMatrix ();
-  
+  glColor3f(0.8, 0.3, 0.6);
+  glPushMatrix();
   glTranslatef (0.0,0.0,-110.0);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
@@ -220,28 +285,29 @@ void drawStuff() {
   }
   
   Matrix3d other_rot, rot, rot2, rot3;
-	other_rot = Eigen::AngleAxisd(pos_ori[5], Vector3d::UnitZ())
+	other_rot = Eigen::AngleAxisd(pos_ori[3], Vector3d::UnitZ())
   			* Eigen::AngleAxisd(pos_ori[4], Vector3d::UnitY())
-  			* Eigen::AngleAxisd(pos_ori[3], Vector3d::UnitX());
-	rot = other_rot.transpose();
+  			* Eigen::AngleAxisd(pos_ori[5], Vector3d::UnitX());
+  
+  rot = other_rot;
+
 	double transformYPR[16] = { rot(0,0) 				, rot(1,0) 					, rot(2,0) 					, 0 ,
 		 											 rot(0,1) 				, rot(1,1) 					, rot(2,1) 					, 0 ,
 													 rot(0,2) 				, rot(1,2) 					, rot(2,2) 					, 0 ,
 													 pos_ori[0]*200.0 , pos_ori[1]*200.0	, pos_ori[2]*200.0	, 1 };
-	
+	/*
 	double transform[16] = { pos_ori[6], pos_ori[9], pos_ori[12], 0,
 													 pos_ori[7], pos_ori[10], pos_ori[13], 0,
 													 pos_ori[8], pos_ori[11], pos_ori[14], 0,
 													 pos_ori[0]*200.0 , pos_ori[1]*200.0	, pos_ori[2]*200.0	, 1 };
-	
-	//angle_mismatch(rotations[cvnum], old_rot)
-	drawCursor(transform, 0.0, 0.5, 1.0);
-	
-	drawCursor(transformYPR, 0.0, 1.0, 0.5);
-	
-	
-	
-	
+	*/
+  double transform[16];
+  for (int i = 0; i < data_i; i++) { 
+    createTransform(data[i], transform); 
+    //drawCursor(transform, 0.0, 0.5, 1.0);
+    drawCylinder(transform, 0.0, 0.5, 1.0); 
+    //drawCursor(transformYPR, 0.0, 1.0, 0.5);
+  }
 	glPopMatrix ();
 	glutSwapBuffers ();
 }
