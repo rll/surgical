@@ -1041,7 +1041,7 @@ void Thread::merge_thread_piece(int thread_piece_ind)
 	//minimize_energy();
 }*/
 
-void Thread::split_thread_piece(ThreadPiece* this_piece, ThreadPiece* this_piece_backup)
+/*void Thread::split_thread_piece(ThreadPiece* this_piece, ThreadPiece* this_piece_backup)
 {
 	ThreadPiece* new_piece = new ThreadPiece();
 	ThreadPiece* new_piece_backup = new ThreadPiece();
@@ -1140,7 +1140,178 @@ void Thread::unrefine_links()
 			minimize_energy();
 		}
 	}
+}*/
+//------------------------------- OLD ///// NEW
+
+void Thread::split_thread_piece(ThreadPiece* this_piece, ThreadPiece* this_piece_backup)
+{
+	ThreadPiece* new_piece = new ThreadPiece();
+	ThreadPiece* new_piece_backup = new ThreadPiece();
+	this_piece->splitPiece(new_piece);
+	this_piece_backup->copyData(*this_piece);
+	new_piece_backup->copyData(*new_piece);	
+	this_piece_backup->fixPointersSplit(new_piece_backup);
+	
+	int piece_ind;
+	for (piece_ind=0; piece_ind<_thread_pieces.size() && _thread_pieces[piece_ind]!=this_piece; piece_ind++) {}
+	if (piece_ind==_thread_pieces.size())
+		cout << "Internal error: Thread::split_thread_piece: this_piece is not in _thread_pieces." << endl;
+	
+	_thread_pieces.insert(_thread_pieces.begin() + piece_ind + 1, new_piece);
+	_thread_pieces_backup.insert(_thread_pieces_backup.begin() + piece_ind + 1, new_piece_backup);
 }
+
+// Merges the edges adjacent to this_piece->_vertex.
+void Thread::merge_thread_piece(ThreadPiece* this_piece, ThreadPiece* this_piece_backup)
+{	
+	this_piece->mergePiece();
+	this_piece_backup->copyData(*this_piece);
+	this_piece_backup->fixPointersMerge();
+	
+	int piece_ind;
+	for (piece_ind=0; piece_ind<_thread_pieces.size() && _thread_pieces[piece_ind]!=this_piece; piece_ind++) {}
+	if (piece_ind==_thread_pieces.size())
+		cout << "Internal error: Thread::merge_thread_piece: this piece is not in _thread_pieces." << endl;
+	
+	for (int i=0; i<_thread_pieces.size(); i++) {
+		if (i==piece_ind-1)
+			continue;
+		for (int j=_thread_pieces[i]->_recent_intersections.size()-1; j>-1; j--) {
+			if (_thread_pieces[i]->_recent_intersections[j] == _thread_pieces[piece_ind-1])
+				_thread_pieces[i]->_recent_intersections.erase(_thread_pieces[i]->_recent_intersections.begin() + j);
+		}
+	}
+		
+	delete _thread_pieces[piece_ind-1];
+	_thread_pieces[piece_ind-1] = NULL;
+	_thread_pieces.erase(_thread_pieces.begin() + piece_ind - 1);
+	delete _thread_pieces_backup[piece_ind-1];
+	_thread_pieces_backup[piece_ind-1] = NULL;
+	_thread_pieces_backup.erase(_thread_pieces_backup.begin() + piece_ind - 1);
+}
+
+void Thread::adapt_links()
+{
+	//unrefine_links();
+	refine_links_geometrical();
+}
+
+void Thread::refine_links_geometrical() {
+	vector<ThreadPiece*> to_refine, tp_heap;
+	for (int i=1; i<_thread_pieces.size()-2; i++) {
+		tp_heap.push_back(_thread_pieces[i]);
+	}
+	make_heap(tp_heap.begin(), tp_heap.end(), isLengthGreaterThan);
+	cout << "initial max heap   : " << tp_heap.front() << endl;
+
+	while((tp_heap.size() > 0) && needs_refine_geometrical(tp_heap.front())) {
+		cout << "added to to_refine: \ttp_heap.front(): " << tp_heap.front() << "\ttp_heap.front()->_rest_length: " << tp_heap.front()->_rest_length << endl;
+		to_refine.push_back(tp_heap.front());
+		pop_heap(tp_heap.begin(), tp_heap.end());
+		tp_heap.pop_back();
+	}		
+
+	for (int piece_ind=0; piece_ind < to_refine.size(); piece_ind++) {
+		if (to_refine[piece_ind]->_prev_piece!=NULL && 
+				to_refine[piece_ind]->_prev_piece->_prev_piece!=NULL && 
+				!almost_equal(to_refine[piece_ind]->_prev_piece, to_refine[piece_ind]->_prev_piece->_prev_piece)) {
+			split_concatenation_left(to_refine[piece_ind]->_prev_piece, to_refine[piece_ind]->_prev_piece); //check
+		}
+		if (to_refine[piece_ind]->_next_piece!=NULL &&
+				to_refine[piece_ind]->_next_piece->_next_piece!=NULL &&
+				!almost_equal(to_refine[piece_ind], to_refine[piece_ind]->_next_piece)) {
+			split_concatenation_right(to_refine[piece_ind], to_refine[piece_ind]); //check
+		}
+	}
+	minimize_energy();
+}
+
+void Thread::unrefine_links() {
+	vector<ThreadPiece*> to_unrefine, tp_heap;
+	for (int i=2; i<_thread_pieces.size()-3; i++) {
+		tp_heap.push_back(_thread_pieces[i]);
+	}
+	make_heap(tp_heap.begin(), tp_heap.end(), isLengthLessThan);
+	cout << "initial max heap   : " << tp_heap.front() << endl;
+
+	while((tp_heap.size() > 0) && needs_unrefine(tp_heap.front())) {
+		cout << "added to to_unrefine: \ttp_heap.front(): " << tp_heap.front() << "\ttp_heap.front()->_rest_length: " << tp_heap.front()->_rest_length << endl;
+		to_unrefine.push_back(tp_heap.front());
+		pop_heap(tp_heap.begin(), tp_heap.end());
+		tp_heap.pop_back();
+	}
+
+	for (int piece_ind=0; piece_ind < to_refine.size(); piece_ind++) {
+		if (to_unrefine[piece_ind] == NULL || to_unrefine[piece_ind]->_next_piece == NULL ||
+				to_unrefine[piece_ind]->_prev_piece == NULL || to_unrefine[piece_ind]->_prev_piece->_prev_piece == NULL)
+		cout << "Internal error: unrefine_links: to_unrefine[piece_ind] or one of its neighbors is NULL." << endl;
+		double r0 = to_unrefine[piece_ind]->rest_length();
+		double r1 = to_unrefine[piece_ind]->_next_piece->rest_length();
+		double l0 = to_unrefine[piece_ind]->_prev_piece->rest_length();		
+		double l1 = to_unrefine[piece_ind]->_prev_piece->_prev_piece->rest_length();
+		if (((l0+r0) < 2*r1) && ((l0+r0) < 2*l1)) { // merge only if the new rest length after merging is not longer by more than a factor of 2 with respect to the rest length of the new neighbors
+			merge_thread_piece(to_unrefine[piece_ind], to_unrefine[piece_ind]); //check
+		}
+	}
+	minimize_energy();
+}
+
+void Thread::split_concatenation_left(ThreadPiece* piece, ThreadPiece* piece_backup) {
+	if (piece->_prev_piece != NULL) {
+		double adj0 = piece->rest_length();
+		double adj1 = piece->_prev_piece->rest_length();
+		split_thread_piece(piece, piece_backup);
+		if (2*adj0 <= adj1) {	// split only if the new rest length after splitting is not smaller by more than a factor of 2 with respect to the rest length of the new neighbors
+			split_concatenation_left(piece->_prev_piece, piece_backup->_prev_piece);
+		}
+	}
+}
+
+void Thread::split_concatenation_right(ThreadPiece* piece, ThreadPiece* piece_backup) {
+	if (piece->_next_piece == NULL) {
+		cout << "Internal error: split_concatenation_right: piece->_vertex should not be vertex _threads_pieces.size()-1." << endl;
+	}
+	if (piece->_next_piece != NULL && piece->_next_piece->_next_piece != NULL) {
+		double adj0 = piece->rest_length();
+		double adj1 = piece->_next_piece->rest_length();
+		if (2*adj0 <= adj1) {	// split only if the new rest length after splitting is not smaller by more than a factor of 2 with respect to the rest length of the new neighbors
+			split_concatenation_right(piece->_next_piece, piece_backup->_next_piece);
+		}
+		split_thread_piece(piece, piece_backup);
+	}
+}
+
+void Thread::almost_equal(const Vector3d &a, const Vector3d &b) {
+	Vector3d diff = a-b;
+	double eps = 0.00001;
+	return ((diff(0) < eps) && (diff(1) < eps) && (diff(2) < eps));
+}
+
+// Does the edges adyacent to piece->_vertex need to be refined?		
+bool Thread::needs_refine_geometrical(ThreadPiece* piece)
+{
+	if (piece==NULL)
+		cout << "Internal error: needs_unrefine: piece is NULL" << endl;
+	return (piece->curvature_binormal_norm() > REFINE_THRESHHOLD);
+}
+
+bool Thread::needs_refine_mechanical(ThreadPiece* piece)
+{
+	if (piece==NULL)
+		cout << "piece in needs_refine_mechanical is NULL" << endl;
+	return (piece->intersectionDist() < MAX_SQUARED_DOUBLE_DIST_BEFORE_UNREFINE);
+}
+
+// Does the vertex especified by piece->_vertex need to be unrefined?
+bool Thread::needs_unrefine(ThreadPiece* piece)
+{
+	if (piece==NULL)
+		cout << "Internal error: needs_unrefine: piece is NULL" << endl;
+	return ((piece->curvature_binormal_norm() < UNREFINE_THRESHHOLD);
+	//return ((piece->curvature_binormal_norm() < UNREFINE_THRESHHOLD) && 
+	//				(!COLLISION_CHECKING || (piece->intersectionDist() >= MAX_SQUARED_DOUBLE_DIST_BEFORE_UNREFINE)));
+}
+
 //end variable-length thread_pieces
 /*********************************************************************************/
 

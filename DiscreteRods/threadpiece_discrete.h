@@ -109,7 +109,9 @@ class ThreadPiece
     
     //overload operators
     ThreadPiece& operator=(const ThreadPiece& rhs);
-
+    bool operator<(const ThreadPiece& rhs) const {
+    	this._rest_length < rhs._rest_length;
+    }
 
     const Vector3d& vertex(void) const {return _vertex;}
     const double angle_twist(void) const {return _angle_twist;}
@@ -156,6 +158,14 @@ class ThreadPiece
 
 
 };
+
+bool isLengthLessThan (ThreadPiece* first, ThreadPiece* second) {
+ 	return (first->_rest_length < second->_rest_length);
+}
+
+bool isLengthGreaterThan (ThreadPiece* first, ThreadPiece* second) {
+ 	return (first->_rest_length > second->_rest_length);
+}
 
 #endif
 
