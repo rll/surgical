@@ -425,9 +425,22 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 {
   //backup pieces in case collision checking infinite loops due to unsatisfiable system
   //cout << "backing up pieces" << endl; 
-
+	
+	/*cout << "_thread_pieces.size(): " << _thread_pieces.size() << endl;
+	for (int i=0; i<_thread_pieces.size(); i++) {
+		if (_thread_pieces[i]->_my_thread == NULL)
+			cout << "_thread_pieces[" << i << "]->_my_thread is NULL" << endl;
+		else if (_thread_pieces[i]->_my_thread == this)
+			cout << "_thread_pieces[" << i << "]->_my_thread is this" << endl;
+	}*/
+	
   if (COLLISION_CHECKING) { 
     save_thread_pieces_and_resize(_thread_pieces_collision_backup);
+    for (int i=0; i<threads_in_env.size(); i++) {
+    	//if (this == threads_in_env[i])
+    		//continue;
+    	threads_in_env[i]->save_thread_pieces_and_resize(threads_in_env[i]->_thread_pieces_collision_backup);
+    }
   }
   bool project_length_constraint_pass = true; 
 
@@ -549,9 +562,10 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 
     if (COLLISION_CHECKING) {
       vector<Self_Intersection> self_intersections;
+      vector<Thread_Intersection> thread_intersections;
       vector<Intersection> intersections;
       int intersection_iters = 0; 
-      while(check_for_intersection(self_intersections, intersections) && project_length_constraint_pass) {
+      while(check_for_intersection(self_intersections, thread_intersections, intersections) && project_length_constraint_pass) {
         fix_intersections();
         project_length_constraint_pass &= project_length_constraint();
         intersection_iters++;
@@ -582,8 +596,12 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
   if (!project_length_constraint_pass && COLLISION_CHECKING) {
     //cout << "reverting thread to prior state" << endl; 
     restore_thread_pieces_and_resize(_thread_pieces_collision_backup);
-    restore_constraints(_start_pos_backup, _start_rot_backup, 
-        _end_pos_backup, _end_rot_backup);
+    restore_constraints(_start_pos_backup, _start_rot_backup, _end_pos_backup, _end_rot_backup);
+    for (int i=0; i<threads_in_env.size(); i++) {
+    	//if (this == threads_in_env[i])
+    		//continue;
+    	threads_in_env[i]->restore_thread_pieces_and_resize(threads_in_env[i]->_thread_pieces_collision_backup);
+    }
   }
   /*
      cout << "Edges: " << endl; 
@@ -600,8 +618,9 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 
 void Thread::fix_intersections() {
     vector<Self_Intersection> self_intersections;
+    vector<Thread_Intersection> thread_intersections;
     vector<Intersection> intersections;
-    while(check_for_intersection(self_intersections, intersections)) {
+    while(check_for_intersection(self_intersections, thread_intersections, intersections)) {
         //restore_thread_pieces();
         //cout << "INTERSECTION FOUND, total current intersections is: " << (intersections.size() + self_intersections.size())<< endl;
         debugflag = true;
@@ -642,13 +661,43 @@ void Thread::fix_intersections() {
           }
  */
         }
+                
+        for (int i=0; i < thread_intersections.size(); i++)
+        {
+          int ind_a = thread_intersections[i]._piece_ind_a;
+          int ind_b = thread_intersections[i]._piece_ind_b;
+          int ind_t = thread_intersections[i]._thread_ind;
+          Vector3d cross = _thread_pieces[ind_a]->edge().cross(threads_in_env[ind_t]->_thread_pieces[ind_b]->edge());
+          cross.normalize();
 
+          double dist_a, dist_b;
+          if (ind_a == 0 || ind_a == _thread_pieces.size()-2) {
+            dist_a = 0.0;
+            dist_b = thread_intersections[i]._dist + INTERSECTION_PUSHBACK_EPS;
+          } else if (ind_b == 0 || ind_b == threads_in_env[ind_t]->_thread_pieces.size()-2) {
+            dist_a = thread_intersections[i]._dist + INTERSECTION_PUSHBACK_EPS;
+            dist_b = 0.0;
+          } else {
+            dist_a = dist_b = thread_intersections[i]._dist/2.0 + INTERSECTION_PUSHBACK_EPS;
+          }
+
+          _thread_pieces[ind_a]->offset_vertex(cross*dist_a); 
+          _thread_pieces[ind_a + 1]->offset_vertex(cross*dist_a);
+          threads_in_env[ind_t]->_thread_pieces[ind_b]->offset_vertex(-cross*dist_b); 
+          threads_in_env[ind_t]->_thread_pieces[ind_b + 1]->offset_vertex(-cross*dist_b);
+          if(thread_intersection(ind_a,ind_b,ind_t,THREAD_RADIUS)) {
+            _thread_pieces[ind_a]->offset_vertex(-2.0*cross*dist_a); 
+            _thread_pieces[ind_a + 1]->offset_vertex(-2.0*cross*dist_a);
+            threads_in_env[ind_t]->_thread_pieces[ind_b]->offset_vertex(2.0*cross*dist_b); 
+            threads_in_env[ind_t]->_thread_pieces[ind_b + 1]->offset_vertex(2.0*cross*dist_b);
+          }
+        }
 
         for (int i=0; i < intersections.size(); i++)
         {
           int ind_piece = intersections[i]._piece_ind;
           int ind_obj = intersections[i]._object_ind;
-          Vector3d cross = _thread_pieces[ind_piece]->edge().cross(objects_in_env[ind_obj]._end_pos - objects_in_env[ind_obj]._start_pos);
+          Vector3d cross = _thread_pieces[ind_piece]->edge().cross(objects_in_env[ind_obj]->_end_pos - objects_in_env[ind_obj]->_start_pos);
           cross.normalize();
 
           cross *= intersections[i]._dist+INTERSECTION_PUSHBACK_EPS;
@@ -657,7 +706,7 @@ void Thread::fix_intersections() {
 
           _thread_pieces[ind_piece]->offset_vertex(cross); 
           _thread_pieces[ind_piece + 1]->offset_vertex(cross);
-          if(obj_intersection(ind_piece,THREAD_RADIUS, ind_obj,objects_in_env[ind_obj]._radius)) {
+          if(obj_intersection(ind_piece,THREAD_RADIUS, ind_obj,objects_in_env[ind_obj]->_radius)) {
         //  cout << "cross pointed wrong direction, trying other direction" << endl;
             _thread_pieces[ind_piece]->offset_vertex(-2.0*cross); 
             _thread_pieces[ind_piece + 1]->offset_vertex(-2.0*cross);
@@ -676,16 +725,17 @@ void Thread::fix_intersections() {
     }
 }
 
-bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Intersection>& intersections)
-{
+bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Thread_Intersection>& thread_intersections, vector<Intersection>& intersections)
+{   	
   double found = false; // count of number of intersections
   self_intersections.clear();
+  thread_intersections.clear();
   intersections.clear();
 
   //self intersections
   for(int i = 0; i < _thread_pieces.size() - 3; i++) {
     //+2 so you don't check the adjacent piece - bug?
-    for(int j = i + 2; j < _thread_pieces.size() - 2; j++) {
+    for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
       if(i == 0 && j == _thread_pieces.size() - 2) 
         continue;
       double intersection_dist = self_intersection(i,j,THREAD_RADIUS);
@@ -697,12 +747,34 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
       }
     }
   }
-
+	
+	//intersections between threads
+	for (int k=0; k < threads_in_env.size(); k++) {
+		//if (this == threads_in_env[k]) //check
+			//continue;
+		for(int i = 0; i < _thread_pieces.size()-1; i++) {
+	    for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
+	      if((i==0 && j==0) ||
+	      	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
+	      	 (i==_thread_pieces.size()-2 && j==0) ||
+	      	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
+	        continue;
+	      double intersection_dist = thread_intersection(i,j,k,THREAD_RADIUS);		//asumes other threads have same radius
+	      if(intersection_dist != 0) {
+	        //skip if both ends, since these are constraints
+	        found = true;
+	        thread_intersections.push_back(Thread_Intersection(i,j,k,intersection_dist));
+	      }
+	    }
+	  }
+	}
+		
   //intersections with objects
   for (int i=0; i < objects_in_env.size(); i++)
   {
     for(int j = 2; j < _thread_pieces.size() - 3; j++) {
-      double intersection_dist = obj_intersection(j,THREAD_RADIUS, i, objects_in_env[i]._radius);
+    //for(int j = 0; j < _thread_pieces.size() - 1; j++) {
+      double intersection_dist = obj_intersection(j,THREAD_RADIUS, i, objects_in_env[i]->_radius);
       if(intersection_dist != 0) {
         found = true;
 
@@ -712,19 +784,23 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
 
   }
 
-
-
   return found;
 }
+
 //define an epsilon
 double Thread::self_intersection(int i, int j, double radius)
 {
-    return intersection(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, _thread_pieces[j]->vertex(), _thread_pieces[j+1]->vertex(), radius);
+    return  intersection(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, _thread_pieces[j]->vertex(), _thread_pieces[j+1]->vertex(), radius);
+}
+
+double Thread::thread_intersection(int i, int j, int k, double radius)
+{
+		return intersection(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, threads_in_env[k]->_thread_pieces[j]->vertex(), threads_in_env[k]->_thread_pieces[j+1]->vertex(), radius);
 }
 
 double Thread::obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius)
 {
-  return intersection(objects_in_env[obj_ind]._start_pos, objects_in_env[obj_ind]._end_pos, objects_in_env[obj_ind]._radius,
+  	return intersection(objects_in_env[obj_ind]->_start_pos, objects_in_env[obj_ind]->_end_pos, objects_in_env[obj_ind]->_radius,
             _thread_pieces[piece_ind]->vertex(), _thread_pieces[piece_ind+1]->vertex(),THREAD_RADIUS);
 }
 
@@ -751,8 +827,7 @@ double Thread::intersection(const Vector3d& a_start_in, const Vector3d& a_end_in
     trivial_reject = true;
     return 0;
   }
-
-
+  
   // move 'a_start' to origin and move everything else relative
   a_end = a_end - a_start;
   b_start = b_start - a_start;
@@ -775,7 +850,6 @@ double Thread::intersection(const Vector3d& a_start_in, const Vector3d& a_end_in
       (b_start[2] < -INTERSECTION_HEIGHT_FACTOR && b_end[2] < -INTERSECTION_HEIGHT_FACTOR)) {
     return 0;
   }
-
 
   // checks for parallel edges
   // can do this check because we rotated to unit Z
@@ -849,6 +923,110 @@ double Thread::intersection(const Vector3d& a_start_in, const Vector3d& a_end_in
 
   //////cout << "bs, be, ae: " << bs << endl << endl << 
 
+}
+
+//Based on http://softsurfer.com/Archive/algorithm_0106/algorithm_0106.htm
+double Thread::intersection_experimental(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, 
+														const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius)
+{
+	Vector3d u = a_end_in - a_start_in;
+	Vector3d v = b_end_in - b_start_in;
+	bool trivial_reject = false;
+	  
+	Vector3d a_mid = (a_start_in + a_end_in)/2.0;
+	double a_squared_norm = u.squaredNorm();
+	double b_squared_norm = v.squaredNorm();
+  double edgeLen = max(a_squared_norm, b_squared_norm);
+  edgeLen = sqrt(edgeLen) * INTERSECTION_EDGE_LENGTH_FACTOR;
+  //check distance to b_start and b_end
+  double distb_start_squared = (b_start_in - a_mid).squaredNorm();
+  double distb_end_squared = (b_end_in - a_mid).squaredNorm();
+  double compare = pow(edgeLen / 2.0 + a_radius + b_radius, 2);
+  if((distb_start_squared > compare) && (distb_end_squared > compare)) {
+    // cout << "false (trivial rejected)" << endl;
+    trivial_reject = true;
+    return 0;
+  }
+  
+  // check if z values of b allow for trivial rejection (both points far enough away)
+	Vector3d a_dir = INTERSECTION_HEIGHT_FACTOR * u.normalized();
+	Vector3d a_end_free 	= a_end_in 	 + INTERSECTION_HEIGHT_FACTOR * a_dir;
+	Vector3d a_start_free = a_start_in - INTERSECTION_HEIGHT_FACTOR * a_dir;
+	if(((b_start_in[0] > a_end_free[0]) && (b_end_in[0] > a_end_free[0]) &&
+		 	(b_start_in[1] > a_end_free[1]) && (b_end_in[1] > a_end_free[1]) &&
+		 	(b_start_in[2] > a_end_free[2]) && (b_end_in[2] > a_end_free[2])) ||
+		 ((b_start_in[0] > a_start_free[0]) && (b_end_in[0] > a_start_free[0]) &&
+		 	(b_start_in[1] > a_start_free[1]) && (b_end_in[1] > a_start_free[1]) &&
+		 	(b_start_in[2] > a_start_free[2]) && (b_end_in[2] > a_start_free[2]))) {
+		return 0;
+	}
+
+	// Line parametrization
+	// L1 : P(s) = a_start_in + s * (a_end_in - a_start_in) = a_start_in + s * u
+	// L2 : Q(t) = b_start_in + t * (b_end_in - b_start_in) = b_start_in + t * v
+	//Vector3d u = a_end_in - a_start_in;
+	//Vector3d v = b_end_in - b_start_in;
+	Vector3d w = a_start_in - b_start_in;
+	double a = u.dot(u);        // always >= 0
+	double b = u.dot(v);
+	double c = v.dot(v);        // always >= 0
+	double d = u.dot(w);
+	double e = v.dot(w);
+	double D = a*c-b*b;       	// always >= 0
+	double sc, sN, sD = D;      // sc = sN / sD, default sD = D >= 0
+	double tc, tN, tD = D;      // tc = tN / tD, default tD = D >= 0
+
+  // compute the line parameters of the two closest points
+  if (D < INTERSECTION_PARALLEL_CHECK_FACTOR) { 			// the lines are almost parallel
+    sN = 0.0;       				// force using point P0 on segment S1
+    sD = 1.0;       				// to prevent possible division by 0.0 later
+    tN = e;
+    tD = c;
+  } else {                	// get the closest points on the infinite lines
+    sN = (b*e - c*d);
+    tN = (a*e - b*d);
+    if (sN < 0.0) {       	// sc < 0 => the s=0 edge is visible
+      sN = 0.0;
+      tN = e;
+      tD = c;
+    } else if (sN > sD) { 	// sc > 1 => the s=1 edge is visible
+      sN = sD;
+      tN = e + b;
+      tD = c;
+    }
+  }
+
+  if (tN < 0.0) {           // tc < 0 => the t=0 edge is visible
+    tN = 0.0;
+    // recompute sc for this edge
+    if (-d < 0.0)
+      sN = 0.0;
+    else if (-d > a)
+      sN = sD;
+    else {
+		  sN = -d;
+		  sD = a;
+    }
+  } else if (tN > tD) {      // tc > 1 => the t=1 edge is visible
+    tN = tD;
+    // recompute sc for this edge
+    if ((-d + b) < 0.0)
+      sN = 0.0;
+    else if ((-d + b) > a)
+      sN = sD;
+    else {
+      sN = (-d + b);
+      sD = a;
+    }
+  }
+  // finally do the division to get sc and tc
+  sc = (abs(sN) < INTERSECTION_PARALLEL_CHECK_FACTOR ? 0.0 : sN / sD);
+  tc = (abs(tN) < INTERSECTION_PARALLEL_CHECK_FACTOR ? 0.0 : tN / tD);
+
+  // get the difference of the two closest points
+  double dist = (w + (sc * u) - (tc * v)).norm();  // = S1(sc) - S2(tc)
+
+  return max(0.0, a_radius + b_radius - dist);   // return the overlapping distance
 }
 
 void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
@@ -1604,7 +1782,6 @@ void Thread::project_length_constraint_old()
 //this function might introduce intersections. fix_intersections should be called (with caution) afterwards. 
 bool Thread::project_length_constraint(int recursive_depth)
 {
-
   if (recursive_depth <= 0) {
     //cout << "project length constraint recursively called too much!" << endl;
     return false; 
@@ -1717,8 +1894,9 @@ bool Thread::project_length_constraint(int recursive_depth)
     int intersection_iters = 0; 
     if (COLLISION_CHECKING) { 
       vector<Self_Intersection> self_intersections;
+      vector<Thread_Intersection> thread_intersections;
       vector<Intersection> intersections;
-      while(check_for_intersection(self_intersections, intersections)) {
+      while(check_for_intersection(self_intersections, thread_intersections, intersections)) {
         fix_intersections();
         intersection_iters++;
         //cout << "PLC: fixing for " << intersection_iters << " iterations."
@@ -2079,6 +2257,15 @@ void Thread::get_thread_data(vector<Vector3d>& points, vector<Matrix3d>& materia
   }
 }
 
+void Thread::get_thread_data(vector<Matrix3d>& bishop_frames)
+{
+  bishop_frames.resize(_thread_pieces.size());
+  for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
+  {
+    bishop_frames[piece_ind] = _thread_pieces[piece_ind]->bishop_frame();
+  }
+}
+
 void Thread::get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<Matrix3d>& material_frames)
 {
   points.resize(_thread_pieces.size());
@@ -2296,6 +2483,68 @@ void Thread::set_constraints_nearEnds(Vector3d& start_pos, Matrix3d& start_rot, 
   }
   set_constraints(start_pos, start_rot, end_pos, end_rot);
   minimize_energy();
+}
+
+void Thread::set_constraints_check(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot)
+{
+  Vector3d start_pos_movement = start_pos - this->start_pos();
+  Vector3d end_pos_movement = end_pos - this->end_pos();
+
+  //check to make sure we aren't trying to go beyond the max length
+  Vector3d pointA = start_pos+start_rot.col(0)*_rest_length;
+  Vector3d pointB = end_pos-end_rot.col(0)*_rest_length;
+
+  //if so, correct by moving back into acceptable region
+  Vector3d entire_length_vector = pointB - pointA;
+  double too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
+  if (too_long_by > 0)
+  {
+    entire_length_vector.normalize();
+    Vector3d start_motion_indir = start_pos_movement.dot(entire_length_vector)*entire_length_vector;
+    Vector3d end_motion_indir = end_pos_movement.dot(entire_length_vector)*entire_length_vector;
+
+    double total_movement = start_motion_indir.norm() + end_motion_indir.norm()+1e-5;
+
+    start_pos -= start_motion_indir*(too_long_by/total_movement);
+    end_pos -= end_motion_indir*(too_long_by/total_movement);
+
+    //due to numerical reasons, this sometimes seems to fail. if so, just move the end back in
+    unviolate_total_length_constraint();
+  }
+  set_constraints(start_pos, start_rot, end_pos, end_rot);
+  minimize_energy();
+}
+
+bool Thread::check_fix_positions(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot)
+{
+  Vector3d start_pos_movement = start_pos - this->start_pos();
+  Vector3d end_pos_movement = end_pos - this->end_pos();
+
+  //check to make sure we aren't trying to go beyond the max length
+  Vector3d pointA = start_pos+start_rot.col(0)*_rest_length;
+  Vector3d pointB = end_pos-end_rot.col(0)*_rest_length;
+
+  //if so, correct by moving back into acceptable region
+  Vector3d entire_length_vector = pointB - pointA;
+  double too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
+  if (too_long_by > 0)
+  {
+    entire_length_vector.normalize();
+    Vector3d start_motion_indir = start_pos_movement.dot(entire_length_vector)*entire_length_vector;
+    Vector3d end_motion_indir = end_pos_movement.dot(entire_length_vector)*entire_length_vector;
+
+    double total_movement = start_motion_indir.norm() + end_motion_indir.norm()+1e-5;
+
+    start_pos -= start_motion_indir*(too_long_by/total_movement);
+    end_pos -= end_motion_indir*(too_long_by/total_movement);
+
+    //due to numerical reasons, this sometimes seems to fail. if so, just move the end back in
+    unviolate_total_length_constraint();
+  }
+	entire_length_vector = (end_pos-end_rot.col(0)*_rest_length) - (start_pos+start_rot.col(0)*_rest_length);
+  too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
+  
+  return (too_long_by > 1e-3);
 }
 
 void Thread::rotate_end_by(double degrees)
@@ -2627,19 +2876,39 @@ Thread& Thread::operator=(const Thread& rhs)
 
 }
 
-
-
-
-
-void add_object_to_env(Intersection_Object& obj)
+void add_object_to_env(Intersection_Object* obj)
 {
   objects_in_env.push_back(obj);
 }
 
+void remove_object_from_env(Intersection_Object* obj)
+{
+	for (int i=0; i<objects_in_env.size(); i++) {
+		if ((objects_in_env[i]) == obj) {
+			objects_in_env.erase(objects_in_env.begin()+i);
+			break;
+		}
+	}
+}
+
+void clear_objects_in_env()
+{
+	for (int i=0; i<objects_in_env.size(); i++)
+		delete objects_in_env[i];
+	objects_in_env.clear();
+}
 
 //not sure why, couldn't look at static variable directly
 //so this gets the data
-vector<Intersection_Object>* get_objects_in_env()
+vector<Intersection_Object*>* get_objects_in_env()
 {
   return &objects_in_env;
+}
+
+void Thread::add_thread_to_env(Thread* thread) {  // check
+	threads_in_env.push_back(thread);
+}
+
+void Thread::clear_threads_in_env() {
+	threads_in_env.clear();
 }
