@@ -1,11 +1,11 @@
 UTILS_DIR = ../../utils/
-MESSAGING_DIR = ../master-slave/slaves/
-SOCKET_DIR = ../master-slave/
-VISION_DIR = ../vision/
-THREAD_DIR = ../threadenergy/
+MESSAGING_DIR = ../../legacy/master-slave/slaves/
+SOCKET_DIR = ../../utils/sockets/
+VISION_DIR = ../
+THREAD_DIR = ../../legacy/threadenergy/
 LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm -L/usr/lib/  -lPvAPI -lrt 
 FLIBS =  -L/usr/lib/gcc/x86_64-linux-gnu/4.4.1 -L/usr/lib/gcc/x86_64-linux-gnu/4.4.1/../../../../lib -L/lib/../lib -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/4.4.1/../../.. -L/usr/lib/x86_64-linux-gnu -lgfortranbegin -lgfortran -L/usr/local/lib/ -lopt -lnewmat
-INCLUDES = -I/usr/local/include/ -I/usr/local/include/opencv/ -I/usr/local/include/libPvAPI -I $(UTILS_DIR)
+INCLUDES = -I/usr/local/include/ -I/usr/local/include/eigen2/ -I/usr/local/include/opencv/ -I/usr/local/include/libPvAPI -I $(UTILS_DIR)
 CC = g++
 LD = g++
 DEBUG = -ggdb
