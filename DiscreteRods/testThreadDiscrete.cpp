@@ -27,6 +27,8 @@ USING_PART_OF_NAMESPACE_EIGEN
 
 void InitStuff();
 void DrawStuff();
+void drawAxesBishop(Vector3d pos, Matrix3d rot);
+void drawAxesMaterial(Vector3d pos, Matrix3d rot);
 void DrawObjectsInEnv();
 void updateThreadPoints();
 void initThread();
@@ -665,6 +667,17 @@ void DrawStuff (void)
   }
     updateThreadPoints();
 
+
+	/*vector<Vector3d> vertices;
+	vector<Matrix3d> material_frames;
+	vector<Matrix3d> bishop_frames;
+	thread->get_thread_data(vertices, material_frames);
+	thread->get_thread_data(bishop_frames);
+	for(int vertex_num=0; vertex_num<vertices.size(); vertex_num++) {
+		drawAxesMaterial(vertices[vertex_num], material_frames[vertex_num]);
+		drawAxesBishop(vertices[vertex_num], bishop_frames[vertex_num]);
+	}*/
+
   //Draw Axes
 
 
@@ -805,9 +818,7 @@ void DrawStuff (void)
       pts_cpy,
       0x0,
       twist_cpy);
-
-
-
+      
   DrawObjectsInEnv();
 
   glPopMatrix ();
@@ -815,9 +826,52 @@ void DrawStuff (void)
   glutSwapBuffers ();
 }
 
+void drawAxesBishop(Vector3d pos, Matrix3d rot) {
+	glPushMatrix();
+	double transform[] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
+												 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
+												 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
+												 pos(0)   , pos(1)   , pos(2)   , 1 };
+	glMultMatrixd(transform);
+	glBegin(GL_LINES);
+	glEnable(GL_LINE_SMOOTH);
+	glColor3d(1.0, 0.0, 0.0); //red
+	glVertex3f(-10.0, 0.0, 0.0); //x
+	glVertex3f(10.0, 0.0, 0.0);
+	glColor3d(0.0, 1.0, 0.0); //green
+	glVertex3f(0.0, 0.0, 0.0); //y
+	glVertex3f(0.0, 10.0, 0.0);
+	glColor3d(0.0, 0.0, 1.0); //blue
+	glVertex3f(0.0, 0.0, 0.0); //z
+	glVertex3f(0.0, 0.0, 10.0);
+	glEnd();
+	glPopMatrix();
+}
+
+void drawAxesMaterial(Vector3d pos, Matrix3d rot) {
+	glPushMatrix();
+	double transform[] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
+												 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
+												 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
+												 pos(0)   , pos(1)   , pos(2)   , 1 };
+	glMultMatrixd(transform);
+	glBegin(GL_LINES);
+	glEnable(GL_LINE_SMOOTH);
+	glColor3d(1.0, 1.0, 1.0);
+	glVertex3f(-10.0, 0.0, 0.0); //x
+	glVertex3f(10.0, 0.0, 0.0);
+	glColor3d(1.0, 1.0, 1.0);
+	glVertex3f(0.0, 0.0, 0.0); //y
+	glVertex3f(0.0, 10.0, 0.0);
+	glColor3d(1.0, 1.0, 1.0);
+	glVertex3f(0.0, 0.0, 0.0); //z
+	glVertex3f(0.0, 0.0, 10.0);
+	glEnd();
+	glPopMatrix();
+}
 
 void DrawObjectsInEnv()
-{
+{/*
   vector<Intersection_Object>* objects;
   objects = get_objects_in_env();
   
@@ -842,7 +896,7 @@ void DrawObjectsInEnv()
 
    }
 
-
+*/
 }
 
 
@@ -976,9 +1030,9 @@ void initThread()
 
   Vector3d start_pos_obj(10.0, 5.0, -40.0);
   Vector3d end_pos_obj(10.0, 5.0, 40.0);
-  Intersection_Object obj(1.5, start_pos_obj, end_pos_obj);
+  //Intersection_Object obj(1.5, start_pos_obj, end_pos_obj);
 
-  add_object_to_env(obj);
+  //add_object_to_env(obj);
 
 
 
