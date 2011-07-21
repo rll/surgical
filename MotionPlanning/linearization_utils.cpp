@@ -425,6 +425,7 @@ void estimate_transition_matrix_noEdges_withTwist(Thread* thread, MatrixXd& A, c
     }
     A(3*num_pieces, i) -= thread->end_angle();
   }
+  //A /= eps;
   A /= 2.0*eps;
   thread->restore_thread_pieces(thread_backup_pieces);
 }

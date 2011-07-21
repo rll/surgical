@@ -52,7 +52,7 @@ cvx_begin
       end
 
       forward_scores((num_threads-2)*size_each_state+1:end) == J_block*u_block + initial_state - goal_state;
-
+%TODO: CHANGE EDGE VIOLATIONS TO BE REST LENGTH
       for thread_num=1:num_threads-2
         for vertex_num = 1:num_points-1
           norm(x(size_each_state*(thread_num-1) + 3*(vertex_num-1)+1 : size_each_state*(thread_num-1) + 3*vertex_num) - x(size_each_state*(thread_num-1) + 3*(vertex_num)+1 : size_each_state*(thread_num-1)+3*(vertex_num+1))) < edge_violations((thread_num-1)*(num_points-1)+vertex_num) + 3
@@ -88,7 +88,7 @@ cvx_begin
         %x(size_each_state*(num_threads-2) + (thread_num-1)*size_each_control +4 : size_each_state*(num_threads-2) + (thread_num-1)*size_each_control + 6) == 0
         %x(size_each_state*(num_threads-2) + (thread_num-1)*size_each_control +10 : size_each_state*(num_threads-2) + (thread_num-1)*size_each_control + 12) == 0
       end
-      %u(1:end) < control_diff_constraint;
+      u(1:end) < control_diff_constraint;
       for thread_num=1:num_threads-2
         consecutive_control_diff(thread_num) >= norm( x(size_each_state*(num_threads-2)+(thread_num-1)*size_each_control+1 : size_each_state*(num_threads-2) + (thread_num)*size_each_control) - x(size_each_state*(num_threads-2)+thread_num*size_each_control+1 : size_each_state*(num_threads-2) + (thread_num+1)*size_each_control))
       end

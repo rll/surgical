@@ -42,6 +42,7 @@ def main():
     x_end, y_end, z_end = sample_in_sphere(max_norm_trans)
     r1_end, r2_end, r3_end = sample_in_box(max_rot)
     control = '%f %f %f %f %f %f %f %f %f %f %f %f\n' % (x_start, y_start, z_start, r1_start, r2_start, r3_start, x_end, y_end, z_end, r1_end, r2_end, r3_end)
+    print control
     f.write(control)
 
   f.close()
