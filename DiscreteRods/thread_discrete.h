@@ -11,6 +11,7 @@
 #include <Eigen/LU>
 #include <Eigen/SVD>
 #include <Eigen/Geometry>
+#include <queue>
 
 #ifdef ISOTROPIC 
     #define MAX_MOVEMENT_VERTICES 0.2
@@ -39,7 +40,7 @@
 #define DEFAULT_REST_LENGTH 3 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
-#define REFINE_THRESHHOLD 0.5
+#define REFINE_THRESHHOLD 3.2
 #define REFINE_SINGLE_THRESHHOLD 0.6
 #define UNREFINE_THRESHHOLD 0.2 /*must be smaller than REFINE_THRESHHOLD otherwise thread will be unstable */
 #define NATURAL_REST_LENGTH 3.0
@@ -103,7 +104,8 @@ static vector<Intersection_Object> objects_in_env;
 void add_object_to_env(Intersection_Object& obj);
 vector<Intersection_Object>* get_objects_in_env();
 
-
+bool isAngleLessThan (ThreadPiece* first, ThreadPiece* second);
+bool isAngleGreaterThan (ThreadPiece* first, ThreadPiece* second);
 
 class Thread
 {
@@ -293,11 +295,15 @@ class Thread
     //void split_thread_piece(int thread_piece_ind);
     //void merge_thread_piece(int thread_piece_ind);
     
-    void split_thread_piece(ThreadPiece* this_piece, ThreadPiece* this_piece_backup);
-    void merge_thread_piece(ThreadPiece* this_piece, ThreadPiece* this_piece_backup);
+    void split_thread_piece(ThreadPiece* this_piece);
+    void merge_thread_piece(ThreadPiece* this_piece);
     void adapt_links();
-    void refine_links();
+    void refine_links_geometrical();
     void unrefine_links();
+    void split_concatenation_left(ThreadPiece* piece);
+    void split_concatenation_right(ThreadPiece* piece);
+    bool needs_refine_geometrical(ThreadPiece* piece);
+    bool needs_unrefine(ThreadPiece* piece);
 
   //protected:
     vector<ThreadPiece*> _thread_pieces;
@@ -317,6 +323,21 @@ class Thread
     void apply_angle_twist_offsets(vector<double>& offsets, bool skip_edge_cases = false, double step_size = 1.0);
 
 };
+  
+template<class Type>
+struct angleGreater : public binary_function <Type, Type, bool> 
+{
+  bool operator()(const Type& _Left, const Type& _Right) const { 
+  	return (_Left->angle() < _Right->angle());
+  };
+};
 
+template<class Type>
+struct angleLess : public binary_function <Type, Type, bool>
+{
+  bool operator()(const Type& _Left, const Type& _Right) const {
+  	return (_Left->angle() > _Right->angle());
+  } ;
+};
 #endif
 

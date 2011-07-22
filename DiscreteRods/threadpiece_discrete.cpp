@@ -872,8 +872,6 @@ ThreadPiece& ThreadPiece::operator=(const ThreadPiece& rhs)
 
 }
 
-
-
 void ThreadPiece::copyData(const ThreadPiece& rhs)
 {
   _vertex = rhs._vertex;

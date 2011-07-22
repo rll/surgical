@@ -58,6 +58,10 @@ class ThreadPiece
 			else { calculateBinormal(); return _curvature_binormal; } //const {return _curvature_binormal;}
 		}
 		const double curvature_binormal_norm(void) { return (curvature_binormal()).norm(); } //const {return _curvature_binormal.norm();}
+		const double angle() const { 
+			if (_prev_piece == NULL) { return 0.0; }
+			else { return angle_between(-_prev_piece->_edge, _edge); }
+		}
 
     //Geometry
     void initializeFrames();
@@ -109,9 +113,9 @@ class ThreadPiece
     
     //overload operators
     ThreadPiece& operator=(const ThreadPiece& rhs);
-    bool operator<(const ThreadPiece& rhs) const {
-    	this._rest_length < rhs._rest_length;
-    }
+    /*bool operator<(const ThreadPiece& rhs) const {
+    	_rest_length < rhs._rest_length;
+    }*/
 
     const Vector3d& vertex(void) const {return _vertex;}
     const double angle_twist(void) const {return _angle_twist;}
@@ -158,14 +162,6 @@ class ThreadPiece
 
 
 };
-
-bool isLengthLessThan (ThreadPiece* first, ThreadPiece* second) {
- 	return (first->_rest_length < second->_rest_length);
-}
-
-bool isLengthGreaterThan (ThreadPiece* first, ThreadPiece* second) {
- 	return (first->_rest_length > second->_rest_length);
-}
 
 #endif
 

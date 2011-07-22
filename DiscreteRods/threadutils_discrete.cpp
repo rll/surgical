@@ -160,6 +160,23 @@ void intermediate_rotation(Matrix3d &inter_rot, const Matrix3d& end_rot, const M
   inter_rot = interp_q.toRotationMatrix();
 }
 
+bool almost_equal(const Vector3d &a, const Vector3d &b) {
+	Vector3d diff = a-b;
+	double eps = 0.00001;
+	return ((abs(diff(0)) < eps) && (abs(diff(1)) < eps) && (abs(diff(2)) < eps));
+}
+
+//Finds element e in vector v. If found, makes the element equal to NULL and returns the position where it was found. If not found, returns -1
+template<typename T>
+int findInvalidate(vector<T* > v, T* e) {
+	int i;
+	for (i=0; i<v.size() && v[i]!=e; i++) {}
+	if (i==v.size())
+		return -1;
+	v[i] = NULL;
+	return i;
+}
+
 
 Frame_Motion::Frame_Motion(const Vector3d& pos_movement, const Matrix3d& frame_rotation)
   :_pos_movement(pos_movement), _frame_rotation(frame_rotation)

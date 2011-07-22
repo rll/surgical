@@ -1029,12 +1029,12 @@ void updateThreadPoints()
 
 void initThread()
 {
-  int numInit = 8;//(3*3)/DEFAULT_REST_LENGTH;
+  int numInit = 5;//(3*3)/DEFAULT_REST_LENGTH;
   double noise_factor = 0.0;
 
-	double end_length = DEFAULT_REST_LENGTH;
-	double start = DEFAULT_REST_LENGTH;//8.0;
-	double end = DEFAULT_REST_LENGTH;//1.0;
+	double end_length = 5.0; //DEFAULT_REST_LENGTH;
+	double start = 5.0; //DEFAULT_REST_LENGTH;//8.0;
+	double end = 5.0; //DEFAULT_REST_LENGTH;//1.0;
 	double m = (start-end)/(numInit-1);
 
   vector<Vector3d> vertices;
