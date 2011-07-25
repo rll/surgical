@@ -46,7 +46,7 @@ cvx_begin
     variable forward_scores((num_threads-1)*size_each_state)
     %minimize (square_pos(norm(A*x - b)) + 2*sum(sum(reshape(x((num_threads-2)*size_each_state+1:end), num_threads-1, size_each_control).^2,2)));
   
-    minimize(norm(forward_scores)) 
+    minimize(norm(forward_scores) + norm(u)) 
     %minimize(norm(A*x-b) + norm(edge_violations,2) + norm(u,2)) %+ norm(consecutive_control_diff, 2) + norm(u,2) + norm(forward_scores)) %+ consectuve_state_diff_weight'*consecutive_state_diff)%norm(consecutive_state_diff,1)) %sum(w)
     subject to
      

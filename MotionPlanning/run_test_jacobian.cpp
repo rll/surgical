@@ -27,89 +27,90 @@ int main(int argc, char* argv[]) {
 
   int trajs_start_ind = atoi (argv[1]);
   int trajs_end_ind = atoi (argv[2]);
-  int num_links = atoi (argv[3]);
-  vector<Thread*> start_threads;
-  vector<Thread*> goal_threads;
-
-
-  char start_threads_filename[256];
-  char goal_threads_filename[256];
-
-  sprintf(start_threads_filename, "reversibility/%s_%d", BASENAME_STARTTHREADS, num_links);
-  sprintf(goal_threads_filename, "reversibility/%s_%d", BASENAME_GOALTHREADS, num_links);
-
-  Trajectory_Reader start_threads_reader(start_threads_filename);
-  Trajectory_Reader goal_threads_reader(goal_threads_filename);
-  start_threads_reader.read_threads_from_file();
-  goal_threads_reader.read_threads_from_file();
+  //int num_links = atoi (argv[3]);
   
-  //start_threads = start_threads_reader.get_all_threads();
-  //goal_threads = goal_threads_reader.get_all_threads();
-  
+  #pragma omp parallel for num_threads(NUM_CPU_THREADS)
+  for (int num_links = 5; num_links <= 19; num_links += 2) {
 
-  start_threads_reader.get_all_threads(start_threads);
-  goal_threads_reader.get_all_threads(goal_threads);
-  
-  Controls_Reader controls_reader(CONTROLS_FILENAME);
-  vector<VectorXd> all_controls;
-  controls_reader.read_controls_from_file();
-  controls_reader.get_all_controls(all_controls); 
- 
-  char results_filename[256]; 
-  ofstream results_file; 
-  sprintf(results_filename, "reversibility/jacobian_%d_results.txt", num_links);
-  results_file.open(results_filename);
+    vector<Thread*> start_threads;
+    vector<Thread*> goal_threads;
+    char start_threads_filename[256];
+    char goal_threads_filename[256];
+    sprintf(start_threads_filename, "reversibility/%s_%d", BASENAME_STARTTHREADS, num_links);
+    sprintf(goal_threads_filename, "reversibility/%s_%d", BASENAME_GOALTHREADS, num_links);
 
-//  cout << "Running with threads = " << NUM_CPU_THREADS << endl;
-//#pragma omp parallel for num_threads(NUM_CPU_THREADS) 
-  for (int thread_ind = trajs_start_ind; thread_ind <= std::min(trajs_end_ind, (int)(start_threads.size()-1)); thread_ind++)
-  {
-    if (thread_ind % 10 == 0) {
-       cout << "Thread ind: " << thread_ind << endl ; 
-    }
-    Thread* initial_thread = new Thread(*start_threads[thread_ind]);
-    initial_thread->minimize_energy();
-    int _size_each_state = 6*initial_thread->num_pieces() - 3 + 1;
-    //int _size_each_state = 1 + 3*initial_thread->num_pieces(); 
-    int _size_each_control = 12;
-    MatrixXd J(_size_each_state, _size_each_control);
-    //estimate_transition_matrix_noEdges_withTwist(initial_thread, J, START_AND_END);
-    Thread *backup_thread = new Thread(*initial_thread);
-    estimate_transition_matrix_local(initial_thread, J);
+    Trajectory_Reader start_threads_reader(start_threads_filename);
+    Trajectory_Reader goal_threads_reader(goal_threads_filename);
+    start_threads_reader.read_threads_from_file();
+    goal_threads_reader.read_threads_from_file();
 
-    VectorXd initial_state(_size_each_state);
-    thread_to_state_with_edges(initial_thread, initial_state); 
+    //start_threads = start_threads_reader.get_all_threads();
+    //goal_threads = goal_threads_reader.get_all_threads();
 
-    for (int i = 0; i < all_controls.size(); i++) { 
 
-      //cout << all_controls[i].transpose() << endl; 
-      VectorXd offset(_size_each_state); 
-      offset = J * all_controls[i]; // Jacobian estimate
-      Thread* copy_thread = new Thread(*backup_thread); 
-      applyControl(copy_thread, all_controls[i]);
-      VectorXd actual_state(_size_each_state);
-      thread_to_state_with_edges(copy_thread, actual_state);
-      
-      //cout << offset.transpose() << endl; 
-      //cout << (actual_state - initial_state).transpose() << endl; 
-      
-      VectorXd actual_offset = actual_state - initial_state; 
-      //double error = (offset - actual_offset).norm(); 
-      //results_file << thread_ind << " " << i << " " << error << endl;
+    start_threads_reader.get_all_threads(start_threads);
+    goal_threads_reader.get_all_threads(goal_threads);
 
-      //results_file << thread_ind << " " << i << " " << offset.transpose() << actual_offset.transpose() << endl; 
+    Controls_Reader controls_reader(CONTROLS_FILENAME);
+    vector<VectorXd> all_controls;
+    controls_reader.read_controls_from_file();
+    controls_reader.get_all_controls(all_controls); 
 
-      results_file << offset.transpose() << " " << actual_offset.transpose() << endl; 
+    char results_filename[256]; 
+    ofstream results_file; 
+    sprintf(results_filename, "reversibility/jacobian_%d_results.txt", num_links);
+    results_file.open(results_filename);
 
-      /*
-       double similarity = (offset.dot(actual_offset)) / (actual_offset.norm() * offset.norm());
-      results_file << thread_ind << " " << i << " " << similarity << endl ;
-      */
-    }
-  } 
+    //  cout << "Running with threads = " << NUM_CPU_THREADS << endl;
+    //#pragma omp parallel for num_threads(NUM_CPU_THREADS) 
+    for (int thread_ind = trajs_start_ind; thread_ind <= std::min(trajs_end_ind, (int)(start_threads.size()-1)); thread_ind++)
+    {
+      if (thread_ind % 10 == 0) {
+        cout << "Thread ind: " << thread_ind << endl ; 
+      }
+      Thread* initial_thread = new Thread(*start_threads[thread_ind]);
+      initial_thread->minimize_energy();
+      int _size_each_state = 6*initial_thread->num_pieces() - 3 + 1;
+      //int _size_each_state = 1 + 3*initial_thread->num_pieces(); 
+      int _size_each_control = 12;
+      MatrixXd J(_size_each_state, _size_each_control);
+      //estimate_transition_matrix_noEdges_withTwist(initial_thread, J, START_AND_END);
+      Thread *backup_thread = new Thread(*initial_thread);
+      estimate_transition_matrix_local(initial_thread, J);
+
+      VectorXd initial_state(_size_each_state);
+      thread_to_state_with_edges(initial_thread, initial_state); 
+
+      for (int i = 0; i < all_controls.size(); i++) { 
+
+        //cout << all_controls[i].transpose() << endl; 
+        VectorXd offset(_size_each_state); 
+        offset = J * all_controls[i]; // Jacobian estimate
+        Thread* copy_thread = new Thread(*backup_thread); 
+        applyControl(copy_thread, all_controls[i]);
+        VectorXd actual_state(_size_each_state);
+        thread_to_state_with_edges(copy_thread, actual_state);
+
+        //cout << offset.transpose() << endl; 
+        //cout << (actual_state - initial_state).transpose() << endl; 
+
+        VectorXd actual_offset = actual_state - initial_state; 
+        //double error = (offset - actual_offset).norm(); 
+        //results_file << thread_ind << " " << i << " " << error << endl;
+
+        //results_file << thread_ind << " " << i << " " << offset.transpose() << actual_offset.transpose() << endl; 
+
+        results_file << offset.transpose() << " " << actual_offset.transpose() << endl; 
+
+        /*
+           double similarity = (offset.dot(actual_offset)) / (actual_offset.norm() * offset.norm());
+           results_file << thread_ind << " " << i << " " << similarity << endl ;
+           */
+      }
+    } 
 
     results_file.close();
-
+  }
 }
 
 
@@ -172,7 +173,7 @@ void estimate_transition_matrix_local(Thread* thread, MatrixXd& A)
   thread->save_thread_pieces_and_resize(thread_backup_pieces);
 
   VectorXd du(A.cols());
-  const double eps = 1e-1;
+  const double eps = 1e-4;
   for(int i = 0; i < A.cols(); i++)
   {
     du.setZero();
