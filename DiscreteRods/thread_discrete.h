@@ -45,7 +45,7 @@
 #define UNREFINE_THRESHHOLD 0.2 /*must be smaller than REFINE_THRESHHOLD otherwise thread will be unstable */
 #define NATURAL_REST_LENGTH 3.0
 #define REFINEMENT_DEPTH 4
-#define MIN_REST_LENGTH 0.3
+#define MIN_REST_LENGTH 1
 
 #define INTERSECTION_PUSHBACK_EPS 0.03 
 //#define NUM_THREADS_PARALLEL_FOR 2
@@ -64,12 +64,13 @@ struct Self_Intersection
   int _piece_ind_a;
   int _piece_ind_b;
   double _dist;
+  Vector3d _direction;
 
   Self_Intersection() {}
-  Self_Intersection(int piece_ind_a, int piece_ind_b, double dist)
-    : _piece_ind_a(piece_ind_a), _piece_ind_b(piece_ind_b), _dist(dist) {}
+  Self_Intersection(int piece_ind_a, int piece_ind_b, double dist, Vector3d& direction)
+    : _piece_ind_a(piece_ind_a), _piece_ind_b(piece_ind_b), _dist(dist), _direction(direction) {}
   Self_Intersection(const Self_Intersection& cpy)
-    : _piece_ind_a(cpy._piece_ind_a), _piece_ind_b(cpy._piece_ind_b), _dist(cpy._dist) {}
+    : _piece_ind_a(cpy._piece_ind_a), _piece_ind_b(cpy._piece_ind_b), _dist(cpy._dist), _direction(cpy._direction) {}
   
 };
 
@@ -78,12 +79,13 @@ struct Intersection
   int _piece_ind;
   int _object_ind;
   double _dist;
+  Vector3d _direction;
 
   Intersection() {}
-  Intersection(int piece_ind, int object_ind, double dist)
-    : _piece_ind(piece_ind), _object_ind(object_ind), _dist(dist) {}
+  Intersection(int piece_ind, int object_ind, double dist, Vector3d& direction)
+    : _piece_ind(piece_ind), _object_ind(object_ind), _dist(dist), _direction(direction) {}
   Intersection(const Intersection& cpy)
-    : _piece_ind(cpy._piece_ind), _object_ind(cpy._object_ind), _dist(cpy._dist) {}
+    : _piece_ind(cpy._piece_ind), _object_ind(cpy._object_ind), _dist(cpy._dist), _direction(cpy._direction) {}
 };
 
 struct Intersection_Object
@@ -91,12 +93,13 @@ struct Intersection_Object
   double _radius;
   Vector3d _start_pos;
   Vector3d _end_pos;
+  Vector3d _direction;
 
   Intersection_Object() {}
-  Intersection_Object(double radius, Vector3d& start_pos, Vector3d& end_pos)
-    : _radius(radius), _start_pos(start_pos), _end_pos(end_pos) {}
+  Intersection_Object(double radius, Vector3d& start_pos, Vector3d& end_pos, Vector3d& direction)
+    : _radius(radius), _start_pos(start_pos), _end_pos(end_pos), _direction(direction) {}
   Intersection_Object(const Intersection_Object& cpy)
-    : _radius(cpy._radius), _start_pos(cpy._start_pos), _end_pos(cpy._end_pos) {}
+    : _radius(cpy._radius), _start_pos(cpy._start_pos), _end_pos(cpy._end_pos), _direction(cpy._direction) {}
 
 };
 
@@ -284,9 +287,10 @@ class Thread
     double _total_length;
 
     //intersection
-    double self_intersection(int i, int j, double radius); //do these two pieces intersect?
-    double obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius);
+    double self_intersection(int i, int j, double radius, Vector3d& direction); //do these two pieces intersect?
+    double obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius, Vector3d& direction);
     double intersection(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius);
+		double intersection_capsule(const Vector3d& a_start, const Vector3d& a_end, const double a_radius, const Vector3d& b_start, const Vector3d& b_end, const double b_radius, Vector3d& intersection);
 
     bool check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Intersection>& intersections);
     void fix_intersections();

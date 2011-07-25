@@ -773,8 +773,10 @@ void Thread::fix_intersections() {
         {
           int ind_a = self_intersections[i]._piece_ind_a;
           int ind_b = self_intersections[i]._piece_ind_b;
-          Vector3d cross = _thread_pieces[ind_a]->edge().cross(_thread_pieces[ind_b]->edge());
-          cross.normalize();
+          //Vector3d cross = _thread_pieces[ind_a]->edge().cross(_thread_pieces[ind_b]->edge());
+          //cross.normalize();
+          Vector3d dir = self_intersections[i]._direction;
+          dir.normalize();
 
           double dist_a, dist_b;
           if (ind_a == 0)
@@ -789,17 +791,17 @@ void Thread::fix_intersections() {
           }
        //    cross *= MAX_MOVEMENT_VERTICES;
 
-          _thread_pieces[ind_a]->offset_vertex(cross*dist_a); 
-          _thread_pieces[ind_a + 1]->offset_vertex(cross*dist_a);
-          _thread_pieces[ind_b]->offset_vertex(-cross*dist_b); 
-          _thread_pieces[ind_b + 1]->offset_vertex(-cross*dist_b);
-          if(self_intersection(ind_a,ind_b,THREAD_RADIUS)) {
-        //  cout << "cross pointed wrong direction, trying other direction" << endl;
-            _thread_pieces[ind_a]->offset_vertex(-2.0*cross*dist_a); 
-            _thread_pieces[ind_a + 1]->offset_vertex(-2.0*cross*dist_a);
-            _thread_pieces[ind_b]->offset_vertex(2.0*cross*dist_b); 
-            _thread_pieces[ind_b + 1]->offset_vertex(2.0*cross*dist_b);
-          }
+          _thread_pieces[ind_a]->offset_vertex(dir*dist_a); 
+          _thread_pieces[ind_a + 1]->offset_vertex(dir*dist_a);
+          _thread_pieces[ind_b]->offset_vertex(-dir*dist_b); 
+          _thread_pieces[ind_b + 1]->offset_vertex(-dir*dist_b);
+          /*if(self_intersection(ind_a,ind_b,THREAD_RADIUS,dir)) {
+          	cout << "dir pointed wrong direction, trying other direction" << endl;
+            _thread_pieces[ind_a]->offset_vertex(-2.0*dir*dist_a); 
+            _thread_pieces[ind_a + 1]->offset_vertex(-2.0*dir*dist_a);
+            _thread_pieces[ind_b]->offset_vertex(2.0*dir*dist_b); 
+            _thread_pieces[ind_b + 1]->offset_vertex(2.0*dir*dist_b);
+          }*/
  /*         if(intersection(a,b,MAX_MOVEMENT_VERTICES)) {
              cout << "************BAD: projected orthoganally out of intersection both directions and still intersect" << endl;
           }
@@ -811,20 +813,24 @@ void Thread::fix_intersections() {
         {
           int ind_piece = intersections[i]._piece_ind;
           int ind_obj = intersections[i]._object_ind;
-          Vector3d cross = _thread_pieces[ind_piece]->edge().cross(objects_in_env[ind_obj]._end_pos - objects_in_env[ind_obj]._start_pos);
-          cross.normalize();
+          //Vector3d cross = _thread_pieces[ind_piece]->edge().cross(objects_in_env[ind_obj]._end_pos - objects_in_env[ind_obj]._start_pos);
+          //cross.normalize();
 
-          cross *= intersections[i]._dist+INTERSECTION_PUSHBACK_EPS;
+          //cross *= intersections[i]._dist+INTERSECTION_PUSHBACK_EPS;
+
+					Vector3d dir = intersections[i]._direction;
+          dir.normalize();
+          dir *= intersections[i]._dist+INTERSECTION_PUSHBACK_EPS;
 
        //    cross *= MAX_MOVEMENT_VERTICES;
 
-          _thread_pieces[ind_piece]->offset_vertex(cross); 
-          _thread_pieces[ind_piece + 1]->offset_vertex(cross);
-          if(obj_intersection(ind_piece,THREAD_RADIUS, ind_obj,objects_in_env[ind_obj]._radius)) {
-        //  cout << "cross pointed wrong direction, trying other direction" << endl;
-            _thread_pieces[ind_piece]->offset_vertex(-2.0*cross); 
-            _thread_pieces[ind_piece + 1]->offset_vertex(-2.0*cross);
-          }
+          _thread_pieces[ind_piece]->offset_vertex(dir); 
+          _thread_pieces[ind_piece + 1]->offset_vertex(dir);
+          /*if(obj_intersection(ind_piece,THREAD_RADIUS, ind_obj,objects_in_env[ind_obj]._radius,dir)) {
+        	  cout << "dir pointed wrong direction, trying other direction" << endl;
+            _thread_pieces[ind_piece]->offset_vertex(-2.0*dir); 
+            _thread_pieces[ind_piece + 1]->offset_vertex(-2.0*dir);
+          }*/
  /*         if(intersection(a,b,MAX_MOVEMENT_VERTICES)) {
              cout << "************BAD: projected orthoganally out of intersection both directions and still intersect" << endl;
           }
@@ -842,6 +848,7 @@ void Thread::fix_intersections() {
 bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Intersection>& intersections)
 {
   double found = false; // count of number of intersections
+  Vector3d direction;
   self_intersections.clear();
   intersections.clear();
 
@@ -851,12 +858,12 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
     for(int j = i + 2; j < _thread_pieces.size() - 2; j++) {
       if(i == 0 && j == _thread_pieces.size() - 2) 
         continue;
-      double intersection_dist = self_intersection(i,j,THREAD_RADIUS);
+      double intersection_dist = self_intersection(i,j,THREAD_RADIUS,direction);
       if(intersection_dist != 0) {
         //skip if both ends, since these are constraints
         found = true;
 
-        self_intersections.push_back(Self_Intersection(i,j,intersection_dist));
+        self_intersections.push_back(Self_Intersection(i,j,intersection_dist,direction));
       }
     }
   }
@@ -865,35 +872,179 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
   for (int i=0; i < objects_in_env.size(); i++)
   {
     for(int j = 2; j < _thread_pieces.size() - 3; j++) {
-      double intersection_dist = obj_intersection(j,THREAD_RADIUS, i, objects_in_env[i]._radius);
+      double intersection_dist = obj_intersection(j,THREAD_RADIUS,i,objects_in_env[i]._radius,direction);
       if(intersection_dist != 0) {
         found = true;
 
-        intersections.push_back(Intersection(j,i,intersection_dist));
+        intersections.push_back(Intersection(j,i,intersection_dist,direction));
       }
     }
 
   }
-
-
-
   return found;
 }
 //define an epsilon
-double Thread::self_intersection(int i, int j, double radius)
+double Thread::self_intersection(int i, int j, double radius, Vector3d& direction)
 {
-    return intersection(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, _thread_pieces[j]->vertex(), _thread_pieces[j+1]->vertex(), radius);
+	return intersection_capsule(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, _thread_pieces[j]->vertex(), _thread_pieces[j+1]->vertex(), radius, direction);
 }
 
-double Thread::obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius)
+double Thread::obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius, Vector3d& direction)
 {
-  return intersection(objects_in_env[obj_ind]._start_pos, objects_in_env[obj_ind]._end_pos, objects_in_env[obj_ind]._radius,
-            _thread_pieces[piece_ind]->vertex(), _thread_pieces[piece_ind+1]->vertex(),THREAD_RADIUS);
+  return intersection_capsule(objects_in_env[obj_ind]._start_pos, objects_in_env[obj_ind]._end_pos, objects_in_env[obj_ind]._radius,
+            _thread_pieces[piece_ind]->vertex(), _thread_pieces[piece_ind+1]->vertex(),THREAD_RADIUS, direction);
 }
 
 #define INTERSECTION_EDGE_LENGTH_FACTOR 1.5
 #define INTERSECTION_HEIGHT_FACTOR 0.5
 #define INTERSECTION_PARALLEL_CHECK_FACTOR 1e-5
+
+//cylinder-cylinder collision based on http://softsurfer.com/Archive/algorithm_0106/algorithm_0106.htm
+double Thread::intersection_capsule(const Vector3d& a_start, const Vector3d& a_end, const double a_radius, const Vector3d& b_start, const Vector3d& b_end, const double b_radius, Vector3d& intersection)
+{
+	// Line parametrization
+	// L1 : P(s) = a_start + s * (a_end - a_start) = a_start + s * u
+	// L2 : Q(t) = b_start + t * (b_end - b_start) = b_start + t * v
+	Vector3d u = a_end - a_start;
+	Vector3d v = b_end - b_start;
+	Vector3d w = a_start - b_start;
+	Vector3d a_end_minus_b_start = a_end - b_start;
+	Vector3d a_start_minus_b_end = a_start - b_end;
+	double u_dot_u = u.dot(u);
+	double u_dot_v = u.dot(v);
+	double v_dot_v = v.dot(v);
+	double u_dot_w = u.dot(w);
+	double v_dot_w = v.dot(w);
+	
+	// SPHERE-SPHERE collision
+	Vector3d start_sphere_start_sphere = w;
+	double start_sphere_start_sphere_squared_dist = start_sphere_start_sphere.squaredNorm();
+	Vector3d start_sphere_end_sphere = a_start_minus_b_end;
+	double start_sphere_end_sphere_squared_dist = start_sphere_end_sphere.squaredNorm();
+	Vector3d end_sphere_start_sphere = a_end_minus_b_start;
+	double end_sphere_start_sphere_squared_dist = end_sphere_start_sphere.squaredNorm();
+	Vector3d end_sphere_end_sphere = a_end - b_end;
+	double end_sphere_end_sphere_squared_dist = end_sphere_end_sphere.squaredNorm();
+	
+	// SPHERE-CYLINDER collision
+	// Ignores the case when the center of the sphere is outside the range of the line segment even though the sphere might still collide with the cylinder's end cap.
+	// This case is taken care by sphere-sphere collision.
+	double t;			// line parameter of the cylinder's axis
+	Vector3d start_sphere_cyl, end_sphere_cyl, cyl_start_sphere, cyl_end_sphere;
+	double start_sphere_cyl_squared_dist, end_sphere_cyl_squared_dist, cyl_start_sphere_squared_dist, cyl_end_sphere_squared_dist;
+	
+	t = v_dot_w/v.squaredNorm();
+	if (t < 0 || t > 1) {
+		start_sphere_cyl_squared_dist = numeric_limits<double>::max();
+	} else {
+		start_sphere_cyl = (w - t*v);
+		start_sphere_cyl_squared_dist = start_sphere_cyl.squaredNorm();
+	}
+	
+	t = a_end_minus_b_start.dot(v)/v.squaredNorm();
+	if (t < 0 || t > 1) {
+		end_sphere_cyl_squared_dist = numeric_limits<double>::max();
+	} else {
+		end_sphere_cyl = (a_end_minus_b_start - t*v);
+		end_sphere_cyl_squared_dist = end_sphere_cyl.squaredNorm();
+	}
+	
+	t = -u_dot_w/u.squaredNorm();
+	if (t < 0 || t > 1) {
+		cyl_start_sphere_squared_dist = numeric_limits<double>::max();
+	} else {
+		cyl_start_sphere = (w + t*u);
+		cyl_start_sphere_squared_dist = cyl_start_sphere.squaredNorm();
+	}
+		
+	t = -a_start_minus_b_end.dot(u)/u.squaredNorm();
+	if (t < 0 || t > 1) {
+		cyl_end_sphere_squared_dist = numeric_limits<double>::max();
+	} else {
+		cyl_end_sphere = (a_start_minus_b_end + t*u);
+		cyl_end_sphere_squared_dist = cyl_end_sphere.squaredNorm();
+	}
+
+	// CYLINDER-CYLINDER collision
+	// Ignores the case when the closest distance vector is not perpendicular to the line segment.
+	// This case is taken care by the other two cases.
+	double D = u_dot_u * v_dot_v - u_dot_v * u_dot_v;       									// denominator for s and t parameter
+	Vector3d cyl_cyl;
+	double cyl_cyl_squared_dist;
+	
+  if (D < INTERSECTION_PARALLEL_CHECK_FACTOR) { 														// the lines are almost parallel
+    if (start_sphere_cyl_squared_dist == numeric_limits<double>::max() &&
+    		end_sphere_cyl_squared_dist == numeric_limits<double>::max() &&
+    		cyl_start_sphere_squared_dist == numeric_limits<double>::max() &&
+    		cyl_end_sphere_squared_dist == numeric_limits<double>::max()) {			// If the closest distance vector is not perpendicular to the line segments.
+    																																				// In other words, if the closest distance of the infinite lines is not the same as the closest distance of the finite segments.
+    	cyl_cyl_squared_dist = numeric_limits<double>::max();
+    } else {
+    	cyl_cyl = (w - (v_dot_w/v_dot_v) * v);
+			cyl_cyl_squared_dist = cyl_cyl.squaredNorm();
+		}
+  } else {																																	// the line segements are not almost parallel
+    double sN = (u_dot_v * v_dot_w - v_dot_v * u_dot_w);										// nominator of s parameter
+    double tN = (u_dot_u * v_dot_w - u_dot_v * u_dot_w);										// nominator of t parameter
+    if (sN < 0.0 || sN > D || tN < 0.0 || tN > D) { 											// If the closest distance vector is not perpendicular to the line segments.
+    																																				// In other words, if the closest distance doesn't happen within the segment limits.
+    	cyl_cyl_squared_dist = numeric_limits<double>::max();
+    } else {
+    	cyl_cyl = (w + (sN/D * u) - (tN/D * v));
+    	cyl_cyl_squared_dist = cyl_cyl.squaredNorm();
+    }
+  }
+	
+	// MINIMUN OF THE SQUARED DISTANCES
+	double min_squared_dist = start_sphere_start_sphere_squared_dist;
+	intersection = start_sphere_start_sphere;
+	
+	if (min_squared_dist >= start_sphere_end_sphere_squared_dist) {
+		min_squared_dist = start_sphere_end_sphere_squared_dist;
+		intersection = start_sphere_end_sphere;
+	}
+	
+	if (min_squared_dist >= end_sphere_start_sphere_squared_dist) {
+		min_squared_dist = end_sphere_start_sphere_squared_dist;
+		intersection = end_sphere_start_sphere;
+	}
+
+	if (min_squared_dist >= end_sphere_end_sphere_squared_dist) {
+		min_squared_dist = end_sphere_end_sphere_squared_dist;
+		intersection = end_sphere_end_sphere;
+	}
+	
+	if (min_squared_dist >= start_sphere_cyl_squared_dist) {
+		min_squared_dist = start_sphere_cyl_squared_dist;
+		intersection = start_sphere_cyl;
+	}
+	
+	if (min_squared_dist >= end_sphere_cyl_squared_dist) {
+		min_squared_dist = end_sphere_cyl_squared_dist;
+		intersection = end_sphere_cyl;
+	}
+	
+	if (min_squared_dist >= cyl_start_sphere_squared_dist) {
+		min_squared_dist = cyl_start_sphere_squared_dist;
+		intersection = cyl_start_sphere;
+	}
+	
+	if (min_squared_dist >= cyl_end_sphere_squared_dist) {
+		min_squared_dist = cyl_end_sphere_squared_dist;
+		intersection = cyl_end_sphere;
+	}
+	
+	if (min_squared_dist >= cyl_cyl_squared_dist) {
+		min_squared_dist = cyl_cyl_squared_dist;
+		intersection = cyl_cyl;
+	}
+	
+  double ret = max(0.0, a_radius + b_radius - sqrt(min_squared_dist));   // return the overlapping distance
+  if (ret == 0.0) {
+  	intersection = Vector3d::Zero();
+  }
+  return ret;
+}
 
 double Thread::intersection(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius)
 {
@@ -1190,18 +1341,18 @@ void Thread::refine_links_geometrical() {
 	vector<ThreadPiece*> to_refine;
 	priority_queue <ThreadPiece*, vector<ThreadPiece*>, angleLess<ThreadPiece*> > tp_queue;
 	
-	cout << "refine starts" << endl;
+	/*cout << "refine starts" << endl;
 	for (int i=0; i<_thread_pieces.size(); i++) {
 		cout << _thread_pieces[i] << "|" << _thread_pieces[i]->angle() << "|" << needs_refine_geometrical(_thread_pieces[i]) << " " << endl;
-	}
+	}*/
 	for (int i=1; i<_thread_pieces.size()-2; i++) {
 		tp_queue.push(_thread_pieces[i]);
 	}
 	
-	cout << "initial min heap: \ttp_queue.top(): " << tp_queue.top() << "\ttp_queue.top()->angle: " << tp_queue.top()->angle() << endl;
+	//cout << "initial min heap: \ttp_queue.top(): " << tp_queue.top() << "\ttp_queue.top()->angle: " << tp_queue.top()->angle() << endl;
 	
 	while((tp_queue.size() > 0) && needs_refine_geometrical(tp_queue.top())) {
-		cout << "min heap: \ttp_queue.top(): " << tp_queue.top() << "\ttp_queue.top()->angle: " << tp_queue.top()->angle() << endl;
+		//cout << "min heap: \ttp_queue.top(): " << tp_queue.top() << "\ttp_queue.top()->angle: " << tp_queue.top()->angle() << endl;
 		to_refine.push_back(tp_queue.top());
 		tp_queue.pop();
 	}
@@ -1228,23 +1379,23 @@ void Thread::unrefine_links() {
 	vector<ThreadPiece*> to_unrefine, tp_heap;
 	priority_queue <ThreadPiece*, vector<ThreadPiece*>, angleGreater<ThreadPiece*> > tp_queue;
 	
-	cout << "unrefine starts" << endl;
+	/*cout << "unrefine starts" << endl;
 	for (int i=0; i<_thread_pieces.size(); i++) {
 		cout << _thread_pieces[i] << "|" << _thread_pieces[i]->angle() << "|" << needs_unrefine(_thread_pieces[i]) << " " << endl;
-	}
+	}*/
 	for (int i=2; i<_thread_pieces.size()-2; i++) {
 		tp_queue.push(_thread_pieces[i]);
 	}
 	
-	cout << "initial max heap: \ttp_queue.top(): " << tp_queue.top() << "\ttp_queue.top()->angle: " << tp_queue.top()->angle() << endl;
+	//cout << "initial max heap: \ttp_queue.top(): " << tp_queue.top() << "\ttp_queue.top()->angle: " << tp_queue.top()->angle() << endl;
 	
 	while((tp_queue.size() > 0) && needs_unrefine(tp_queue.top())) {
-		cout << "max heap: \ttp_queue.top(): " << tp_queue.top() << "\ttp_queue.top()->angle: " << tp_queue.top()->angle() << endl;
+		//cout << "max heap: \ttp_queue.top(): " << tp_queue.top() << "\ttp_queue.top()->angle: " << tp_queue.top()->angle() << endl;
 		to_unrefine.push_back(tp_queue.top());
 		tp_queue.pop();
 	}
 
-	cout << "is prev prev null: " << _thread_pieces[0]->_prev_piece << endl;
+	//cout << "is prev prev null: " << _thread_pieces[0]->_prev_piece << endl;
 
 	for (int piece_ind=0; piece_ind < to_unrefine.size(); piece_ind++) {
 	
@@ -1252,12 +1403,12 @@ void Thread::unrefine_links() {
 			continue;
 		}
 	
-		for (int i=0; i<_thread_pieces.size(); i++) {
+		/*for (int i=0; i<_thread_pieces.size(); i++) {
 			if (i==0)
 				cout << "\t\t\t\t\t" << _thread_pieces[i]->_prev_piece << " " << _thread_pieces[i] << " " << _thread_pieces[i]->_next_piece << endl;
 			else
 				cout << "\t\t\t" << _thread_pieces[i]->_prev_piece->_prev_piece << " " << _thread_pieces[i]->_prev_piece << " " << _thread_pieces[i] << " " << _thread_pieces[i]->_next_piece << endl;
-		}
+		}*/
 		if (to_unrefine[piece_ind] == NULL || to_unrefine[piece_ind]->_next_piece == NULL ||
 				to_unrefine[piece_ind]->_prev_piece == NULL || to_unrefine[piece_ind]->_prev_piece->_prev_piece == NULL)
 		cout << "Internal error: unrefine_links: to_unrefine[piece_ind] or one of its neighbors is NULL." << endl;
@@ -1271,25 +1422,25 @@ void Thread::unrefine_links() {
 		if (to_unrefine[piece_ind]->_prev_piece->_prev_piece == NULL)
 		cout << "Internal error: unrefine_links: 3" << endl;
 		
-		cout << "for loop: examining: " << to_unrefine[piece_ind] << " " << to_unrefine[piece_ind]->_next_piece << " " << to_unrefine[piece_ind]->_prev_piece << " " << to_unrefine[piece_ind]->_prev_piece->_prev_piece << " " << endl;
+		//cout << "for loop: examining: " << to_unrefine[piece_ind] << " " << to_unrefine[piece_ind]->_next_piece << " " << to_unrefine[piece_ind]->_prev_piece << " " << to_unrefine[piece_ind]->_prev_piece->_prev_piece << " " << endl;
 		
-		cout << "0"; flush(cout);
+		//cout << "0"; flush(cout);
 		double r0 = to_unrefine[piece_ind]->rest_length();
-		cout << "1"; flush(cout);
+		//cout << "1"; flush(cout);
 		double r1 = to_unrefine[piece_ind]->_next_piece->rest_length();
-		cout << "2"; flush(cout);
+		//cout << "2"; flush(cout);
 		double l0 = to_unrefine[piece_ind]->_prev_piece->rest_length();		
-		cout << "3"; flush(cout);
+		//cout << "3"; flush(cout);
 		double l1 = to_unrefine[piece_ind]->_prev_piece->_prev_piece->rest_length();
-		cout << "4" << endl;
+		//cout << "4" << endl;
 		if (((l0+r0) <= 2*r1) && ((l0+r0) <= 2*l1)) { // merge only if the new rest length after merging is not longer by more than a factor of 2 with respect to the rest length of the new neighbors
 			//remove to_unrefine[piece_ind]->_prev_piece and to_unrefine[piece_ind] from to_unrefine;
 			ThreadPiece* temp = to_unrefine[piece_ind];
 			findInvalidate(to_unrefine, to_unrefine[piece_ind]->_prev_piece);
 			findInvalidate(to_unrefine, to_unrefine[piece_ind]);
 			merge_thread_piece(temp);
-			for (int i=0; i<to_unrefine.size(); i++) { cout << to_unrefine[i] << " "; } cout << endl;
-			cout << "merged" << endl;
+			//for (int i=0; i<to_unrefine.size(); i++) { cout << to_unrefine[i] << " "; } cout << endl;
+			//cout << "merged" << endl;
 		}
 	}
 	save_thread_pieces_and_resize(_thread_pieces_backup);

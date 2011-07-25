@@ -30,7 +30,7 @@ ISOTROPIC=-DISOTROPIC
 target: testThreadDiscrete testThreadDiscrete_phantom debugIntersection
 
 debugIntersection: debugIntersection.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o
-	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o debugIntersection debugIntersection.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o $(LIBS) $(PROFILER)
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o debugIntersection debugIntersection.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o -lrt $(LIBS) $(PROFILER)
 
 testThreadDiscrete: testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o trajectory_reader.o
 	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o trajectory_reader.o $(LIBS) $(PROFILER)
