@@ -25,7 +25,7 @@ void Iterative_Control::resize_controller(int num_threads, int num_vertices)
 
   _num_threads = num_threads;
   _num_vertices = num_vertices;
-  _size_each_state = (3*num_vertices) + 1;
+  _size_each_state = (-3 + 6*num_vertices) + 1;
   _cols_all_unknown_states = (num_threads-2)*_size_each_state;
   _all_trans.resize(_size_each_state*(_num_threads-1), (_num_threads-2)*_size_each_state + (_num_threads-1)*_size_each_control);
   _all_trans.setZero();
@@ -104,7 +104,7 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
     File_To_Vector(filename_statevec_thisiter, new_states);
     
 
-    cout << "Minimizing Threads returned from MATLAB" << endl; 
+    cout << "NOT Minimizing Threads returned from MATLAB" << endl; 
     boost::progress_display progress(trajectory.size()-2);
     vector<Thread*> sqp_debug_data_iter;
     sqp_debug_data_iter.resize(trajectory.size());
@@ -118,7 +118,7 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
       sqp_debug_data_iter[i] = new Thread(*trajectory[i]); 
       trajectory[i]->unviolate_total_length_constraint();
       trajectory[i]->project_length_constraint();
-      trajectory[i]->minimize_energy(150000000);
+      //trajectory[i]->minimize_energy(150000000);
       ++progress;
     }
 
@@ -135,6 +135,12 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
       control_vector.push_back(control_wrapper);
     }
 
+    vector<Thread*> trajectory_copy;  
+    trajectory_copy.push_back(new Thread(*trajectory[0]));
+    vector<Thread*> OLTrajectory;
+    openLoopController(trajectory_copy, controls, OLTrajectory);
+    OLTrajectory[OLTrajectory.size()-1] = trajectory[trajectory.size()-1];
+    trajectory = OLTrajectory;
   }
 
 
@@ -178,7 +184,8 @@ void Iterative_Control::add_transitions_alltrans(vector<Thread*>& trajectory)
   MatrixXd trans(_size_each_state, _size_each_control);
   for (int i=0; i < trajectory.size()-1; i++)
   {
-    estimate_transition_matrix_noEdges_withTwist(trajectory[i], trans, START_AND_END);
+    //estimate_transition_matrix_noEdges_withTwist(trajectory[i], trans, START_AND_END);
+    estimate_transition_matrix_withTwist(trajectory[i], trans, START_AND_END);
 
     int num_rows_start = i*_size_each_state;
     int num_cols_start = _cols_all_unknown_states+i*_size_each_control;
@@ -230,9 +237,21 @@ void Iterative_Control::AllFiles_To_Traj(int num_iters, vector< vector<Thread*> 
   }
 }
 
+void thread_to_state(const Thread* thread, VectorXd& state)
+{
+  const int num_pieces = thread->num_pieces();
+  state.resize(6*num_pieces-3 + 1);
+  for (int piece_ind=0; piece_ind < thread->num_pieces(); piece_ind++)
+  {
+    state.segment(piece_ind*3, 3) = thread->vertex_at_ind(piece_ind);
+    if (piece_ind < thread->num_edges()) { 
+      state.segment(piece_ind*3 + 3*num_pieces, 3) = thread->edge_at_ind(piece_ind);
+    }
+  }
+  state(6*num_pieces - 3) = thread->end_angle();
+}
 
-
-
+/*
 void thread_to_state(const Thread* thread, VectorXd& state)
 {
   const int num_pieces = thread->num_pieces();
@@ -243,8 +262,7 @@ void thread_to_state(const Thread* thread, VectorXd& state)
   }
   state(3*num_pieces) = thread->end_angle();
 }
-
-
+*/
 void weight_state(VectorXd& state)
 {
   const int num_pieces = (state.rows()-1)/3;

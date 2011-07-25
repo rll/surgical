@@ -61,7 +61,7 @@ float rotate_frame[2];
 float move_end[2];
 float tangent_end[2];
 float tangent_rotation_end[2];
-
+float zoom;
 float move_start[2];
 float tangent_start[2];
 float tangent_rotation_start[2];
@@ -338,7 +338,8 @@ void initializeSQP() {
                               glThreads[endThread]->getThread(),
                               interpTraj);
 
-  vector<Thread*> initialTraj;
+  vector<Thread*> initialTraj = interpTraj;
+  //vector<Thread*> initialTraj;
  // linearizeViaTrajectory(interpTraj, initialTraj);
 //
   double eps = 1.0e-1; 
@@ -351,14 +352,14 @@ void initializeSQP() {
   du(7) = eps;
   du(8) = eps;
 
-  initialTraj.resize(interpTraj.size()); 
+  /*initialTraj.resize(interpTraj.size()); 
   Thread* start_copy = new Thread(*glThreads[planThread]->getThread());
   initialTraj[0] = new Thread(*start_copy); 
   for (int i = 1; i < initialTraj.size(); i++) {
     applyControl(start_copy, du);
     initialTraj[i] = new Thread(*start_copy); 
   }
-  //initialTraj[initialTraj.size()-1] = new Thread(*glThreads[endThread]->getThread());
+  initialTraj[initialTraj.size()-1] = new Thread(*glThreads[endThread]->getThread());*/
 
   vector<Thread*> copy_traj;
   for (int i = 0; i < initialTraj.size(); i++) { 
@@ -372,31 +373,30 @@ void initializeSQP() {
   solveSQP(initialTraj, SQPTraj, SQPControls, sqp_debug_data, namestring.c_str());   
   
   Thread* start_thread = new Thread(*interpTraj[0]);
-  int _size_each_state = 1 + 3*start_thread->num_pieces();
+  int _size_each_state = -3 + 6*start_thread->num_pieces() + 1;
   int _size_each_control = 12;
   vector<Thread*> JU_states; 
   JU_states.push_back(start_thread); 
   MatrixXd J(_size_each_state, _size_each_control);
   VectorXd current_state(_size_each_state);
   for (int i = 0; i < SQPControls.size(); i++) {
-    estimate_transition_matrix_noEdges_withTwist(copy_traj[i], J, START_AND_END);
+    estimate_transition_matrix_withTwist(copy_traj[i], J, START_AND_END);
     thread_to_state(JU_states[i], current_state);
     VectorXd new_state = current_state + J * SQPControls[i];
     JU_states.push_back(new Thread(*JU_states[i])); 
     JU_states[i+1]->copy_data_from_vector(new_state);
   }
 
-
   vector<Thread*> OLCTraj; 
   openLoopController(SQPTraj, SQPControls, OLCTraj); 
   //openLoopController(sqp_debug_data, SQPControls, OLCTraj);
   vector<vector<Thread*> > visualizationData;
   //visualizationData.push_back(initialTraj);
-  for (int i = 0; i < sqp_debug_data.size(); i++) { 
+  /*for (int i = 0; i < sqp_debug_data.size(); i++) { 
     visualizationData.push_back(sqp_debug_data[i]);
-  }
+  }*/
 
-  visualizationData.push_back(JU_states);
+  //visualizationData.push_back(JU_states);
 
   //visualizationData.push_back(SQPTraj);
   visualizationData.push_back(OLCTraj); 
@@ -928,6 +928,7 @@ void processMouse(int button, int state, int x, int y)
     }
     glutPostRedisplay ();
   }
+
 }
 
 
@@ -1030,6 +1031,14 @@ void processNormalKeys(unsigned char key, int x, int y)
   }
   else if (key =='B') { 
     testReversibility(); 
+  } 
+  else if (key == 'z') { 
+    zoom += 10;
+    glutPostRedisplay();
+  } 
+  else if (key == 'x') { 
+    zoom -= 10; 
+    glutPostRedisplay();
   }
   else if (key == 27)
   {
@@ -1102,7 +1111,7 @@ void InitStuff (void)
   //gleSetJoinStyle (TUBE_NORM_PATH_EDGE | TUBE_JN_ANGLE );
   rotate_frame[0] = 0.0;
   rotate_frame[1] = -111.0;
-
+  zoom = 0.0; 
   sphereList = glGenLists(1);
   glNewList(sphereList, GL_COMPILE);
   glutSolidSphere(0.5,16,16);
@@ -1121,7 +1130,7 @@ void DrawStuff (void)
   glTranslatef (0.0,0.0,-150.0);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
-
+  glTranslatef (0, zoom, 0);
 
  if (move_end[0] != 0.0 || move_end[1] != 0.0 || tangent_end[0] != 0.0 || tangent_end[1] != 0.0 || tangent_rotation_end[0] != 0 || tangent_rotation_end[1] != 0 || move_start[0] != 0.0 || move_start[1] != 0.0 || tangent_start[0] != 0.0 || tangent_start[1] != 0.0 || tangent_rotation_start[0] != 0 || tangent_rotation_start[1] != 0)
   {

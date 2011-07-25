@@ -10,7 +10,7 @@
 
 
 #define WEIGHT_VERTICES 1.0
-#define WEIGHT_EDGES 2.0
+#define WEIGHT_EDGES 1.0
 #define WEIGHT_ANGLE 1.0
 
 using namespace Eigen;
@@ -28,6 +28,7 @@ void solveLinearizedControl(Thread* start, const Thread* goal, const movement_mo
 void solveLinearizedControl(Thread* start, const Thread* goal, VectorXd& motions, const movement_mode movement = START_AND_END);
 void estimate_transition_matrix(Thread* thread, MatrixXd& A, const movement_mode movement = START_AND_END);
 void estimate_transition_matrix_noEdges_withTwist(Thread* thread, MatrixXd& A, const movement_mode movement = START_AND_END);
+void estimate_transition_matrix_withTwist(Thread* thread, MatrixXd& A, const movement_mode movement = START_AND_END);
 void interpolateThreads(vector<Thread*>&traj, vector<VectorXd>& controls);
 void simpleInterpolation(Thread* start, const Thread* goal, VectorXd& control);
 

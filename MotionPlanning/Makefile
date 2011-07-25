@@ -16,8 +16,8 @@ endif
 THREAD_DIR = ../DiscreteRods/
 VISION_DIR = ../vision/
 #INCLUDES = -I/usr/local/include/ -I/usr/local/include/opencv/ -I/usr/local/include/libPvAPI -I $(UTILS_DIR)
-#OPT_COMP = -DEIGEN_NO_DEBUG -O3 
-OPT_COMP = -O2
+OPT_COMP = -DEIGEN_NO_DEBUG -O3 
+#OPT_COMP = -O2
 # OPT_COMP = 
 FOPENMP = -fopenmp
 CC = g++ $(OPT_COMP) $(COMPILEFLAG) $(FOPENMP) $(HOSTNAME)
@@ -28,9 +28,7 @@ PROFILER =
 ISOTROPIC= -DISOTROPIC
 FAKEIMS= -DFAKEIMS
 
-#target : testCanny testCapture example_capture_3cam calibrate_robots test_point_distances PositionsOnRequest PositionsOnRequest2 threadStereo
-
-target: run_test_jacobian test_planner
+target: test_planner run_test_jacobian 
 
 test_linearization: test_linearization.cpp clock.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o trajectory_follower.o iterative_control.o
 	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o test_linearization test_linearization.cpp clock.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o trajectory_follower.o iterative_control.o $(LIBS) $(PROFILER)

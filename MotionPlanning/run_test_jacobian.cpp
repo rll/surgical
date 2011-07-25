@@ -1,18 +1,18 @@
-#include "planner_lib.h"
 #include "global_filenames.h"
 #include "../DiscreteRods/trajectory_reader.h"
 #include "../DiscreteRods/trajectory_recorder.h"
 #include "../DiscreteRods/controls_reader.h"
 #include <ostream>
 #include <boost/timer.hpp>
-#include "iterative_control.h"
+#include "linearization_utils.h"
 
 #define CONTROLS_FILENAME "reversibility/controls.dat"
 
 void deleteAllThreads(vector<Thread*>& toDelete);
 void Copy_Threads(const vector<Thread*>& to_copy, vector<Thread*>& copy);
 void reverseControl(const VectorXd& in_control, VectorXd& out_control); 
-
+void thread_to_state_with_edges(const Thread* thread, VectorXd& state);
+void estimate_transition_matrix_local(Thread* thread, MatrixXd& A);
 
 
 int main(int argc, char* argv[]) {
@@ -34,8 +34,9 @@ int main(int argc, char* argv[]) {
 
   char start_threads_filename[256];
   char goal_threads_filename[256];
-  sprintf(start_threads_filename, "%s/%s_%d", BASEFOLDER_INITDATA, BASENAME_STARTTHREADS, num_links);
-  sprintf(goal_threads_filename, "%s/%s_%d", BASEFOLDER_INITDATA, BASENAME_GOALTHREADS, num_links);
+
+  sprintf(start_threads_filename, "reversibility/%s_%d", BASENAME_STARTTHREADS, num_links);
+  sprintf(goal_threads_filename, "reversibility/%s_%d", BASENAME_GOALTHREADS, num_links);
 
   Trajectory_Reader start_threads_reader(start_threads_filename);
   Trajectory_Reader goal_threads_reader(goal_threads_filename);
@@ -63,24 +64,31 @@ int main(int argc, char* argv[]) {
 //#pragma omp parallel for num_threads(NUM_CPU_THREADS) 
   for (int thread_ind = trajs_start_ind; thread_ind <= std::min(trajs_end_ind, (int)(start_threads.size()-1)); thread_ind++)
   {
+    if (thread_ind % 10 == 0) {
+       cout << "Thread ind: " << thread_ind << endl ; 
+    }
     Thread* initial_thread = new Thread(*start_threads[thread_ind]);
     initial_thread->minimize_energy();
-    int _size_each_state = 1 + 3*initial_thread->num_pieces(); 
+    int _size_each_state = 6*initial_thread->num_pieces() - 3 + 1;
+    //int _size_each_state = 1 + 3*initial_thread->num_pieces(); 
     int _size_each_control = 12;
-    MatrixXd J(_size_each_state, _size_each_control); 
-    estimate_transition_matrix_noEdges_withTwist(initial_thread, J, START_AND_END);
+    MatrixXd J(_size_each_state, _size_each_control);
+    //estimate_transition_matrix_noEdges_withTwist(initial_thread, J, START_AND_END);
+    Thread *backup_thread = new Thread(*initial_thread);
+    estimate_transition_matrix_local(initial_thread, J);
+
     VectorXd initial_state(_size_each_state);
-    thread_to_state(initial_thread, initial_state); 
+    thread_to_state_with_edges(initial_thread, initial_state); 
 
     for (int i = 0; i < all_controls.size(); i++) { 
 
       //cout << all_controls[i].transpose() << endl; 
       VectorXd offset(_size_each_state); 
       offset = J * all_controls[i]; // Jacobian estimate
-      Thread* copy_thread = new Thread(*initial_thread); 
+      Thread* copy_thread = new Thread(*backup_thread); 
       applyControl(copy_thread, all_controls[i]);
       VectorXd actual_state(_size_each_state);
-      thread_to_state(copy_thread, actual_state);
+      thread_to_state_with_edges(copy_thread, actual_state);
       
       //cout << offset.transpose() << endl; 
       //cout << (actual_state - initial_state).transpose() << endl; 
@@ -156,21 +164,67 @@ void reverseControl(const VectorXd& in_control, VectorXd& out_control)
 }
 
 
+void estimate_transition_matrix_local(Thread* thread, MatrixXd& A)
+{
+  int num_pieces = thread->num_pieces();
+  int num_edges = thread->num_edges();
+  vector<ThreadPiece*> thread_backup_pieces;
+  thread->save_thread_pieces_and_resize(thread_backup_pieces);
 
-  
+  VectorXd du(A.cols());
+  const double eps = 1e-1;
+  for(int i = 0; i < A.cols(); i++)
+  {
+    du.setZero();
+    
+    du(i) = eps ;
+    thread->restore_thread_pieces(thread_backup_pieces);
+    applyControl(thread, du, START_AND_END);
+    for (int piece_ind=0; piece_ind < num_pieces; piece_ind++)
+    {
+      A.block(piece_ind*3, i, 3,1) = thread->vertex_at_ind(piece_ind);
+    }
+    for (int piece_ind=0; piece_ind < num_edges; piece_ind++)
+    {
+      A.block(3*num_pieces + piece_ind*3, i, 3,1) = thread->edge_at_ind(piece_ind);
+    }
+    A(6*num_pieces-3, i) = thread->end_angle();
+
+    du(i) = -eps;
+    thread->restore_thread_pieces(thread_backup_pieces);
+    applyControl(thread, du, START_AND_END);
+    for (int piece_ind=0; piece_ind < num_pieces; piece_ind++)
+    {
+
+      A.block(piece_ind*3, i, 3,1) -= thread->vertex_at_ind(piece_ind);
+    }
+    for (int piece_ind=0; piece_ind < num_edges; piece_ind++)
+    {
+      A.block(3*num_pieces + piece_ind*3, i, 3,1) -= thread->edge_at_ind(piece_ind);
+    }
+
+    A(6*num_pieces-3, i) -= thread->end_angle();
+  }
+  //A /= 2.0*eps; // wtf?
+  A /= eps; 
+  thread->restore_thread_pieces(thread_backup_pieces);
+}
 
 
 
+void thread_to_state_with_edges(const Thread* thread, VectorXd& state)
+{
+  const int num_pieces = thread->num_pieces();
+  state.resize(6*num_pieces-3 + 1);
+  for (int piece_ind=0; piece_ind < thread->num_pieces(); piece_ind++)
+  {
+    state.segment(piece_ind*3, 3) = thread->vertex_at_ind(piece_ind);
+    if (piece_ind < thread->num_edges()) { 
+      state.segment(piece_ind*3 + 3*num_pieces, 3) = thread->edge_at_ind(piece_ind);
+    }
+  }
 
+  state(6*num_pieces - 3) = thread->end_angle();
 
-
-  
-
-
-
-
-
-
-  
-
-
+  //state(3*num_pieces) = thread->end_angle();
+}

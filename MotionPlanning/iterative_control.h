@@ -46,6 +46,19 @@ class Iterative_Control
       strcpy(_namestring, str);
     };
     
+    /*
+     * Open loop controller applies controls in controls_in at every time step
+     * Assumes start thread is traj_in[0]
+     */
+    void openLoopController(vector<Thread*>& traj_in, vector<VectorXd>& controls_in, vector<Thread*>& traj_out) {
+      Thread* thread = new Thread(*traj_in[0]);
+      for (int i = 0; i < controls_in.size(); i++) {
+        traj_out.push_back(new Thread(*thread));
+        applyControl(thread, controls_in[i]);
+      }
+      traj_out.push_back(new Thread(*thread));
+    }
+
 
   private:
     void init_all_trans(); /* adds the diagonal weighting terms to _all_trans */
