@@ -41,11 +41,10 @@
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
 #define REFINE_THRESHHOLD 3.2
-#define REFINE_SINGLE_THRESHHOLD 0.6
 #define UNREFINE_THRESHHOLD 0.2 /*must be smaller than REFINE_THRESHHOLD otherwise thread will be unstable */
-#define NATURAL_REST_LENGTH 3.0
-#define REFINEMENT_DEPTH 4
-#define MIN_REST_LENGTH 1
+#define MIN_REST_LENGTH 1.0	/*must be greater than 4*THREAD_RADIUS*/
+#define GRADING_FACTOR 2.0
+#define GRADING_FACTOR_EPS 0.01
 
 #define INTERSECTION_PUSHBACK_EPS 0.03 
 //#define NUM_THREADS_PARALLEL_FOR 2
@@ -290,7 +289,8 @@ class Thread
     double self_intersection(int i, int j, double radius, Vector3d& direction); //do these two pieces intersect?
     double obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius, Vector3d& direction);
     double intersection(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius);
-		double intersection_capsule(const Vector3d& a_start, const Vector3d& a_end, const double a_radius, const Vector3d& b_start, const Vector3d& b_end, const double b_radius, Vector3d& intersection);
+    // direction points in the direction that requires the minimun movement for capsule a to clear out the intersection. direction is not normalized. 
+		double intersection_capsule(const Vector3d& a_start, const Vector3d& a_end, const double a_radius, const Vector3d& b_start, const Vector3d& b_end, const double b_radius, Vector3d& direction);
 
     bool check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Intersection>& intersections);
     void fix_intersections();

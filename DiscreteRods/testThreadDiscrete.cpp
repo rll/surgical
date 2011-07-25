@@ -761,8 +761,12 @@ void DrawStuff (void)
 	//print stuff
 	if (print_mode_permanent || print_mode_instant) {
 		cout << "***********************************************" << endl;
-		thread->get_thread_data(points);
+		thread->get_thread_data(points, twist_angles);
 		cout << "vertices.size(): " << points.size() << endl;
+		cout << "twist_angles: ";
+		for (int i=0; i<twist_angles.size()-1; i++)
+			cout << twist_angles[i] << " ";
+		cout << endl;
 		vector<double> lengths;
 		vector<double> edge_norms;
 		thread->get_thread_data(lengths, edge_norms);

@@ -70,7 +70,7 @@ double ThreadPiece::energy_curvature()
     return 0.0;
 
 #ifdef ISOTROPIC
-  return (BEND_COEFF*_curvature_binormal.squaredNorm())/(_prev_piece->_rest_length + _rest_length);
+	return (BEND_COEFF*_curvature_binormal.squaredNorm())/(_prev_piece->_rest_length + _rest_length);
 #else
   //find first centerline curvature
   Vector2d curve_with_prev(_curvature_binormal.dot(_prev_piece->_material_frame.col(2)), -_curvature_binormal.dot(_prev_piece->_material_frame.col(1)) );

@@ -754,10 +754,10 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
      cout << edge_at_ind(i).norm() << endl;; 
      }
   */
-
+	
+	//std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
+	
 	return (opt_iter != num_opt_iters);
-
-  //std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
 } // end minimize_energy
 
 
@@ -900,7 +900,7 @@ double Thread::obj_intersection(int piece_ind, double piece_radius, int obj_ind,
 #define INTERSECTION_PARALLEL_CHECK_FACTOR 1e-5
 
 //cylinder-cylinder collision based on http://softsurfer.com/Archive/algorithm_0106/algorithm_0106.htm
-double Thread::intersection_capsule(const Vector3d& a_start, const Vector3d& a_end, const double a_radius, const Vector3d& b_start, const Vector3d& b_end, const double b_radius, Vector3d& intersection)
+double Thread::intersection_capsule(const Vector3d& a_start, const Vector3d& a_end, const double a_radius, const Vector3d& b_start, const Vector3d& b_end, const double b_radius, Vector3d& direction)
 {
 	// Line parametrization
 	// L1 : P(s) = a_start + s * (a_end - a_start) = a_start + s * u
@@ -997,51 +997,51 @@ double Thread::intersection_capsule(const Vector3d& a_start, const Vector3d& a_e
 	
 	// MINIMUN OF THE SQUARED DISTANCES
 	double min_squared_dist = start_sphere_start_sphere_squared_dist;
-	intersection = start_sphere_start_sphere;
+	direction = start_sphere_start_sphere;
 	
 	if (min_squared_dist >= start_sphere_end_sphere_squared_dist) {
 		min_squared_dist = start_sphere_end_sphere_squared_dist;
-		intersection = start_sphere_end_sphere;
+		direction = start_sphere_end_sphere;
 	}
 	
 	if (min_squared_dist >= end_sphere_start_sphere_squared_dist) {
 		min_squared_dist = end_sphere_start_sphere_squared_dist;
-		intersection = end_sphere_start_sphere;
+		direction = end_sphere_start_sphere;
 	}
 
 	if (min_squared_dist >= end_sphere_end_sphere_squared_dist) {
 		min_squared_dist = end_sphere_end_sphere_squared_dist;
-		intersection = end_sphere_end_sphere;
+		direction = end_sphere_end_sphere;
 	}
 	
 	if (min_squared_dist >= start_sphere_cyl_squared_dist) {
 		min_squared_dist = start_sphere_cyl_squared_dist;
-		intersection = start_sphere_cyl;
+		direction = start_sphere_cyl;
 	}
 	
 	if (min_squared_dist >= end_sphere_cyl_squared_dist) {
 		min_squared_dist = end_sphere_cyl_squared_dist;
-		intersection = end_sphere_cyl;
+		direction = end_sphere_cyl;
 	}
 	
 	if (min_squared_dist >= cyl_start_sphere_squared_dist) {
 		min_squared_dist = cyl_start_sphere_squared_dist;
-		intersection = cyl_start_sphere;
+		direction = cyl_start_sphere;
 	}
 	
 	if (min_squared_dist >= cyl_end_sphere_squared_dist) {
 		min_squared_dist = cyl_end_sphere_squared_dist;
-		intersection = cyl_end_sphere;
+		direction = cyl_end_sphere;
 	}
 	
 	if (min_squared_dist >= cyl_cyl_squared_dist) {
 		min_squared_dist = cyl_cyl_squared_dist;
-		intersection = cyl_cyl;
+		direction = cyl_cyl;
 	}
 	
   double ret = max(0.0, a_radius + b_radius - sqrt(min_squared_dist));   // return the overlapping distance
   if (ret == 0.0) {
-  	intersection = Vector3d::Zero();
+  	direction = Vector3d::Zero();
   }
   return ret;
 }
@@ -1433,7 +1433,7 @@ void Thread::unrefine_links() {
 		//cout << "3"; flush(cout);
 		double l1 = to_unrefine[piece_ind]->_prev_piece->_prev_piece->rest_length();
 		//cout << "4" << endl;
-		if (((l0+r0) <= 2*r1) && ((l0+r0) <= 2*l1)) { // merge only if the new rest length after merging is not longer by more than a factor of 2 with respect to the rest length of the new neighbors
+		if (((l0+r0) <= (GRADING_FACTOR+GRADING_FACTOR_EPS)*r1) && ((l0+r0) <= (GRADING_FACTOR+GRADING_FACTOR_EPS)*l1)) { // merge only if the new rest length after merging is not longer by more than a factor of 2 with respect to the rest length of the new neighbors
 			//remove to_unrefine[piece_ind]->_prev_piece and to_unrefine[piece_ind] from to_unrefine;
 			ThreadPiece* temp = to_unrefine[piece_ind];
 			findInvalidate(to_unrefine, to_unrefine[piece_ind]->_prev_piece);
@@ -1452,7 +1452,7 @@ void Thread::split_concatenation_left(ThreadPiece* piece) {
 		double adj0 = piece->rest_length();
 		double adj1 = piece->_prev_piece->rest_length();
 		split_thread_piece(piece);
-		if (2*adj0 <= adj1) {	// split only if the new rest length after splitting is not smaller by more than a factor of 2 with respect to the rest length of the new neighbors
+		if ((GRADING_FACTOR-GRADING_FACTOR_EPS)*adj0 <= adj1) {	// split only if the new rest length after splitting is not smaller by more than a factor of 2 with respect to the rest length of the new neighbors
 			split_concatenation_left(piece->_prev_piece);
 		}
 	}
@@ -1465,7 +1465,7 @@ void Thread::split_concatenation_right(ThreadPiece* piece) {
 	if (piece->_next_piece != NULL && piece->_next_piece->_next_piece != NULL) {
 		double adj0 = piece->rest_length();
 		double adj1 = piece->_next_piece->rest_length();
-		if (2*adj0 <= adj1) {	// split only if the new rest length after splitting is not smaller by more than a factor of 2 with respect to the rest length of the new neighbors
+		if ((GRADING_FACTOR-GRADING_FACTOR_EPS)*adj0 <= adj1) {	// split only if the new rest length after splitting is not smaller by more than a factor of 2 with respect to the rest length of the new neighbors
 			split_concatenation_right(piece->_next_piece);
 		}
 		split_thread_piece(piece);
@@ -1484,6 +1484,30 @@ bool Thread::needs_refine_geometrical(ThreadPiece* piece)
 {
 	if (piece==NULL)
 		cout << "piece in needs_refine_mechanical is NULL" << endl;
+	/*
+	double found = false; // count of number of intersections
+  Vector3d direction;
+  vector<Self_Intersection> self_intersections.clear();
+  intersections.clear();
+
+  //self intersections
+  for(int i = 0; i < _thread_pieces.size() - 3; i++) {
+    //+2 so you don't check the adjacent piece - bug?
+    for(int j = i + 2; j < _thread_pieces.size() - 2; j++) {
+      if(i == 0 && j == _thread_pieces.size() - 2) 
+        continue;
+      double intersection_dist = self_intersection(i,j,THREAD_RADIUS,direction);
+      if(intersection_dist != 0) {
+        //skip if both ends, since these are constraints
+        found = true;
+
+        self_intersections.push_back(Self_Intersection(i,j,intersection_dist,direction));
+      }
+    }
+  }*/
+
+	
+	/*
 	return (piece->intersectionDist() < MAX_SQUARED_DOUBLE_DIST_BEFORE_UNREFINE);
 }*/
 
