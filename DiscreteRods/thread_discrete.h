@@ -11,7 +11,7 @@
 #include <Eigen/LU>
 #include <Eigen/SVD>
 #include <Eigen/Geometry>
-#include <time.h>
+#include <queue>
 
 #ifdef ISOTROPIC 
     #define MAX_MOVEMENT_VERTICES 0.2
@@ -40,13 +40,23 @@
 #define DEFAULT_REST_LENGTH 5 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
+#define REFINE_THRESHHOLD 135.0			// maximun angle (in degrees) between this piece and its two neighbors before this piece gets split
+#define UNREFINE_THRESHHOLD 165.0 	// minimun angle (in degrees) between this piece and its prev neighbor before this piece gets merged with its prev neighbor
+																		// must be smaller than REFINE_THRESHHOLD otherwise thread will be unstable
+#define REFINE_MECHANICAL_DIST 0.3 	// minimun distance between thread pieces before they get mechanically split 
+#define UNREFINE_MECHANICAL_DIST 0.4 	// maximun distance between thread pieces before they unsplit because of a mechanical refinement
+																			// must be greater than REFINE_MECHANICAL_DIST
+#define MIN_REST_LENGTH 1.2					// should be preferrably greater than 4*THREAD_RADIUS+REFINE_MECHANICAL_DIST (otherwise the edge adjacent to the adjacent edge will try to split
+#define TARGET_REST_LENGTH_REFINE_MECHANICAL 1.5	// mechanical refinement will not try to split a piece if its rest length is already smaller than this one
+#define GRADING_FACTOR 2.0					// the relative rest length of adjacent edges should not be more than this (or less than 1/GRADING_FACTOR)
+#define GRADING_FACTOR_EPS 0.01
+
 #define INTERSECTION_PUSHBACK_EPS 0.03 
 //#define NUM_THREADS_PARALLEL_FOR 2
 #define num_iters_twist_est_max 0
 
 #define THREAD_RADIUS 0.2     /* MUST BE ATLEAST MAX_MOVEMENT_VERTICES */
 #define COLLISION_CHECKING true
-
 
 
 using namespace std;
@@ -58,12 +68,13 @@ struct Self_Intersection
   int _piece_ind_a;
   int _piece_ind_b;
   double _dist;
+  Vector3d _direction;
 
   Self_Intersection() {}
-  Self_Intersection(int piece_ind_a, int piece_ind_b, double dist)
-    : _piece_ind_a(piece_ind_a), _piece_ind_b(piece_ind_b), _dist(dist) {}
+  Self_Intersection(int piece_ind_a, int piece_ind_b, double dist, Vector3d& direction)
+    : _piece_ind_a(piece_ind_a), _piece_ind_b(piece_ind_b), _dist(dist), _direction(direction) {}
   Self_Intersection(const Self_Intersection& cpy)
-    : _piece_ind_a(cpy._piece_ind_a), _piece_ind_b(cpy._piece_ind_b), _dist(cpy._dist) {}
+    : _piece_ind_a(cpy._piece_ind_a), _piece_ind_b(cpy._piece_ind_b), _dist(cpy._dist), _direction(cpy._direction) {}
   
 };
 
@@ -86,12 +97,13 @@ struct Intersection
   int _piece_ind;
   int _object_ind;
   double _dist;
+  Vector3d _direction;
 
   Intersection() {}
-  Intersection(int piece_ind, int object_ind, double dist)
-    : _piece_ind(piece_ind), _object_ind(object_ind), _dist(dist) {}
+  Intersection(int piece_ind, int object_ind, double dist, Vector3d& direction)
+    : _piece_ind(piece_ind), _object_ind(object_ind), _dist(dist), _direction(direction) {}
   Intersection(const Intersection& cpy)
-    : _piece_ind(cpy._piece_ind), _object_ind(cpy._object_ind), _dist(cpy._dist) {}
+    : _piece_ind(cpy._piece_ind), _object_ind(cpy._object_ind), _dist(cpy._dist), _direction(cpy._direction) {}
 };
 
 struct Intersection_Object
@@ -99,12 +111,13 @@ struct Intersection_Object
   double _radius;
   Vector3d _start_pos;
   Vector3d _end_pos;
+  Vector3d _direction;
 
   Intersection_Object() {}
-  Intersection_Object(double radius, Vector3d& start_pos, Vector3d& end_pos)
-    : _radius(radius), _start_pos(start_pos), _end_pos(end_pos) {}
+  Intersection_Object(double radius, Vector3d& start_pos, Vector3d& end_pos, Vector3d& direction)
+    : _radius(radius), _start_pos(start_pos), _end_pos(end_pos), _direction(direction) {}
   Intersection_Object(const Intersection_Object& cpy)
-    : _radius(cpy._radius), _start_pos(cpy._start_pos), _end_pos(cpy._end_pos) {}
+    : _radius(cpy._radius), _start_pos(cpy._start_pos), _end_pos(cpy._end_pos), _direction(cpy._direction) {}
 
 };
 
@@ -126,17 +139,21 @@ class Thread
     Thread();
     Thread(const VectorXd& vertices, const VectorXd& twists, const Matrix3d& start_rot);
     Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot);
+    Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, Matrix3d& end_rot);
     Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot);
     Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, const double rest_length);
+    Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot);
     Thread(const Thread& rhs);
     virtual ~Thread();
 
     //getting thread configuration
     void get_thread_data(vector<Vector3d>& points);
     void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles);
+    void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<double>& rest_lengths);
     void get_thread_data(vector<Vector3d>& points, vector<Matrix3d>& material_frames);
     void get_thread_data(vector<Matrix3d>& bishop_frames);
     void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<Matrix3d>& material_frames);
+    void get_thread_data(vector<double>& lengths, vector<double>& edge_norms);
     void set_all_angles_zero();
     void set_all_pieces_mythread();
 
@@ -175,9 +192,9 @@ class Thread
     void unviolate_total_length_constraint();
     void copy_data_from_vector(VectorXd& toCopy);
     
-    void project_length_constraint_old();
+    //void project_length_constraint_old();
     bool project_length_constraint(int recursive_depth=250);
-    void project_length_constraint_slow();
+    //void project_length_constraint_slow();
 
     const Matrix3d& start_rot(void) const {return _thread_pieces.front()->material_frame();}
     const Matrix3d& end_rot(void) const {return _thread_pieces[_thread_pieces.size()-2]->material_frame();}
@@ -185,8 +202,10 @@ class Thread
     const double start_angle(void) const {return _thread_pieces.front()->angle_twist();}
     const double end_angle(void) const {return _thread_pieces[_thread_pieces.size()-2]->angle_twist();}
     const double angle_at_ind(int i) const {return _thread_pieces[i]->angle_twist();}
-    const double total_length(void) const {return _rest_length*((double)(num_edges()));}
-    const double rest_length(void) const {return _rest_length;}
+    const double total_length(void) const {return _total_length;}
+    const double start_rest_length(void) const {return _thread_pieces.front()->rest_length();}
+    const double end_rest_length(void) const {return _thread_pieces[_thread_pieces.size()-2]->rest_length();}
+    const double rest_length_at_ind(int i) const {return _thread_pieces[i]->rest_length();}
     const Vector3d& vertex_at_ind(int i) const {return _thread_pieces[i]->vertex();}
     const Vector3d& edge_at_ind(int i) const {return _thread_pieces[i]->edge();}
     const Matrix3d& bishop_at_ind(int i) const {return _thread_pieces[i]->bishop_frame();}
@@ -225,6 +244,13 @@ class Thread
         vec->segment<3>(3*i) = _thread_pieces[i]->curvature_binormal();
       }
     }
+    
+    void getCurvatureBinormalNorm(vector<double>& vec) const {
+      vec.resize(num_pieces());
+      for (int i = 0; i < num_pieces(); i++) { 
+        vec[i] = (_thread_pieces[i]->curvature_binormal()).norm();
+      }
+    }
     //debugging tools
     bool is_consistent();
     double calculate_holonomy();
@@ -235,6 +261,7 @@ class Thread
 
     //energy and gradient functions
     double calculate_energy();
+    double calculate_energy_inefficient();
     void calculate_gradient(vector<Vector3d>& vertex_gradients, vector<double>& angle_twist_gradients);
     void calculate_gradient_vertices(vector<Vector3d>& vertex_gradients);
     void calculate_gradient_vertices_vectorized(VectorXd* vertex_gradients);
@@ -283,18 +310,15 @@ class Thread
     //void set_twist_and_minimize(double twist);
     void set_twist_and_minimize(double twist, vector<Vector3d>& orig_pts);
 
-
-    void set_rest_length(double rest_length){_rest_length = rest_length;}
-
-    double _rest_length;
+    double _total_length;
 
     //intersection
-    double self_intersection(int i, int j, double radius); //do these two pieces intersect?
+    double self_intersection(int i, int j, double radius, Vector3d& direction); //do these two pieces intersect?    
     double thread_intersection(int i, int j, int k, double radius); //do these two pieces in different threads intersect?
-    double obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius);
-   
+    double obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius, Vector3d& direction);
     double intersection(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius);
-		double intersection_experimental(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius);
+    // direction points in the direction that requires the minimun movement for capsule a to clear out the intersection. direction is not normalized. 
+		double distance_between_capsules(const Vector3d& a_start, const Vector3d& a_end, const double a_radius, const Vector3d& b_start, const Vector3d& b_end, const double b_radius, Vector3d& direction);
 
 		bool check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Thread_Intersection>& thread_intersections, vector<Intersection>& intersections);
     void fix_intersections();
@@ -302,6 +326,20 @@ class Thread
     vector<Thread*> threads_in_env;
 		void add_thread_to_env(Thread* threads);
 		void clear_threads_in_env();
+
+    //variable-length thread_pieces    
+    void split_thread_piece(ThreadPiece* this_piece);
+    void merge_thread_piece(ThreadPiece* this_piece);
+    void adapt_links();
+    void refine_links_geometrical();
+    void refine_links_mechanical();
+    void unrefine_links();
+    void split_concatenation_left(ThreadPiece* piece);
+    void split_concatenation_right(ThreadPiece* piece);
+    bool needs_refine_geometrical(ThreadPiece* piece);
+    bool needs_refine_mechanical(ThreadPiece* piece);
+    bool needs_unrefine(ThreadPiece* piece);
+    double closest_intersection_dist(ThreadPiece* piece);
 
   //protected:
     vector<ThreadPiece*> _thread_pieces;
@@ -322,5 +360,23 @@ class Thread
 
 };
 
+// stuff used for variable-length thread_pieces
+template<class Type>
+struct angleGreater : public binary_function <Type, Type, bool> 
+{
+  bool operator()(const Type& _Left, const Type& _Right) const { 
+  	return (_Left->angle() < _Right->angle());
+  };
+};
+
+template<class Type>
+struct angleLess : public binary_function <Type, Type, bool>
+{
+  bool operator()(const Type& _Left, const Type& _Right) const {
+  	return (_Left->angle() > _Right->angle());
+  } ;
+};
+
+int findInvalidate(vector<ThreadPiece*> &v, ThreadPiece* e);
 #endif
 

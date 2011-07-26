@@ -51,16 +51,17 @@ void Trajectory_Recorder::write_threads_to_file()
 
   vector<Vector3d> points;
   vector<double> twist_angles;
+  vector<double> rest_lengths;
   Matrix3d start_rot;
   Matrix3d end_rot;
-  _threads.front().get_thread_data(points, twist_angles);
+  _threads.front().get_thread_data(points, twist_angles, rest_lengths);
 
  threadFile << (double)points.size() << "\n";
 
   //write each point for each thread
   for (int i=0; i < _threads.size(); i++)
   {
-    _threads[i].get_thread_data(points, twist_angles);
+    _threads[i].get_thread_data(points, twist_angles, rest_lengths);
     start_rot = _threads[i].start_rot();
     end_rot = _threads[i].end_rot();
 
@@ -84,7 +85,7 @@ void Trajectory_Recorder::write_threads_to_file()
 		//std::cout << "twist angles: " << std::endl;
     for (int j=0; j < points.size(); j++)
     {
-      threadFile << points[j](0) << " " << points[j](1) << " " << points[j](2) << " " << twist_angles[j] << " ";
+      threadFile << points[j](0) << " " << points[j](1) << " " << points[j](2) << " " << twist_angles[j] << " " << rest_lengths[j] << " ";
 			//std::cout << twist_angles[j] << " ";
     }
     threadFile << "\n";

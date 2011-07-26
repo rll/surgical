@@ -35,7 +35,7 @@ class Trajectory_Reader
 
 
 		void set_file(const char* fileName_threads_in);
-		void read_threads_from_file();
+		int read_threads_from_file();
 		vector<Thread>& get_all_threads(){return _each_thread;};
 		void get_all_threads(vector<Thread*>& threads_out);
 	
