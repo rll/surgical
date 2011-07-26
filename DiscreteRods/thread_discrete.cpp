@@ -1,14 +1,5 @@
 #include "thread_discrete.h"
 
-int findInvalidate(vector<ThreadPiece*> &v, ThreadPiece* e) {
-	int i;
-	for (i=0; i<v.size() && v[i]!=e; i++) {}
-	if (i==v.size())
-		return -1;
-	v[i] = NULL;
-	return i;
-}
-
 Thread::Thread()
 {
   _thread_pieces.resize(0);
@@ -855,7 +846,7 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
   //self intersections
   for(int i = 0; i < _thread_pieces.size() - 3; i++) {
     //+2 so you don't check the adjacent piece - bug?
-    for(int j = i + 2; j < _thread_pieces.size() - 2; j++) {
+    for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) {
       if(i == 0 && j == _thread_pieces.size() - 2) 
         continue;
       double intersection_dist = self_intersection(i,j,THREAD_RADIUS,direction);
@@ -881,18 +872,21 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
     }
 
   }
+  
   return found;
 }
 //define an epsilon
 double Thread::self_intersection(int i, int j, double radius, Vector3d& direction)
 {
-	return intersection_capsule(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, _thread_pieces[j]->vertex(), _thread_pieces[j+1]->vertex(), radius, direction);
+	double dist = distance_between_capsules(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, _thread_pieces[j]->vertex(), _thread_pieces[j+1]->vertex(), radius, direction);
+	return max(0.0, 2.0*radius - dist);
 }
 
 double Thread::obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius, Vector3d& direction)
 {
-  return intersection_capsule(objects_in_env[obj_ind]._start_pos, objects_in_env[obj_ind]._end_pos, objects_in_env[obj_ind]._radius,
+  double dist = distance_between_capsules(objects_in_env[obj_ind]._start_pos, objects_in_env[obj_ind]._end_pos, objects_in_env[obj_ind]._radius,
             _thread_pieces[piece_ind]->vertex(), _thread_pieces[piece_ind+1]->vertex(),THREAD_RADIUS, direction);
+	return max(0.0, objects_in_env[obj_ind]._radius + THREAD_RADIUS - dist); //check: why not use parameters radius?
 }
 
 #define INTERSECTION_EDGE_LENGTH_FACTOR 1.5
@@ -900,7 +894,7 @@ double Thread::obj_intersection(int piece_ind, double piece_radius, int obj_ind,
 #define INTERSECTION_PARALLEL_CHECK_FACTOR 1e-5
 
 //cylinder-cylinder collision based on http://softsurfer.com/Archive/algorithm_0106/algorithm_0106.htm
-double Thread::intersection_capsule(const Vector3d& a_start, const Vector3d& a_end, const double a_radius, const Vector3d& b_start, const Vector3d& b_end, const double b_radius, Vector3d& direction)
+double Thread::distance_between_capsules(const Vector3d& a_start, const Vector3d& a_end, const double a_radius, const Vector3d& b_start, const Vector3d& b_end, const double b_radius, Vector3d& direction)
 {
 	// Line parametrization
 	// L1 : P(s) = a_start + s * (a_end - a_start) = a_start + s * u
@@ -1039,11 +1033,13 @@ double Thread::intersection_capsule(const Vector3d& a_start, const Vector3d& a_e
 		direction = cyl_cyl;
 	}
 	
-  double ret = max(0.0, a_radius + b_radius - sqrt(min_squared_dist));   // return the overlapping distance
-  if (ret == 0.0) {
-  	direction = Vector3d::Zero();
-  }
-  return ret;
+	return sqrt(min_squared_dist);
+	
+  //double ret = max(0.0, a_radius + b_radius - sqrt(min_squared_dist));   // return the overlapping distance
+  //if (ret == 0.0) {
+  	//direction = Vector3d::Zero();
+  //}
+  //return ret;
 }
 
 double Thread::intersection(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius)
@@ -1168,141 +1164,6 @@ double Thread::intersection(const Vector3d& a_start_in, const Vector3d& a_end_in
 /*********************************************************************************/
 //variable-length thread_pieces
 
-/*void Thread::split_thread_piece(int thread_piece_ind)
-{
-	ThreadPiece* this_piece = _thread_pieces[thread_piece_ind];
-	ThreadPiece* this_piece_backup = _thread_pieces_backup[thread_piece_ind];
-	ThreadPiece* new_piece = new ThreadPiece();
-	ThreadPiece* new_piece_backup = new ThreadPiece();
-	this_piece->splitPiece(new_piece);
-	this_piece_backup->copyData(*this_piece);
-	new_piece_backup->copyData(*new_piece);
-	
-	_thread_pieces.insert(_thread_pieces.begin() + thread_piece_ind + 1, new_piece);
-	_thread_pieces_backup.insert(_thread_pieces_backup.begin() + thread_piece_ind + 1, new_piece_backup);
-	
-	//minimize_energy();
-}
-
-void Thread::merge_thread_piece(int thread_piece_ind)
-{
-	ThreadPiece* this_piece = _thread_pieces[thread_piece_ind];
-	ThreadPiece* this_piece_backup = _thread_pieces_backup[thread_piece_ind];
-	this_piece->mergePiece(_thread_pieces[thread_piece_ind+1]);
-	this_piece_backup->copyData(*this_piece);
-	
-	delete _thread_pieces[thread_piece_ind+1];	
-	delete _thread_pieces_backup[thread_piece_ind+1];
-	_thread_pieces[thread_piece_ind+1] = NULL;
-	_thread_pieces_backup[thread_piece_ind+1] = NULL;
-	_thread_pieces.erase(_thread_pieces.begin() + thread_piece_ind + 1);
-	_thread_pieces_backup.erase(_thread_pieces_backup.begin() + thread_piece_ind + 1);
-	
-	//minimize_energy();
-}*/
-
-/*void Thread::split_thread_piece(ThreadPiece* this_piece, ThreadPiece* this_piece_backup)
-{
-	ThreadPiece* new_piece = new ThreadPiece();
-	ThreadPiece* new_piece_backup = new ThreadPiece();
-	this_piece->splitPiece(new_piece);
-	this_piece_backup->copyData(*this_piece);
-	new_piece_backup->copyData(*new_piece);	
-	this_piece_backup->fixPointersSplit(new_piece_backup);
-	
-	int piece_ind;
-	for (piece_ind=0; piece_ind<_thread_pieces.size() && _thread_pieces[piece_ind]!=this_piece; piece_ind++) {}
-	if (piece_ind==_thread_pieces.size())
-		cout << "Internal error: Thread::split_thread_piece: this_piece is not in _thread_pieces." << endl;
-	
-	_thread_pieces.insert(_thread_pieces.begin() + piece_ind + 1, new_piece);
-	_thread_pieces_backup.insert(_thread_pieces_backup.begin() + piece_ind + 1, new_piece_backup);
-}
-
-void Thread::merge_thread_piece(ThreadPiece* this_piece, ThreadPiece* this_piece_backup)
-{	
-	this_piece->mergePiece();
-	this_piece_backup->copyData(*this_piece);
-	this_piece_backup->fixPointersMerge();
-	
-	int piece_ind;
-	for (piece_ind=0; piece_ind<_thread_pieces.size() && _thread_pieces[piece_ind]!=this_piece; piece_ind++) {}
-	if (piece_ind==_thread_pieces.size())
-		cout << "Internal error: Thread::merge_thread_piece: this piece is not in _thread_pieces." << endl;
-	
-	delete _thread_pieces[piece_ind-1];
-	_thread_pieces[piece_ind-1] = NULL;
-	_thread_pieces.erase(_thread_pieces.begin() + piece_ind - 1);
-	delete _thread_pieces_backup[piece_ind-1];
-	_thread_pieces_backup[piece_ind-1] = NULL;
-	_thread_pieces_backup.erase(_thread_pieces_backup.begin() + piece_ind - 1);
-}
-
-void Thread::adapt_links()
-{
-	unrefine_links();
-	refine_links();
-}
-
-void Thread::refine_links()
-{
-	ThreadPiece * curr_piece, * curr_piece_backup;
-	ThreadPiece * next_piece = _thread_pieces[1], * next_piece_backup = _thread_pieces_backup[1];
-	if (next_piece == NULL)
-		cout << "Internal error: Thread::refine_links." << endl;
-	while (next_piece->_next_piece!=NULL && next_piece->_next_piece->_next_piece!=NULL) {
-		curr_piece = next_piece;
-		curr_piece_backup = next_piece_backup;
-		next_piece = next_piece->_next_piece;
-		next_piece_backup = next_piece_backup->_next_piece;
-		if ((curr_piece->curvature_binormal_norm() > REFINE_THRESHHOLD) &&
-				(curr_piece->_next_piece->curvature_binormal_norm() > REFINE_THRESHHOLD) &&
-				(curr_piece->_rest_length > MIN_REST_LENGTH)) {
-			split_thread_piece(curr_piece, curr_piece_backup);
-			minimize_energy();
-		} else if (curr_piece->curvature_binormal_norm() > REFINE_SINGLE_THRESHHOLD) {
-			if ((curr_piece->_next_piece->curvature_binormal_norm() > curr_piece->_prev_piece->curvature_binormal_norm() ||
-					curr_piece->_prev_piece->_prev_piece == NULL) &&
-					(curr_piece->_rest_length > MIN_REST_LENGTH)) {
-				split_thread_piece(curr_piece, curr_piece_backup);
-				minimize_energy();
-			} else if (curr_piece->_prev_piece->_rest_length > MIN_REST_LENGTH) { // don't want to split the first piece
-				split_thread_piece(curr_piece->_prev_piece, curr_piece_backup->_prev_piece);
-				minimize_energy();
-			}
-		}
-	}
-	if (next_piece->_next_piece!=NULL && next_piece->_next_piece->_next_piece==NULL) {
-		curr_piece = next_piece;
-		curr_piece_backup = next_piece_backup;
-		if (curr_piece->curvature_binormal_norm() > REFINE_SINGLE_THRESHHOLD && 
-				curr_piece->_prev_piece->_prev_piece!=NULL && 
-				curr_piece->_prev_piece->_rest_length > MIN_REST_LENGTH) {
-			split_thread_piece(curr_piece->_prev_piece, curr_piece_backup->_prev_piece);
-			minimize_energy();
-		}
-	}
-}
-
-void Thread::unrefine_links()
-{
-	ThreadPiece * curr_piece, * curr_piece_backup;
-	ThreadPiece * next_piece = _thread_pieces[2], * next_piece_backup = _thread_pieces_backup[2];
-	if (next_piece == NULL || next_piece->_next_piece==NULL)
-		cout << "Internal error: Thread::unrefine_links." << endl;
-	while (next_piece->_next_piece->_next_piece!=NULL) {
-		curr_piece = next_piece;
-		curr_piece_backup = next_piece_backup;
-		next_piece = next_piece->_next_piece;
-		next_piece_backup = next_piece_backup->_next_piece;
-		if (curr_piece->curvature_binormal_norm() < UNREFINE_THRESHHOLD) {
-			merge_thread_piece(curr_piece, curr_piece_backup);
-			minimize_energy();
-		}
-	}
-}*/
-//------------------------------- OLD ///// NEW
-
 void Thread::split_thread_piece(ThreadPiece* this_piece)
 {
 	ThreadPiece* new_piece = new ThreadPiece();
@@ -1335,26 +1196,48 @@ void Thread::adapt_links()
 {
 	unrefine_links();
 	refine_links_geometrical();
+	if (COLLISION_CHECKING)
+		refine_links_mechanical();
 }
 
 void Thread::refine_links_geometrical() {
 	vector<ThreadPiece*> to_refine;
 	priority_queue <ThreadPiece*, vector<ThreadPiece*>, angleLess<ThreadPiece*> > tp_queue;
 	
-	/*cout << "refine starts" << endl;
-	for (int i=0; i<_thread_pieces.size(); i++) {
-		cout << _thread_pieces[i] << "|" << _thread_pieces[i]->angle() << "|" << needs_refine_geometrical(_thread_pieces[i]) << " " << endl;
-	}*/
 	for (int i=1; i<_thread_pieces.size()-2; i++) {
 		tp_queue.push(_thread_pieces[i]);
 	}
 	
-	//cout << "initial min heap: \ttp_queue.top(): " << tp_queue.top() << "\ttp_queue.top()->angle: " << tp_queue.top()->angle() << endl;
-	
 	while((tp_queue.size() > 0) && needs_refine_geometrical(tp_queue.top())) {
-		//cout << "min heap: \ttp_queue.top(): " << tp_queue.top() << "\ttp_queue.top()->angle: " << tp_queue.top()->angle() << endl;
 		to_refine.push_back(tp_queue.top());
 		tp_queue.pop();
+	}
+
+	for (int piece_ind=0; piece_ind < to_refine.size(); piece_ind++) {
+		if (to_refine[piece_ind]->_prev_piece!=NULL && 
+				to_refine[piece_ind]->_prev_piece->_prev_piece!=NULL && 
+				to_refine[piece_ind]->_prev_piece->rest_length()>MIN_REST_LENGTH &&
+				!almost_equal(to_refine[piece_ind]->_prev_piece->edge(), to_refine[piece_ind]->_prev_piece->_prev_piece->edge())) {
+			split_concatenation_left(to_refine[piece_ind]->_prev_piece);
+		}
+		if (to_refine[piece_ind]->_next_piece!=NULL &&
+				to_refine[piece_ind]->_next_piece->_next_piece!=NULL &&
+				to_refine[piece_ind]->rest_length()>MIN_REST_LENGTH &&
+				!almost_equal(to_refine[piece_ind]->edge(), to_refine[piece_ind]->_next_piece->edge())) {
+			split_concatenation_right(to_refine[piece_ind]);
+		}
+	}
+	save_thread_pieces_and_resize(_thread_pieces_backup);
+	minimize_energy();
+}
+
+void Thread::refine_links_mechanical() {
+	vector<ThreadPiece*> to_refine;
+
+	for (int i=1; i<_thread_pieces.size()-2; i++) {
+		if (needs_refine_mechanical(_thread_pieces[i])) {
+			to_refine.push_back(_thread_pieces[i]);
+		}
 	}
 
 	for (int piece_ind=0; piece_ind < to_refine.size(); piece_ind++) {
@@ -1379,23 +1262,14 @@ void Thread::unrefine_links() {
 	vector<ThreadPiece*> to_unrefine, tp_heap;
 	priority_queue <ThreadPiece*, vector<ThreadPiece*>, angleGreater<ThreadPiece*> > tp_queue;
 	
-	/*cout << "unrefine starts" << endl;
-	for (int i=0; i<_thread_pieces.size(); i++) {
-		cout << _thread_pieces[i] << "|" << _thread_pieces[i]->angle() << "|" << needs_unrefine(_thread_pieces[i]) << " " << endl;
-	}*/
 	for (int i=2; i<_thread_pieces.size()-2; i++) {
 		tp_queue.push(_thread_pieces[i]);
 	}
 	
-	//cout << "initial max heap: \ttp_queue.top(): " << tp_queue.top() << "\ttp_queue.top()->angle: " << tp_queue.top()->angle() << endl;
-	
 	while((tp_queue.size() > 0) && needs_unrefine(tp_queue.top())) {
-		//cout << "max heap: \ttp_queue.top(): " << tp_queue.top() << "\ttp_queue.top()->angle: " << tp_queue.top()->angle() << endl;
 		to_unrefine.push_back(tp_queue.top());
 		tp_queue.pop();
 	}
-
-	//cout << "is prev prev null: " << _thread_pieces[0]->_prev_piece << endl;
 
 	for (int piece_ind=0; piece_ind < to_unrefine.size(); piece_ind++) {
 	
@@ -1403,12 +1277,6 @@ void Thread::unrefine_links() {
 			continue;
 		}
 	
-		/*for (int i=0; i<_thread_pieces.size(); i++) {
-			if (i==0)
-				cout << "\t\t\t\t\t" << _thread_pieces[i]->_prev_piece << " " << _thread_pieces[i] << " " << _thread_pieces[i]->_next_piece << endl;
-			else
-				cout << "\t\t\t" << _thread_pieces[i]->_prev_piece->_prev_piece << " " << _thread_pieces[i]->_prev_piece << " " << _thread_pieces[i] << " " << _thread_pieces[i]->_next_piece << endl;
-		}*/
 		if (to_unrefine[piece_ind] == NULL || to_unrefine[piece_ind]->_next_piece == NULL ||
 				to_unrefine[piece_ind]->_prev_piece == NULL || to_unrefine[piece_ind]->_prev_piece->_prev_piece == NULL)
 		cout << "Internal error: unrefine_links: to_unrefine[piece_ind] or one of its neighbors is NULL." << endl;
@@ -1422,25 +1290,16 @@ void Thread::unrefine_links() {
 		if (to_unrefine[piece_ind]->_prev_piece->_prev_piece == NULL)
 		cout << "Internal error: unrefine_links: 3" << endl;
 		
-		//cout << "for loop: examining: " << to_unrefine[piece_ind] << " " << to_unrefine[piece_ind]->_next_piece << " " << to_unrefine[piece_ind]->_prev_piece << " " << to_unrefine[piece_ind]->_prev_piece->_prev_piece << " " << endl;
-		
-		//cout << "0"; flush(cout);
 		double r0 = to_unrefine[piece_ind]->rest_length();
-		//cout << "1"; flush(cout);
 		double r1 = to_unrefine[piece_ind]->_next_piece->rest_length();
-		//cout << "2"; flush(cout);
 		double l0 = to_unrefine[piece_ind]->_prev_piece->rest_length();		
-		//cout << "3"; flush(cout);
 		double l1 = to_unrefine[piece_ind]->_prev_piece->_prev_piece->rest_length();
-		//cout << "4" << endl;
 		if (((l0+r0) <= (GRADING_FACTOR+GRADING_FACTOR_EPS)*r1) && ((l0+r0) <= (GRADING_FACTOR+GRADING_FACTOR_EPS)*l1)) { // merge only if the new rest length after merging is not longer by more than a factor of 2 with respect to the rest length of the new neighbors
 			//remove to_unrefine[piece_ind]->_prev_piece and to_unrefine[piece_ind] from to_unrefine;
 			ThreadPiece* temp = to_unrefine[piece_ind];
 			findInvalidate(to_unrefine, to_unrefine[piece_ind]->_prev_piece);
 			findInvalidate(to_unrefine, to_unrefine[piece_ind]);
 			merge_thread_piece(temp);
-			//for (int i=0; i<to_unrefine.size(); i++) { cout << to_unrefine[i] << " "; } cout << endl;
-			//cout << "merged" << endl;
 		}
 	}
 	save_thread_pieces_and_resize(_thread_pieces_backup);
@@ -1477,48 +1336,54 @@ bool Thread::needs_refine_geometrical(ThreadPiece* piece)
 {
 	if (piece==NULL)
 		cout << "Internal error: needs_unrefine: piece is NULL" << endl;
-	return (piece->angle() < 135.0 * M_PI/180.0);
+	return (piece->angle() < REFINE_THRESHHOLD * M_PI/180.0);
 }
 
-/*bool Thread::needs_refine_mechanical(ThreadPiece* piece)
+bool Thread::needs_refine_mechanical(ThreadPiece* piece)
 {
-	if (piece==NULL)
-		cout << "piece in needs_refine_mechanical is NULL" << endl;
-	/*
-	double found = false; // count of number of intersections
-  Vector3d direction;
-  vector<Self_Intersection> self_intersections.clear();
-  intersections.clear();
-
-  //self intersections
-  for(int i = 0; i < _thread_pieces.size() - 3; i++) {
-    //+2 so you don't check the adjacent piece - bug?
-    for(int j = i + 2; j < _thread_pieces.size() - 2; j++) {
-      if(i == 0 && j == _thread_pieces.size() - 2) 
-        continue;
-      double intersection_dist = self_intersection(i,j,THREAD_RADIUS,direction);
-      if(intersection_dist != 0) {
-        //skip if both ends, since these are constraints
-        found = true;
-
-        self_intersections.push_back(Self_Intersection(i,j,intersection_dist,direction));
-      }
-    }
-  }*/
-
+	if (piece->_prev_piece==NULL || piece->_next_piece->_next_piece==NULL)
+		cout << "Internal error: needs_refine_mechanical: piece cannot be the first or the last one." << endl;
 	
-	/*
-	return (piece->intersectionDist() < MAX_SQUARED_DOUBLE_DIST_BEFORE_UNREFINE);
-}*/
+  if ((closest_intersection_dist(piece) < (2.0*THREAD_RADIUS+REFINE_MECHANICAL_DIST)) &&
+    	(piece->rest_length() > TARGET_REST_LENGTH_REFINE_MECHANICAL)) {
+    return true;
+  }
+  return false;
+}
 
 // Does the vertex especified by piece->_vertex need to be unrefined?
 bool Thread::needs_unrefine(ThreadPiece* piece)
 {
 	if (piece==NULL)
 		cout << "Internal error: needs_unrefine: piece is NULL" << endl;
-	return (piece->angle() > 165.0 * M_PI/180.0);
-	//return ((piece->curvature_binormal_norm() < UNREFINE_THRESHHOLD) && 
-	//				(!COLLISION_CHECKING || (piece->intersectionDist() >= MAX_SQUARED_DOUBLE_DIST_BEFORE_UNREFINE)));
+	return ((piece->angle() > UNREFINE_THRESHHOLD * M_PI/180.0) && 
+					(!COLLISION_CHECKING || (closest_intersection_dist(piece) > (2.0*THREAD_RADIUS+UNREFINE_MECHANICAL_DIST))));
+}
+
+double Thread::closest_intersection_dist(ThreadPiece* piece)
+{
+	if (piece==NULL)
+		cout << "Internal error: closest_intersection_dist: piece is NULL" << endl;
+	if (piece->_next_piece==NULL)
+		cout << "Internal error: closest_intersection_dist: piece cannot be the piece after the last one." << endl;
+	
+	double min_dist = numeric_limits<double>::max();
+	double dist;
+	Vector3d direction;
+	ThreadPiece* other_piece = _thread_pieces.front();
+	while (other_piece!=NULL && other_piece->_next_piece != NULL) {
+		if (((piece->_prev_piece!=NULL) && (other_piece == piece->_prev_piece->_prev_piece)) ||
+				(other_piece == piece->_prev_piece) ||
+				(other_piece == piece) ||
+				(other_piece == piece->_next_piece) ||
+				((piece->_next_piece!=NULL) && (other_piece == piece->_next_piece->_next_piece))) {
+			other_piece = other_piece->_next_piece;
+		} else {
+			min_dist = min(min_dist, distance_between_capsules(piece->vertex(), piece->_next_piece->vertex(), THREAD_RADIUS, other_piece->vertex(), other_piece->_next_piece->vertex(), THREAD_RADIUS, direction));
+		  other_piece = other_piece->_next_piece;
+		}
+	}
+	return min_dist;
 }
 
 //end variable-length thread_pieces
@@ -3356,4 +3221,13 @@ void add_object_to_env(Intersection_Object& obj)
 vector<Intersection_Object>* get_objects_in_env()
 {
   return &objects_in_env;
+}
+
+int findInvalidate(vector<ThreadPiece*> &v, ThreadPiece* e) {
+	int i;
+	for (i=0; i<v.size() && v[i]!=e; i++) {}
+	if (i==v.size())
+		return -1;
+	v[i] = NULL;
+	return i;
 }

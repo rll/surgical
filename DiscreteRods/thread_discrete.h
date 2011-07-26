@@ -40,10 +40,15 @@
 #define DEFAULT_REST_LENGTH 3 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
-#define REFINE_THRESHHOLD 3.2
-#define UNREFINE_THRESHHOLD 0.2 /*must be smaller than REFINE_THRESHHOLD otherwise thread will be unstable */
-#define MIN_REST_LENGTH 1.0	/*must be greater than 4*THREAD_RADIUS*/
-#define GRADING_FACTOR 2.0
+#define REFINE_THRESHHOLD 135.0			// maximun angle (in degrees) between this piece and its two neighbors before this piece gets split
+#define UNREFINE_THRESHHOLD 165.0 	// minimun angle (in degrees) between this piece and its prev neighbor before this piece gets merged with its prev neighbor
+																		// must be smaller than REFINE_THRESHHOLD otherwise thread will be unstable
+#define REFINE_MECHANICAL_DIST 0.3 	// minimun distance between thread pieces before they get mechanically split 
+#define UNREFINE_MECHANICAL_DIST 0.4 	// maximun distance between thread pieces before they unsplit because of a mechanical refinement
+																			// must be greater than REFINE_MECHANICAL_DIST
+#define MIN_REST_LENGTH 1.2					// should be preferrably greater than 4*THREAD_RADIUS+REFINE_MECHANICAL_DIST (otherwise the edge adjacent to the adjacent edge will try to split
+#define TARGET_REST_LENGTH_REFINE_MECHANICAL 1.5	// mechanical refinement will not try to split a piece if its rest length is already smaller than this one
+#define GRADING_FACTOR 2.0					// the relative rest length of adjacent edges should not be more than this (or less than 1/GRADING_FACTOR)
 #define GRADING_FACTOR_EPS 0.01
 
 #define INTERSECTION_PUSHBACK_EPS 0.03 
@@ -105,9 +110,6 @@ struct Intersection_Object
 static vector<Intersection_Object> objects_in_env;
 void add_object_to_env(Intersection_Object& obj);
 vector<Intersection_Object>* get_objects_in_env();
-
-bool isAngleLessThan (ThreadPiece* first, ThreadPiece* second);
-bool isAngleGreaterThan (ThreadPiece* first, ThreadPiece* second);
 
 class Thread
 {
@@ -290,24 +292,24 @@ class Thread
     double obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius, Vector3d& direction);
     double intersection(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius);
     // direction points in the direction that requires the minimun movement for capsule a to clear out the intersection. direction is not normalized. 
-		double intersection_capsule(const Vector3d& a_start, const Vector3d& a_end, const double a_radius, const Vector3d& b_start, const Vector3d& b_end, const double b_radius, Vector3d& direction);
+		double distance_between_capsules(const Vector3d& a_start, const Vector3d& a_end, const double a_radius, const Vector3d& b_start, const Vector3d& b_end, const double b_radius, Vector3d& direction);
 
     bool check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Intersection>& intersections);
     void fix_intersections();
     
-    //variable-length thread_pieces
-    //void split_thread_piece(int thread_piece_ind);
-    //void merge_thread_piece(int thread_piece_ind);
-    
+    //variable-length thread_pieces    
     void split_thread_piece(ThreadPiece* this_piece);
     void merge_thread_piece(ThreadPiece* this_piece);
     void adapt_links();
     void refine_links_geometrical();
+    void refine_links_mechanical();
     void unrefine_links();
     void split_concatenation_left(ThreadPiece* piece);
     void split_concatenation_right(ThreadPiece* piece);
     bool needs_refine_geometrical(ThreadPiece* piece);
+    bool needs_refine_mechanical(ThreadPiece* piece);
     bool needs_unrefine(ThreadPiece* piece);
+    double closest_intersection_dist(ThreadPiece* piece);
 
   //protected:
     vector<ThreadPiece*> _thread_pieces;
@@ -327,7 +329,8 @@ class Thread
     void apply_angle_twist_offsets(vector<double>& offsets, bool skip_edge_cases = false, double step_size = 1.0);
 
 };
-  
+
+// stuff used for variable-length thread_pieces
 template<class Type>
 struct angleGreater : public binary_function <Type, Type, bool> 
 {
@@ -343,5 +346,7 @@ struct angleLess : public binary_function <Type, Type, bool>
   	return (_Left->angle() > _Right->angle());
   } ;
 };
+
+int findInvalidate(vector<ThreadPiece*> &v, ThreadPiece* e);
 #endif
 

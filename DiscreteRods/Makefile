@@ -27,10 +27,7 @@ DEBUG = -ggdb
 PROFILER =
 ISOTROPIC=-DISOTROPIC
 
-target: testThreadDiscrete testThreadDiscrete_phantom debugIntersection
-
-debugIntersection: debugIntersection.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o
-	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o debugIntersection debugIntersection.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o -lrt $(LIBS) $(PROFILER)
+target: testThreadDiscrete testThreadDiscrete_phantom
 
 testThreadDiscrete: testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o trajectory_reader.o
 	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o trajectory_reader.o $(LIBS) $(PROFILER)
@@ -122,6 +119,6 @@ thread_socket_interface.o: thread_socket_interface.cpp thread_socket_interface.h
 	$(CC) $(INCLUDES) $(DEBUG) -c thread_socket_interface.cpp $(PROFILER)
 
 clean:
-	rm -r *.o *.gch debugIntersection testThreadDiscrete testThreadDiscrete_noniso testThreadDiscrete_phantom saveThreadTrajectory recordThreadVideo thread_visualize_and_save thread_visualize_and_save_noniso *.dSYM
+	rm -r *.o *.gch testThreadDiscrete testThreadDiscrete_noniso testThreadDiscrete_phantom saveThreadTrajectory recordThreadVideo thread_visualize_and_save thread_visualize_and_save_noniso *.dSYM
 
 
