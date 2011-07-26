@@ -285,8 +285,15 @@ void ThreadConstrained::set_coeffs_normalized(const Matrix2d& bend_coeff, double
 }
 
 void ThreadConstrained::minimize_energy() {
-	for (int thread_num=0; thread_num<threads.size(); thread_num++)
+	for (int thread_num=0; thread_num<threads.size(); thread_num++) {
 		threads[thread_num]->minimize_energy();
+	}
+}
+
+void ThreadConstrained::adapt_links() {
+	for (int thread_num=0; thread_num<threads.size(); thread_num++) {
+		threads[thread_num]->adapt_links();
+	}
 }
 
 void ThreadConstrained::updateConstraints (vector<Vector3d> poss, vector<Matrix3d> rots) {

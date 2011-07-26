@@ -40,16 +40,17 @@
 #define DEFAULT_REST_LENGTH 5 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
-#define REFINE_THRESHHOLD 135.0			// maximun angle (in degrees) between this piece and its two neighbors before this piece gets split
+#define REFINE_THRESHHOLD 145.0			// maximun angle (in degrees) between this piece and its two neighbors before this piece gets split
+																		// increase this for merging to be easier
 #define UNREFINE_THRESHHOLD 165.0 	// minimun angle (in degrees) between this piece and its prev neighbor before this piece gets merged with its prev neighbor
 																		// must be smaller than REFINE_THRESHHOLD otherwise thread will be unstable
 #define REFINE_MECHANICAL_DIST 0.3 	// minimun distance between thread pieces before they get mechanically split 
 #define UNREFINE_MECHANICAL_DIST 0.4 	// maximun distance between thread pieces before they unsplit because of a mechanical refinement
 																			// must be greater than REFINE_MECHANICAL_DIST
-#define MIN_REST_LENGTH 1.2					// should be preferrably greater than 4*THREAD_RADIUS+REFINE_MECHANICAL_DIST (otherwise the edge adjacent to the adjacent edge will try to split
-#define TARGET_REST_LENGTH_REFINE_MECHANICAL 1.5	// mechanical refinement will not try to split a piece if its rest length is already smaller than this one
+#define MIN_REST_LENGTH 1.4					// should be preferrably greater than 4*THREAD_RADIUS+REFINE_MECHANICAL_DIST (otherwise the edge adjacent to the adjacent edge will try to split
+#define TARGET_REST_LENGTH_REFINE_MECHANICAL 1.8	// mechanical refinement will not try to split a piece if its rest length is already smaller than this one
 #define GRADING_FACTOR 2.0					// the relative rest length of adjacent edges should not be more than this (or less than 1/GRADING_FACTOR)
-#define GRADING_FACTOR_EPS 0.01
+#define GRADING_FACTOR_EPS 0.1
 
 #define INTERSECTION_PUSHBACK_EPS 0.03 
 //#define NUM_THREADS_PARALLEL_FOR 2
@@ -84,12 +85,13 @@ struct Thread_Intersection
   int _piece_ind_b;
   int _thread_ind;
   double _dist;
+  Vector3d _direction;
 
   Thread_Intersection() {}
-  Thread_Intersection(int piece_ind_a, int piece_ind_b, int thread_ind, double dist)
-    : _piece_ind_a(piece_ind_a), _piece_ind_b(piece_ind_b), _thread_ind(thread_ind), _dist(dist) {}
+  Thread_Intersection(int piece_ind_a, int piece_ind_b, int thread_ind, double dist, Vector3d& direction)
+    : _piece_ind_a(piece_ind_a), _piece_ind_b(piece_ind_b), _thread_ind(thread_ind), _dist(dist), _direction(direction) {}
   Thread_Intersection(const Thread_Intersection& cpy)
-    : _piece_ind_a(cpy._piece_ind_a), _piece_ind_b(cpy._piece_ind_b), _thread_ind(cpy._thread_ind), _dist(cpy._dist) {}
+    : _piece_ind_a(cpy._piece_ind_a), _piece_ind_b(cpy._piece_ind_b), _thread_ind(cpy._thread_ind), _dist(cpy._dist), _direction(cpy._direction) {}
 };
 
 struct Intersection
@@ -314,9 +316,9 @@ class Thread
 
     //intersection
     double self_intersection(int i, int j, double radius, Vector3d& direction); //do these two pieces intersect?    
-    double thread_intersection(int i, int j, int k, double radius); //do these two pieces in different threads intersect?
+    double thread_intersection(int i, int j, int k, double radius, Vector3d& direction); //do these two pieces in different threads intersect?
     double obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius, Vector3d& direction);
-    double intersection(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius);
+    //double intersection(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius);
     // direction points in the direction that requires the minimun movement for capsule a to clear out the intersection. direction is not normalized. 
 		double distance_between_capsules(const Vector3d& a_start, const Vector3d& a_end, const double a_radius, const Vector3d& b_start, const Vector3d& b_end, const double b_radius, Vector3d& direction);
 

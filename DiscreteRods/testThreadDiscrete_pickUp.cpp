@@ -84,6 +84,8 @@ vector<Matrix3d> all_rotations;
 
 key_code key_pressed;
 
+bool examine_mode = false;
+
 static double gCursorScale = 6;
 static GLuint gCursorDisplayList = 0;
 Vector3d start_proxy_pos, end_proxy_pos, start_tip_pos, end_tip_pos;
@@ -319,6 +321,10 @@ void processNormalKeys(unsigned char key, int x, int y) {
       }
       printf("\n");
     }
+  } else if(key == 'e') {
+  	examine_mode = !examine_mode;
+  	initContour();
+  	glutPostRedisplay ();
   }	else if (key == 'q' || key == 27) {
     exit(0);
   }
@@ -573,6 +579,7 @@ void drawStuff (void)
 		cursor1->draw();
 	}
 	
+	//thread->adapt_links();
 	drawThread();
 	base->draw();
 	extra_end_effector->draw();
@@ -752,6 +759,11 @@ void drawThread() {
       pts_cpy,
       0x0,
       twist_cpy);
+      
+  if (examine_mode)
+		for (int i=0; i<points.size(); i++)
+			drawSphere(points[i]-zero_location, 0.7, 0.0, 0.5, 0.5);
+			
   glPopMatrix ();
 }
 
@@ -971,7 +983,7 @@ void initStuff (void)
 
 void initThread()
 {	
-	int num_vertices=15;
+	int num_vertices=20;
   thread = new ThreadConstrained(num_vertices);
   positions.resize(2);
   rotations.resize(2);
@@ -1059,7 +1071,9 @@ void initContour (void)
   gleSetJoinStyle (style);
 
   int i;
-  double contour_scale_factor = 0.3;
+  double contour_scale_factor= 0.3;
+   if (examine_mode)
+    contour_scale_factor = 0.05;
 
 #ifdef ISOTROPIC
   // outline of extrusion

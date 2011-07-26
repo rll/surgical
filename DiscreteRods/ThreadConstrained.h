@@ -19,7 +19,7 @@
 #include <math.h>
 #include "thread_discrete.h"
 
-#define LIMITED_DISPLACEMENT true
+#define LIMITED_DISPLACEMENT false
 #define MAX_DISPLACEMENT 1 //(0.49*THREAD_RADIUS)
 #define MAX_ANGLE_CHANGE (0.05*M_PI)
 
@@ -30,7 +30,6 @@ class ThreadConstrained {
 	public:
 		ThreadConstrained(int vertices_num);
 		int numVertices() { return num_vertices; }
-		const double rest_length() const { return threads.front()->rest_length(); }
 		void get_thread_data(vector<Vector3d> &absolute_points);
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<double> &absolute_twist_angles);
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<double> &absolute_twist_angles, vector<Matrix3d> &absolute_material_frames);
@@ -55,6 +54,7 @@ class ThreadConstrained {
 		void set_coeffs_normalized(double bend_coeff, double twist_coeff, double grav_coeff);
 		void set_coeffs_normalized(const Matrix2d& bend_coeff, double twist_coeff, double grav_coeff);
 		void minimize_energy();
+		void adapt_links();
 		void updateConstraints (vector<Vector3d> poss, vector<Matrix3d> rots);
 		void addConstraint (int absolute_vertex_num);
 		void removeConstraint (int absolute_vertex_num);

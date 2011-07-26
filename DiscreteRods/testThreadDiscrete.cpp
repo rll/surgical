@@ -1012,6 +1012,7 @@ void drawAxesMaterial(Vector3d pos, Matrix3d rot) {
 	glVertex3f(0.0, 0.0, 10.0);
 	glEnd();
 	glPopMatrix();
+}
 
 void drawSphere(Vector3d position, float radius, float color0, float color1, float color2) {
 	glPushMatrix();

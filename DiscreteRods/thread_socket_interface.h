@@ -4,16 +4,12 @@
 #include <iostream>
 #include <cstring>
 #include <string>
+#include <cstdio>
 #include "../utils/sockets/UDPSocket.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 #include <vector>
 #include <Eigen/Core>
-//#include <HD/hd.h>
-//#include <HDU/hdu.h>
-//#include <HDU/hduError.h>
-//#include <HDU/hduVector.h>
-//#include <HDU/hduMatrix.h>
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
