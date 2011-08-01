@@ -30,7 +30,9 @@ FAKEIMS= -DFAKEIMS
 
 #target : testCanny testCapture example_capture_3cam calibrate_robots test_point_distances PositionsOnRequest PositionsOnRequest2 threadStereo
 
-target: test_linearization test_planner run_planner_libs visualize_trajs run_planner_libs_dim1 run_planner_libs_dim2 vis_onetraj
+target: test_planner
+
+#target: test_linearization test_planner run_planner_libs visualize_trajs run_planner_libs_dim1 run_planner_libs_dim2 vis_onetraj
 
 test_linearization: test_linearization.cpp clock.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o trajectory_follower.o iterative_control.o
 	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o test_linearization test_linearization.cpp clock.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o trajectory_follower.o iterative_control.o $(LIBS) $(PROFILER)

@@ -99,7 +99,10 @@ RRTNode* localCurNode;
 bool interruptEnabled = false; 
 bool threadSet = false; 
 
+bool stepperInitialized = false; 
+vector<Vector3d> lastV;
 
+double currentTime = 0.0;
 /* set up a light */
 GLfloat lightOnePosition[] = {140.0, 0.0, 200.0, 0.0};
 GLfloat lightOneColor[] = {0.99, 0.99, 0.99, 1.0};
@@ -112,6 +115,60 @@ GLfloat lightThreeColor[] = {0.99, 0.99, 0.99, 1.0};
 
 GLfloat lightFourPosition[] = {-140.0, 0.0, -200.0, 0.0};
 GLfloat lightFourColor[] = {0.99, 0.99, 0.99, 1.0};
+
+
+void stepSimulation() { 
+
+  double dt = 1;
+  double M = 10;
+
+  //glThreads[curThread]->getThread()->velocity_initialized = false;
+  glThreads[curThread]->getThread()->dynamic_step(dt, M);
+
+  /*for (int t = 0; t < 500; t++) { 
+    currentTime += dt; 
+    Thread* my_thread = glThreads[curThread]->getThread();
+
+
+    vector<Vector3d> vertex_gradients(my_thread->num_pieces());
+    for (int i = 0; i < vertex_gradients.size(); i++) { 
+      vertex_gradients[i].setZero(); 
+    }
+
+    my_thread->calculate_gradient_vertices(vertex_gradients);
+
+    if (!stepperInitialized) { 
+      lastV.resize(my_thread->num_pieces());
+      for (int i = 0; i < lastV.size(); i++) { 
+        lastV[i].setZero();
+      }
+    }
+
+    vector<Vector3d> currentV(my_thread->num_pieces());
+
+    for (int i = 0 ; i < currentV.size() ; i ++) { 
+      currentV[i] = lastV[i] - (vertex_gradients[i] / M) * dt; 
+    }
+
+    vector<Vector3d> positionOffsets(my_thread->num_pieces()); 
+
+    for (int i = 0; i < positionOffsets.size(); i++) { 
+      positionOffsets[i] = currentV[i] * dt; 
+      //cout << positionOffsets[i].transpose() << " " ;
+    }
+    //cout << endl; 
+
+    //cout << positionOffsets.transpose() << endl; 
+
+    lastV = currentV; 
+
+    my_thread->apply_vertex_offsets(positionOffsets);
+    my_thread->project_length_constraint();
+    my_thread->minimize_energy_twist_angles();
+
+    //glutPostRedisplay();
+  }*/
+}
 
 
 void writeGoalThreadToFile() { 
@@ -689,8 +746,8 @@ void generateRandomThread() {
         (const Thread*) glThreads[startThread]->getThread()));
   
   // minimize the energy on it
-  cout << "calling minimize energy on curThread = " << curThread << endl;
-  glThreads[curThread]->getThread()->minimize_energy(1000000);
+  //cout << "calling minimize energy on curThread = " << curThread << endl;
+  //glThreads[curThread]->getThread()->minimize_energy(1000000);
   glThreads[curThread]->updateThreadPoints();
   
   glutPostRedisplay();
@@ -957,7 +1014,8 @@ void processNormalKeys(unsigned char key, int x, int y)
     planRRT();
   } 
   else if (key == 's') { 
-    stepRRT(100); 
+    //stepRRT(100);
+    stepSimulation();
   }
   else if (key == 'x') {
     writeGoalThreadToFile();
@@ -972,7 +1030,7 @@ void processNormalKeys(unsigned char key, int x, int y)
     increaseDimension();
   }
   else if (key == 'n') {
-    DimensionReductionBestPath(2);
+    //DimensionReductionBestPath(2);
   } 
   else if (key == '>') {
     stepTrajectoryFollower(true); 
@@ -1074,7 +1132,9 @@ void DrawStuff (void)
 
  if (move_end[0] != 0.0 || move_end[1] != 0.0 || tangent_end[0] != 0.0 || tangent_end[1] != 0.0 || tangent_rotation_end[0] != 0 || tangent_rotation_end[1] != 0 || move_start[0] != 0.0 || move_start[1] != 0.0 || tangent_start[0] != 0.0 || tangent_start[1] != 0.0 || tangent_rotation_start[0] != 0 || tangent_rotation_start[1] != 0)
   {
+
     glThreads[curThread]->ApplyUserInput(move_end, tangent_end, tangent_rotation_end, move_start, tangent_start, tangent_rotation_start);
+    stepSimulation(); 
   }
 
   // draw planner end points
@@ -1170,7 +1230,7 @@ void InitThread(int argc, char* argv[])
 
   }
   for(int i = 0; i < totalThreads; i++) {
-    glThreads[i]->minimize_energy();
+    //glThreads[i]->minimize_energy();
   }
 }
 

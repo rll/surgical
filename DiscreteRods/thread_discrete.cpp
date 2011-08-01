@@ -420,6 +420,74 @@ double Thread::calculate_energy()
 #endif
 }
 
+
+void Thread::dynamic_step(double step_size, double mass, int steps) { 
+  vector<Vector3d> vertex_gradients(num_pieces());
+  vector<Vector3d> position_offsets(num_pieces());
+  vector<Vector3d> velocity(num_pieces());
+
+  bool initialize_velocity = false; 
+  if (last_velocity.size() == 0)  {
+    initialize_velocity = true; 
+    last_velocity.resize(num_pieces());
+  }
+
+  
+
+  //for (int t = 0; t < steps; t++) { 
+    
+  for (int t = 0; t < steps; t++) { 
+    for (int i = 0; i < vertex_gradients.size(); i++) {
+      velocity[i].setZero();
+      if (initialize_velocity) { 
+        last_velocity[i].setZero();
+        initialize_velocity = false; 
+      }
+      vertex_gradients[i].setZero();
+      position_offsets[i].setZero();
+    }
+    calculate_gradient_vertices(vertex_gradients);
+
+    for (int i = 0; i < velocity.size(); i++) { 
+      last_velocity[i] = -(vertex_gradients[i] / mass) * step_size;
+      velocity[i] = last_velocity[i];
+      position_offsets[i] = velocity[i] * step_size;  
+    }
+
+    //TODO: make position_offset <= MAX_MOVEMENT_VERTICES 
+    //
+    double max_move = 0;
+    bool move_too_far = false;
+    for(int i = 2; i < position_offsets.size() - 2; i++) {
+      if(position_offsets[i].norm() > MAX_MOVEMENT_VERTICES) {
+        move_too_far = true;
+        if(position_offsets[i].norm() > max_move) 
+          max_move = position_offsets[i].norm();
+      }
+    }
+    if(move_too_far) {
+      for(int i = 2; i < position_offsets.size()-2; i++) {
+        position_offsets[i] = position_offsets[i] * MAX_MOVEMENT_VERTICES / max_move;
+      }
+    }
+    apply_vertex_offsets(position_offsets);
+
+/*    if (COLLISION_CHECKING) {
+      vector<Self_Intersection> self_intersections;
+      vector<Intersection> intersections;
+      int intersection_iters = 0; 
+      bool project_length_constraint_pass = true;
+      while(check_for_intersection(self_intersections, intersections) && project_length_constraint_pass) {
+      fix_intersections();
+      }
+      }
+*/
+    minimize_energy_twist_angles();
+    project_length_constraint();
+  }
+}
+
+
 bool debugflag = false;
 bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
 {
@@ -2643,3 +2711,4 @@ vector<Intersection_Object>* get_objects_in_env()
 {
   return &objects_in_env;
 }
+

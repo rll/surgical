@@ -13,7 +13,7 @@
 #include <Eigen/Geometry>
 
 #ifdef ISOTROPIC 
-    #define MAX_MOVEMENT_VERTICES 0.2
+    #define MAX_MOVEMENT_VERTICES 0.1
     #define MAX_ROTATION_TWIST (M_PI/30.0)
     #define MOMENTUM_CONSTANT 0.0 /*how much of the last gradient do we use*/
 
@@ -36,7 +36,7 @@
 
 #endif
 
-#define DEFAULT_REST_LENGTH 3 /*default rest length for each threadpiece*/
+#define DEFAULT_REST_LENGTH 3.0 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
 #define INTERSECTION_PUSHBACK_EPS 0.03 
@@ -45,7 +45,6 @@
 
 #define THREAD_RADIUS 0.2     /* MUST BE ATLEAST MAX_MOVEMENT_VERTICES */
 #define COLLISION_CHECKING true
-
 
 
 using namespace std;
@@ -118,6 +117,10 @@ class Thread
     void set_all_angles_zero();
     void set_all_pieces_mythread();
 
+    //dynamical simulation
+    
+    void dynamic_step(double step_size=0.01, double mass=100, int steps=500);
+
     //energy minimization
     //
 #ifdef ISOTROPIC
@@ -133,7 +136,6 @@ class Thread
     double one_step_grad_change(double step_size);
     void match_start_and_end_constraints(Thread& to_match, int num_steps, int num_steps_break = INT_MAX);
     void match_start_and_end_constraints(Thread& to_match, int num_steps, int num_steps_break, vector<Thread*>& intermediates);
-
 
     //setting end constraints
     void set_constraints(const Vector3d& start_pos, const Matrix3d& start_rot, const Vector3d& end_pos, const Matrix3d& end_rot);
@@ -276,12 +278,14 @@ class Thread
     vector<ThreadPiece*> _thread_pieces;
     vector<ThreadPiece*> _thread_pieces_backup;
     vector<double> _angle_twist_backup;
-
+    
     Vector3d _start_pos_backup;
     Matrix3d _start_rot_backup;
     Vector3d _end_pos_backup;
     Matrix3d _end_rot_backup; 
     vector<ThreadPiece*> _thread_pieces_collision_backup;
+
+    vector<Vector3d> last_velocity;
 
     void add_momentum_to_gradient(vector<Vector3d>& vertex_gradients, vector<Vector3d>& new_gradients, double last_step_size);
 

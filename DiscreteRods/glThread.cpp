@@ -1,7 +1,6 @@
 #include "glThread.h"
 //default 23 links
-#define NUM_POINTS 11
-
+#define NUM_POINTS 19
 
 GLThread::GLThread() {
   int numInit = (NUM_POINTS-3)/2;
@@ -342,10 +341,10 @@ void GLThread::ApplyUserInput(float move_end[], float tangent_end[], float tange
   //change thread
   //_thread->set_constraints(positions[0], rotations[0], positions[1], rotations[1]);
   //thread->set_end_constraint(positions[1], rotations[1]);
-  _thread->apply_motion_nearEnds(motion_to_apply);
+  _thread->apply_motion_nearEnds(motion_to_apply, false);
 
   // std::cout <<"CONSTRAINT END:\n" << rotations[1] << std::endl;
-  _thread->minimize_energy();
+  //_thread->minimize_energy();
   updateThreadPoints();
   // std::cout <<"minimized END:\n" << rotations[1] << std::endl;
 }
