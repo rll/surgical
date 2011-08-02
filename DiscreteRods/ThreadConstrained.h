@@ -1,3 +1,7 @@
+#ifndef _ThreadConstrained_h
+#define _ThreadConstrained_h
+
+
 #include <stdlib.h>
 #include <algorithm>
 
@@ -18,10 +22,30 @@
 #include <Eigen/Geometry>
 #include <math.h>
 #include "thread_discrete.h"
+#include "drawutils.h"
 
 #define LIMITED_DISPLACEMENT false
 #define MAX_DISPLACEMENT 1 //(0.49*THREAD_RADIUS)
 #define MAX_ANGLE_CHANGE (0.05*M_PI)
+
+//CONTOUR STUFF
+#define SCALE 1.0
+#define CONTOUR(x,y) {					\
+   double ax, ay, alen;					\
+   contour[i][0] = SCALE * (x);				\
+   contour[i][1] = SCALE * (y);				\
+   if (i!=0) {						\
+      ax = contour[i][0] - contour[i-1][0];		\
+      ay = contour[i][1] - contour[i-1][1];		\
+      alen = 1.0 / sqrt (ax*ax + ay*ay);		\
+      ax *= alen;   ay *= alen;				\
+      contour_norms [i-1][0] = ay;				\
+      contour_norms [i-1][1] = -ax;				\
+   }							\
+   i++;							\
+}
+
+#define NUM_PTS_CONTOUR (25)
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
@@ -62,16 +86,22 @@ class ThreadConstrained {
 		int nearestVertex(Vector3d pos);
 		Vector3d position(int absolute_vertex_num);
 		Matrix3d rotation(int absolute_vertex_num);
+		void draw();
+		void toggleExamineMode();
 
 	private:
 		int num_vertices;
 		vector<Thread*> threads;
 		double zero_angle;
+		bool examine_mode;
 		vector<Matrix3d> rot_diff;
 		vector<Matrix3d> rot_offset;
 		vector<Vector3d> last_pos;
 		vector<Matrix3d> last_rot;
     vector<int> constrained_vertices_nums;
+    double contour[NUM_PTS_CONTOUR][2];
+		double contour_norms[NUM_PTS_CONTOUR][2];
+    void initContour();
 		void intermediateRotation(Matrix3d &inter_rot, Matrix3d end_rot, Matrix3d start_rot);
 		// Splits the thread threads[thread_num] into two threads, which are stored at threads[thread_num] and threads[thread_num+1].  Threads in threads that are stored after thread_num now have a new thread_num which is one unit more than before. The split is done at vertex vertex of thread[thread_num]
 		void splitThread(int thread_num, int vertex_num);
@@ -104,3 +134,5 @@ int insertSorted (vector<int> &v, int e);
 int removeSorted (vector<int> &v, int e);
 //Returns the position of the element to be found.
 int find(vector<int> v, int e);
+
+#endif //_ThreadConstrained_h

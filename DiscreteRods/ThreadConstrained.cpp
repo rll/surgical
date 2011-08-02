@@ -70,6 +70,9 @@ ThreadConstrained::ThreadConstrained(int num_vertices_init) {
 	}
 	constrained_vertices_nums.push_back(0);
 	constrained_vertices_nums.push_back(num_vertices_init-1);
+	
+	examine_mode = false;
+	initContour();
 }
 
 void ThreadConstrained::get_thread_data(vector<Vector3d> &absolute_points) {
@@ -408,6 +411,134 @@ Matrix3d ThreadConstrained::rotation(int absolute_vertex_num) {
 		vertex_start_rot = material_frames[absolute_vertex_num];
 	}
 	return vertex_start_rot * rot_offset[absolute_vertex_num].transpose();
+}
+
+void ThreadConstrained::draw() {
+	vector<Vector3d> points;
+	vector<double> twist_angles;	
+	get_thread_data(points, twist_angles);
+
+  glPushMatrix();
+  glColor3f (0.5, 0.5, 0.2);
+  double pts_cpy[points.size()+2][3];
+  double twist_cpy[points.size()+2]; 
+  for (int i=0; i < points.size(); i++)
+  {
+    pts_cpy[i+1][0] = points[i](0);
+    pts_cpy[i+1][1] = points[i](1);
+    pts_cpy[i+1][2] = points[i](2);
+   	twist_cpy[i+1] = -(360.0/(2.0*M_PI))*(twist_angles[i]);
+  }
+  //add first and last point
+  pts_cpy[0][0] = 2*pts_cpy[1][0] - pts_cpy[2][0];
+  pts_cpy[0][1] = 2*pts_cpy[1][1] - pts_cpy[2][1];
+  pts_cpy[0][2] = 2*pts_cpy[1][2] - pts_cpy[2][2];
+  twist_cpy[0] = twist_cpy[1];
+
+  pts_cpy[points.size()+1][0] = 2*pts_cpy[points.size()][0] - pts_cpy[points.size()-1][0];
+  pts_cpy[points.size()+1][1] = 2*pts_cpy[points.size()][1] - pts_cpy[points.size()-1][1];
+  pts_cpy[points.size()+1][2] = 2*pts_cpy[points.size()][2] - pts_cpy[points.size()-1][2];
+  twist_cpy[points.size()+1] = twist_cpy[points.size()];
+
+  gleTwistExtrusion(20,
+      contour,
+      contour_norms,
+      NULL,
+      points.size()+2,
+      pts_cpy,
+      0x0,
+      twist_cpy);
+      
+  if (examine_mode)
+		for (int i=0; i<points.size(); i++)
+			drawSphere(points[i], 0.7, 0.0, 0.5, 0.5);
+			
+  glPopMatrix ();
+}
+
+void ThreadConstrained::initContour()
+{
+  int style;
+
+  /* pick model-vertex-cylinder coords for texture mapping */
+  //TextureStyle (509);
+
+  /* configure the pipeline */
+  style = TUBE_JN_CAP;
+  style |= TUBE_CONTOUR_CLOSED;
+  style |= TUBE_NORM_FACET;
+  style |= TUBE_JN_ANGLE;
+  gleSetJoinStyle (style);
+
+  int i;
+  double contour_scale_factor= 0.3;
+   if (examine_mode)
+    contour_scale_factor = 0.05;
+
+#ifdef ISOTROPIC
+  // outline of extrusion
+  i=0;
+  CONTOUR (1.0 *contour_scale_factor, 1.0 *contour_scale_factor);
+  CONTOUR (1.0 *contour_scale_factor, 2.9 *contour_scale_factor);
+  CONTOUR (0.9 *contour_scale_factor, 3.0 *contour_scale_factor);
+  CONTOUR (-0.9*contour_scale_factor, 3.0 *contour_scale_factor);
+  CONTOUR (-1.0*contour_scale_factor, 2.9 *contour_scale_factor);
+
+  CONTOUR (-1.0*contour_scale_factor, 1.0 *contour_scale_factor);
+  CONTOUR (-2.9*contour_scale_factor, 1.0 *contour_scale_factor);
+  CONTOUR (-3.0*contour_scale_factor, 0.9 *contour_scale_factor);
+  CONTOUR (-3.0*contour_scale_factor, -0.9*contour_scale_factor);
+  CONTOUR (-2.9*contour_scale_factor, -1.0*contour_scale_factor);
+
+  CONTOUR (-1.0*contour_scale_factor, -1.0*contour_scale_factor);
+  CONTOUR (-1.0*contour_scale_factor, -2.9*contour_scale_factor);
+  CONTOUR (-0.9*contour_scale_factor, -3.0*contour_scale_factor);
+  CONTOUR (0.9 *contour_scale_factor, -3.0*contour_scale_factor);
+  CONTOUR (1.0 *contour_scale_factor, -2.9*contour_scale_factor);
+
+  CONTOUR (1.0 *contour_scale_factor, -1.0*contour_scale_factor);
+  CONTOUR (2.9 *contour_scale_factor, -1.0*contour_scale_factor);
+  CONTOUR (3.0 *contour_scale_factor, -0.9*contour_scale_factor);
+  CONTOUR (3.0 *contour_scale_factor, 0.9 *contour_scale_factor);
+  CONTOUR (2.9 *contour_scale_factor, 1.0 *contour_scale_factor);
+
+  CONTOUR (1.0 *contour_scale_factor, 1.0 *contour_scale_factor);   // repeat so that last normal is computed
+#else
+  // outline of extrusion
+  i=0;
+  CONTOUR (1.0*contour_scale_factor, 0.0*contour_scale_factor);
+  CONTOUR (1.0*contour_scale_factor, 0.5*contour_scale_factor);
+  CONTOUR (1.0*contour_scale_factor, 1.0*contour_scale_factor);
+  CONTOUR (1.0*contour_scale_factor, 2.0*contour_scale_factor);
+  CONTOUR (1.0*contour_scale_factor, 2.9*contour_scale_factor);
+  CONTOUR (0.9*contour_scale_factor, 3.0*contour_scale_factor);
+  CONTOUR (0.0*contour_scale_factor, 3.0*contour_scale_factor);
+  CONTOUR (-0.9*contour_scale_factor, 3.0*contour_scale_factor);
+  CONTOUR (-1.0*contour_scale_factor, 2.9*contour_scale_factor);
+
+  CONTOUR (-1.0*contour_scale_factor, 2.0*contour_scale_factor);
+  CONTOUR (-1.0*contour_scale_factor, 1.0*contour_scale_factor);
+  CONTOUR (-1.0*contour_scale_factor, 0.5*contour_scale_factor);
+  CONTOUR (-1.0*contour_scale_factor, 0.0*contour_scale_factor);
+  CONTOUR (-1.0*contour_scale_factor, -0.5*contour_scale_factor);
+  CONTOUR (-1.0*contour_scale_factor, -1.0*contour_scale_factor);
+  CONTOUR (-1.0*contour_scale_factor, -2.0*contour_scale_factor);
+  CONTOUR (-1.0*contour_scale_factor, -2.9*contour_scale_factor);
+  CONTOUR (-0.9*contour_scale_factor, -3.0*contour_scale_factor);
+  CONTOUR (0.0*contour_scale_factor, -3.0*contour_scale_factor);
+  CONTOUR (0.9*contour_scale_factor, -3.0*contour_scale_factor);
+  CONTOUR (1.0*contour_scale_factor, -2.9*contour_scale_factor);
+  CONTOUR (1.0*contour_scale_factor, -2.0*contour_scale_factor);
+  CONTOUR (1.0*contour_scale_factor, -1.0*contour_scale_factor);
+  CONTOUR (1.0*contour_scale_factor, -0.5*contour_scale_factor);
+
+  CONTOUR (1.0*contour_scale_factor, 0.0*contour_scale_factor);   // repeat so that last normal is computed
+#endif
+}
+
+void ThreadConstrained::toggleExamineMode() {
+	examine_mode = !examine_mode;
+  initContour();
 }
 
 void ThreadConstrained::intermediateRotation(Matrix3d &inter_rot, Matrix3d end_rot, Matrix3d start_rot) {

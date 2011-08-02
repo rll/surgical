@@ -170,7 +170,6 @@ void EndEffector::draw() {
 		if (obj_ind==0) { glColor3f(0.3, 0.3, 0.0); }
 	  glePolyCylinder(4, point_array, NULL, ee_objs[obj_ind]->_radius);
   }
-  unhighlight();
 }
 
 /******************************************************** CURSOR ********************************************************/

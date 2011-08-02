@@ -1,3 +1,6 @@
+#ifndef _EnvObjects_h
+#define _EnvObjects_h
+
 #include <stdlib.h>
 #include <algorithm>
 
@@ -90,5 +93,4 @@ class Cursor {
 		bool last_open;
 };
 
-
-
+#endif //_EnvObjects_h

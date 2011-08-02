@@ -22,27 +22,21 @@
 #include "thread_socket_interface.h"
 #include "ThreadConstrained.h"
 #include "EnvObjects.h"
-
+#include "SimpleEnv.h"
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
-void initStuff();
 void drawStuff();
+void processInput();
 void updateState(const Vector3d& proxy_pos, const Matrix3d& proxy_rot, Cursor* cursor);
 bool closeEnough(Vector3d my_pos, Matrix3d my_rot, Vector3d pos, Matrix3d rot);
 void mouseTransform(Vector3d &new_pos, Matrix3d &new_rot, vector<Vector3d> &positions, vector<Matrix3d> &rotations, int cvnum);
 void drawAxes(Vector3d pos, Matrix3d rot);
 void labelAxes(int constrained_vertex_num);
 void drawThread();
-//void drawCylinder(Vector3d pos, Matrix3d rot, double h, double r, float color0, float color1, float color2);
-//void drawGrip(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2);
-void drawEndEffector(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2);
-void drawSphere(Vector3d position, float radius, float color0, float color1, float color2);
-//void drawCursor(int device_id, float color);
 void initThread();
 void glutMenu(int ID);
-void initContour ();
 void initGL();
 
 #define NUM_PTS 500
@@ -59,8 +53,12 @@ float lasty_L=0;
 float lastx_R=0;
 float lasty_R=0;
 
-float rotate_frame[2];
+float rotate_frame[2] = { 0.0, 0.0 };
 float last_rotate_frame[2];
+int main_window = 0;
+int side_window = 0;
+double eye_separation = 20.0;
+double eye_focus_depth = 80.0;
 
 float move[2];
 float tangent[2];
@@ -84,10 +82,6 @@ vector<Matrix3d> all_rotations;
 
 key_code key_pressed;
 
-bool examine_mode = false;
-
-static double gCursorScale = 6;
-static GLuint gCursorDisplayList = 0;
 Vector3d start_proxy_pos, end_proxy_pos, start_tip_pos, end_tip_pos;
 Matrix3d start_proxy_rot = Matrix3d::Identity(), end_proxy_rot = Matrix3d::Identity();
 bool start_proxybutton[2] = {false, false}, end_proxybutton[2] = {false, false};
@@ -108,27 +102,7 @@ Cylinder* base;
 EndEffector* extra_end_effector;
 vector<EndEffector*> constrained_ee;
 
-//CONTOUR STUFF
-#define SCALE 1.0
-#define CONTOUR(x,y) {					\
-   double ax, ay, alen;					\
-   contour[i][0] = SCALE * (x);				\
-   contour[i][1] = SCALE * (y);				\
-   if (i!=0) {						\
-      ax = contour[i][0] - contour[i-1][0];		\
-      ay = contour[i][1] - contour[i-1][1];		\
-      alen = 1.0 / sqrt (ax*ax + ay*ay);		\
-      ax *= alen;   ay *= alen;				\
-      contour_norms [i-1][0] = ay;				\
-      contour_norms [i-1][1] = -ax;				\
-   }							\
-   i++;							\
-}
-
-#define NUM_PTS_CONTOUR (25)
-
-double contour[NUM_PTS_CONTOUR][2];
-double contour_norms[NUM_PTS_CONTOUR][2];
+SimpleEnv *env;
 
 
 void processLeft(int x, int y) {
@@ -322,8 +296,21 @@ void processNormalKeys(unsigned char key, int x, int y) {
       printf("\n");
     }
   } else if(key == 'e') {
-  	examine_mode = !examine_mode;
-  	initContour();
+  	thread->toggleExamineMode();
+  	glutPostRedisplay ();
+  } else if(key == '=') {
+  	eye_separation += 0.5;
+  	glutPostRedisplay ();
+  } else if(key == '+') {
+  	eye_focus_depth += 1.0;
+  	glutPostRedisplay ();
+  } else if(key == '-') {
+  	if (eye_separation > 1.0)
+	  	eye_separation -= 0.5;
+  	glutPostRedisplay ();
+  } else if(key == '_') {
+  	if (eye_focus_depth > 1.0)
+	  	eye_focus_depth -= 5.0;
   	glutPostRedisplay ();
   }	else if (key == 'q' || key == 27) {
     exit(0);
@@ -380,30 +367,30 @@ int main (int argc, char * argv[])
     "To change between modes, press 'c'.\n"
     "\n"
     "In normal mode:\n"
-    "\tPhantom control input:\n"
-    "\t\tThe red/green small cylinders (cursors) represent the true position and \n\t\t\torientation of the haptic device.\n"
-    "\t\tThe cursor can be open or closed, and this is represented by a green or \n\t\t\tred cursor respectively.\n"
-    "\t\tThe cursor can be attached to an end effector, which inherits the \n\t\t\topen/close status of the cursor that holds it.\n"
-    "\t\tTo attach the cursor to an end effector, the cursor have to be near and \n\t\t\taligned (orientation) to the end effector's yellow cylinder.\n"
-    "\t\tPress the haptic's upper button to change between open and closed.\n"
-    "\t\tPress the haptic's lower button to attach or dettach the cursor to or from \n\t\t\tthe end effector.\n"
+    "  Phantom control input:\n"
+    "    The red/green small cylinders (cursors) represent the true position and \n      orientation of the haptic device.\n"
+    "    The cursor can be open or closed, and this is represented by a green or \n      red cursor respectively.\n"
+    "    The cursor can be attached to an end effector, which inherits the \n      open/close status of the cursor that holds it.\n"
+    "    To attach the cursor to an end effector, the cursor have to be near and \n      aligned (orientation) to the end effector's yellow cylinder.\n"
+    "    Press the haptic's upper button to change between open and closed.\n"
+    "    Press the haptic's lower button to attach or dettach the cursor to or from \n      the end effector.\n"
     "\n"
-    "\tMouse and keyboard control input:\n"
-    "\t\tOnly one end effector can be selected at a time. The selected end effector \n\t\t\thas a darker color.\n"
-    "\t\tPress 'n' or 'b' to select the next or previous end effector, respectively.\n"
-    "\t\tHold 'm' while holding down the left or right mouse button to move the \n\t\t\tselected end effector.\n"
-    "\t\tHold 't' while holding down the left or right mouse button to orientate \n\t\t\tthe tangent of the selected end effector.\n"
-    "\t\tHold 'r' while holding down the left or right mouse button to roll the \n\t\t\ttangent of the selected end effector.\n"
+    "  Mouse and keyboard control input:\n"
+    "    Only one end effector can be selected at a time. The selected end effector \n      has a darker color.\n"
+    "    Press 'n' or 'b' to select the next or previous end effector, respectively.\n"
+    "    Hold 'm' while holding down the left or right mouse button to move the \n      selected end effector.\n"
+    "    Hold 't' while holding down the left or right mouse button to orientate \n      the tangent of the selected end effector.\n"
+    "    Hold 'r' while holding down the left or right mouse button to roll the \n      tangent of the selected end effector.\n"
     "\n"
     "In choose mode:\n"
-    "\tUse this mode to add constraints (with end effectors) to the thread using \n\t\tonly the mouse and keyboard.\n"
-    "\tAny end effectors held by the cursor and not holding the thread are dropped \n\t\twhen changing into this mode\n"
-    "\tConstrained vertices are represented by red spheres. Free vertices where an \n\t\tend effector can be attached are represented by green spheres.\n"
-    "\tThere is one end effector that has a darker color. Use this end effector to \n\t\ttoggle between vertices.\n"
-    "\tIf the darker end effector is open, there is not a constraint in the \n\t\tselected vertex, and viceversa.\n"
-    "\tThe orientation of the end effector _relative_ to the thread can be changed \n\t\tusing 't' and 'r' and the mouse in a similar way as in normal mode.\n"
-    "\tPress 'b' to close the end effector and thus constraint the vertex, or to open \n\t\tthe end effector and thus remove the constraint from the vertex.\n"
-    "\tPress 'n' or 'b' to select the next or previous vertex, respectively.\n"
+    "  Use this mode to add constraints (with end effectors) to the thread using \n    only the mouse and keyboard.\n"
+    "  Any end effectors held by the cursor and not holding the thread are dropped \n    when changing into this mode\n"
+    "  Constrained vertices are represented by red spheres. Free vertices where an \n    end effector can be attached are represented by green spheres.\n"
+    "  There is one end effector that has a darker color. Use this end effector to \n    toggle between vertices.\n"
+    "  If the darker end effector is open, there is not a constraint in the \n    selected vertex, and viceversa.\n"
+    "  The orientation of the end effector _relative_ to the thread can be changed \n    using 't' and 'r' and the mouse in a similar way as in normal mode.\n"
+    "  Press 'b' to close the end effector and thus constraint the vertex, or to \n    open the end effector and thus remove the constraint from the vertex.\n"
+    "  Press 'n' or 'b' to select the next or previous vertex, respectively.\n"
     "\n"
     "Press 'w' to reset view.\n"
     "Press 'q' or 'ESC' to quit.\n");
@@ -411,8 +398,9 @@ int main (int argc, char * argv[])
 	/* initialize glut */
 	glutInit (&argc, argv); //can i do that?
 	glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-	glutInitWindowSize(900,900);
-	glutCreateWindow ("Thread");
+	glutInitWindowSize(1680 / 2,900);
+	main_window = glutCreateWindow ("Thread");
+  glutPositionWindow(0,0);
 	glutDisplayFunc (drawStuff);
 	glutMotionFunc (MouseMotion);
   glutMouseFunc (processMouse);
@@ -427,14 +415,20 @@ int main (int argc, char * argv[])
 	glutAttachMenu (GLUT_MIDDLE_BUTTON);
 
 	initGL();
-	initStuff ();
-
+	
+	side_window = glutCreateWindow ("Thread2");
+  glutPositionWindow(1680/2, 0);
+  initGL();
+	glutSetWindow(main_window);
+	
   initThread();
 	thread->minimize_energy();
   thread->getConstrainedTransforms(positions, rotations);
 
   zero_location = Vector3d::Zero(); //points[0];
   zero_angle = 0.0;
+	
+	env = new SimpleEnv();
 	
 	if (HAPTICS) {
 		cursor0 = new Cursor(Vector3d::Zero(), Matrix3d::Identity());
@@ -455,18 +449,44 @@ int main (int argc, char * argv[])
   glutMainLoop ();
 }
 
-void drawStuff (void)
+void drawStuff()
 {
+  glutSetWindow(main_window);
+  glPushMatrix ();  
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glColor3f (0.8, 0.3, 0.6);
-
-  glPushMatrix ();
-  
   /* set up some matrices so that the object spins with the mouse */
   glTranslatef (0.0,0.0,-110.0);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
+  glTranslatef (-eye_separation/2.0, 0.0, 0.0);
+  glRotatef (-atan(eye_separation/(2.0*eye_focus_depth)), 0.0, 1.0, 0.0);
+  processInput();
+  env->drawObjs();
+  glPopMatrix();
+  glutSwapBuffers ();
   
+  glutSetWindow(side_window);
+  glPushMatrix ();  
+  glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  /* set up some matrices so that the object spins with the mouse */
+  glTranslatef (0.0,0.0,-110.0);
+  glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
+  glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
+  glTranslatef (+eye_separation/2.0, 0.0, 0.0);
+  glRotatef (+atan(eye_separation/(2.0*eye_focus_depth)), 0.0, 1.0, 0.0);
+  env->drawObjs();
+  glPopMatrix();
+  glutSwapBuffers ();
+  
+	env->clearObjs();
+	
+	glutSetWindow(main_window);
+	
+	cout << "eye_separation: " << eye_separation << "\t" << "eye_focus_depth: " << eye_focus_depth << "\t" << "angle: " << atan(eye_separation/(2.0*eye_focus_depth)) << endl;
+}
+
+void processInput()
+{  
   //thread->getConstrainedTransforms(positions, rotations);
   
   if (choose_mode) {
@@ -517,9 +537,11 @@ void drawStuff (void)
 		mouseTransform(dummy_pos, all_rotations[selected_vertex_num], all_positions, all_rotations, selected_vertex_num);
 	  for (int i=0; i<operable_vertices_num.size(); i++) {
 	  	if (constrained_or_free[i]) {
-		  	drawSphere(all_positions[operable_vertices_num[i]], 1.2, 1.0, 0.0, 0.0);
+		  	//drawSphere(all_positions[operable_vertices_num[i]], 1.2, 1.0, 0.0, 0.0);
+		  	env->addObj(SimpleSphere(all_positions[operable_vertices_num[i]], 1.2, 1.0, 0.0, 0.0));
 		  } else {
-		  	drawSphere(all_positions[operable_vertices_num[i]], 1.2, 0.0, 1.0, 0.0);
+		  	//drawSphere(all_positions[operable_vertices_num[i]], 1.2, 0.0, 1.0, 0.0);
+		  	env->addObj(SimpleSphere(all_positions[operable_vertices_num[i]], 1.2, 0.0, 1.0, 0.0));
 		  }
 		}
 		for (int i=0; i<constrained_vertices_nums.size(); i++) {
@@ -527,15 +549,18 @@ void drawStuff (void)
 		}
 	  int selected_vertex_ind = find(constrained_vertices_nums, selected_vertex_num);
 		if (constrained_or_free[toggle]) {
-	  	drawSphere(all_positions[selected_vertex_num], 1.4, 0.5, 0.0, 0.0);
+	  	//drawSphere(all_positions[selected_vertex_num], 1.4, 0.5, 0.0, 0.0);
+	  	env->addObj(SimpleSphere(all_positions[selected_vertex_num], 1.4, 0.5, 0.0, 0.0));
 	  	if (selected_vertex_ind == -1)
 	  		cout << "Internal error: drawStuff(): if (constrained_or_free[toggle]): selected vertex should be constrained by an end effector." << endl;
 	  	constrained_ee[selected_vertex_ind]->highlight();
 	  } else {
-	  	drawSphere(all_positions[selected_vertex_num], 1.4, 0.0, 0.5, 0.0);
+	  	//drawSphere(all_positions[selected_vertex_num], 1.4, 0.0, 0.5, 0.0);
+	  	env->addObj(SimpleSphere(all_positions[selected_vertex_num], 1.4, 0.0, 0.5, 0.0));
 	  	if (selected_vertex_ind != -1)
 	  		cout << "Internal error: drawStuff(): if (constrained_or_free[toggle]): selected vertex should be constrained by an end effector." << endl;
-  		drawEndEffector(all_positions[selected_vertex_num], all_rotations[selected_vertex_num], 15, 0.4, 0.4, 0.4);
+  		//drawEndEffector(all_positions[selected_vertex_num], all_rotations[selected_vertex_num], 15, 0.4, 0.4, 0.4);
+  		env->addObj(SimpleEndEffector(all_positions[selected_vertex_num], all_rotations[selected_vertex_num], 15, 0.4, 0.4, 0.4));
 	  }
 	} else {
 		// starts non-choose mode
@@ -566,30 +591,43 @@ void drawStuff (void)
 		thread->updateConstraints(positionConstraints, rotationConstraints);
 		
 		thread->getConstrainedTransforms(positions, rotations);
-		
-		constrained_ee[toggle]->highlight();
-		for(int i=0; i<positions.size(); i++)
+				
+		for(int i=0; i<positions.size(); i++) {
+			constrained_ee[i]->unhighlight();
 			constrained_ee[i]->setTransform(positions[i], rotations[i]);
+		}
+		constrained_ee[toggle]->highlight();
 			
-		if (cursor0->isAttached() && cursor0->end_eff->constraint < 0)
-			cursor0->end_eff->draw();
-		if (cursor1->isAttached() && cursor1->end_eff->constraint < 0)
-			cursor1->end_eff->draw();
-		cursor0->draw();
-		cursor1->draw();
+		if (cursor0->isAttached() && cursor0->end_eff->constraint < 0) {
+			//cursor0->end_eff->draw();
+			env->addObj(cursor0->end_eff);
+		}
+		if (cursor1->isAttached() && cursor1->end_eff->constraint < 0) {
+			//cursor1->end_eff->draw();
+			env->addObj(cursor0->end_eff);
+		}
+		//cursor0->draw();
+		//cursor1->draw();
+		env->addObj(cursor0);
+		env->addObj(cursor1);
 	}
 	
 	//thread->adapt_links();
 	
-	drawThread();
+	//drawThread();
+	//thread->draw();
+	env->addObj(thread);
 	
-	base->draw();
-	extra_end_effector->draw();
-	for(int i=0; i<positions.size(); i++)
-		constrained_ee[i]->draw();
+	//base->draw();
+	env->addObj(base);
 	
-  glPopMatrix ();
-  glutSwapBuffers ();
+	//extra_end_effector->draw();
+	env->addObj(extra_end_effector);
+	
+	for(int i=0; i<positions.size(); i++) {
+		//constrained_ee[i]->draw();
+		env->addObj(constrained_ee[i]);
+	}
 }
 
 void updateState(const Vector3d& proxy_pos, const Matrix3d& proxy_rot, Cursor* cursor) {
@@ -660,11 +698,6 @@ void updateState(const Vector3d& proxy_pos, const Matrix3d& proxy_rot, Cursor* c
  	}
 }
 
-bool closeEnough(Vector3d my_pos, Matrix3d my_rot, Vector3d pos, Matrix3d rot) {
-	double angle = 2*asin((my_rot.col(0) - rot.col(0)).norm()/2);
-  return (((my_pos - pos).norm() < 4.0) && angle < 0.25*M_PI);
-}
-
 //cvnum stands for constrained vertex number or choosen vertex number
 void mouseTransform(Vector3d &new_pos, Matrix3d &new_rot, vector<Vector3d> &positions, vector<Matrix3d> &rotations, int cvnum) {
 	if (move[0] != 0.0 || move[1] != 0.0 || tangent[0] != 0.0 || tangent[1] != 0.0 || tangent_rotation[0] != 0.0 || tangent_rotation[1] != 0.0) { 
@@ -728,259 +761,9 @@ void mouseTransform(Vector3d &new_pos, Matrix3d &new_rot, vector<Vector3d> &posi
 	}
 }
 
-void drawThread() {
-	thread->get_thread_data(points, twist_angles);
-
-  glPushMatrix();
-  glColor3f (0.5, 0.5, 0.2);
-  double pts_cpy[points.size()+2][3];
-  double twist_cpy[points.size()+2]; 
-  for (int i=0; i < points.size(); i++)
-  {
-    pts_cpy[i+1][0] = points[i](0)-(double)zero_location(0);
-    pts_cpy[i+1][1] = points[i](1)-(double)zero_location(1);
-    pts_cpy[i+1][2] = points[i](2)-(double)zero_location(2);
-   	twist_cpy[i+1] = -(360.0/(2.0*M_PI))*(twist_angles[i]);
-  }
-  //add first and last point
-  pts_cpy[0][0] = 2*pts_cpy[1][0] - pts_cpy[2][0];//pts_cpy[1][0]-rotations[0](0,0);
-  pts_cpy[0][1] = 2*pts_cpy[1][1] - pts_cpy[2][1];//pts_cpy[1][1]-rotations[0](1,0);
-  pts_cpy[0][2] = 2*pts_cpy[1][2] - pts_cpy[2][2];//pts_cpy[1][2]-rotations[0](2,0);
-  twist_cpy[0] = twist_cpy[1];
-
-  pts_cpy[points.size()+1][0] = 2*pts_cpy[points.size()][0] - pts_cpy[points.size()-1][0];//pts_cpy[points.size()][0]+rotations[1](0,0);
-  pts_cpy[points.size()+1][1] = 2*pts_cpy[points.size()][1] - pts_cpy[points.size()-1][1];//pts_cpy[points.size()][1]+rotations[1](1,0);
-  pts_cpy[points.size()+1][2] = 2*pts_cpy[points.size()][2] - pts_cpy[points.size()-1][2];//pts_cpy[points.size()][2]+rotations[1](2,0);
-  twist_cpy[points.size()+1] = twist_cpy[points.size()];
-
-  gleTwistExtrusion(20,
-      contour,
-      contour_norms,
-      NULL,
-      points.size()+2,
-      pts_cpy,
-      0x0,
-      twist_cpy);
-      
-  if (examine_mode)
-		for (int i=0; i<points.size(); i++)
-			drawSphere(points[i]-zero_location, 0.7, 0.0, 0.5, 0.5);
-			
-  glPopMatrix ();
-}
-
-/*void drawCylinder(Vector3d pos, Matrix3d rot, double h, double r, float color0, float color1, float color2) {
-	glPushMatrix();
-	double transform[16] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
-													 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
-													 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
-													 pos(0)   , pos(1)   , pos(2)   , 1 };
-	glMultMatrixd(transform);
-	glColor3f(color0, color1, color2);
-	double cylinder[4][3] = { {-h-1.0, 0.0, 0.0} , {-h, 0.0, 0.0} , {0.0, 0.0, 0.0} ,
-															 {1.0, 0.0, 0.0} };
-	glePolyCylinder(4, cylinder, NULL, r);
-	glPopMatrix();
-}*/
-
-void drawEndEffector(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2) {
-	glPushMatrix();
-	double transform[16] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
-													 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
-													 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
-													 pos(0)   , pos(1)   , pos(2)   , 1 };
-	glMultMatrixd(transform);
-			
-	int pieces = 6;
-	double h = 1.5;
-	double start = -3;
-	double handle_r = 1.2;
-	double end = ((double) pieces)*h + start;
-	
-	glColor3f(0.3, 0.3, 0.0);
-	double cylinder[4][3] = { {grab_offset-4.0, 0.0, 0.0} , {grab_offset-3.0, 0.0, 0.0} , {grab_offset, 0.0, 0.0} ,
-														{grab_offset+1.0, 0.0, 0.0} };
-	glePolyCylinder(4, cylinder, NULL, 1.6);
-	
-	glColor3f(color0, color1, color2);
-	double grip_handle[4][3] = { {end-1.0, 0.0, 0.0} , {end, 0.0, 0.0} , {end+30.0, 0.0, 0.0} ,
-															 {end+31.0, 0.0, 0.0} };
-	glePolyCylinder(4, grip_handle, NULL, handle_r);
-
-	glTranslatef(end, 0.0, 0.0);
-	glRotatef(-degrees, 0.0, 0.0, 1.0);
-	glTranslatef(-end, 0.0, 0.0);
-	Matrix3d open_rot = (Matrix3d) AngleAxisd(-degrees*M_PI/180, rot*Vector3d::UnitZ());
-	Vector3d new_pos;
-	Matrix3d new_rot;
-	for (int piece=0; piece<pieces; piece++) {
-		double r = 0.5+((double) piece)*((0.8*handle_r)-0.5)/((double) pieces-1);
-		gleDouble grip_tip[4][3] = { {start+((double) piece)*h-1.0, r, 0.0} , {start+((double) piece)*h, r, 0.0} , {start+((double) piece+1)*h, r, 0.0} , {start+((double) piece+1)*h+1.0, r, 0.0} };
- 		glePolyCylinder(4, grip_tip, NULL, r); 		
-		new_rot = open_rot * rot;
-		new_pos = open_rot * rot * Vector3d(-end, 0.0, 0.0) + rot * Vector3d(end, 0.0, 0.0) + pos;
-	}
-	
-	glTranslatef(end, 0.0, 0.0);
-	glRotatef(2*degrees, 0.0, 0.0, 1.0);
-	glTranslatef(-end, 0.0, 0.0);
-	for (int piece=0; piece<pieces; piece++) {
-		double r = 0.5+((double) piece)*((0.8*handle_r)-0.5)/((double) pieces-1);
-		gleDouble grip_tip[4][3] = { {start+((double) piece)*h-1.0, -r, 0.0} , {start+((double) piece)*h, -r, 0.0} , {start+((double) piece+1)*h, -r, 0.0} , {start+((double) piece+1)*h+1.0, -r, 0.0} };
- 		glePolyCylinder(4, grip_tip, NULL, r);
- 		new_rot = open_rot.transpose() * rot;
-		new_pos = open_rot.transpose() * rot * Vector3d(-end, 0.0, 0.0) + rot * Vector3d(end, 0.0, 0.0) + pos;
-	}
-	glPopMatrix();
-}
-
-/*void drawGrip(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2) {
-	glPushMatrix();
-	double transform[16] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
-													 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
-													 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
-													 pos(0)   , pos(1)   , pos(2)   , 1 };
-	glMultMatrixd(transform);
-	glRotated(-90,0,0,1);
-	glColor3f(color0, color1, color2);
-	double grip_handle[4][3] = { {0.0, 9.0, 0.0} , {0.0,11.0, 0.0} , {0.0,19.0, 0.0} ,
-															 {0.0,21.0, 0.0} };
-	glePolyCylinder(4, grip_handle, NULL, 1);
-	
-	glTranslatef(0.0, 11.0, 0.0);
-	glRotatef(-degrees, 1.0, 0.0, 0.0);
-	glTranslatef(0.0, -11.0, 0.0);
-	double grip_tip0[4][3] = { {0.0, 0.0,-2.0} , {0.0, 0.0, 0.0} , {0.0, 0.0, 2.0} ,
-														 {0.0, 0.0, 4.0} };
-	glePolyCylinder(4, grip_tip0, NULL, 0.95*thread->rest_length());
-	double grip_side0[8][3] = { {0.0, 0.0,-2.0} , {0.0, 0.0, 0.0} , {0.0, 0.0, 2.0} ,
-															{0.0, 3.0, 5.0} , {0.0, 6.0, 5.0} , {0.0,11.0, 0.0} ,
-															{0.0,13.0, 0.0} };
-	glePolyCylinder(8, grip_side0, NULL, 1);
-															
-	glTranslatef(0.0, 11.0, 0.0);
-	glRotatef(2*degrees, 1.0, 0.0, 0.0);
-	glTranslatef(0.0, -11.0, 0.0);	
-	double grip_tip1[4][3] = { {0.0, 0.0, 2.0} , {0.0, 0.0, 0.0} , {0.0, 0.0,-2.0} ,
-														 {0.0, 0.0,-4.0} };
-	glePolyCylinder(4, grip_tip1, NULL, 0.95*thread->rest_length());
-	double grip_side1[8][3] = { {0.0, 0.0, 2.0} , {0.0, 0.0, 0.0} , {0.0, 0.0,-2.0} ,
-															{0.0, 3.0,-5.0} , {0.0, 6.0,-5.0} , {0.0,11.0, 0.0} ,
-															{0.0,13.0, 0.0} };
-	glePolyCylinder(8, grip_side1, NULL, 1);
-	glPopMatrix();
-}*/
-
-void drawSphere(Vector3d position, float radius, float color0, float color1, float color2) {
-	glPushMatrix();
-	double transform[16] = {1,0,0,0,
-													0,1,0,0,
-													0,0,1,0,
-													position(0), position(1), position(2), 1};
-	glMultMatrixd(transform);
-	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glEnable(GL_COLOR_MATERIAL);
-  glColor3f(color0, color1, color2);
-  glutSolidSphere(radius, 20, 16);
-  //glFlush ();
-  glPopMatrix();
-}
-
-/*void drawCursor(int device_id, float color) {
-  static const double kCursorRadius = 0.5;
-  static const double kCursorHeight = 1.5;
-  static const int kCursorTess = 4;
-  
-  GLUquadricObj *qobj = 0;
-
-  glPushAttrib(GL_CURRENT_BIT | GL_ENABLE_BIT | GL_LIGHTING_BIT);
-  glPushMatrix();
-
-  if (!gCursorDisplayList) {
-    gCursorDisplayList = glGenLists(1);
-    glNewList(gCursorDisplayList, GL_COMPILE);
-    qobj = gluNewQuadric();
-            
-    gluCylinder(qobj, 0.0, kCursorRadius, kCursorHeight,
-                kCursorTess, kCursorTess);
-    glTranslated(0.0, 0.0, kCursorHeight);
-    gluCylinder(qobj, kCursorRadius, 0.0, kCursorHeight / 5.0,
-                kCursorTess, kCursorTess);
-
-    gluDeleteQuadric(qobj);
-    glEndList();
-  }
-  
-  // Get the proxy transform in world coordinates
-  if (device_id) {
-  	glMultMatrixd(end_proxyxform);
-  } else {
-  	glMultMatrixd(start_proxyxform);
-  }
-  
-  // Apply the local cursor scale factor.
-  glScaled(gCursorScale, gCursorScale, gCursorScale);
-
-  glEnable(GL_COLOR_MATERIAL);
-  glColor3f(0.0, color, 1.0);
-
-  glCallList(gCursorDisplayList);
-  
-  glPopMatrix();
-  glPopAttrib();
-}*/
-
-void drawAxes(Vector3d pos, Matrix3d rot) {
-	glPushMatrix();
-	double transform[] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
-												 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
-												 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
-												 pos(0)   , pos(1)   , pos(2)   , 1 };
-	glMultMatrixd(transform);
-	glBegin(GL_LINES);
-	glEnable(GL_LINE_SMOOTH);
-	glColor3d(1.0, 0.0, 0.0); //red
-	glVertex3f(0.0, 0.0, 0.0); //x
-	glVertex3f(10.0, 0.0, 0.0);
-	glColor3d(0.0, 1.0, 0.0); //green
-	glVertex3f(0.0, 0.0, 0.0); //y
-	glVertex3f(0.0, 10.0, 0.0);
-	glColor3d(0.0, 0.0, 1.0); //blue
-	glVertex3f(0.0, 0.0, 0.0); //z
-	glVertex3f(0.0, 0.0, 10.0);
-	glEnd();
-	glPopMatrix();
-}
-
-void labelAxes(Vector3d pos, Matrix3d rot) {
-  glPushMatrix();
-  Vector3d diff_pos = pos-zero_location;
-	double rotation_scale_factor = 20.0;
-	Matrix3d rotations_project = rot*rotation_scale_factor;
-	void * font = GLUT_BITMAP_HELVETICA_18;
-	glColor3d(1.0, 0.0, 0.0); //red
-	//glRasterPos3i(20.0, 0.0, -1.0);
-	glRasterPos3i((float)(diff_pos(0)+rotations_project(0,0)), (float)(diff_pos(1)+rotations_project(1,0)), (float)(diff_pos(2)+rotations_project(2,0)));
-	glutBitmapCharacter(font, 'X');
-	glColor3d(0.0, 1.0, 0.0); //red
-	//glRasterPos3i(0.0, 20.0, -1.0);
-	glRasterPos3i((float)(diff_pos(0)+rotations_project(0,1)), (float)(diff_pos(1)+rotations_project(1,1)), (float)(diff_pos(2)+rotations_project(2,1)));
-	glutBitmapCharacter(font, 'Y');
-	glColor3d(0.0, 0.0, 1.0); //red
-	//glRasterPos3i(-1.0, 0.0, 20.0);
-	glRasterPos3i((float)(diff_pos(0)+rotations_project(0,2)), (float)(diff_pos(1)+rotations_project(1,2)), (float)(diff_pos(2)+rotations_project(2,2)));
-	glutBitmapCharacter(font, 'Z');
-  glPopMatrix();
-}
-
-void initStuff (void)
-{
-  glEnable(GL_BLEND);
-  glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  rotate_frame[0] = 0.0;
-  rotate_frame[1] = 0.0; //-111.0;
-      
-  initContour();
+bool closeEnough(Vector3d my_pos, Matrix3d my_rot, Vector3d pos, Matrix3d rot) {
+	double angle = 2*asin((my_rot.col(0) - rot.col(0)).norm()/2);
+  return (((my_pos - pos).norm() < 4.0) && angle < 0.25*M_PI);
 }
 
 void initThread()
@@ -1056,87 +839,11 @@ void initGL()
 	
 	glColorMaterial (GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
 	glEnable (GL_COLOR_MATERIAL);
+	
+	glEnable(GL_BLEND);
+  glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
-void initContour (void)
-{
-  int style;
-
-  /* pick model-vertex-cylinder coords for texture mapping */
-  //TextureStyle (509);
-
-  /* configure the pipeline */
-  style = TUBE_JN_CAP;
-  style |= TUBE_CONTOUR_CLOSED;
-  style |= TUBE_NORM_FACET;
-  style |= TUBE_JN_ANGLE;
-  gleSetJoinStyle (style);
-
-  int i;
-  double contour_scale_factor= 0.3;
-   if (examine_mode)
-    contour_scale_factor = 0.05;
-
-#ifdef ISOTROPIC
-  // outline of extrusion
-  i=0;
-  CONTOUR (1.0 *contour_scale_factor, 1.0 *contour_scale_factor);
-  CONTOUR (1.0 *contour_scale_factor, 2.9 *contour_scale_factor);
-  CONTOUR (0.9 *contour_scale_factor, 3.0 *contour_scale_factor);
-  CONTOUR (-0.9*contour_scale_factor, 3.0 *contour_scale_factor);
-  CONTOUR (-1.0*contour_scale_factor, 2.9 *contour_scale_factor);
-
-  CONTOUR (-1.0*contour_scale_factor, 1.0 *contour_scale_factor);
-  CONTOUR (-2.9*contour_scale_factor, 1.0 *contour_scale_factor);
-  CONTOUR (-3.0*contour_scale_factor, 0.9 *contour_scale_factor);
-  CONTOUR (-3.0*contour_scale_factor, -0.9*contour_scale_factor);
-  CONTOUR (-2.9*contour_scale_factor, -1.0*contour_scale_factor);
-
-  CONTOUR (-1.0*contour_scale_factor, -1.0*contour_scale_factor);
-  CONTOUR (-1.0*contour_scale_factor, -2.9*contour_scale_factor);
-  CONTOUR (-0.9*contour_scale_factor, -3.0*contour_scale_factor);
-  CONTOUR (0.9 *contour_scale_factor, -3.0*contour_scale_factor);
-  CONTOUR (1.0 *contour_scale_factor, -2.9*contour_scale_factor);
-
-  CONTOUR (1.0 *contour_scale_factor, -1.0*contour_scale_factor);
-  CONTOUR (2.9 *contour_scale_factor, -1.0*contour_scale_factor);
-  CONTOUR (3.0 *contour_scale_factor, -0.9*contour_scale_factor);
-  CONTOUR (3.0 *contour_scale_factor, 0.9 *contour_scale_factor);
-  CONTOUR (2.9 *contour_scale_factor, 1.0 *contour_scale_factor);
-
-  CONTOUR (1.0 *contour_scale_factor, 1.0 *contour_scale_factor);   // repeat so that last normal is computed
-#else
-  // outline of extrusion
-  i=0;
-  CONTOUR (1.0*contour_scale_factor, 0.0*contour_scale_factor);
-  CONTOUR (1.0*contour_scale_factor, 0.5*contour_scale_factor);
-  CONTOUR (1.0*contour_scale_factor, 1.0*contour_scale_factor);
-  CONTOUR (1.0*contour_scale_factor, 2.0*contour_scale_factor);
-  CONTOUR (1.0*contour_scale_factor, 2.9*contour_scale_factor);
-  CONTOUR (0.9*contour_scale_factor, 3.0*contour_scale_factor);
-  CONTOUR (0.0*contour_scale_factor, 3.0*contour_scale_factor);
-  CONTOUR (-0.9*contour_scale_factor, 3.0*contour_scale_factor);
-  CONTOUR (-1.0*contour_scale_factor, 2.9*contour_scale_factor);
-
-  CONTOUR (-1.0*contour_scale_factor, 2.0*contour_scale_factor);
-  CONTOUR (-1.0*contour_scale_factor, 1.0*contour_scale_factor);
-  CONTOUR (-1.0*contour_scale_factor, 0.5*contour_scale_factor);
-  CONTOUR (-1.0*contour_scale_factor, 0.0*contour_scale_factor);
-  CONTOUR (-1.0*contour_scale_factor, -0.5*contour_scale_factor);
-  CONTOUR (-1.0*contour_scale_factor, -1.0*contour_scale_factor);
-  CONTOUR (-1.0*contour_scale_factor, -2.0*contour_scale_factor);
-  CONTOUR (-1.0*contour_scale_factor, -2.9*contour_scale_factor);
-  CONTOUR (-0.9*contour_scale_factor, -3.0*contour_scale_factor);
-  CONTOUR (0.0*contour_scale_factor, -3.0*contour_scale_factor);
-  CONTOUR (0.9*contour_scale_factor, -3.0*contour_scale_factor);
-  CONTOUR (1.0*contour_scale_factor, -2.9*contour_scale_factor);
-  CONTOUR (1.0*contour_scale_factor, -2.0*contour_scale_factor);
-  CONTOUR (1.0*contour_scale_factor, -1.0*contour_scale_factor);
-  CONTOUR (1.0*contour_scale_factor, -0.5*contour_scale_factor);
-
-  CONTOUR (1.0*contour_scale_factor, 0.0*contour_scale_factor);   // repeat so that last normal is computed
-#endif
-}
 
 void glutMenu(int ID) {
 	switch(ID) {

@@ -38,8 +38,8 @@ testThreadDiscrete_noniso: testThreadDiscrete.cpp threadutils_discrete_noniso.o 
 testThreadDiscrete_phantom: testThreadDiscrete_phantom.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o
 	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete_phantom testThreadDiscrete_phantom.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o $(LIBS) $(PROFILER)
 
-testThreadDiscrete_pickUp: testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o ThreadConstrained.o EnvObjects.o thread_socket_interface.o UDPSocket.o Socket.o
-	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete_pickUp testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o ThreadConstrained.o EnvObjects.o thread_socket_interface.o UDPSocket.o Socket.o $(LIBS) $(PROFILER)
+testThreadDiscrete_pickUp: testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o ThreadConstrained.o EnvObjects.o SimpleEnv.o drawutils.o thread_socket_interface.o UDPSocket.o Socket.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete_pickUp testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o ThreadConstrained.o EnvObjects.o SimpleEnv.o drawutils.o thread_socket_interface.o UDPSocket.o Socket.o $(LIBS) $(PROFILER)
 
 recordThreadVideo: recordThreadVideo.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_reader.o
 	$(LD) $(INCLUDES) $(VISION_INCLUDES) $(DEBUG) -o recordThreadVideo recordThreadVideo.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o $(LIBS) $(VISION_LIBS)
@@ -80,6 +80,12 @@ threadutils_discrete.o: threadutils_discrete.cpp threadutils_discrete.h
 	
 EnvObjects.o: EnvObjects.cpp EnvObjects.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c EnvObjects.cpp $(PROFILER)
+
+SimpleEnv.o: SimpleEnv.cpp SimpleEnv.h
+	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c SimpleEnv.cpp $(PROFILER)
+	
+drawutils.o: $(UTILS_DIR)/drawutils.cpp
+	$(CC) $(INCLUDES) $(DEBUG) -c $(UTILS_DIR)/drawutils.cpp $(PROFILER)
 
 
 thread_discrete_noniso.o: thread_discrete.cpp thread_discrete.h
