@@ -6,12 +6,17 @@
 #include <boost/timer.hpp>
 #include "linearization_utils.h"
 
+
 #define CONTROLS_FILENAME "reversibility/controls.dat"
+#define SID_JAC_X_BASENAME "jacobian/rand_controls"
+#define SID_JAC_Y_BASENAME "jacobian/offsets" 
+#define SID_JAC_J_BASENAME "jacobian/J"
 
 void deleteAllThreads(vector<Thread*>& toDelete);
 void Copy_Threads(const vector<Thread*>& to_copy, vector<Thread*>& copy);
 void reverseControl(const VectorXd& in_control, VectorXd& out_control); 
 void thread_to_state_with_edges(const Thread* thread, VectorXd& state);
+void system_identification_jacobian(Thread* thread, MatrixXd& A);
 void estimate_transition_matrix_local(Thread* thread, MatrixXd& A);
 
 
@@ -29,8 +34,8 @@ int main(int argc, char* argv[]) {
   int trajs_end_ind = atoi (argv[2]);
   //int num_links = atoi (argv[3]);
   
-  #pragma omp parallel for num_threads(NUM_CPU_THREADS)
-  for (int num_links = 5; num_links <= 19; num_links += 2) {
+  //#pragma omp parallel for num_threads(NUM_CPU_THREADS*2)
+  for (int num_links = 7; num_links <= 7; num_links += 2) {
 
     vector<Thread*> start_threads;
     vector<Thread*> goal_threads;
@@ -76,8 +81,10 @@ int main(int argc, char* argv[]) {
       MatrixXd J(_size_each_state, _size_each_control);
       //estimate_transition_matrix_noEdges_withTwist(initial_thread, J, START_AND_END);
       Thread *backup_thread = new Thread(*initial_thread);
-      estimate_transition_matrix_local(initial_thread, J);
-
+      //estimate_transition_matrix_local(initial_thread, J);
+      system_identification_jacobian(initial_thread, J);
+      
+      initial_thread = backup_thread;
       VectorXd initial_state(_size_each_state);
       thread_to_state_with_edges(initial_thread, initial_state); 
 
@@ -102,11 +109,8 @@ int main(int argc, char* argv[]) {
 
         results_file << offset.transpose() << " " << actual_offset.transpose() << endl; 
 
-        /*
-           double similarity = (offset.dot(actual_offset)) / (actual_offset.norm() * offset.norm());
-           results_file << thread_ind << " " << i << " " << similarity << endl ;
-           */
       }
+    
     } 
 
     results_file.close();
@@ -164,6 +168,158 @@ void reverseControl(const VectorXd& in_control, VectorXd& out_control)
 
 }
 
+// samples on sphere such that norm(u, 2) = norm 
+void sample_on_sphere(VectorXd& u, const double norm) {
+  for (int i = 0; i < u.size(); i++) { 
+    u(i) = drand48();
+  }
+
+  u.normalize();
+
+  for (int i = 0; i < u.size(); i++) { 
+    if (drand48() < 0.5) { 
+      u(i) *= -norm; 
+    } else { 
+      u(i) *= norm; 
+    }
+  }
+
+}
+
+void sample_in_sphere(VectorXd u, const double norm) { 
+  sample_on_sphere(u, norm);
+  for (int i = 0; i < u.size(); i++) { 
+    u(i) *= drand48(); 
+  }
+}
+
+/* 
+ * least squares estimate X in AX = Y
+ */
+void least_squares(MatrixXd& Au, MatrixXd& Yu, MatrixXd& Xu) { 
+  //X = A.transpose() * Y;
+  MatrixXd tmp = Au.transpose() * Yu; 
+  (Au.transpose() * Au).ldlt().solve(tmp, &Xu); 
+
+  //X = (A.transpose() * A).inverse() * A.transpose() * Y; 
+}
+
+/* X = [x_1, x_2, .. x_n];
+ * Y = [y_1, y_2, .., y_n];
+ * A = (YX')(XX')^-1
+ */
+MatrixXd least_squares_system_identification(MatrixXd Xu, MatrixXd Yu) { 
+  // yeah this is very inefficient, but it works 
+ MatrixXd Au(Yu.rows(), Xu.rows());
+ MatrixXd Xuu = Xu.transpose();
+ MatrixXd Yuu = Yu.transpose();
+ least_squares(Xuu,Yuu,Au);
+ MatrixXd Auu = Au.transpose();
+ return Auu;
+
+}
+
+void system_identification_jacobian(Thread* thread, MatrixXd& A) { 
+  int num_pieces = thread->num_pieces();
+  int num_edges = thread->num_edges();
+  vector<ThreadPiece*> thread_backup_pieces;
+  thread->save_thread_pieces_and_resize(thread_backup_pieces); 
+  VectorXd current_state(A.rows());
+  thread_to_state_with_edges(thread, current_state); 
+
+  const double eps = 1e-2;
+  const int numControls = 0; 
+  VectorXd u(A.cols());
+  VectorXd new_state(A.rows());
+
+  //stack controls column wise in a matrix 
+  MatrixXd Xu(A.cols(), numControls+24);
+  //stack state offsets column wise in a matrix
+  MatrixXd Yo(A.rows(), numControls+24); 
+
+  for (int i = 0; i < 12; i++) { 
+    u.setZero();
+    u(i) = eps;
+    Xu.block(0,i,Xu.rows(),1) = u;
+    thread->restore_thread_pieces(thread_backup_pieces);
+    applyControl(thread, u, START_AND_END);
+    thread->minimize_energy();
+    thread_to_state_with_edges(thread, new_state);
+    Yo.block(0,i,Yo.rows(),1) = (new_state - current_state);
+  }
+  for (int i = 12; i < 24; i++) { 
+    u.setZero();
+    u(i-12) = -eps;
+    Xu.block(0,i,Xu.rows(),1) = u;
+    thread->restore_thread_pieces(thread_backup_pieces);
+    applyControl(thread, u, START_AND_END);
+    thread->minimize_energy();
+    thread_to_state_with_edges(thread, new_state);
+    Yo.block(0,i,Yo.rows(),1) = (new_state - current_state); 
+  }
+
+  for (int i = 24; i < numControls+24; i++) {
+    sample_on_sphere(u, eps);
+    Xu.block(0,i,Xu.rows(),1) = u;
+    thread->restore_thread_pieces(thread_backup_pieces);
+    applyControl(thread, u, START_AND_END);
+    thread->minimize_energy();
+    thread_to_state_with_edges(thread, new_state);
+    Yo.block(0,i,Yo.rows(),1) = (new_state - current_state); 
+  }
+  
+  char SID_X_filename[256];
+  sprintf(SID_X_filename, "%s.txt", SID_JAC_X_BASENAME);
+  char SID_Y_filename[256];
+  sprintf(SID_Y_filename, "%s.txt", SID_JAC_Y_BASENAME);
+
+  ofstream x_file(SID_X_filename);
+  ofstream y_file(SID_Y_filename);
+
+  x_file << Xu << endl; 
+  y_file << Yo << endl; 
+  
+
+  A = least_squares_system_identification(Xu, Yo);
+
+
+  // compute residual 
+  
+  MatrixXd res = A*Xu - Yo;
+  cout << res.norm() << endl;
+  
+
+
+  /* 
+  MatrixXd J = MatrixXd::Random(20,12);
+  MatrixXd X = MatrixXd::Random(12,1);
+  MatrixXd X_act = X; 
+  MatrixXd Y = J * X;
+  least_squares(J,Y,X);
+  cout << X - X_act << endl; 
+  */
+
+  /*
+  MatrixXd J_act = MatrixXd::Random(50, 12);
+  //MatrixXd J = MatrixXd::Zero(10,10);
+  //MatrixXd J_act = J;
+  MatrixXd Xu = MatrixXd::Random(12,100);
+  //MatrixXd X = MatrixXd::Zero(10,10);
+  MatrixXd Yu = J_act * Xu;
+  
+  MatrixXd J_pred = least_squares_system_identification(Xu, Yu); 
+  
+  cout << "score: " << endl << J_pred*Xu - Yu << endl;
+
+  //cout << "pred: " << endl << J_act - J << endl;
+  //cout << "actu: " << endl << J << endl; 
+  */
+
+  
+
+
+}
+
 
 void estimate_transition_matrix_local(Thread* thread, MatrixXd& A)
 {
@@ -173,7 +329,7 @@ void estimate_transition_matrix_local(Thread* thread, MatrixXd& A)
   thread->save_thread_pieces_and_resize(thread_backup_pieces);
 
   VectorXd du(A.cols());
-  const double eps = 1e-4;
+  const double eps = 1e-2;
   for(int i = 0; i < A.cols(); i++)
   {
     du.setZero();
