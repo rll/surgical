@@ -57,7 +57,7 @@ def main():
     #r1_end, r2_end, r3_end = sample_on_sphere(max_rot)
     v = sample_on_sphere(12, max_norm_trans)
     #control = '%f %f %f %f %f %f %f %f %f %f %f %f\n' % (x_start, y_start, z_start, r1_start, r2_start, r3_start, x_end, y_end, z_end, r1_end, r2_end, r3_end)
-    control = '%f %f %f %f %f %f %f %f %f %f %f %f' % (v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9], v[10], v[11])
+    control = '%f %f %f %f %f %f %f %f %f %f %f %f\n' % (v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9], v[10], v[11])
     print control
     f.write(control)
 
