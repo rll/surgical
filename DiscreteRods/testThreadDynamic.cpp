@@ -130,10 +130,12 @@ double currentTime = 0.0;
 void idle() { 
 
   double dt = 1;
-  double M =  0.5;
-  double steps = 500;
+  double M =  1;
+  double steps = 1000;
  
-  thread->dynamic_step(dt, M, steps);
+  thread->dynamic_step_until_convergence(dt, M, 100000);
+
+  //thread->dynamic_step(dt, M, steps);
   
   /*if (drand48() < 0.1) { 
     thread->minimize_energy();

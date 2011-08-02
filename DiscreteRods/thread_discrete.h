@@ -44,7 +44,7 @@
 #define num_iters_twist_est_max 0
 
 #define THREAD_RADIUS 0.2     /* MUST BE ATLEAST MAX_MOVEMENT_VERTICES */
-#define COLLISION_CHECKING true
+#define COLLISION_CHECKING false
 
 
 using namespace std;
@@ -119,6 +119,7 @@ class Thread
 
     //dynamical simulation
     
+    void dynamic_step_until_convergence(double step_size=0.01, double mass=100, int max_steps=500000);
     void dynamic_step(double step_size=0.01, double mass=100, int steps=500);
 
     //energy minimization

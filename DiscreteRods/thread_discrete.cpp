@@ -420,6 +420,25 @@ double Thread::calculate_energy()
 #endif
 }
 
+void Thread::dynamic_step_until_convergence(double step_size, double mass, int max_steps) {
+  VectorXd last_position;
+  VectorXd current_position;
+
+  int current_step = 0; 
+
+  do {
+    toVector(&last_position);
+    dynamic_step(step_size, mass, 1);
+    toVector(&current_position); 
+    current_step += 1; 
+
+  } while ((last_position - current_position).norm() > 1e-3 && current_step < max_steps);
+  
+  cout << (last_position - current_position).norm() << endl; ;
+  cout << current_step << endl; 
+
+}
+
 
 void Thread::dynamic_step(double step_size, double mass, int steps) { 
   vector<Vector3d> vertex_gradients(num_pieces());

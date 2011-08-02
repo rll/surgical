@@ -17,8 +17,8 @@ endif
 VISION_LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lPvAPI -lrt
 VISION_INCLUDES = -I/usr/local/include/opencv/
 SOCKETS_DIR = ../utils/sockets/
-# OPT_COMP =
-OPT_COMP = -DEIGEN_NO_DEBUG -O3
+OPT_COMP = -O3
+#OPT_COMP = -DEIGEN_NO_DEBUG -O3
 FOPENMP = -fopenmp
 CC = g++ $(OPT_COMP) $(COMPILEFLAG) $(HOSTNAME)
 LD = g++ $(OPT_COMP) $(LDFLAG) $(HOSTNAME) 
@@ -122,6 +122,6 @@ thread_socket_interface.o: thread_socket_interface.cpp thread_socket_interface.h
 	$(CC) $(INCLUDES) $(DEBUG) -c thread_socket_interface.cpp $(PROFILER)
 
 clean:
-	rm -r *.o *.gch testThreadDiscrete testThreadDiscrete_noniso testThreadDiscrete_phantom saveThreadTrajectory recordThreadVideo thread_visualize_and_save thread_visualize_and_save_noniso *.dSYM
+	rm -r *.o *.gch testThreadDiscrete testThreadDiscrete_noniso testThreadDiscrete_phantom saveThreadTrajectory recordThreadVideo thread_visualize_and_save thread_visualize_and_save_noniso testThreadDynamic *.dSYM
 
 
