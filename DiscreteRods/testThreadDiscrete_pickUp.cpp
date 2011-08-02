@@ -352,7 +352,7 @@ void processProxybutton() {
 	cursor1->attach_dettach_attempt = (last_end_proxybutton[1] && !end_proxybutton[1]);
 	last_end_proxybutton[0] = end_proxybutton[0];
 	last_end_proxybutton[1] = end_proxybutton[1];
-}          
+}
 
 void processHapticDevice(int value)
 {
@@ -580,7 +580,9 @@ void drawStuff (void)
 	}
 	
 	//thread->adapt_links();
+	
 	drawThread();
+	
 	base->draw();
 	extra_end_effector->draw();
 	for(int i=0; i<positions.size(); i++)

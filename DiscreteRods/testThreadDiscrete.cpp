@@ -27,7 +27,10 @@ USING_PART_OF_NAMESPACE_EIGEN
 
 void init_contour();
 void InitStuff();
+void idle();
 void DrawStuff();
+void IdleAndDrawLeft();
+void DrawRight();
 void drawAxesBishop(Vector3d pos, Matrix3d rot);
 void drawAxesMaterial(Vector3d pos, Matrix3d rot);
 void drawSphere(Vector3d position, float radius, float color0, float color1, float color2);
@@ -89,6 +92,12 @@ bool only_ver_spin = false;
 #define NUM_STEPS_FEW 10
 bool few_minimization_steps = false;
 
+double currentTime = 0;
+
+int main_window = 0;
+int side_window = 0; 
+
+double offset_3d = 10.0;
 
 /* set up a light */
 GLfloat lightOnePosition[] = {140.0, 0.0, 200.0, 0.0};
@@ -506,13 +515,15 @@ int main (int argc, char * argv[])
 	/* initialize glut */
 	glutInit (&argc, argv); //can i do that?
 	glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-	glutInitWindowSize(900,900);
-	glutCreateWindow ("Thread");
+	glutInitWindowSize(1680 / 2,900);
+	main_window = glutCreateWindow ("Thread");
+  glutPositionWindow(0,0);
 	glutDisplayFunc (DrawStuff);
 	glutMotionFunc (MouseMotion);
   glutMouseFunc (processMouse);
   glutKeyboardFunc(processNormalKeys);
   glutKeyboardUpFunc(processKeyUp);
+	glutIdleFunc(idle);
 
 	/* create popup menu */
 	glutCreateMenu (JoinStyle);
@@ -553,7 +564,7 @@ int main (int argc, char * argv[])
   initThread();
   //thread->stepping = false;
   //thread->step = false;
-	thread->minimize_energy();
+	//thread->minimize_energy();
   updateThreadPoints();
   thread_saved = new Thread(*thread);
 
@@ -569,6 +580,53 @@ int main (int argc, char * argv[])
 	{
 		radii[i]=THREAD_RADII;
 	}
+
+	side_window = glutCreateWindow ("Thread2");
+  glutPositionWindow(1680/2, 0);
+	/*
+	glutDisplayFunc (DrawStuffController);
+	glutMotionFunc (MouseMotion);
+  glutMouseFunc (processMouse);
+  glutKeyboardFunc(processNormalKeys);
+  glutKeyboardUpFunc(processKeyUp);
+	glutIdleFunc(idle);
+	*/
+
+	/* create popup menu */
+	glutCreateMenu (JoinStyle);
+	glutAddMenuEntry ("Exit", 99);
+	glutAttachMenu (GLUT_MIDDLE_BUTTON);
+
+	/* initialize GL */
+	glClearDepth (1.0);
+	glEnable (GL_DEPTH_TEST);
+	glClearColor (0.0, 0.0, 0.0, 0.0);
+	glShadeModel (GL_SMOOTH);
+
+	glMatrixMode (GL_PROJECTION);
+	/* roughly, measured in centimeters */
+	glFrustum (-30.0, 30.0, -30.0, 30.0, 50.0, 500.0);
+	glMatrixMode(GL_MODELVIEW);
+
+
+	/* initialize lighting */
+	glLightfv (GL_LIGHT0, GL_POSITION, lightOnePosition);
+	glLightfv (GL_LIGHT0, GL_DIFFUSE, lightOneColor);
+	glEnable (GL_LIGHT0);
+	glLightfv (GL_LIGHT1, GL_POSITION, lightTwoPosition);
+	glLightfv (GL_LIGHT1, GL_DIFFUSE, lightTwoColor);
+	glEnable (GL_LIGHT1);
+	glLightfv (GL_LIGHT2, GL_POSITION, lightThreePosition);
+	glLightfv (GL_LIGHT2, GL_DIFFUSE, lightThreeColor);
+	glEnable (GL_LIGHT2);
+	glLightfv (GL_LIGHT3, GL_POSITION, lightFourPosition);
+	glLightfv (GL_LIGHT3, GL_DIFFUSE, lightFourColor);
+	glEnable (GL_LIGHT3);
+	glEnable (GL_LIGHTING);
+	glColorMaterial (GL_FRONT_AND_BACK, GL_DIFFUSE);
+	glEnable (GL_COLOR_MATERIAL);
+
+	InitStuff ();
 
 
   glutMainLoop ();
@@ -592,8 +650,28 @@ void InitStuff (void)
 
 }
 
+void idle() {
+  double dt = 1;
+  double M =  10;
+  double steps = 500;
+  currentTime += dt;
+  thread->dynamic_step(dt, M, steps);
+  glutPostRedisplay();
+}
+
 /* draw the helix shape */
 void DrawStuff (void)
+{
+  offset_3d = 10.0;
+  glutSetWindow(main_window);
+  IdleAndDrawLeft();
+  glutSetWindow(side_window);
+  DrawRight();
+  glutSetWindow(main_window);
+}
+
+/* draw the helix shape */
+void IdleAndDrawLeft (void)
 {
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glColor3f (0.8, 0.3, 0.6);
@@ -605,6 +683,7 @@ void DrawStuff (void)
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
 
+	glTranslatef (-offset_3d,0.0,0.0);
 
   //change thread, if necessary
   if (move_end[0] != 0.0 || move_end[1] != 0.0 || tangent_end[0] != 0.0 || tangent_end[1] != 0.0 || tangent_rotation_end[0] != 0 || tangent_rotation_end[1] != 0 || move_start[0] != 0.0 || move_start[1] != 0.0 || tangent_start[0] != 0.0 || tangent_start[1] != 0.0 || tangent_rotation_start[0] != 0 || tangent_rotation_start[1] != 0)
@@ -745,11 +824,11 @@ void DrawStuff (void)
     //thread->set_constraints(positions[0], rotations[0], positions[1], rotations[1]);
     thread->apply_motion_nearEnds(motion_to_apply, false);
     //thread->set_end_constraint(positions[1], rotations[1]);
-    if(!few_minimization_steps) {
-      thread->minimize_energy();
-    }
+    //if(!few_minimization_steps) {
+    //  thread->minimize_energy();
+    //}
 
-		thread->adapt_links();
+		//thread->adapt_links();
 
     //std::cout <<"ACTUAL END:\n" << thread->end_rot() << std::endl;
 
@@ -759,65 +838,6 @@ void DrawStuff (void)
 
   }
     updateThreadPoints();
-
-	/*vector<Vector3d> vertices;
-	vector<Matrix3d> material_frames;
-	vector<Matrix3d> bishop_frames;
-	thread->get_thread_data(vertices, material_frames);
-	thread->get_thread_data(bishop_frames);
-	for(int vertex_num=0; vertex_num<vertices.size(); vertex_num++) {
-		drawAxesMaterial(vertices[vertex_num], material_frames[vertex_num]);
-		drawAxesBishop(vertices[vertex_num], bishop_frames[vertex_num]);
-	}*/
-
-	//print stuff
-	if (print_mode_permanent || print_mode_instant) {
-		cout << "***********************************************" << endl;
-		thread->get_thread_data(points, twist_angles);
-		cout << "vertices.size(): " << points.size() << endl;
-		cout << "twist_angles: ";
-		for (int i=0; i<twist_angles.size()-1; i++)
-			cout << twist_angles[i] << " ";
-		cout << endl;
-		vector<double> lengths;
-		vector<double> edge_norms;
-		thread->get_thread_data(lengths, edge_norms);
-		cout << "rest_lengths: ";
-		for (int i=0; i<lengths.size()-1; i++)
-			cout << lengths[i] << " ";
-		cout << endl;
-		cout << "edge_norms: ";
-		for (int i=0; i<edge_norms.size()-1; i++)
-			cout << edge_norms[i] << " ";
-		cout << endl;
-		bool too_different = false;
-		for (int i=0; i<lengths.size()-1; i++) {
-			bool too_diff_local = (abs(lengths[i] - edge_norms[i]) > 1.0e-05);
-			if (too_diff_local)
-				cout << "thread_piece " << i << " is too different by " << abs(lengths[i] - edge_norms[i]) << endl;
-			too_different |= too_diff_local;
-		}
-		cout << "any edge norm too different from rest_length?: " << too_different << endl;
-	
-		double total_rest_length = 0;
-		double total_edge_norm = 0;
-		for (int i=0; i<lengths.size()-1; i++) {
-			total_rest_length += lengths[i];
-			total_edge_norm += edge_norms[i];
-		}
-		cout << "_total_length: " << thread->_total_length << "\t" << "total_rest_length: " << total_rest_length << "\t" << "total_edge_norm: " << total_edge_norm << endl;
-		
-		/*cout << "calculate_energy(): " << thread->calculate_energy() << endl;
-		cout << "calculate_energy_inefficient(): " << thread->calculate_energy_inefficient() << endl;*/
-		/*vector<double> curvature_binormal_norm;
-		thread->getCurvatureBinormalNorm(curvature_binormal_norm);
-		cout << "curvature_binormal_norm: ";
-		for(int i=0; i<curvature_binormal_norm.size(); i++)
-			cout << curvature_binormal_norm[i] << " ";
-		cout << endl;*/
-		
-		print_mode_instant = false;
-	}
 
   //Draw Axes
 
@@ -949,6 +969,119 @@ void DrawStuff (void)
   pts_cpy[points.size()+1][1] = pts_cpy[points.size()][1]+rotations[1](1,0);
   pts_cpy[points.size()+1][2] = pts_cpy[points.size()][2]+rotations[1](2,0);
   twist_cpy[points.size()+1] = twist_cpy[points.size()]; //twist_cpy[points.size()]-(360.0/(2.0*M_PI))*zero_angle;
+
+  gleTwistExtrusion(20,
+      contour,
+      contour_norms,
+      NULL,
+      points.size()+2,
+      pts_cpy,
+      0x0,
+      twist_cpy);
+
+	if (examine_mode)
+		for (int i=0; i<points.size(); i++)
+			drawSphere(points[i]-zero_location, 0.7, 0.0, 0.5, 0.5);
+
+  DrawObjectsInEnv();
+
+  glPopMatrix ();
+
+  glutSwapBuffers ();
+}
+
+/* draw the helix shape */
+void DrawRight (void)
+{
+  glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glColor3f (0.8, 0.3, 0.6);
+
+  glPushMatrix ();
+
+  /* set up some matrices so that the object spins with the mouse */
+  glTranslatef (0.0,0.0,-110.0);
+  glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
+  glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
+  
+  glTranslatef (+offset_3d,0.0,0.0);
+
+  //Draw Axes
+
+ //Draw Axes at Start
+  Vector3d diff_pos = positions[0]-zero_location;
+  double rotation_scale_factor = 10.0;
+  Matrix3d rotations_project = rotations[0]*rotation_scale_factor;
+  glBegin(GL_LINES);
+  glEnable(GL_LINE_SMOOTH);
+  glColor3d(1.0, 0.0, 0.0); //red
+  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //x
+  glVertex3f((float)(diff_pos(0)+rotations_project(0,0)), (float)(diff_pos(1)+rotations_project(1,0)), (float)(diff_pos(2)+rotations_project(2,0)));
+  glColor3d(0.0, 1.0, 0.0); //green
+  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //y
+  glVertex3f((float)(diff_pos(0)+rotations_project(0,1)), (float)(diff_pos(1)+rotations_project(1,1)), (float)(diff_pos(2)+rotations_project(2,1)));
+  glColor3d(0.0, 0.0, 1.0); //blue
+  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //z
+  glVertex3f((float)(diff_pos(0)+rotations_project(0,2)), (float)(diff_pos(1)+rotations_project(1,2)), (float)(diff_pos(2)+rotations_project(2,2)));
+
+  //Draw Axes at End
+  diff_pos = positions[1]-zero_location;
+  rotation_scale_factor = 10.0;
+  rotations_project = rotations[1]*rotation_scale_factor;
+  glBegin(GL_LINES);
+  glEnable(GL_LINE_SMOOTH);
+  glColor3d(1.0, 0.0, 0.0); //red
+  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //x
+  glVertex3f((float)(diff_pos(0)+rotations_project(0,0)), (float)(diff_pos(1)+rotations_project(1,0)), (float)(diff_pos(2)+rotations_project(2,0)));
+  glColor3d(0.0, 1.0, 0.0); //green
+  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //y
+  glVertex3f((float)(diff_pos(0)+rotations_project(0,1)), (float)(diff_pos(1)+rotations_project(1,1)), (float)(diff_pos(2)+rotations_project(2,1)));
+  glColor3d(0.0, 0.0, 1.0); //blue
+  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //z
+  glVertex3f((float)(diff_pos(0)+rotations_project(0,2)), (float)(diff_pos(1)+rotations_project(1,2)), (float)(diff_pos(2)+rotations_project(2,2)));
+  glEnd( );
+
+  //label axes
+  diff_pos = positions[0]-zero_location;
+  rotation_scale_factor = 15.0;
+  rotations_project = rotations[0]*rotation_scale_factor;
+  void * font = GLUT_BITMAP_HELVETICA_18;
+  glColor3d(1.0, 0.0, 0.0); //red
+  //glRasterPos3i(20.0, 0.0, -1.0);
+  glRasterPos3i((float)(diff_pos(0)+rotations_project(0,0)), (float)(diff_pos(1)+rotations_project(1,0)), (float)(diff_pos(2)+rotations_project(2,0)));
+  glutBitmapCharacter(font, 'X');
+  glColor3d(0.0, 1.0, 0.0); //red
+  //glRasterPos3i(0.0, 20.0, -1.0);
+  glRasterPos3i((float)(diff_pos(0)+rotations_project(0,1)), (float)(diff_pos(1)+rotations_project(1,1)), (float)(diff_pos(2)+rotations_project(2,1)));
+  glutBitmapCharacter(font, 'Y');
+  glColor3d(0.0, 0.0, 1.0); //red
+  //glRasterPos3i(-1.0, 0.0, 20.0);
+  glRasterPos3i((float)(diff_pos(0)+rotations_project(0,2)), (float)(diff_pos(1)+rotations_project(1,2)), (float)(diff_pos(2)+rotations_project(2,2)));
+  glutBitmapCharacter(font, 'Z');
+
+  //Draw Thread
+  glColor3f (0.5, 0.5, 0.2);
+
+  double pts_cpy[points.size()+2][3];
+  double twist_cpy[points.size()+2];
+
+  for (int i=0; i < points.size(); i++)
+  {
+    pts_cpy[i+1][0] = points[i](0)-(double)zero_location(0);
+    pts_cpy[i+1][1] = points[i](1)-(double)zero_location(1);
+    pts_cpy[i+1][2] = points[i](2)-(double)zero_location(2);
+    twist_cpy[i+1] = -(360.0/(2.0*M_PI))*(twist_angles[i]+zero_angle);
+  }
+  //add first and last point
+  pts_cpy[0][0] = pts_cpy[1][0]-rotations[0](0,0);
+  pts_cpy[0][1] = pts_cpy[1][1]-rotations[0](1,0);
+  pts_cpy[0][2] = pts_cpy[1][2]-rotations[0](2,0);
+  twist_cpy[0] = twist_cpy[1]; //-(360.0/(2.0*M_PI))*(zero_angle);
+
+
+  pts_cpy[points.size()+1][0] = pts_cpy[points.size()][0]+rotations[1](0,0);
+  pts_cpy[points.size()+1][1] = pts_cpy[points.size()][1]+rotations[1](1,0);
+  pts_cpy[points.size()+1][2] = pts_cpy[points.size()][2]+rotations[1](2,0);
+  twist_cpy[points.size()+1] = twist_cpy[points.size()];
 
   gleTwistExtrusion(20,
       contour,

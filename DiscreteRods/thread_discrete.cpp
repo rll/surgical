@@ -769,6 +769,45 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 	return (opt_iter != num_opt_iters);
 } // end minimize_energy
 
+void Thread::dynamic_step(double step_size, double mass, int steps) {
+  vector<Vector3d> vertex_gradients(num_pieces());
+  vector<Vector3d> position_offsets(num_pieces());
+  vector<Vector3d> velocity(num_pieces());
+
+  for (int t = 0; t < steps; t++) {
+    for (int i = 0; i < vertex_gradients.size(); i++) {
+      vertex_gradients[i].setZero();
+      position_offsets[i].setZero();
+    }
+    calculate_gradient_vertices(vertex_gradients);
+		for (int i = 0; i < velocity.size(); i++) {
+	   	velocity[i] = -(vertex_gradients[i] / mass) * step_size;
+	    position_offsets[i] = velocity[i] * step_size;
+	  }
+    //TODO: make position_offset <= MAX_MOVEMENT_VERTICES 
+    
+    double max_move = 0;
+    bool move_too_far = false;
+    for(int i = 2; i < position_offsets.size() - 2; i++) {
+        if(position_offsets[i].norm() > MAX_MOVEMENT_VERTICES) {
+         	move_too_far = true;
+          if(position_offsets[i].norm() > max_move) max_move = position_offsets[i].norm();
+          }
+    }
+    
+    if(move_too_far) {
+        for(int i = 2; i < position_offsets.size()-2; i++) {
+           position_offsets[i] = position_offsets[i] * MAX_MOVEMENT_VERTICES / max_move;
+        }
+    }
+
+    
+    apply_vertex_offsets(position_offsets);    //TODO: collision checking (see minimize_energy)
+    project_length_constraint();
+    minimize_energy_twist_angles();
+  }
+  adapt_links();
+}
 
 void Thread::fix_intersections() {
 	vector<Self_Intersection> self_intersections;
@@ -1230,8 +1269,8 @@ void Thread::adapt_links()
 {
 	unrefine_links();
 	refine_links_geometrical();
-	if (COLLISION_CHECKING)
-		refine_links_mechanical();
+	//if (COLLISION_CHECKING)
+	//	refine_links_mechanical();
 }
 
 void Thread::refine_links_geometrical() {
@@ -1262,7 +1301,7 @@ void Thread::refine_links_geometrical() {
 		}
 	}
 	save_thread_pieces_and_resize(_thread_pieces_backup);
-	minimize_energy();
+	//minimize_energy();
 }
 
 void Thread::refine_links_mechanical() {
@@ -1289,7 +1328,7 @@ void Thread::refine_links_mechanical() {
 		}
 	}
 	save_thread_pieces_and_resize(_thread_pieces_backup);
-	minimize_energy();
+	//minimize_energy();
 }
 
 void Thread::unrefine_links() {
@@ -1337,7 +1376,7 @@ void Thread::unrefine_links() {
 		}
 	}
 	save_thread_pieces_and_resize(_thread_pieces_backup);
-	minimize_energy();
+	//minimize_energy();
 }
 
 void Thread::split_concatenation_left(ThreadPiece* piece) {

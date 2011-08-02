@@ -170,6 +170,8 @@ class Thread
 #endif
     void minimize_energy_twist_angles();
 
+		void dynamic_step(double step_size=0.01, double mass=100, int steps=500);
+
     void one_step_project(double step_size = 0.1, bool normalize_gradient = true);
     double one_step_grad_change(double step_size);
     void match_start_and_end_constraints(Thread& to_match, int num_steps, int num_steps_break = INT_MAX);
