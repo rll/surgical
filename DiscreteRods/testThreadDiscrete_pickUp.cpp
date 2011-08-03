@@ -514,11 +514,11 @@ void drawStuff()
 
   /* set up some matrices so that the object spins with the mouse */
   glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
-  glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
-  glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);	
 #ifdef VIEW3D
 	glRotatef (+atan(eye_separation/(2.0*eye_focus_depth)) * 180.0/M_PI, 0.0, 1.0, 0.0);
 #endif
+  glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
+  glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);	
   env->drawObjs();
   glPopMatrix();
   glutSwapBuffers ();
@@ -529,9 +529,9 @@ void drawStuff()
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	/* set up some matrices so that the object spins with the mouse */
 	glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
+	glRotatef (-atan(eye_separation/(2.0*eye_focus_depth)) * 180.0/M_PI, 0.0, 1.0, 0.0);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
-	glRotatef (-atan(eye_separation/(2.0*eye_focus_depth)) * 180.0/M_PI, 0.0, 1.0, 0.0);
 	env->drawObjs();
 	glPopMatrix();
 	glutSwapBuffers ();
