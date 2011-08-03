@@ -1,3 +1,5 @@
+#include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <algorithm>
 
@@ -10,6 +12,7 @@
 #include <GL/glut.h>
 #include <GL/gle.h>
 #endif
+#include <IL/ilut.h>
 
 #include <iostream>
 #include <fstream>
@@ -19,6 +22,7 @@
 #include <math.h>
 #include "ThreadConstrained.h"
 #include "EnvObjects.h"
+#include "imageloader.h"
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
@@ -53,6 +57,27 @@ class SimpleSphere {
 		float color0, color1, color2;
 };
 
+class SimpleTexturedSphere {
+	public:
+		SimpleTexturedSphere(Vector3d pos, float r, string filename);
+		~SimpleTexturedSphere();
+		void draw();
+		
+	private:
+		Vector3d position;
+		float radius;
+		GLUquadric *earth;
+
+		struct TextureHandle {
+			ILubyte *p;  /* pointer to image data loaded into memory */
+			ILuint id;   /* unique DevIL id of image */
+			ILint w;     /* image width */
+			ILint h;     /* image height */
+		};
+		TextureHandle texture;
+		ILuint LoadImageDevIL (char *szFileName, struct TextureHandle *T);
+};
+
 class SimpleEnv {
 	public:
 		SimpleEnv();
@@ -65,6 +90,8 @@ class SimpleEnv {
 		void addObj(SimpleEndEffector end_eff);
 		void addObj(SimpleSphere sphere);
 		
+		void addObj(SimpleTexturedSphere* textured_sphere);
+		
 		void clearObjs();
 		void drawObjs();
 	
@@ -76,4 +103,6 @@ class SimpleEnv {
 		
 		vector<SimpleEndEffector> simple_end_effs;
 		vector<SimpleSphere> simple_spheres;
+		
+		vector<SimpleTexturedSphere*> simple_textured_spheres;
 };

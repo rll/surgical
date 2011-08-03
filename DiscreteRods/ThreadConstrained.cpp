@@ -9,11 +9,15 @@ ThreadConstrained::ThreadConstrained(int num_vertices_init) {
 	vector<Vector3d> vertices;
 	vector<double> angles;
 	Vector3d direction;
-
-	vertices.push_back(Vector3d(-num_vertices,0,0));
+	double start_pos_x;
+	if (num_vertices%2 == 0)
+		start_pos_x = -((3.0 + (1.0/sqrt(1.0*1.0 + 2.0*2.0))*((double) (num_vertices-4)))/2.0)*DEFAULT_REST_LENGTH;
+	else
+		start_pos_x = -((2.0 + (1.0/sqrt(1.0*1.0 + 2.0*2.0))*((double) (num_vertices-3)))/2.0)*DEFAULT_REST_LENGTH;
+	vertices.push_back(Vector3d(start_pos_x,0,0));
 	angles.push_back(0.0);
 	//push back unitx so first tangent matches start_frame
-	vertices.push_back(Vector3d::UnitX()*DEFAULT_REST_LENGTH);
+	vertices.push_back(vertices.back()+Vector3d::UnitX()*DEFAULT_REST_LENGTH);
 	angles.push_back(0.0);
 	//specify direction
 	direction(0) = 1.0;

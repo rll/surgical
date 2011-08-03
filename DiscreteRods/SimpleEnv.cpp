@@ -68,6 +68,97 @@ void SimpleSphere::draw() {
   glPopMatrix();
 }
 
+//textured sphere based on http://www.mfwweb.com/OpenGL/Loading_Textures/
+SimpleTexturedSphere::SimpleTexturedSphere(Vector3d pos, float r, string filename)
+: position(pos), radius(r) {
+	earth = 0;
+	ilInit();
+  assert( LoadImageDevIL ((char*) filename.c_str(), &texture) );
+  earth = gluNewQuadric();
+}
+
+SimpleTexturedSphere::~SimpleTexturedSphere() {
+  //  Clear out the memory used by loading image files.
+  printf("cleanup image memory:{");
+  if (texture.id) {
+    printf(" %d",texture.id); 
+    ilDeleteImages(1, &texture.id);
+  }
+  printf(" }\n");
+
+	//  Clear out the memory created by gluNewQuadric() calls.
+  printf("cleanup gluQuadric memory:{");
+  if (earth) {
+    printf(" %p",earth); 
+    gluDeleteQuadric(earth);
+  } 
+  printf(" }\n");
+}
+
+void SimpleTexturedSphere::draw() {
+	glPushMatrix();
+	glEnable(GL_COLOR_MATERIAL);
+	//glColor3f(0.7, 0.7, 0.7);
+	glColor3f(1.0, 1.0, 1.0);
+	
+	double transform[16] = {-0.5,  0, 0.866,     0,
+													0.866, 0,   0.5,     0,
+													0,     1,     0,     0,
+													position(0), position(1), position(2), 1};
+
+	// //Equivalent to the following
+	// Matrix3d rotation = (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d(1.0,0.0,0.0));
+	// rotation = AngleAxisd(240.0*M_PI/180.0, Vector3d(0.0,1.0,0.0)) * rotation;
+	// 
+	// double transform[16] = {rotation(0,0) , rotation(1,0) , rotation(2,0) , 0 ,
+	// 												rotation(0,1) , rotation(1,1) , rotation(2,1) , 0 ,
+	// 												rotation(0,2) , rotation(1,2) , rotation(2,2) , 0 ,
+	// 												position(0), position(1), position(2), 1};
+
+	glMultMatrixd(transform);
+		
+	glDisable(GL_CULL_FACE);
+  glEnable (GL_TEXTURE_2D);
+
+  gluQuadricTexture (earth, GL_TRUE);
+
+  glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+  glTexImage2D (GL_TEXTURE_2D, 0, 3, texture.w, texture.h, 0, GL_BGR_EXT, GL_UNSIGNED_BYTE, texture.p);
+
+  gluSphere (earth, radius, 36, 72);
+  
+  glDisable (GL_TEXTURE_2D);
+  glEnable(GL_CULL_FACE);
+  
+  glPopMatrix();
+}
+
+ILuint SimpleTexturedSphere::LoadImageDevIL (char *szFileName, struct TextureHandle *T)
+{
+    //When IL_ORIGIN_SET enabled, the origin is specified at an absolute 
+    //position, and all images loaded or saved adhere to this set origin.
+    ilEnable(IL_ORIGIN_SET);
+    //sets the origin to be IL_ORIGIN_LOWER_LEFT when loading all images, so 
+    //that any image with a different origin will be flipped to have the set 
+    //origin.
+    ilOriginFunc(IL_ORIGIN_LOWER_LEFT);
+
+    //Now load the image file
+    ILuint ImageNameID;
+    ilGenImages(1, &ImageNameID);
+    ilBindImage(ImageNameID);
+    if (!ilLoadImage(szFileName)) return 0; // failure 
+
+    T->id = ImageNameID;
+    T->p = ilGetData(); 
+    T->w = ilGetInteger(IL_IMAGE_WIDTH);
+    T->h = ilGetInteger(IL_IMAGE_HEIGHT);
+    
+    printf("%s %d %d %d\n",szFileName,T->id,T->w,T->h);
+    return 1; // success
+}
 
 
 SimpleEnv::SimpleEnv() {
@@ -86,6 +177,8 @@ void SimpleEnv::addObj(SimpleEndEffector end_eff) {	simple_end_effs.push_back(en
 
 void SimpleEnv::addObj(SimpleSphere sphere) {	simple_spheres.push_back(sphere); }
 
+void SimpleEnv::addObj(SimpleTexturedSphere* textured_sphere) { simple_textured_spheres.push_back(textured_sphere); }
+
 void SimpleEnv::drawObjs() {
 	int i;
 	for (i=0; i<threads.size(); i++)
@@ -100,6 +193,8 @@ void SimpleEnv::drawObjs() {
 		simple_end_effs[i].draw();
 	for (i=0; i<simple_spheres.size(); i++)
 		simple_spheres[i].draw();
+	for (i=0; i<simple_textured_spheres.size(); i++)
+		simple_textured_spheres[i]->draw();
 }
 
 void SimpleEnv::clearObjs() {
@@ -109,5 +204,6 @@ void SimpleEnv::clearObjs() {
 	cursors.clear();
 	simple_end_effs.clear();
 	simple_spheres.clear();
+	simple_textured_spheres.clear();
 }
 

@@ -111,9 +111,10 @@ void drawSphere(Vector3d position, float radius, float color0, float color1, flo
 													position(0), position(1), position(2), 1};
 	glMultMatrixd(transform);
 	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glEnable(GL_COLOR_MATERIAL);
+	//glEnable(GL_COLOR_MATERIAL);
   glColor3f(color0, color1, color2);
-  glutSolidSphere(radius, 20, 16);
+  //glutSolidSphere(radius, 20, 16);  
+  glutSolidSphere(radius, 80, 64);
   //glFlush ();
   glPopMatrix();
 }

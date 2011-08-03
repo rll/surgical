@@ -23,6 +23,7 @@
 #include "ThreadConstrained.h"
 #include "EnvObjects.h"
 #include "SimpleEnv.h"
+#include "drawutils.h"
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
@@ -32,9 +33,6 @@ void processInput();
 void updateState(const Vector3d& proxy_pos, const Matrix3d& proxy_rot, Cursor* cursor);
 bool closeEnough(Vector3d my_pos, Matrix3d my_rot, Vector3d pos, Matrix3d rot);
 void mouseTransform(Vector3d &new_pos, Matrix3d &new_rot, vector<Vector3d> &positions, vector<Matrix3d> &rotations, int cvnum);
-void drawAxes(Vector3d pos, Matrix3d rot);
-void labelAxes(int constrained_vertex_num);
-void drawThread();
 void initThread();
 void glutMenu(int ID);
 void initGL();
@@ -45,7 +43,7 @@ void initGL();
 #define MOVE_TAN_CONST 0.2
 #define ROTATE_TAN_CONST 0.2
 #define HAPTICS true
-//#define VIEW3D
+#define VIEW3D
 
 enum key_code {NONE, MOVEPOS, MOVETAN, ROTATETAN};
 
@@ -53,14 +51,17 @@ float lastx_L=0;
 float lasty_L=0;
 float lastx_R=0;
 float lasty_R=0;
+float lastx_M=0;
+float lasty_M=0;
 
 float rotate_frame[2] = { 0.0, 0.0 };
 float last_rotate_frame[2];
+float translate_frame[3] = { 0.0, 0.0, -110.0 };
 #ifdef VIEW3D
 int main_window = 0;
 int side_window = 0;
-double eye_separation = 5.0;
-double eye_focus_depth = 80.0;
+float eye_separation = 5.0;
+float eye_focus_depth = -translate_frame[2];//-50.0;
 #endif
 
 float move[2];
@@ -104,6 +105,7 @@ Cursor *cursor0, *cursor1;
 Cylinder* base;
 EndEffector* extra_end_effector;
 vector<EndEffector*> constrained_ee;
+SimpleTexturedSphere* textured_sphere;
 
 SimpleEnv *env;
 
@@ -118,6 +120,9 @@ void processLeft(int x, int y) {
 	} else if (key_pressed == ROTATETAN) {
 		tangent_rotation[0] += (x-lastx_L)*ROTATE_TAN_CONST;
 		tangent_rotation[1] += (lasty_L-y)*ROTATE_TAN_CONST;
+	} else if (glutGetModifiers() & GLUT_ACTIVE_CTRL){
+		translate_frame[0] += 0.1*(x-lastx_L);
+		translate_frame[1] += 0.1*(lasty_L-y);
 	} else {
 		rotate_frame[0] += x-lastx_L;
 		rotate_frame[1] += lasty_L-y;
@@ -126,7 +131,7 @@ void processLeft(int x, int y) {
 	lasty_L = y;
 }
 
-void processRight(int x, int y) {
+/*void processRight(int x, int y) {
 	if (key_pressed == MOVEPOS)	{
 		move[0] += (x-lastx_L)*MOVE_POS_CONST;
 		move[1] += (lasty_L-y)*MOVE_POS_CONST;
@@ -142,13 +147,24 @@ void processRight(int x, int y) {
 	}
 	lastx_L = x;
 	lasty_L = y;
+}*/
+
+void processMiddle(int x, int y) {
+	translate_frame[2] -= x-lastx_M;
+	if (translate_frame[2] >= -(50.0 + 5.0))
+		translate_frame[2] += x-lastx_M;
+	eye_focus_depth = -translate_frame[2]; //-50.0;
+	lastx_M = x;
+	lasty_M = y;
 }
 
 void MouseMotion (int x, int y) {
   if (pressed_mouse_button == GLUT_LEFT_BUTTON) {
-    processLeft(x, y);
-  } else if (pressed_mouse_button == GLUT_RIGHT_BUTTON) {
-    processRight(x,y);
+   	processLeft(x, y);
+  //} else if (pressed_mouse_button == GLUT_RIGHT_BUTTON) {
+  //  processRight(x,y);
+  } else if (pressed_mouse_button == GLUT_MIDDLE_BUTTON) {
+    processMiddle(x,y);
   }
   processInput();
 	glutPostRedisplay ();
@@ -161,9 +177,13 @@ void processMouse(int button, int state, int x, int y) {
       lastx_L = x;
       lasty_L = y;
     }
-    if (button == GLUT_RIGHT_BUTTON) {
-      lastx_R = x;
-      lasty_R = y;
+    //if (button == GLUT_RIGHT_BUTTON) {
+    //  lastx_R = x;
+    //  lasty_R = y;
+    //}
+    if (button == GLUT_MIDDLE_BUTTON) {
+      lastx_M = x;
+      lasty_M = y;
     }
     processInput();
     glutPostRedisplay ();
@@ -317,17 +337,19 @@ void processNormalKeys(unsigned char key, int x, int y) {
   } else if(key == '=') {
   	eye_separation += 0.5;
   	//glutPostRedisplay ();
-  } else if(key == '+') {
-  	eye_focus_depth += 1.0;
-  	//glutPostRedisplay ();
   } else if(key == '-') {
   	if (eye_separation > 0.5)
 	  	eye_separation -= 0.5;
   	//glutPostRedisplay ();
-  } else if(key == '_') {
-  	if (eye_focus_depth > 5.0)
-	  	eye_focus_depth -= 5.0;
+  /*
+  } else if(key == '+') {
+  	eye_focus_depth += 1.0;
   	//glutPostRedisplay ();
+  } else if(key == '_') {
+  	//if (eye_focus_depth > 1.0)
+	  	eye_focus_depth -= 1.0;
+  	//glutPostRedisplay ();
+  */
 #endif
   }	else if (key == 'q' || key == 27) {
     exit(0);
@@ -437,8 +459,8 @@ int main (int argc, char * argv[])
 	
 	/* create popup menu */
 	glutCreateMenu (glutMenu);
-	glutAddMenuEntry ("Exit", 99);
-	glutAttachMenu (GLUT_MIDDLE_BUTTON);
+	glutAddMenuEntry ("Exit", 0);
+	glutAttachMenu (GLUT_RIGHT_BUTTON);
 
 	initGL();
 	
@@ -457,6 +479,7 @@ int main (int argc, char * argv[])
   zero_location = Vector3d::Zero(); //points[0];
   zero_angle = 0.0;
 	
+	textured_sphere = new SimpleTexturedSphere(Vector3d::Zero(), 150.0, "../utils/wmap.bmp");
 	env = new SimpleEnv();
 	
 	if (HAPTICS) {
@@ -485,16 +508,16 @@ void drawStuff()
 #ifdef VIEW3D
  	glutSetWindow(main_window);
 #endif
-  
-  glPushMatrix ();  
+
+  glPushMatrix ();
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
   /* set up some matrices so that the object spins with the mouse */
-  glTranslatef (0.0,0.0,-110.0);
+  glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
-  glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
+  glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);	
 #ifdef VIEW3D
-  glTranslatef (-eye_separation/2.0, 0.0, 0.0);
-  glRotatef (-atan(eye_separation/(2.0*eye_focus_depth)), 0.0, 1.0, 0.0);
+	glRotatef (+atan(eye_separation/(2.0*eye_focus_depth)) * 180.0/M_PI, 0.0, 1.0, 0.0);
 #endif
   env->drawObjs();
   glPopMatrix();
@@ -505,28 +528,27 @@ void drawStuff()
 	glPushMatrix ();  
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	/* set up some matrices so that the object spins with the mouse */
-	glTranslatef (0.0,0.0,-110.0);
-	glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
-	glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
-	glTranslatef (+eye_separation/2.0, 0.0, 0.0);
-	glRotatef (+atan(eye_separation/(2.0*eye_focus_depth)), 0.0, 1.0, 0.0);
+	glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
+  glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
+  glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
+	glRotatef (-atan(eye_separation/(2.0*eye_focus_depth)) * 180.0/M_PI, 0.0, 1.0, 0.0);
 	env->drawObjs();
 	glPopMatrix();
 	glutSwapBuffers ();
 		
 	glutSetWindow(main_window);
+	
+	cout << "eye_separation: " << eye_separation << "\t" << "eye_focus_depth: " << eye_focus_depth << "\t" << "angle(degrees): " << atan(eye_separation/(2.0*eye_focus_depth)) * 180.0/M_PI << endl;
 #endif
   
 	env->clearObjs();
-
-	cout << "eye_separation: " << eye_separation << "\t" << "eye_focus_depth: " << eye_focus_depth << "\t" << "angle: " << atan(eye_separation/(2.0*eye_focus_depth)) << endl;
 }
 
 void processInput()
-{  
-  glPushMatrix ();
+{
+	glPushMatrix ();
   /* set up some matrices so that the object spins with the mouse */
-  glTranslatef (0.0,0.0,-110.0);
+  glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
   
@@ -671,6 +693,8 @@ void processInput()
 		//constrained_ee[i]->draw();
 		env->addObj(constrained_ee[i]);
 	}
+	
+	env->addObj(textured_sphere);
 	
 	glPopMatrix();
 }
@@ -867,7 +891,7 @@ void initGL()
 
   // initialize lighting
   glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, GL_FALSE);
-  glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE);    
+  glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);    
   glLightModelfv(GL_LIGHT_MODEL_AMBIENT, light_model_ambient);
   glLightfv (GL_LIGHT0, GL_POSITION, lightOnePosition);
 	glLightfv (GL_LIGHT0, GL_DIFFUSE, lightOneColor);
