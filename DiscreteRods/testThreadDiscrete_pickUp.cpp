@@ -45,6 +45,7 @@ void initGL();
 #define MOVE_TAN_CONST 0.2
 #define ROTATE_TAN_CONST 0.2
 #define HAPTICS true
+//#define VIEW3D
 
 enum key_code {NONE, MOVEPOS, MOVETAN, ROTATETAN};
 
@@ -55,10 +56,12 @@ float lasty_R=0;
 
 float rotate_frame[2] = { 0.0, 0.0 };
 float last_rotate_frame[2];
+#ifdef VIEW3D
 int main_window = 0;
 int side_window = 0;
-double eye_separation = 20.0;
+double eye_separation = 5.0;
 double eye_focus_depth = 80.0;
+#endif
 
 float move[2];
 float tangent[2];
@@ -147,6 +150,7 @@ void MouseMotion (int x, int y) {
   } else if (pressed_mouse_button == GLUT_RIGHT_BUTTON) {
     processRight(x,y);
   }
+  processInput();
 	glutPostRedisplay ();
 }
 
@@ -161,6 +165,7 @@ void processMouse(int button, int state, int x, int y) {
       lastx_R = x;
       lasty_R = y;
     }
+    processInput();
     glutPostRedisplay ();
 	}
 }
@@ -186,16 +191,20 @@ void processNormalKeys(unsigned char key, int x, int y) {
   	if (cursor1->isAttached())
   		cursor1->dettach();
     choose_mode = !choose_mode;
-    glutPostRedisplay();
+    processInput();
+    //glutPostRedisplay();
   } else if (key == 'v' && choose_mode) {
     change_constraint = true;
-    glutPostRedisplay();
+    processInput();
+    //glutPostRedisplay();
   } else if (key == 'b') {
   	toggle--;
-    glutPostRedisplay();
+  	processInput();
+    //glutPostRedisplay();
   } else if (key == 'n') {
   	toggle++;
-    glutPostRedisplay();
+  	processInput();
+    //glutPostRedisplay();
   } else if (key == 'd') {
     vector<Vector3d> vv3d; 
     vector <double> vd;
@@ -262,7 +271,12 @@ void processNormalKeys(unsigned char key, int x, int y) {
         }
         printf("\n");
       }
-      printf("\n");
+      printf("\n");  glPushMatrix ();  
+  glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  /* set up some matrices so that the object spins with the mouse */
+  glTranslatef (0.0,0.0,-110.0);
+  glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
+  glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
     }
   } else if (key == 'k') {
 		vector<Vector3d> vv3d;
@@ -297,21 +311,24 @@ void processNormalKeys(unsigned char key, int x, int y) {
     }
   } else if(key == 'e') {
   	thread->toggleExamineMode();
-  	glutPostRedisplay ();
+  	processInput();
+  	//glutPostRedisplay ();
+#ifdef VIEW3D
   } else if(key == '=') {
   	eye_separation += 0.5;
-  	glutPostRedisplay ();
+  	//glutPostRedisplay ();
   } else if(key == '+') {
   	eye_focus_depth += 1.0;
-  	glutPostRedisplay ();
+  	//glutPostRedisplay ();
   } else if(key == '-') {
-  	if (eye_separation > 1.0)
+  	if (eye_separation > 0.5)
 	  	eye_separation -= 0.5;
-  	glutPostRedisplay ();
+  	//glutPostRedisplay ();
   } else if(key == '_') {
-  	if (eye_focus_depth > 1.0)
+  	if (eye_focus_depth > 5.0)
 	  	eye_focus_depth -= 5.0;
-  	glutPostRedisplay ();
+  	//glutPostRedisplay ();
+#endif
   }	else if (key == 'q' || key == 27) {
     exit(0);
   }
@@ -350,6 +367,7 @@ void processHapticDevice(int value)
 	//start_feedback_enabled = end_feedback_enabled = true;	
 	//sendDeviceState (positions[0] + grab_offset * rotations[0].col(0), start_feedback_enabled, positions[1] + grab_offset * rotations[1].col(0), end_feedback_enabled);
 	
+	processInput();
   glutPostRedisplay ();
   glutTimerFunc(100, processHapticDevice, value);
 }
@@ -398,8 +416,16 @@ int main (int argc, char * argv[])
 	/* initialize glut */
 	glutInit (&argc, argv); //can i do that?
 	glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-	glutInitWindowSize(1680 / 2,900);
+#ifdef VIEW3D
+	int screenWidth, screenHeight;
+ 	screenWidth = glutGet(GLUT_SCREEN_WIDTH);
+	screenHeight = glutGet(GLUT_SCREEN_HEIGHT);
+	glutInitWindowSize(screenWidth/2.0, screenHeight);
 	main_window = glutCreateWindow ("Thread");
+#else
+	glutInitWindowSize(900,900);
+	glutCreateWindow ("Thread");
+#endif
   glutPositionWindow(0,0);
 	glutDisplayFunc (drawStuff);
 	glutMotionFunc (MouseMotion);
@@ -416,10 +442,13 @@ int main (int argc, char * argv[])
 
 	initGL();
 	
-	side_window = glutCreateWindow ("Thread2");
-  glutPositionWindow(1680/2, 0);
-  initGL();
+#ifdef VIEW3D
+	side_window = glutCreateWindow ("Thread");
+	glutPositionWindow(screenWidth/2.0, 0);
+	initGL();
+	glutSetCursor(GLUT_CURSOR_NONE);
 	glutSetWindow(main_window);
+#endif
 	
   initThread();
 	thread->minimize_energy();
@@ -446,47 +475,61 @@ int main (int argc, char * argv[])
 
 		connectionInit();
 	}
+	
+	processInput();
   glutMainLoop ();
 }
 
 void drawStuff()
 {
-  glutSetWindow(main_window);
+#ifdef VIEW3D
+ 	glutSetWindow(main_window);
+#endif
+  
   glPushMatrix ();  
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   /* set up some matrices so that the object spins with the mouse */
   glTranslatef (0.0,0.0,-110.0);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
+#ifdef VIEW3D
   glTranslatef (-eye_separation/2.0, 0.0, 0.0);
   glRotatef (-atan(eye_separation/(2.0*eye_focus_depth)), 0.0, 1.0, 0.0);
-  processInput();
+#endif
   env->drawObjs();
   glPopMatrix();
   glutSwapBuffers ();
   
-  glutSetWindow(side_window);
-  glPushMatrix ();  
-  glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  /* set up some matrices so that the object spins with the mouse */
-  glTranslatef (0.0,0.0,-110.0);
-  glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
-  glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
-  glTranslatef (+eye_separation/2.0, 0.0, 0.0);
-  glRotatef (+atan(eye_separation/(2.0*eye_focus_depth)), 0.0, 1.0, 0.0);
-  env->drawObjs();
-  glPopMatrix();
-  glutSwapBuffers ();
+#ifdef VIEW3D
+	glutSetWindow(side_window);
+	glPushMatrix ();  
+	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	/* set up some matrices so that the object spins with the mouse */
+	glTranslatef (0.0,0.0,-110.0);
+	glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
+	glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
+	glTranslatef (+eye_separation/2.0, 0.0, 0.0);
+	glRotatef (+atan(eye_separation/(2.0*eye_focus_depth)), 0.0, 1.0, 0.0);
+	env->drawObjs();
+	glPopMatrix();
+	glutSwapBuffers ();
+		
+	glutSetWindow(main_window);
+#endif
   
 	env->clearObjs();
-	
-	glutSetWindow(main_window);
-	
+
 	cout << "eye_separation: " << eye_separation << "\t" << "eye_focus_depth: " << eye_focus_depth << "\t" << "angle: " << atan(eye_separation/(2.0*eye_focus_depth)) << endl;
 }
 
 void processInput()
 {  
+  glPushMatrix ();
+  /* set up some matrices so that the object spins with the mouse */
+  glTranslatef (0.0,0.0,-110.0);
+  glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
+  glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
+  
   //thread->getConstrainedTransforms(positions, rotations);
   
   if (choose_mode) {
@@ -628,6 +671,8 @@ void processInput()
 		//constrained_ee[i]->draw();
 		env->addObj(constrained_ee[i]);
 	}
+	
+	glPopMatrix();
 }
 
 void updateState(const Vector3d& proxy_pos, const Matrix3d& proxy_rot, Cursor* cursor) {
@@ -768,7 +813,7 @@ bool closeEnough(Vector3d my_pos, Matrix3d my_rot, Vector3d pos, Matrix3d rot) {
 
 void initThread()
 {	
-	int num_vertices=20;
+	int num_vertices=15;
   thread = new ThreadConstrained(num_vertices);
   positions.resize(2);
   rotations.resize(2);
