@@ -432,10 +432,15 @@ void Thread::dynamic_step_until_convergence(double step_size, double mass, int m
     toVector(&current_position); 
     current_step += 1; 
 
-  } while ((last_position - current_position).norm() > 1e-3 && current_step < max_steps);
+  } while ((last_position - current_position).norm() > 1e-4 && current_step < max_steps);
+
   
-  cout << (last_position - current_position).norm() << endl; ;
-  cout << current_step << endl; 
+  if ((last_position - current_position).norm() > 1e-4) {
+    cout << "WARNING: Did not converge in " << current_step << " steps. Current norm = " << (last_position - current_position).norm() << endl; 
+  }
+
+  //cout << (last_position - current_position).norm() << endl; ;
+  //cout << current_step << endl; 
 
 }
 
@@ -2339,7 +2344,7 @@ void Thread::set_start_constraint_nearEnd(Vector3d& start_pos, Matrix3d& start_r
   Vector3d start_pos_movement = start_pos - this->start_pos();
   start_pos += (vertex_at_ind(1) - this->start_pos()) - (start_rot.col(0)*_rest_length);
   set_start_constraint(start_pos, start_rot);
-  minimize_energy();
+  //minimize_energy();
 }
 
 void Thread::set_end_constraint_nearEnd(Vector3d& end_pos, Matrix3d& end_rot)
@@ -2347,7 +2352,7 @@ void Thread::set_end_constraint_nearEnd(Vector3d& end_pos, Matrix3d& end_rot)
   Vector3d end_pos_movement = end_pos - this->end_pos();
   end_pos += (vertex_at_ind(_thread_pieces.size()-2) - this->end_pos()) + (end_rot.col(0)*_rest_length);
   set_end_constraint(end_pos, end_rot);
-  minimize_energy();
+  //minimize_energy();
 }
 
 void Thread::set_constraints_nearEnds(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot)
@@ -2433,8 +2438,8 @@ void Thread::apply_motion_nearEnds(Frame_Motion& motion, bool mini_energy)
   end_pos += (vertex_at_ind(_thread_pieces.size()-2)+motion._pos_movement) - (end_pos-end_rot.col(0).normalized()*_rest_length);
   set_end_constraint(end_pos, end_rot);
   unviolate_total_length_constraint();
-  if (mini_energy)
-    minimize_energy();
+  //if (mini_energy)
+  //  minimize_energy();
 }
 
 void Thread::apply_motion_nearEnds(Two_Motions& motion, bool mini_energy)
@@ -2485,8 +2490,8 @@ void Thread::apply_motion_nearEnds(Two_Motions& motion, bool mini_energy)
 
 
   set_constraints(start_pos, start_rot, end_pos, end_rot);
-  if (mini_energy)
-    minimize_energy();
+  //if (mini_energy)
+  //  minimize_energy();
 
 
 }
