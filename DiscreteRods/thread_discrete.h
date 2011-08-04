@@ -17,10 +17,10 @@
     #define MAX_ROTATION_TWIST (M_PI/30.0)
     #define MOMENTUM_CONSTANT 0.0 /*how much of the last gradient do we use*/
 
-    #define MIN_MOVEMENT_VERTICES 1e-6 //speedy at 1e-4
+    #define MIN_MOVEMENT_VERTICES 1e-7 //speedy at 1e-4
     #define MIN_ROTATION_TWIST (M_PI/1000.0)
     
-    #define ENERGY_FOR_CONVERGENCE 5e-7 //speedy at 1e-5
+    #define ENERGY_FOR_CONVERGENCE 1e-8 //speedy at 1e-5
     #define NUM_MAX_ITERS 6000 //speedy at 6000
 #else
 
@@ -45,7 +45,6 @@
 
 #define THREAD_RADIUS 0.2     /* MUST BE ATLEAST MAX_MOVEMENT_VERTICES */
 #define COLLISION_CHECKING false
-
 
 using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN

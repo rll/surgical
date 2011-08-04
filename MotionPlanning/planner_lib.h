@@ -1,10 +1,10 @@
 #ifndef _planner_lib_h_
 #define _planner_lib_h_
 
-#define NUM_INTERPOLATION 100
+#define NUM_INTERPOLATION 40
 #define NUM_NODES 30000
 #define RRT_L2_POINTS_THRESHOLD 2.0
-#define NUM_ITERS_SQP 10
+#define NUM_ITERS_SQP 3
 #define SUBSAMPLE_TO_THIS_NUMBER 100
 
 #include "planner_utils.h"
@@ -120,7 +120,7 @@ void linearizeToGoal(Thread* start, Thread* end, vector<Thread*>& traj)
 /*
  * Use SQP solver given traj_in. Puts results in traj_out and control_out
  */
-void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<VectorXd>& control_out, const char* namestring)
+void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<VectorXd>& control_out, vector<vector<Thread*> >& sqp_debug_data, const char* namestring)
 {
   int num_iters = NUM_ITERS_SQP; 
   
@@ -133,8 +133,14 @@ void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<Vector
   Iterative_Control* ic = 
     new Iterative_Control(traj_out.size(), traj_out[0]->num_pieces());
   ic->set_namestring(namestring);
-  ic->iterative_control_opt(traj_out, control_out, num_iters);
+  ic->iterative_control_opt(traj_out, control_out, sqp_debug_data, num_iters);
 
+};
+
+void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<VectorXd>& control_out, const char* namestring)
+{
+  vector<vector<Thread*> > sqp_debug_data;
+  solveSQP(traj_in, traj_out, control_out, sqp_debug_data, namestring);
 };
 
 /* 

@@ -28,11 +28,10 @@ PROFILER =
 ISOTROPIC= -DISOTROPIC
 FAKEIMS= -DFAKEIMS
 
-#target : testCanny testCapture example_capture_3cam calibrate_robots test_point_distances PositionsOnRequest PositionsOnRequest2 threadStereo
-
-target: test_planner
 
 #target: test_linearization test_planner run_planner_libs visualize_trajs run_planner_libs_dim1 run_planner_libs_dim2 vis_onetraj
+
+target: test_planner run_test_jacobian 
 
 test_linearization: test_linearization.cpp clock.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o trajectory_follower.o iterative_control.o
 	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o test_linearization test_linearization.cpp clock.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o trajectory_follower.o iterative_control.o $(LIBS) $(PROFILER)
@@ -61,6 +60,13 @@ benchmark_planner: benchmark_planner.cpp threadutils_discrete.o threadpiece_disc
 
 run_sample_generator: run_sample_generator.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o clock.o glThread.o trajectory_reader.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o
 	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o run_sample_generator run_sample_generator.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o trajectory_recorder.o clock.o glThread.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o $(LIBS) $(PROFILER)
+
+
+run_test_reversibility: run_test_reversibility.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o clock.o glThread.o trajectory_reader.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o controls_reader.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o run_test_reversibility run_test_reversibility.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o trajectory_recorder.o clock.o glThread.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o controls_reader.o $(LIBS) $(PROFILER)
+
+run_test_jacobian: run_test_jacobian.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o clock.o glThread.o trajectory_reader.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o controls_reader.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o run_test_jacobian run_test_jacobian.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o trajectory_recorder.o clock.o glThread.o planner_utils.o linearization_utils.o rrt_utils.o trajectory_follower.o iterative_control.o controls_reader.o $(LIBS) $(PROFILER)
 
 benchmark_runner: benchmark_runner.cpp
 	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o benchmark_runner benchmark_runner.cpp $(LIBS) $(PROFILER)
@@ -98,6 +104,8 @@ trajectory_reader.o: $(THREAD_DIR)trajectory_reader.cpp
 
 glThread.o : $(THREAD_DIR)glThread.cpp $(THREAD_DIR)glThread.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c $(THREAD_DIR)glThread.cpp $(PROFILER)
+controls_reader.o: $(THREAD_DIR)controls_reader.cpp
+	$(CC) $(INCLUDES) $(DEBUG) -c $(THREAD_DIR)controls_reader.cpp $(PROFILER)
 
 
 
@@ -118,5 +126,5 @@ iterative_control.o : iterative_control.cpp iterative_control.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c iterative_control.cpp $(PROFILER)
 
 clean:
-	rm -r *.o *.gch test_linearization test_planner benchmark_runner benchmark_planner run_planner_libs visualize_trajs run_sample_generator vis_onetraj run_planner_libs_dim1 run_planner_libs_dim2 *.dSYM
+	rm -r *.o *.gch test_linearization test_planner benchmark_runner benchmark_planner run_planner_libs visualize_trajs run_sample_generator vis_onetraj run_planner_libs_dim1 run_planner_libs_dim2 run_test_reversibility run_test_jacobian *.dSYM
 

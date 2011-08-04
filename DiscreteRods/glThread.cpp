@@ -1,6 +1,7 @@
 #include "glThread.h"
 //default 23 links
-#define NUM_POINTS 19
+#define NUM_POINTS 7
+
 
 GLThread::GLThread() {
   int numInit = (NUM_POINTS-3)/2;

@@ -257,6 +257,9 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
   }
 
 
+  //TODO: FIXME
+  noise_multiplier = 1.0;
+
   start = goal_thread->start_pos();
   goal = goal_thread->end_pos(); 
   Vector3d noise_start;
