@@ -393,7 +393,7 @@ void initializeSQP() {
   Thread* start_thread = new Thread(*interpTraj[0]);
   int _size_each_state = -3 + 6*start_thread->num_pieces() + 1;
   int _size_each_control = 12;
-  vector<Thread*> JU_states; 
+  /*vector<Thread*> JU_states; 
   JU_states.push_back(start_thread); 
   MatrixXd J(_size_each_state, _size_each_control);
   VectorXd current_state(_size_each_state);
@@ -404,6 +404,7 @@ void initializeSQP() {
     JU_states.push_back(new Thread(*JU_states[i])); 
     JU_states[i+1]->copy_data_from_vector(new_state);
   }
+  */
 
   vector<Thread*> OLCTraj; 
   openLoopController(SQPTraj, SQPControls, OLCTraj); 

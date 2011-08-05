@@ -182,7 +182,7 @@ void Iterative_Control::init_all_trans()
 void Iterative_Control::add_transitions_alltrans(vector<Thread*>& trajectory)
 {
   
-  #pragma omp parallel for num_threads(NUM_CPU_THREADS)
+  #pragma omp parallel for 
   for (int i=0; i < trajectory.size()-1; i++)
   {
     //estimate_transition_matrix_noEdges_withTwist(trajectory[i], trans, START_AND_END);
