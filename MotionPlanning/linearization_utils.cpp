@@ -402,7 +402,7 @@ void estimate_transition_matrix_withTwist(Thread* thread, MatrixXd& A, const mov
   thread->save_thread_pieces_and_resize(thread_backup_pieces);
 
   VectorXd du(A.cols());
-  const double eps = 10e-1;
+  const double eps = 5e-1;
   for(int i = 0; i < A.cols(); i++)
   {
     du.setZero();
