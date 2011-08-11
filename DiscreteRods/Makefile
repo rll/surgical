@@ -8,7 +8,7 @@ ifeq ($(MACHINE),Darwin)
     LDFLAG=$(COMPILEFLAG) -L"/System/Library/Frameworks/OpenGL.framework/Libraries" -L"/System/Library/Frameworks/GLUT.framework" -framework GLUT -framework OpenGL -lGL -lGLU -L/usr/X11R6/lib
     INCLUDES = -I/usr/local/include/ -I/usr/include/ -I $(UTILS_DIR) -I/opt/local/include/eigen2/ -I/opt/local/include/
 else
-    LIBS = -L/usr/lib/ -lglut -lgle
+    LIBS = -L/usr/lib/ -lglut -lgle -lIL -lGLU
     INCLUDES = -I/usr/local/include/ -I/usr/include/ -I $(UTILS_DIR) -I/usr/include/eigen2
     COMPILEFLAG=
     LDFLAG=-lrt
@@ -39,7 +39,7 @@ testThreadDiscrete_phantom: testThreadDiscrete_phantom.cpp threadutils_discrete.
 	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete_phantom testThreadDiscrete_phantom.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o $(LIBS) $(PROFILER)
 
 testThreadDiscrete_pickUp: testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o ThreadConstrained.o EnvObjects.o SimpleEnv.o drawutils.o imageloader.o thread_socket_interface.o UDPSocket.o Socket.o
-	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete_pickUp testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o ThreadConstrained.o EnvObjects.o SimpleEnv.o drawutils.o imageloader.o thread_socket_interface.o UDPSocket.o Socket.o $(LIBS) -lIL -lGLU $(PROFILER)
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete_pickUp testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o ThreadConstrained.o EnvObjects.o SimpleEnv.o drawutils.o imageloader.o thread_socket_interface.o UDPSocket.o Socket.o $(LIBS) $(PROFILER)
 
 recordThreadVideo: recordThreadVideo.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_reader.o
 	$(LD) $(INCLUDES) $(VISION_INCLUDES) $(DEBUG) -o recordThreadVideo recordThreadVideo.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o $(LIBS) $(VISION_LIBS)

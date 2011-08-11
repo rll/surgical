@@ -61,7 +61,7 @@ float translate_frame[3] = { 0.0, 0.0, -110.0 };
 int main_window = 0;
 int side_window = 0;
 float eye_separation = 5.0;
-float eye_focus_depth = -translate_frame[2];//-50.0;
+float eye_focus_depth = 0.0; // distance from sphere center to focus point
 #endif
 
 float move[2];
@@ -150,10 +150,13 @@ void processLeft(int x, int y) {
 }*/
 
 void processMiddle(int x, int y) {
+#ifdef VIEW3D
+	if ((((x-lastx_M) < 0.0) && ((eye_focus_depth + 50.0 + 5.0) < (-translate_frame[2]))) ||
+			((x-lastx_M) > 0.0))
+		translate_frame[2] -= x-lastx_M;
+#else
 	translate_frame[2] -= x-lastx_M;
-	if (translate_frame[2] >= -(50.0 + 5.0))
-		translate_frame[2] += x-lastx_M;
-	eye_focus_depth = -translate_frame[2]; //-50.0;
+#endif
 	lastx_M = x;
 	lasty_M = y;
 }
@@ -341,15 +344,13 @@ void processNormalKeys(unsigned char key, int x, int y) {
   	if (eye_separation > 0.5)
 	  	eye_separation -= 0.5;
   	//glutPostRedisplay ();
-  /*
   } else if(key == '+') {
-  	eye_focus_depth += 1.0;
+  	if ((eye_focus_depth + 50.0 + 5.0) < (-translate_frame[2]))
+  		eye_focus_depth += 1.0;
   	//glutPostRedisplay ();
   } else if(key == '_') {
-  	//if (eye_focus_depth > 1.0)
-	  	eye_focus_depth -= 1.0;
+	 	eye_focus_depth -= 1.0;
   	//glutPostRedisplay ();
-  */
 #endif
   }	else if (key == 'q' || key == 27) {
     exit(0);
@@ -438,17 +439,23 @@ int main (int argc, char * argv[])
 	/* initialize glut */
 	glutInit (&argc, argv); //can i do that?
 	glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-#ifdef VIEW3D
+#ifdef VIEW3D	
 	int screenWidth, screenHeight;
  	screenWidth = glutGet(GLUT_SCREEN_WIDTH);
 	screenHeight = glutGet(GLUT_SCREEN_HEIGHT);
 	glutInitWindowSize(screenWidth/2.0, screenHeight);
+	
+	side_window = glutCreateWindow ("Thread");
+	glutPositionWindow(screenWidth/2.0, 0);
+	initGL();
+	glutSetCursor(GLUT_CURSOR_NONE);
+	
 	main_window = glutCreateWindow ("Thread");
 #else
 	glutInitWindowSize(900,900);
 	glutCreateWindow ("Thread");
 #endif
-  glutPositionWindow(0,0);
+	glutPositionWindow(0,0);
 	glutDisplayFunc (drawStuff);
 	glutMotionFunc (MouseMotion);
   glutMouseFunc (processMouse);
@@ -461,16 +468,8 @@ int main (int argc, char * argv[])
 	glutCreateMenu (glutMenu);
 	glutAddMenuEntry ("Exit", 0);
 	glutAttachMenu (GLUT_RIGHT_BUTTON);
-
-	initGL();
 	
-#ifdef VIEW3D
-	side_window = glutCreateWindow ("Thread");
-	glutPositionWindow(screenWidth/2.0, 0);
 	initGL();
-	glutSetCursor(GLUT_CURSOR_NONE);
-	glutSetWindow(main_window);
-#endif
 	
   initThread();
 	thread->minimize_energy();
@@ -515,10 +514,16 @@ void drawStuff()
   /* set up some matrices so that the object spins with the mouse */
   glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
 #ifdef VIEW3D
-	glRotatef (+atan(eye_separation/(2.0*eye_focus_depth)) * 180.0/M_PI, 0.0, 1.0, 0.0);
+	glTranslatef(0.0, 0.0, +eye_focus_depth);
+  drawSphere(Vector3d::Zero(), 1, 0.8, 0.8, 0.8);
+	//glRotatef (15.0, 0.0, 1.0, 0.0);
+	// (-translate_frame[2]) is distance from camera to sphere center
+	// (-translate_frame[2] - eye_focus_depth) is distance from camera to focus point
+	glRotatef (+atan(eye_separation/(2.0*(-translate_frame[2]-eye_focus_depth))) * 180.0/M_PI, 0.0, 1.0, 0.0);
+	glTranslatef(0.0, 0.0, -eye_focus_depth);
 #endif
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
-  glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);	
+  glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
   env->drawObjs();
   glPopMatrix();
   glutSwapBuffers ();
@@ -529,7 +534,11 @@ void drawStuff()
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	/* set up some matrices so that the object spins with the mouse */
 	glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
-	glRotatef (-atan(eye_separation/(2.0*eye_focus_depth)) * 180.0/M_PI, 0.0, 1.0, 0.0);
+	glTranslatef(0.0, 0.0, +eye_focus_depth);
+  drawSphere(Vector3d::Zero(), 1, 0.8, 0.8, 0.8);
+	//glRotatef (-15.0, 0.0, 1.0, 0.0);
+	glRotatef (-atan(eye_separation/(-2.0*translate_frame[2]-eye_focus_depth)) * 180.0/M_PI, 0.0, 1.0, 0.0);
+	glTranslatef(0.0, 0.0, -eye_focus_depth);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
 	env->drawObjs();
@@ -538,7 +547,8 @@ void drawStuff()
 		
 	glutSetWindow(main_window);
 	
-	cout << "eye_separation: " << eye_separation << "\t" << "eye_focus_depth: " << eye_focus_depth << "\t" << "angle(degrees): " << atan(eye_separation/(2.0*eye_focus_depth)) * 180.0/M_PI << endl;
+	//cout << "eye_separation: " << eye_separation << "\t" << "eye_focus_depth: " << eye_focus_depth << "\t" << "camera to sphere center: " << (-translate_frame[2]) << "\t" << "angle(degrees): " << atan(eye_separation/(2.0*eye_focus_depth)) * 180.0/M_PI << endl;
+	cout << "eye_focus_depth: " << eye_focus_depth << "\t" << "camera to sphere center: " << (-translate_frame[2]) << endl;
 #endif
   
 	env->clearObjs();
