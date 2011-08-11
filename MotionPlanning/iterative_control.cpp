@@ -181,12 +181,14 @@ void Iterative_Control::init_all_trans()
 
 void Iterative_Control::add_transitions_alltrans(vector<Thread*>& trajectory)
 {
-  
+ 
+  cout << "Computing Jacobians" << endl;
+  boost::progress_display progress(trajectory.size()-1);
   #pragma omp parallel for 
   for (int i=0; i < trajectory.size()-1; i++)
   {
     //estimate_transition_matrix_noEdges_withTwist(trajectory[i], trans, START_AND_END);
-
+    ++progress; 
     MatrixXd trans(_size_each_state, _size_each_control);
     estimate_transition_matrix_withTwist(trajectory[i], trans, START_AND_END);
 
@@ -200,6 +202,7 @@ void Iterative_Control::add_transitions_alltrans(vector<Thread*>& trajectory)
       }
     }
   }
+  cout << "All Jacobians Computed" << endl;
 }
 
 

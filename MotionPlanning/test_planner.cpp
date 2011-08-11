@@ -348,6 +348,24 @@ void DimensionReductionBestPath(Thread* start, Thread* target, int n, vector<Thr
 
 }
 
+void sample_on_sphere(VectorXd& u, const double norm) {
+  for (int i = 0; i < u.size(); i++) { 
+    u(i) = drand48();
+  }
+
+  u.normalize();
+
+  for (int i = 0; i < u.size(); i++) { 
+    if (drand48() < 0.5) { 
+      u(i) *= -norm; 
+    } else { 
+      u(i) *= norm; 
+    }
+  }
+
+}
+
+
 void initializeSQP() {  
   readGoalThreadFromFile(1);
   readGoalThreadFromFile(2);
@@ -356,33 +374,40 @@ void initializeSQP() {
                               glThreads[endThread]->getThread(),
                               interpTraj);
 
-  vector<Thread*> initialTraj = interpTraj;
-  //vector<Thread*> initialTraj;
+  //vector<Thread*> initialTraj = interpTraj;
+  vector<Thread*> initialTraj;
  // linearizeViaTrajectory(interpTraj, initialTraj);
 //
   double eps = 1.0e-1; 
   VectorXd du(12);
   du.setZero();
-  du(0) = eps;
+
+  /*du(0) = eps;
   du(1) = eps;
   du(2) = eps;
   du(6) = eps;
   du(7) = eps;
   du(8) = eps;
+  */
 
-  /*initialTraj.resize(interpTraj.size()); 
+  cout << "Generating Initial Trajectory" << endl; 
+  boost::progress_display progress(interpTraj.size()-1); 
+  initialTraj.resize(interpTraj.size()); 
   Thread* start_copy = new Thread(*glThreads[planThread]->getThread());
   initialTraj[0] = new Thread(*start_copy); 
   for (int i = 1; i < initialTraj.size(); i++) {
+    if ((i-1) % 10 == 0)  sample_on_sphere(du, eps);
     applyControl(start_copy, du);
-    initialTraj[i] = new Thread(*start_copy); 
+    initialTraj[i] = new Thread(*start_copy);
+    ++progress; 
   }
-  initialTraj[initialTraj.size()-1] = new Thread(*glThreads[endThread]->getThread());*/
+  cout << "Initial Trajectory Initialized" << endl; 
+  //initialTraj[initialTraj.size()-1] = new Thread(*glThreads[endThread]->getThread());
 
-  vector<Thread*> copy_traj;
-  for (int i = 0; i < initialTraj.size(); i++) { 
-    copy_traj.push_back(new Thread(*interpTraj[i]));
-  }
+  //vector<Thread*> copy_traj;
+  //for (int i = 0; i < initialTraj.size(); i++) { 
+   // copy_traj.push_back(new Thread(*interpTraj[i]));
+  //}
 
   vector<Thread*> SQPTraj; 
   vector<VectorXd> SQPControls;
@@ -390,9 +415,9 @@ void initializeSQP() {
   string namestring = "sqp_debug"; 
   solveSQP(initialTraj, SQPTraj, SQPControls, sqp_debug_data, namestring.c_str());   
   
-  Thread* start_thread = new Thread(*interpTraj[0]);
-  int _size_each_state = -3 + 6*start_thread->num_pieces() + 1;
-  int _size_each_control = 12;
+  //Thread* start_thread = new Thread(*interpTraj[0]);
+  //int _size_each_state = -3 + 6*start_thread->num_pieces() + 1;
+  //int _size_each_control = 12;
   /*vector<Thread*> JU_states; 
   JU_states.push_back(start_thread); 
   MatrixXd J(_size_each_state, _size_each_control);
@@ -418,6 +443,7 @@ void initializeSQP() {
   //visualizationData.push_back(JU_states);
 
   //visualizationData.push_back(SQPTraj);
+  visualizationData.push_back(initialTraj);
   visualizationData.push_back(OLCTraj); 
   setThreads(visualizationData);
 
