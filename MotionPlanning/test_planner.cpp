@@ -75,6 +75,11 @@ int realThread = 2;
 int endThread = 3;
 int newRRTNodeThread = 6;
 
+bool drawSet_0 = true;
+bool drawSet_1 = true; 
+bool drawSet_2 = true; 
+
+
 GLThread* apprxThreads[500]; 
 RRTNode* apprxNodes[500];
 RRTNode* curApprxNodes[500];
@@ -1032,14 +1037,17 @@ void processNormalKeys(unsigned char key, int x, int y)
   else if (key == 'i') {
     generateInterpolatedThread();
   }
-  else if (key == '1') { 
-    interpolateAndFollow();
+  else if (key == '1' || key == '!') { 
+    //interpolateAndFollow();
+    drawSet_0 = !drawSet_0;
   } 
-  else if (key == '2') { 
-    SQPPlanner();
+  else if (key == '2' || key == '@') { 
+    //SQPPlanner();
+    drawSet_1 = !drawSet_1;
   }
-  else if (key == '3') { 
-    SQPSmoother();
+  else if (key == '3' || key == '#') { 
+    //SQPSmoother();
+    drawSet_2 = !drawSet_2;
   }
   else if (key == 'a') {
     planRRT();
@@ -1048,24 +1056,22 @@ void processNormalKeys(unsigned char key, int x, int y)
     //stepRRT(100);
     stepSimulation();
   }
-  else if (key == '!') {
+  else if (key == 'v') {
     writeGoalThreadToFile(1);
   }
-  else if (key == '@') { 
+  else if (key == 'b') { 
     writeGoalThreadToFile(2);
-  }
-  else if (key == '#') {
-    readGoalThreadFromFile(1);
   }
   else if (key == '0') {
     initializeSQP();
   }
-  else if (key == 'v') { 
+ /* else if (key == 'v') { 
     reduceDimension();
   }
   else if (key == 'b') { 
     increaseDimension();
   }
+  */
   else if (key == 'n') {
     //DimensionReductionBestPath(2);
   } 
@@ -1080,11 +1086,9 @@ void processNormalKeys(unsigned char key, int x, int y)
   } 
   else if (key == 'z') { 
     zoom += 10;
-    glutPostRedisplay();
   } 
   else if (key == 'x') { 
     zoom -= 10; 
-    glutPostRedisplay();
   }
   else if (key == 27)
   {
@@ -1094,6 +1098,7 @@ void processNormalKeys(unsigned char key, int x, int y)
   lastx_R = x;
   lasty_R = y;
 
+  glutPostRedisplay();
 }
 
 void processKeyUp(unsigned char key, int x, int y)
@@ -1221,19 +1226,27 @@ void DrawStuff (void)
 
   for(int i = 0; i < numApprox; i++) {
     if ( !initialized && !threadSet ) continue; 
+    if (i == 0 && !drawSet_0) continue;
+    if (i == 1 && !drawSet_1) continue;
+    if (i == 2 && !drawSet_2) continue;
 
     apprxThreads[i]->DrawAxes();
 
     //Draw Thread
     if (i % 7 == 0) {
+      //orange
       glColor3f (0.8, 0.4, 0.0);
     } else if (i % 7 ==1) {
+      //green
       glColor3f (0.2, 0.8, 0.2);
     } else if (i % 7 ==2) {
+      //teal?
       glColor3f (0.25, 0.55, 1.0); 
     } else if (i % 7 ==3) {
+      //red
       glColor3f (0.8, 0.2, 0.2);
     } else if (i % 7==4) {
+      //blue?
       glColor3f (0.2, 0.2, 0.8);
     } else if (i % 7==5) {
       glColor3f (0.4, 0.4, 0.7);

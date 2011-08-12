@@ -64,6 +64,15 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
 
   for (int opt_iter=0; opt_iter < num_opts; opt_iter++)
   {
+    /* Memory leak, fix later. Needed to get jacobian computation done in parallel */ 
+    vector<Thread*> trajectory_local;
+    trajectory_local.resize(trajectory.size());
+    #pragma omp parallel for
+    for (int i = 0; i < trajectory.size(); i++) { 
+      trajectory_local[i] = new Thread(*trajectory[i]);
+    }
+    trajectory = trajectory_local; 
+
     add_transitions_alltrans(trajectory);
     SparseMatrix<double> all_trans_sparse(_all_trans);
     Matrix_To_File(all_trans_sparse, filename_alltrans);
@@ -100,7 +109,7 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
     sprintf(matlab_command, "%s -nodisplay -nodesktop -nojvm -r \"solve_sparse(%d, %d, \'%s\', %d, %d, \'%s\', \'%s\', %d, %d, %d)\"", MATLAB_INSTALL, _all_trans.rows(), _all_trans.cols(), filename_alltrans, goal_vector.rows(), goal_vector.cols(), filename_goalvec, filename_statevec_thisiter, _num_threads, _size_each_state, _size_each_control);
     std::cout << "command: " << matlab_command << std::endl;
 
-    system(matlab_command);
+    int return_value = system(matlab_command);
     File_To_Vector(filename_statevec_thisiter, new_states);
     
 
@@ -182,9 +191,9 @@ void Iterative_Control::init_all_trans()
 void Iterative_Control::add_transitions_alltrans(vector<Thread*>& trajectory)
 {
  
-  cout << "Computing Jacobians" << endl;
+  cout << "Computing Jacobians. " << endl;
   boost::progress_display progress(trajectory.size()-1);
-  #pragma omp parallel for 
+  #pragma omp parallel for num_threads(NUM_CPU_THREADS) 
   for (int i=0; i < trajectory.size()-1; i++)
   {
     //estimate_transition_matrix_noEdges_withTwist(trajectory[i], trans, START_AND_END);
@@ -201,6 +210,8 @@ void Iterative_Control::add_transitions_alltrans(vector<Thread*>& trajectory)
         _all_trans.coeffRef(num_rows_start+r, num_cols_start+c) = trans(r,c);
       }
     }
+    
+    
   }
   cout << "All Jacobians Computed" << endl;
 }
