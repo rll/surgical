@@ -298,7 +298,7 @@ void processEndProxybutton() {
 
 void processHapticDevice(int value)
 {
-    getDeviceState (start_proxyxform, start_proxybutton, end_proxyxform, end_proxybutton);
+    //getDeviceState (start_proxyxform, start_proxybutton, end_proxyxform, end_proxybutton);
     
     //cout << start_proxyxform[12] << "\t" <<  start_proxyxform[13] << "\t" <<  start_proxyxform[14] << endl;
     start_proxyxform[12] *= 30;
