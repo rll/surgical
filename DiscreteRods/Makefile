@@ -3,7 +3,8 @@ HOSTNAME=-D$(shell uname -n | sed 's/-/_/g' | sed 's/\./_/g')
 UTILS_DIR = ../utils/
 
 ifeq ($(MACHINE),Darwin)
-    LIBS = -L/usr/lib/ -lglut -lgle
+    LIBS = -L/usr/lib/ -lglut -lgle -lIL -lGLU
+
     COMPILEFLAG=-DMAC
     LDFLAG=$(COMPILEFLAG) -L"/System/Library/Frameworks/OpenGL.framework/Libraries" -L"/System/Library/Frameworks/GLUT.framework" -framework GLUT -framework OpenGL -lGL -lGLU -L/usr/X11R6/lib
     INCLUDES = -I/usr/local/include/ -I/usr/include/ -I $(UTILS_DIR) -I/opt/local/include/eigen2/ -I/opt/local/include/
