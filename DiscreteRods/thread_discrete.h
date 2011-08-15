@@ -14,7 +14,7 @@
 #include <queue>
 
 #ifdef ISOTROPIC 
-    #define MAX_MOVEMENT_VERTICES 0.1
+    #define MAX_MOVEMENT_VERTICES 0.050
     #define MAX_ROTATION_TWIST (M_PI/30.0)
     #define MOMENTUM_CONSTANT 0.0 /*how much of the last gradient do we use*/
 
@@ -57,7 +57,7 @@
 #define num_iters_twist_est_max 0
 
 #define THREAD_RADIUS 0.2     /* MUST BE ATLEAST MAX_MOVEMENT_VERTICES */
-#define COLLISION_CHECKING false
+#define COLLISION_CHECKING true
 
 
 using namespace std;

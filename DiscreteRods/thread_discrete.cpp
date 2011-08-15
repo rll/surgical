@@ -635,21 +635,24 @@ void Thread::dynamic_step(double step_size, double mass, int steps) {
     }
     if(move_too_far) {
       for(int i = 2; i < position_offsets.size()-2; i++) {
-        position_offsets[i] = position_offsets[i] * MAX_MOVEMENT_VERTICES / max_move;
+        position_offsets[i] = position_offsets[i] * MAX_MOVEMENT_VERTICES;
       }
     }
     apply_vertex_offsets(position_offsets);
 
-/*    if (COLLISION_CHECKING) {
+    if (COLLISION_CHECKING) {
+      bool project_length_constraint_pass = true;
       vector<Self_Intersection> self_intersections;
+      vector<Thread_Intersection> thread_intersections;
       vector<Intersection> intersections;
       int intersection_iters = 0; 
-      bool project_length_constraint_pass = true;
-      while(check_for_intersection(self_intersections, intersections) && project_length_constraint_pass) {
-      fix_intersections();
+      while(check_for_intersection(self_intersections, thread_intersections, intersections) && project_length_constraint_pass) {
+        fix_intersections();
+        project_length_constraint_pass &= project_length_constraint();
+        intersection_iters++;
+        //cout << "fixing for " << intersection_iters << " iterations." << endl;
       }
-      }
-*/
+    }
     minimize_energy_twist_angles();
     project_length_constraint();
   }
