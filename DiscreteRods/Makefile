@@ -3,15 +3,16 @@ HOSTNAME=-D$(shell uname -n | sed 's/-/_/g' | sed 's/\./_/g')
 UTILS_DIR = ../utils/
 
 ifeq ($(MACHINE),Darwin)
-    LIBS = -L/usr/lib/ -lglut -lgle
+    LIBS = -L/usr/lib/ -lglut -lgle -lIL -lGLU
+
     COMPILEFLAG=-DMAC
     LDFLAG=$(COMPILEFLAG) -L"/System/Library/Frameworks/OpenGL.framework/Libraries" -L"/System/Library/Frameworks/GLUT.framework" -framework GLUT -framework OpenGL -lGL -lGLU -L/usr/X11R6/lib
     INCLUDES = -I/usr/local/include/ -I/usr/include/ -I $(UTILS_DIR) -I/opt/local/include/eigen2/ -I/opt/local/include/
 else
-    LIBS = -L/usr/lib/ -lglut -lgle
+    LIBS = -L/usr/lib/ -lglut -lgle -lIL -lGLU
     INCLUDES = -I/usr/local/include/ -I/usr/include/ -I $(UTILS_DIR) -I/usr/include/eigen2
     COMPILEFLAG=
-    LDFLAG=
+    LDFLAG=-lrt
 endif
 
 VISION_LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lPvAPI -lrt
@@ -27,19 +28,19 @@ DEBUG = -ggdb
 PROFILER =
 ISOTROPIC=-DISOTROPIC
 
-target: testThreadDynamic 
+target: testThreadDiscrete 
 
-testThreadDynamic: testThreadDynamic.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o
-	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDynamic testThreadDynamic.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o $(LIBS) $(PROFILER)
-
-testThreadDiscrete: testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o
-	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o $(LIBS) $(PROFILER)
+testThreadDiscrete: testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o trajectory_reader.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o trajectory_reader.o $(LIBS) $(PROFILER)
 
 testThreadDiscrete_noniso: testThreadDiscrete.cpp threadutils_discrete_noniso.o threadpiece_discrete_noniso.o thread_discrete_noniso.o
 	$(LD) $(INCLUDES) $(DEBUG) -o testThreadDiscrete_noniso testThreadDiscrete.cpp threadutils_discrete_noniso.o threadpiece_discrete_noniso.o thread_discrete_noniso.o $(LIBS) $(PROFILER)
 
 testThreadDiscrete_phantom: testThreadDiscrete_phantom.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o
 	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete_phantom testThreadDiscrete_phantom.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o $(LIBS) $(PROFILER)
+
+testThreadDiscrete_pickUp: testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o ThreadConstrained.o EnvObjects.o SimpleEnv.o drawutils.o imageloader.o thread_socket_interface.o UDPSocket.o Socket.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete_pickUp testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o ThreadConstrained.o EnvObjects.o SimpleEnv.o drawutils.o imageloader.o thread_socket_interface.o UDPSocket.o Socket.o $(LIBS) $(PROFILER)
 
 recordThreadVideo: recordThreadVideo.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_reader.o
 	$(LD) $(INCLUDES) $(VISION_INCLUDES) $(DEBUG) -o recordThreadVideo recordThreadVideo.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o $(LIBS) $(VISION_LIBS)
@@ -66,6 +67,9 @@ thread_visualize_and_save_noniso: thread_visualize_and_save.cpp threadutils_disc
 ################################################
 #    Object files                              #
 ################################################
+ThreadConstrained.o: ThreadConstrained.cpp ThreadConstrained.h
+	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c ThreadConstrained.cpp $(PROFILER)
+
 thread_discrete.o: thread_discrete.cpp thread_discrete.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c thread_discrete.cpp $(PROFILER)
 
@@ -74,6 +78,18 @@ threadpiece_discrete.o: threadpiece_discrete.cpp threadpiece_discrete.h
 
 threadutils_discrete.o: threadutils_discrete.cpp threadutils_discrete.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c threadutils_discrete.cpp $(PROFILER)
+	
+EnvObjects.o: EnvObjects.cpp EnvObjects.h
+	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c EnvObjects.cpp $(PROFILER)
+
+SimpleEnv.o: SimpleEnv.cpp SimpleEnv.h
+	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c SimpleEnv.cpp $(PROFILER)
+	
+drawutils.o: $(UTILS_DIR)/drawutils.cpp
+	$(CC) $(INCLUDES) $(DEBUG) -c $(UTILS_DIR)/drawutils.cpp $(PROFILER)
+	
+imageloader.o: $(UTILS_DIR)/imageloader.cpp
+	$(CC) $(INCLUDES) $(DEBUG) -c $(UTILS_DIR)/imageloader.cpp $(PROFILER)
 
 
 thread_discrete_noniso.o: thread_discrete.cpp thread_discrete.h
@@ -124,6 +140,6 @@ thread_socket_interface.o: thread_socket_interface.cpp thread_socket_interface.h
 controls_reader.o: controls_reader.cpp controls_reader.h
 	$(CC) $(INCLUDES) $(DEBUG) -c controls_reader.cpp $(PROFILER)
 clean:
-	rm -r *.o *.gch testThreadDiscrete testThreadDiscrete_noniso testThreadDiscrete_phantom saveThreadTrajectory recordThreadVideo thread_visualize_and_save thread_visualize_and_save_noniso testThreadDynamic *.dSYM
+	rm -r *.o *.gch testThreadDiscrete testThreadDiscrete_noniso testThreadDiscrete_phantom testThreadDiscrete_pickUp saveThreadTrajectory recordThreadVideo thread_visualize_and_save thread_visualize_and_save_noniso testThreadDynamic *.dSYM
 
 

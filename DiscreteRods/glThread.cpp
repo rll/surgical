@@ -1,6 +1,6 @@
 #include "glThread.h"
 //default 23 links
-#define NUM_POINTS 9
+#define NUM_POINTS 19
 
 
 GLThread::GLThread() {
@@ -64,7 +64,7 @@ GLThread::GLThread() {
 
 
   _thread = new Thread(vertices, angles, rotations[0], rotations[1]);
-  _thread->set_rest_length(DEFAULT_REST_LENGTH);
+  //_thread->set_rest_length(DEFAULT_REST_LENGTH);
 
 #ifdef ISOTROPIC
   to_set_bend = _thread->get_bend_coeff();

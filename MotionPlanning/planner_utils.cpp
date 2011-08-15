@@ -110,10 +110,10 @@ Thread* Thread_RRT::doubleDimApproximation(const Thread* target) {
   startEdge.normalize();
   endEdge.normalize();
 
-  vertices.push_back(target->vertex_at_ind(1)-0.5*startEdge*target->rest_length());
+  vertices.push_back(target->vertex_at_ind(1)-0.5*startEdge*target->start_rest_length());
   angles.push_back(0.0);
   vertices.push_back(target->vertex_at_ind(1));
-  //vertices.push_back(target->start_pos()+startEdge*target->rest_length());
+  //vertices.push_back(target->start_pos()+startEdge*target->start_rest_length());
   angles.push_back(0.0);
   
 
@@ -123,7 +123,7 @@ Thread* Thread_RRT::doubleDimApproximation(const Thread* target) {
     angles.push_back(0.0);
     angles.push_back(0.0);
   }
-  vertices.push_back(vertices[vertices.size()-1] + 0.5*endEdge*target->rest_length());
+  vertices.push_back(vertices[vertices.size()-1] + 0.5*endEdge*target->start_rest_length());
 
   angles.push_back(0.0);
 
@@ -132,11 +132,11 @@ Thread* Thread_RRT::doubleDimApproximation(const Thread* target) {
   Vector3d target_end_pos = target->end_pos();
   Matrix3d target_end_rot = target->end_rot(); 
 
-  Thread* increasedDimThread = new Thread(vertices, angles, target_start_rot, 0.5*target->rest_length());
+  Thread* increasedDimThread = new Thread(vertices, angles, target_start_rot, 0.5*target->start_rest_length());
   //double rest_length_ratio = ((double)target->num_pieces()) / increasedDimThread->num_pieces();
 
   //double rest_length_ratio = 0.5;
-  //increasedDimThread->set_rest_length(target->rest_length() * rest_length_ratio);
+  //increasedDimThread->set_rest_length(target->start_rest_length() * rest_length_ratio);
   increasedDimThread->set_end_twist(target->end_angle());
   increasedDimThread->set_end_constraint(vertices[vertices.size()-1], target_end_rot);
   increasedDimThread->project_length_constraint();
@@ -162,7 +162,7 @@ Thread* Thread_RRT::halfDimApproximation(const Thread* target) {
   startEdge.normalize();
   endEdge.normalize();
 
-  vertices.push_back(target->vertex_at_ind(1) - 2*startEdge*target->rest_length());
+  vertices.push_back(target->vertex_at_ind(1) - 2*startEdge*target->start_rest_length());
   angles.push_back(0.0);
   vertices.push_back(target->vertex_at_ind(1));
   angles.push_back(0.0);
@@ -174,16 +174,16 @@ Thread* Thread_RRT::halfDimApproximation(const Thread* target) {
     }
   }
 
-  vertices.push_back(vertices[vertices.size()-1] + 2*endEdge*target->rest_length());
+  vertices.push_back(vertices[vertices.size()-1] + 2*endEdge*target->start_rest_length());
   angles.push_back(0.0);
 
   Matrix3d target_start_rot = target->start_rot();
   
   Thread* reducedDimensionThread = new Thread(vertices, angles, 
-      target_start_rot, target->rest_length() * 2.0);
+      target_start_rot, target->start_rest_length() * 2.0);
 //  double rest_length_ratio = ((double)target->num_pieces()) / reducedDimensionThread->num_pieces();
   //double rest_length_ratio = 2.0; 
-  //reducedDimensionThread->set_rest_length(target->rest_length()*rest_length_ratio);
+  //reducedDimensionThread->set_rest_length(target->start_rest_length()*rest_length_ratio);
 
   Vector3d target_end_pos = target->end_pos();
   Matrix3d target_end_rot = target->end_rot();
@@ -237,7 +237,7 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
   Vector3d start; 
   Vector3d goal; 
   
-  double max_thread_length = N*goal_thread->rest_length(); 
+  double max_thread_length = N*goal_thread->start_rest_length(); 
   double noise_multiplier; 
   if (drand48() < 0.20) { 
      
@@ -245,7 +245,7 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
     // sample the goal by taking the current goal and adding noise 
     //cout << "sampling near the start" << endl;
     
-    noise_multiplier = goal_thread->rest_length(); 
+    noise_multiplier = goal_thread->start_rest_length(); 
 
   } else { 
     // sample the start by sampling in the sphere of the norm
@@ -288,7 +288,7 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
     inc << Normal(0,1), Normal(0,1), Normal(0,1);
     //inc = goal;
     inc.normalize();
-    inc *= goal_thread->rest_length();
+    inc *= goal_thread->start_rest_length();
     angle = acos(inc.dot(goal)/(goal.norm()*inc.norm()));
   } while(abs(angle) > 3*M_PI/4.0);
 
@@ -298,8 +298,8 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
     vertices.push_back(vertices[vertices.size()-1] + inc);
     angles.push_back(0.0);
     // time to move toward the goal
-    if ((vertices[vertices.size()-1] - goal).squaredNorm() > (N-2-i-1)*(N-2-i-1)*goal_thread->rest_length()*goal_thread->rest_length()) {
-      inc = (goal - vertices[vertices.size()-1]).normalized()*goal_thread->rest_length();
+    if ((vertices[vertices.size()-1] - goal).squaredNorm() > (N-2-i-1)*(N-2-i-1)*goal_thread->start_rest_length()*goal_thread->start_rest_length()) {
+      inc = (goal - vertices[vertices.size()-1]).normalized()*goal_thread->start_rest_length();
       //if ( acos(inc.dot(prevInc) / (prevInc.norm() * inc.norm())) > 3*M_PI/4 ) {
         //inc = prevInc; 
       //}
@@ -310,7 +310,7 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
             inc << Normal(0,1), Normal(0,1), Normal(0,1);
             //inc = goal;
             inc.normalize();
-            inc *= goal_thread->rest_length();
+            inc *= goal_thread->start_rest_length();
             angle = acos(inc.dot(goal) / (goal.norm()*inc.norm()));     
           } while(abs(angle) > M_PI/3.0);
         } else {
@@ -318,7 +318,7 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
             inc << Normal(0,1), Normal(0,1), Normal(0,1);
             //inc = goal;
             inc.normalize();
-            inc *= goal_thread->rest_length();
+            inc *= goal_thread->start_rest_length();
             angle = acos(inc.dot(prevInc) / (prevInc.norm()*inc.norm()));     
           } while(abs(angle) > M_PI/3.0);
         }
@@ -343,7 +343,7 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
 //  end_rot.setZero();
 //  inc << Normal(0,1), Normal(0,1), Normal(0,1);
   //rotation_from_euler_angles(end_rot, inc(0), inc(1), inc(2));
-  Thread* sample =new Thread(vertices, angles, start_rot, goal_thread->rest_length());
+  Thread* sample =new Thread(vertices, angles, start_rot, goal_thread->start_rest_length());
   //sample->set_end_constraint(vertices[vertices.size()-1], end_rot);
 	sample->set_end_twist(drand48()*4*M_PI - 2*M_PI);
   sample->unviolate_total_length_constraint();
