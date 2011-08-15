@@ -4,7 +4,7 @@
 #define NUM_INTERPOLATION 80
 #define NUM_NODES 30000
 #define RRT_L2_POINTS_THRESHOLD 2.0
-#define NUM_ITERS_SQP 1
+#define NUM_ITERS_SQP 2
 #define SUBSAMPLE_TO_THIS_NUMBER 100
 
 #include "planner_utils.h"

@@ -109,6 +109,9 @@ bool stepperInitialized = false;
 vector<Vector3d> lastV;
 
 double currentTime = 0.0;
+
+Thread* lastReachedThread = NULL;
+
 /* set up a light */
 GLfloat lightOnePosition[] = {140.0, 0.0, 200.0, 0.0};
 GLfloat lightOneColor[] = {0.99, 0.99, 0.99, 1.0};
@@ -372,8 +375,8 @@ void sample_on_sphere(VectorXd& u, const double norm) {
 
 
 void initializeSQP() {  
-  readGoalThreadFromFile(1);
-  readGoalThreadFromFile(2);
+  //readGoalThreadFromFile(1);
+  //readGoalThreadFromFile(2);
   vector<Thread*> interpTraj; 
   interpolatePointsTrajectory(glThreads[planThread]->getThread(),
                               glThreads[endThread]->getThread(),
@@ -383,7 +386,7 @@ void initializeSQP() {
   vector<Thread*> initialTraj;
  // linearizeViaTrajectory(interpTraj, initialTraj);
 //
-  double eps = 1.0e-1; 
+  double eps = 2.0e-1; 
   VectorXd du(12);
   du.setZero();
 
@@ -407,7 +410,10 @@ void initializeSQP() {
     ++progress; 
   }
   cout << "Initial Trajectory Initialized" << endl; 
-  //initialTraj[initialTraj.size()-1] = new Thread(*glThreads[endThread]->getThread());
+  
+
+  //USE SQP AS PLANNER OR SMOOTHER? comment out if you want a smoother
+  initialTraj[initialTraj.size()-1] = new Thread(*glThreads[endThread]->getThread());
 
   //vector<Thread*> copy_traj;
   //for (int i = 0; i < initialTraj.size(); i++) { 
@@ -449,7 +455,9 @@ void initializeSQP() {
 
   //visualizationData.push_back(SQPTraj);
   visualizationData.push_back(initialTraj);
-  visualizationData.push_back(OLCTraj); 
+  visualizationData.push_back(OLCTraj);
+
+  lastReachedThread = OLCTraj.back();
   setThreads(visualizationData);
 
 }
@@ -1033,6 +1041,9 @@ void processNormalKeys(unsigned char key, int x, int y)
   }
   else if (key == 'd') {
     generateRandomThread();
+  }
+  else if (key == 'D' && lastReachedThread != NULL) {
+    glThreads[planThread]->setThread(new Thread(*lastReachedThread));
   }
   else if (key == 'i') {
     generateInterpolatedThread();

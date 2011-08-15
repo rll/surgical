@@ -252,7 +252,7 @@ Thread* Thread_RRT::generateSample(const Thread* goal_thread) {
     // these samples tend to increase the branching of the tree
     //cout << "sampling in the ball" << endl;
   
-    noise_multiplier = max_thread_length / 5; // not exactly as big as we might like
+    noise_multiplier = max_thread_length / 0.5; // not exactly as big as we might like
   
   }
 
