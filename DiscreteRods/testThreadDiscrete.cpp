@@ -1171,7 +1171,7 @@ void initThread()
   int numInit = 5;//(3*3)/DEFAULT_REST_LENGTH;
   double noise_factor = 0.0;
 
-	double end_length = 5.0; //DEFAULT_REST_LENGTH;
+	double end_length = 5;
 	double start = 5.0; //DEFAULT_REST_LENGTH;//8.0;
 	double end = 5.0; //DEFAULT_REST_LENGTH;//1.0;
 	double m = (start-end)/(numInit-1);
@@ -1185,7 +1185,7 @@ void initThread()
 
   vertices.push_back(Vector3d::Zero());
   angles.push_back(0.0);
-  lengths.push_back(end_length/4.0);
+  lengths.push_back(end_length);
   //push back unitx so first tangent matches start_frame
   vertices.push_back(Vector3d::UnitX()*lengths.back());
   angles.push_back(0.0);
@@ -1239,12 +1239,12 @@ void initThread()
 	
 	vertices.push_back(vertices.back()+Vector3d::UnitX()*lengths.back());
   angles.push_back(0.0);
-	lengths.push_back(end_length/4.0);
+	lengths.push_back(end_length);
 	
   //push back unitx so last tangent matches end_frame
   vertices.push_back(vertices.back()+Vector3d::UnitX()*lengths.back());
   angles.push_back(0.0);
-	lengths.push_back(end_length/4.0);
+	lengths.push_back(end_length);
 	
   //angles.resize(vertices.size());
 

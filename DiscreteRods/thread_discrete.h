@@ -37,7 +37,7 @@
 
 #endif
 
-#define DEFAULT_REST_LENGTH 3.0 /*default rest length for each threadpiece*/
+#define DEFAULT_REST_LENGTH 6.0 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
 #define REFINE_THRESHHOLD 145.0			// maximun angle (in degrees) between this piece and its two neighbors before this piece gets split
