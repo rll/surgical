@@ -16,8 +16,8 @@ endif
 THREAD_DIR = ../DiscreteRods/
 VISION_DIR = ../vision/
 #INCLUDES = -I/usr/local/include/ -I/usr/local/include/opencv/ -I/usr/local/include/libPvAPI -I $(UTILS_DIR)
-#OPT_COMP = -DEIGEN_NO_DEBUG -O3 
-OPT_COMP = -O2
+OPT_COMP = -DEIGEN_NO_DEBUG -O3 
+#OPT_COMP = -O2
 # OPT_COMP = 
 FOPENMP = -fopenmp
 CC = g++ $(OPT_COMP) $(COMPILEFLAG) $(FOPENMP) $(HOSTNAME)

@@ -130,7 +130,8 @@ void stepSimulation() {
 
   double dt = 1;
   double M = 1;
-  
+ 
+  #pragma omp parallel for num_threads(NUM_CPU_THREADS)
   for (int i = 0; i < totalThreads; i++) {
     //glThreads[i]->getThread()->dynamic_step(dt, M);
     glThreads[i]->getThread()->dynamic_step_until_convergence(dt, M, 50000);
@@ -373,14 +374,17 @@ void sample_on_sphere(VectorXd& u, const double norm) {
 
 }
 
-
 void initializeSQP() {  
   //readGoalThreadFromFile(1);
   //readGoalThreadFromFile(2);
   vector<Thread*> interpTraj; 
-  interpolatePointsTrajectory(glThreads[planThread]->getThread(),
-                              glThreads[endThread]->getThread(),
-                              interpTraj);
+  //interpolatePointsTrajectory(glThreads[planThread]->getThread(),
+  //                            glThreads[endThread]->getThread(),
+  //                            interpTraj);
+
+  interpolateEndsTrajectory(glThreads[planThread]->getThread(),
+                            glThreads[endThread]->getThread(),
+                            interpTraj);
 
   //vector<Thread*> initialTraj = interpTraj;
   vector<Thread*> initialTraj;
@@ -402,6 +406,7 @@ void initializeSQP() {
   boost::progress_display progress(interpTraj.size()-1); 
   initialTraj.resize(interpTraj.size()); 
   Thread* start_copy = new Thread(*glThreads[planThread]->getThread());
+  //Thread* start_copy = new Thread(*interpTraj[interpTraj.size()-2]);
   initialTraj[0] = new Thread(*start_copy); 
   for (int i = 1; i < initialTraj.size(); i++) {
     if ((i-1) % 10 == 0)  sample_on_sphere(du, eps);
@@ -454,12 +459,95 @@ void initializeSQP() {
   //visualizationData.push_back(JU_states);
 
   //visualizationData.push_back(SQPTraj);
+  visualizationData.push_back(interpTraj);
   visualizationData.push_back(initialTraj);
   visualizationData.push_back(OLCTraj);
 
   lastReachedThread = OLCTraj.back();
   setThreads(visualizationData);
 
+}
+
+
+void sqpTillSolved() { 
+
+  //readGoalThreadFromFile(1);
+  //readGoalThreadFromFile(2);
+  vector<Thread*> interpTraj; 
+  interpolatePointsTrajectory(glThreads[planThread]->getThread(),
+                            glThreads[endThread]->getThread(),
+                            interpTraj);
+  //vector<Thread*> initialTraj = interpTraj;
+  vector<Thread*> initialTraj;
+ // linearizeViaTrajectory(interpTraj, initialTraj);
+//
+  double eps = 2.0e-1; 
+  VectorXd du(12);
+  du.setZero();
+
+  /*du(0) = eps;
+  du(1) = eps;
+  du(2) = eps;
+  du(6) = eps;
+  du(7) = eps;
+  du(8) = eps;
+  */
+
+  vector<Thread*> complete_OLC_traj;
+  //for (int i = 0 ; i < interpTraj.size() - 1; i++) { 
+  //  complete_OLC_traj.push_back(new Thread(*interpTraj[i]));
+  //}
+  lastReachedThread = new Thread(*glThreads[planThread]->getThread());
+  //lastReachedThread = new Thread(*interpTraj[interpTraj.size()-2]);
+
+  cout << cost_metric(lastReachedThread, glThreads[endThread]->getThread()) << endl; 
+  int num_iters = 0;
+
+  while(cost_metric(lastReachedThread, glThreads[endThread]->getThread()) > 2) {  
+    num_iters++; 
+    cout << "Generating Initial Trajectory" << endl; 
+    boost::progress_display progress(interpTraj.size()-1); 
+    initialTraj.resize(interpTraj.size()); 
+    Thread* start_copy = new Thread(*lastReachedThread);
+    initialTraj[0] = new Thread(*start_copy); 
+    for (int i = 1; i < initialTraj.size(); i++) {
+      if ((i-1) % 10 == 0)  sample_on_sphere(du, eps);
+      applyControl(start_copy, du);
+      initialTraj[i] = new Thread(*start_copy);
+      ++progress; 
+    }
+    cout << "Initial Trajectory Initialized" << endl; 
+  
+
+    //USE SQP AS PLANNER OR SMOOTHER? comment out if you want a smoother
+    initialTraj[initialTraj.size()-1] = new Thread(*glThreads[endThread]->getThread());
+
+
+    vector<Thread*> SQPTraj; 
+    vector<VectorXd> SQPControls;
+    vector<vector<Thread*> >sqp_debug_data;
+    string namestring = "sqp_debug"; 
+    solveSQP(initialTraj, SQPTraj, SQPControls, sqp_debug_data, namestring.c_str());   
+
+    vector<Thread*> OLCTraj; 
+    openLoopController(SQPTraj, SQPControls, OLCTraj); 
+
+    for (int i = 0; i < OLCTraj.size(); i++) { 
+      complete_OLC_traj.push_back(new Thread(*OLCTraj[i]));
+    }
+
+    lastReachedThread = OLCTraj.back();
+    cout << "Current error = " << cost_metric(lastReachedThread, glThreads[endThread]->getThread()) << endl;
+  }
+  
+  if (num_iters > 0) {
+    vector<vector<Thread*> > visualizationData;
+    visualizationData.push_back(initialTraj);
+    visualizationData.push_back(complete_OLC_traj);
+    setThreads(visualizationData);
+  } else { 
+    cout << "Not running SQP because the initial error is less than the threshold." << endl; 
+  }
 }
 
 
@@ -1076,6 +1164,9 @@ void processNormalKeys(unsigned char key, int x, int y)
   else if (key == '0') {
     initializeSQP();
   }
+  else if (key == ')') { 
+    sqpTillSolved();
+  }
  /* else if (key == 'v') { 
     reduceDimension();
   }
@@ -1129,7 +1220,8 @@ void processKeyUp(unsigned char key, int x, int y)
 void interruptHandler(int sig) {
 	//exit(0);
   cout << "Signal " << sig << " caught..." << endl;
-  interruptEnabled = true; 
+  interruptEnabled = true;
+  exit(0);
 }
 
 

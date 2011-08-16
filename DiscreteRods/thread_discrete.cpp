@@ -573,6 +573,7 @@ void Thread::dynamic_step_until_convergence(double step_size, double mass, int m
   do {
     toVector(&last_position);
     dynamic_step(step_size, mass, 1);
+    //minimize_energy();
     toVector(&current_position); 
     current_step += 1; 
 
@@ -600,9 +601,6 @@ void Thread::dynamic_step(double step_size, double mass, int steps) {
     last_velocity.resize(num_pieces());
   }
 
-  
-
-  //for (int t = 0; t < steps; t++) { 
     
   for (int t = 0; t < steps; t++) { 
     for (int i = 0; i < vertex_gradients.size(); i++) {
@@ -635,7 +633,7 @@ void Thread::dynamic_step(double step_size, double mass, int steps) {
     }
     if(move_too_far) {
       for(int i = 2; i < position_offsets.size()-2; i++) {
-        position_offsets[i] = position_offsets[i] * MAX_MOVEMENT_VERTICES;
+        position_offsets[i] = position_offsets[i] * MAX_MOVEMENT_VERTICES / 2;
       }
     }
     apply_vertex_offsets(position_offsets);

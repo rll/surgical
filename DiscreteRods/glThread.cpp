@@ -2,7 +2,6 @@
 //default 23 links
 #define NUM_POINTS 9
 
-
 GLThread::GLThread() {
   int numInit = (NUM_POINTS-3)/2;
   double noise_factor = 0.0;
@@ -64,6 +63,8 @@ GLThread::GLThread() {
 
 
   _thread = new Thread(vertices, angles, rotations[0], rotations[1]);
+  //_thread->set_start_rest_length(1);
+  //_thread->set_end_rest_length(1);
   //_thread->set_rest_length(DEFAULT_REST_LENGTH);
 
 #ifdef ISOTROPIC

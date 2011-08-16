@@ -14,14 +14,14 @@
 #include <queue>
 
 #ifdef ISOTROPIC 
-    #define MAX_MOVEMENT_VERTICES 0.050
+    #define MAX_MOVEMENT_VERTICES 0.2
     #define MAX_ROTATION_TWIST (M_PI/30.0)
     #define MOMENTUM_CONSTANT 0.0 /*how much of the last gradient do we use*/
 
-    #define MIN_MOVEMENT_VERTICES 1e-7 //speedy at 1e-4
+    #define MIN_MOVEMENT_VERTICES 1e-5 //speedy at 1e-4
     #define MIN_ROTATION_TWIST (M_PI/1000.0)
     
-    #define ENERGY_FOR_CONVERGENCE 1e-8 //speedy at 1e-5
+    #define ENERGY_FOR_CONVERGENCE 1e-6 //speedy at 1e-5
     #define NUM_MAX_ITERS 6000 //speedy at 6000
 #else
 
@@ -37,7 +37,7 @@
 
 #endif
 
-#define DEFAULT_REST_LENGTH 6.0 /*default rest length for each threadpiece*/
+#define DEFAULT_REST_LENGTH 9.0 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
 #define REFINE_THRESHHOLD 145.0			// maximun angle (in degrees) between this piece and its two neighbors before this piece gets split
@@ -213,6 +213,9 @@ class Thread
     const double start_rest_length(void) const {return _thread_pieces.front()->rest_length();}
     const double end_rest_length(void) const {return _thread_pieces[_thread_pieces.size()-2]->rest_length();}
     const double rest_length_at_ind(int i) const {return _thread_pieces[i]->rest_length();}
+    void set_rest_length_at_ind(int i, double rest_length) { _thread_pieces[i]->set_rest_length(rest_length);}
+    void set_start_rest_length(double rest_length) { _thread_pieces.front()->set_rest_length(rest_length);}
+    void set_end_rest_length(double rest_length) { _thread_pieces[_thread_pieces.size()-2]->set_rest_length(rest_length);}
     const Vector3d& vertex_at_ind(int i) const {return _thread_pieces[i]->vertex();}
     const Vector3d& edge_at_ind(int i) const {return _thread_pieces[i]->edge();}
     const Matrix3d& bishop_at_ind(int i) const {return _thread_pieces[i]->bishop_frame();}

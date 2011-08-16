@@ -1,7 +1,7 @@
 #ifndef _planner_lib_h_
 #define _planner_lib_h_
 
-#define NUM_INTERPOLATION 80
+#define NUM_INTERPOLATION 40
 #define NUM_NODES 30000
 #define RRT_L2_POINTS_THRESHOLD 2.0
 #define NUM_ITERS_SQP 2
@@ -39,7 +39,32 @@ void interpolatePointsTrajectory(Thread* start, Thread* end, vector<Thread*>& tr
 
 void interpolateEndsTrajectory(Thread* start, Thread* end, vector<Thread*>& traj)
 {
-  assert("Not implemented yet"); 
+  Thread* start_copy = new Thread(*start);
+  Thread* end_copy = new Thread(*end);
+  traj.resize(NUM_INTERPOLATION);
+  traj[0] = new Thread(*start_copy);
+  traj[NUM_INTERPOLATION - 1] = end_copy;
+
+  int T = NUM_INTERPOLATION - 1; 
+  Vector3d ctrl_start_translation = (end_copy->start_pos() - start_copy->start_pos()) / T;
+  Vector3d ctrl_end_translation = (end_copy->end_pos() - start_copy->end_pos()) / T;
+
+  //TODO: CURRENTLY UNUSED
+  Matrix3d start_start_rot = start_copy->start_rot();
+  Matrix3d start_end_rot = start_copy->end_rot();
+  Matrix3d end_start_rot = end_copy->start_rot();
+  Matrix3d end_end_rot = end_copy->end_rot();
+
+  VectorXd du(12);
+  for(int i = 0; i < 3; i++) {
+    du(i) = ctrl_start_translation(i);
+    du(i+6) = ctrl_end_translation(i);
+  }
+
+  for (int t = 1; t < T; t++) {
+    applyControl(start_copy, du);
+    traj[t] = new Thread(*start_copy);
+  }
 };
 
 
