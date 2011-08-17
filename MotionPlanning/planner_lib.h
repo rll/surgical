@@ -1,7 +1,7 @@
 #ifndef _planner_lib_h_
 #define _planner_lib_h_
 
-#define NUM_INTERPOLATION 40
+#define NUM_INTERPOLATION 20
 #define NUM_NODES 30000
 #define RRT_L2_POINTS_THRESHOLD 2.0
 #define NUM_ITERS_SQP 2

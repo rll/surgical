@@ -551,7 +551,7 @@ double Thread::calculate_energy()
 
   for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
-    energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav();
+    energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav() + _thread_pieces[piece_ind]->energy_stretch();
   }
   return energy;
 #else
@@ -581,7 +581,8 @@ void Thread::dynamic_step_until_convergence(double step_size, double mass, int m
 
   
   if ((last_position - current_position).norm() > 1e-4) {
-    cout << "WARNING: Did not converge in " << current_step << " steps. Current norm = " << (last_position - current_position).norm() << endl; 
+    cout << "WARNING: Did not converge in " << current_step << " steps. Current norm = " << (last_position - current_position).norm() << endl;
+    //minimize_energy();
   }
 
   //cout << (last_position - current_position).norm() << endl; ;
@@ -615,12 +616,12 @@ void Thread::dynamic_step(double step_size, double mass, int steps) {
     calculate_gradient_vertices(vertex_gradients);
 
     for (int i = 0; i < velocity.size(); i++) { 
-      last_velocity[i] = -(vertex_gradients[i] / mass) * step_size;
+      last_velocity[i] = 0.1*last_velocity[i] + (-vertex_gradients[i] / mass) * step_size;
+
       velocity[i] = last_velocity[i];
       position_offsets[i] = velocity[i] * step_size;  
     }
 
-    //TODO: make position_offset <= MAX_MOVEMENT_VERTICES 
     //
     double max_move = 0;
     bool move_too_far = false;
@@ -629,6 +630,7 @@ void Thread::dynamic_step(double step_size, double mass, int steps) {
         move_too_far = true;
         if(position_offsets[i].norm() > max_move) 
           max_move = position_offsets[i].norm();
+          //cout << "Max move = " << max_move << endl;
       }
     }
     if(move_too_far) {
@@ -646,13 +648,13 @@ void Thread::dynamic_step(double step_size, double mass, int steps) {
       int intersection_iters = 0; 
       while(check_for_intersection(self_intersections, thread_intersections, intersections) && project_length_constraint_pass) {
         fix_intersections();
-        project_length_constraint_pass &= project_length_constraint();
+        //project_length_constraint_pass &= project_length_constraint();
         intersection_iters++;
         //cout << "fixing for " << intersection_iters << " iterations." << endl;
       }
     }
     minimize_energy_twist_angles();
-    project_length_constraint();
+    //project_length_constraint();
   }
 }
 
@@ -952,7 +954,7 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
       if(i == 0 && j == _thread_pieces.size() - 2) 
         continue;
       double intersection_dist = self_intersection(i,j,THREAD_RADIUS,direction);
-      if(intersection_dist != 0) {
+      if(intersection_dist > 0) {
         //skip if both ends, since these are constraints
         found = true;
 
@@ -973,7 +975,7 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
 	      	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
 	        continue;
 	      double intersection_dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
-	      if(intersection_dist != 0) {
+	      if(intersection_dist > 0) {
 	        //skip if both ends, since these are constraints
 	        found = true;
 	        thread_intersections.push_back(Thread_Intersection(i,j,k,intersection_dist,direction));
@@ -987,7 +989,7 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
   {
     for(int j = 2; j < _thread_pieces.size() - 3; j++) {
       double intersection_dist = obj_intersection(j,THREAD_RADIUS,i,objects_in_env[i]->_radius,direction);
-      if(intersection_dist != 0) {
+      if(intersection_dist > 0) {
         found = true;
 
         intersections.push_back(Intersection(j,i,intersection_dist,direction));
@@ -1002,20 +1004,22 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
 double Thread::self_intersection(int i, int j, double radius, Vector3d& direction)
 {
 	double dist = distance_between_capsules(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, _thread_pieces[j]->vertex(), _thread_pieces[j+1]->vertex(), radius, direction);
-	return max(0.0, 2.0*radius - dist);
+	return 2.0*radius - dist;
+
 }
 
 double Thread::thread_intersection(int i, int j, int k, double radius, Vector3d& direction)
 {
 	double dist = distance_between_capsules(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, threads_in_env[k]->_thread_pieces[j]->vertex(), threads_in_env[k]->_thread_pieces[j+1]->vertex(), radius, direction);
-	return max(0.0, 2.0*radius - dist);
+	return 2.0*radius - dist;
 }
 
 double Thread::obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius, Vector3d& direction)
 {
   double dist = distance_between_capsules(_thread_pieces[piece_ind]->vertex(), _thread_pieces[piece_ind+1]->vertex(),THREAD_RADIUS,
             															objects_in_env[obj_ind]->_start_pos, objects_in_env[obj_ind]->_end_pos, objects_in_env[obj_ind]->_radius, direction);
-	return max(0.0, objects_in_env[obj_ind]->_radius + THREAD_RADIUS - dist); //check: why not use parameters radius?
+	return objects_in_env[obj_ind]->_radius + THREAD_RADIUS - dist; //check: why not use parameters radius?
+
 }
 
 #define INTERSECTION_EDGE_LENGTH_FACTOR 1.5
@@ -2009,7 +2013,7 @@ void Thread::calculate_gradient_vertices_vectorized(VectorXd* gradient) {
 
 void Thread::calculate_gradient_vertices(vector<Vector3d>& vertex_gradients)
 {
-  //#pragma omp parallel for num_threads(NUM_THREADS_PARALLEL_FOR)
+  //#pragma omp parallel for num_threads(NUM_CPU_THREADS)
   for (int piece_ind = 2; piece_ind < _thread_pieces.size()-2; piece_ind++)
   {
     //_thread_pieces[piece_ind]->gradient_vertex_numeric(vertex_gradients[piece_ind]);
@@ -3097,7 +3101,7 @@ void Thread::apply_motion(Frame_Motion& motion)
   Matrix3d end_rot = this->end_rot();
   motion.applyMotion(end_pos, end_rot);
   set_end_constraint(end_pos, end_rot);
-  minimize_energy();
+  //minimize_energy();
 }
 
 //applies motion to start and end
@@ -3111,7 +3115,7 @@ void Thread::apply_motion(Two_Motions& motion)
   motion._end.applyMotion(end_pos, end_rot);
 
   set_constraints(start_pos, start_rot, end_pos, end_rot);
-  minimize_energy();
+  //minimize_energy();
 }
 
 //applies motion to END

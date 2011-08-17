@@ -60,7 +60,7 @@ void ThreadPiece::set_vertex(const Vector3d& vertex)
 
 double ThreadPiece::energy()
 {
-  return energy_curvature() + energy_twist() + energy_grav(); // + energy_stretch();
+  return energy_curvature() + energy_twist() + energy_grav() + energy_stretch();
 }
 
 //not defined for first or last piece
@@ -112,8 +112,9 @@ double ThreadPiece::energy_stretch()
 {
   if (_next_piece == NULL)
     return 0.0;
+  return STRETCH_COEFF/2.0 * pow(_edge_norm/_rest_length -1.0, 2.0) * _rest_length;
   //std::cout << "energy stretch: " << STRETCH_COEFF*(edge_after.norm() - (my_thread->rest_length())) << std::endl;
-  return STRETCH_COEFF*abs(_edge_norm - _rest_length);
+  //return STRETCH_COEFF*abs(_edge_norm - _rest_length);
 
 }
 
@@ -195,13 +196,6 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
 #ifdef ISOTROPIC
 	double beta_angle_diff_over_L = TWIST_COEFF*(_my_thread->end_angle() - _my_thread->start_angle())/(_my_thread->total_length() - ((_my_thread->start_rest_length()+_my_thread->end_rest_length())/2.0));
 
-		Matrix3d skew_i;
-		Matrix3d skew_i_im1;
-		Matrix3d del_kb_i_im1;
-		Matrix3d del_kb_i_ip1;
-		Vector3d del_psi_i_im1;
-		Vector3d del_psi_i_ip1;
-
 	skew_i.setZero();
 	skew_i_im1.setZero();
 
@@ -232,6 +226,56 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
 	grad += (2.0*BEND_COEFF/(_prev_piece->_rest_length + _rest_length))*(-del_kb_i_im1-del_kb_i_ip1).transpose()*_curvature_binormal - beta_angle_diff_over_L*(-del_psi_i_im1-del_psi_i_ip1);
 
 	grad += Vector3d::UnitZ()*GRAV_COEFF;
+
+  if (_next_piece!=NULL && _next_piece->_next_piece!=NULL)
+    grad -= STRETCH_COEFF * (_edge_norm/_rest_length - 1.0) * _edge.normalized();
+  if (_prev_piece != NULL)
+    grad += STRETCH_COEFF * (_prev_piece->_edge_norm/_prev_piece->_rest_length - 1.0) * _prev_piece->_edge.normalized();
+  
+  double dt = 1;
+  double M =  0.002;
+
+  int piece_ind;
+  for (piece_ind=0; piece_ind<_my_thread->_thread_pieces.size() && _my_thread->_thread_pieces[piece_ind]!=this; piece_ind++) {}
+  if (piece_ind==_my_thread->_thread_pieces.size()) {
+    cout << "Internal error: ThreadPiece::energy_repulsion: this piece is not in _my_thread->_thread_pieces." << endl;
+  }
+
+  if (piece_ind > 0 && piece_ind < (_my_thread->_thread_pieces.size() - 2)) {
+    for (int other_ind = 1; other_ind < _my_thread->_thread_pieces.size() - 2; other_ind++) {
+      if (other_ind == (piece_ind - 1) || other_ind == piece_ind || other_ind
+          == (piece_ind + 1)) {
+        continue;
+      }
+      Vector3d direction;
+      double dist = _my_thread->self_intersection(piece_ind, other_ind,
+          THREAD_RADIUS, direction);
+      if (dist > 0 || -dist > THREAD_RADIUS)
+        continue;
+      double overlap = (THREAD_RADIUS + dist);
+      //double overlap = 1/pow(dist,4);
+      grad -= M/(dt*dt) * overlap * direction.normalized();
+    }
+  }
+  piece_ind--;
+  if (piece_ind > 0 && piece_ind < (_my_thread->_thread_pieces.size() - 2)) {
+    for (int other_ind = 1; other_ind < _my_thread->_thread_pieces.size() -
+        2; other_ind++) {
+      if (other_ind == (piece_ind - 1) || other_ind == piece_ind || other_ind
+          == (piece_ind + 1))
+        continue;
+      Vector3d direction;
+      double dist = _my_thread->self_intersection(piece_ind, other_ind,
+          THREAD_RADIUS, direction);
+      if (dist > 0 || -dist > THREAD_RADIUS)
+        continue;
+      double overlap = (THREAD_RADIUS + dist);
+      //double overlap = 1/pow(dist,4);
+      grad -= M/(dt*dt) * overlap * direction.normalized();
+    }
+  }
+
+
 
 #else
   grad.setZero();

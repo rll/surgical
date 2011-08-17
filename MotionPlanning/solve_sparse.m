@@ -29,7 +29,7 @@ goal_state = b(end-size_each_state+1: end);
 num_points = (size_each_state-1)/3;
 
 weighted_state_diff_constraint = 10;
-control_constraint = 5e-1;
+control_constraint = 3e-1;
 %min_control = 0.1;
 %consecutive_state_diff_constraint = 10;
 
@@ -97,6 +97,7 @@ cvx_begin
         %abs(x(size_each_state*(num_threads-2) + (thread_num-1)*size_each_control +4 : size_each_state*(num_threads-2) + (thread_num-1)*size_each_control + 6)) < 1e-2;
         %abs(x(size_each_state*(num_threads-2) + (thread_num-1)*size_each_control +10 : size_each_state*(num_threads-2) + (thread_num-1)*size_each_control + 12)) < 1e-2;
       end
+      u(1:end) < control_constraint;
 
      % for thread_num=1:num_threads-2
      %   consecutive_control_diff(thread_num) >= norm( x(size_each_state*(num_threads-2)+(thread_num-1)*size_each_control+1 : size_each_state*(num_threads-2) + (thread_num)*size_each_control) - x(size_each_state*(num_threads-2)+thread_num*size_each_control+1 : size_each_state*(num_threads-2) + (thread_num+1)*size_each_control))

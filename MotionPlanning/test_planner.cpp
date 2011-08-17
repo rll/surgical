@@ -129,7 +129,7 @@ GLfloat lightFourColor[] = {0.99, 0.99, 0.99, 1.0};
 void stepSimulation() { 
 
   double dt = 1;
-  double M = 1;
+  double M = 400;
  
   #pragma omp parallel for num_threads(NUM_CPU_THREADS)
   for (int i = 0; i < totalThreads; i++) {

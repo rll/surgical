@@ -18,8 +18,8 @@ endif
 VISION_LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lPvAPI -lrt
 VISION_INCLUDES = -I/usr/local/include/opencv/
 SOCKETS_DIR = ../utils/sockets/
-OPT_COMP = -O3
-#OPT_COMP = -DEIGEN_NO_DEBUG -O3
+#OPT_COMP = -O3
+OPT_COMP = -DEIGEN_NO_DEBUG -O3
 FOPENMP = -fopenmp
 CC = g++ $(OPT_COMP) $(COMPILEFLAG) $(HOSTNAME)
 LD = g++ $(OPT_COMP) $(LDFLAG) $(HOSTNAME) 

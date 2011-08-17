@@ -603,10 +603,11 @@ void InitStuff (void)
 
 void idle() {
   double dt = 1;
-  double M =  10;
+  double M =  1;
   double steps = 500;
   currentTime += dt;
-  thread->dynamic_step(dt, M, steps);
+  //thread->dynamic_step(dt, M, steps);
+  thread->dynamic_step_until_convergence(dt, M, steps);
   glutPostRedisplay();
 }
 
@@ -1168,12 +1169,12 @@ void updateThreadPoints()
 
 void initThread()
 {
-  int numInit = 5;//(3*3)/DEFAULT_REST_LENGTH;
+  int numInit = 7;//(3*3)/DEFAULT_REST_LENGTH;
   double noise_factor = 0.0;
 
-	double end_length = 5;
-	double start = 5.0; //DEFAULT_REST_LENGTH;//8.0;
-	double end = 5.0; //DEFAULT_REST_LENGTH;//1.0;
+	double end_length = DEFAULT_REST_LENGTH;
+	double start = DEFAULT_REST_LENGTH; //DEFAULT_REST_LENGTH;//8.0;
+	double end = DEFAULT_REST_LENGTH; //DEFAULT_REST_LENGTH;//1.0;
 	double m = (start-end)/(numInit-1);
 
   vector<Vector3d> vertices;

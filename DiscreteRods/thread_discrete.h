@@ -18,11 +18,11 @@
     #define MAX_ROTATION_TWIST (M_PI/30.0)
     #define MOMENTUM_CONSTANT 0.0 /*how much of the last gradient do we use*/
 
-    #define MIN_MOVEMENT_VERTICES 1e-5 //speedy at 1e-4
+    #define MIN_MOVEMENT_VERTICES 1e-7 //speedy at 1e-4
     #define MIN_ROTATION_TWIST (M_PI/1000.0)
     
-    #define ENERGY_FOR_CONVERGENCE 1e-6 //speedy at 1e-5
-    #define NUM_MAX_ITERS 6000 //speedy at 6000
+    #define ENERGY_FOR_CONVERGENCE 1e-8 //speedy at 1e-5
+    #define NUM_MAX_ITERS 10000 //speedy at 6000
 #else
 
     #define MAX_MOVEMENT_VERTICES 0.2
@@ -37,7 +37,7 @@
 
 #endif
 
-#define DEFAULT_REST_LENGTH 9.0 /*default rest length for each threadpiece*/
+#define DEFAULT_REST_LENGTH 4.0 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
 #define REFINE_THRESHHOLD 145.0			// maximun angle (in degrees) between this piece and its two neighbors before this piece gets split
