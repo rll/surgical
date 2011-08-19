@@ -20,6 +20,8 @@
 #include <Eigen/Geometry>
 #include <math.h>
 
+#include "../DiscreteRods/threadutils_discrete.h"
+
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
@@ -30,8 +32,8 @@ void drawSphere(Vector3d position, float radius, float color0, float color1, flo
 void drawCursor(int device_id, float color);
 void drawAxes(Vector3d pos, Matrix3d rot);
 void labelAxes(Vector3d pos, Matrix3d rot);
-void renderBitmapString( float x, float y, float z, void *font, std::string s );
-void setOrthographicProjection(int window_width, int window_height);
+void drawArrow(Vector3d pos, Vector3d direction, float color0, float color1, float color2);
+void printText(float x, float y, const char *string);
 
 static double gCursorScale = 6;
 static GLuint gCursorDisplayList = 0;

@@ -551,7 +551,7 @@ double Thread::calculate_energy()
 
   for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
-    energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav();
+    energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav() + _thread_pieces[piece_ind]->energy_stretch() + _thread_pieces[piece_ind]->energy_repulsion();
   }
   return energy;
 #else
@@ -764,7 +764,8 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
      }
   */
 	
-	//std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
+	if (opt_iter!=-1)
+		std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
 	
 	return (opt_iter != num_opt_iters);
 } // end minimize_energy
@@ -898,7 +899,7 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
       if(i == 0 && j == _thread_pieces.size() - 2) 
         continue;
       double intersection_dist = self_intersection(i,j,THREAD_RADIUS,direction);
-      if(intersection_dist != 0) {
+      if(intersection_dist > 0) {
         //skip if both ends, since these are constraints
         found = true;
 
@@ -919,7 +920,7 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
 	      	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
 	        continue;
 	      double intersection_dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
-	      if(intersection_dist != 0) {
+	      if(intersection_dist > 0) {
 	        //skip if both ends, since these are constraints
 	        found = true;
 	        thread_intersections.push_back(Thread_Intersection(i,j,k,intersection_dist,direction));
@@ -933,7 +934,7 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
   {
     for(int j = 2; j < _thread_pieces.size() - 3; j++) {
       double intersection_dist = obj_intersection(j,THREAD_RADIUS,i,objects_in_env[i]->_radius,direction);
-      if(intersection_dist != 0) {
+      if(intersection_dist > 0) {
         found = true;
 
         intersections.push_back(Intersection(j,i,intersection_dist,direction));
@@ -941,6 +942,9 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
     }
 
   }
+  
+  if (found)
+  	cout << "intersections" << endl;
 
   return found;
 }
@@ -948,20 +952,20 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
 double Thread::self_intersection(int i, int j, double radius, Vector3d& direction)
 {
 	double dist = distance_between_capsules(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, _thread_pieces[j]->vertex(), _thread_pieces[j+1]->vertex(), radius, direction);
-	return max(0.0, 2.0*radius - dist);
+	return 2.0*radius - dist;
 }
 
 double Thread::thread_intersection(int i, int j, int k, double radius, Vector3d& direction)
 {
 	double dist = distance_between_capsules(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, threads_in_env[k]->_thread_pieces[j]->vertex(), threads_in_env[k]->_thread_pieces[j+1]->vertex(), radius, direction);
-	return max(0.0, 2.0*radius - dist);
+	return 0.0, 2.0*radius - dist;
 }
 
 double Thread::obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius, Vector3d& direction)
 {
   double dist = distance_between_capsules(_thread_pieces[piece_ind]->vertex(), _thread_pieces[piece_ind+1]->vertex(),THREAD_RADIUS,
             															objects_in_env[obj_ind]->_start_pos, objects_in_env[obj_ind]->_end_pos, objects_in_env[obj_ind]->_radius, direction);
-	return max(0.0, objects_in_env[obj_ind]->_radius + THREAD_RADIUS - dist); //check: why not use parameters radius?
+	return objects_in_env[obj_ind]->_radius + THREAD_RADIUS - dist; //check: why not use parameters radius?
 }
 
 #define INTERSECTION_EDGE_LENGTH_FACTOR 1.5
@@ -2224,7 +2228,7 @@ bool Thread::project_length_constraint(int recursive_depth)
 
   const int num_iters_project = 50;
   const double projection_scale_factor = 1.0;
-  const double max_norm_to_break = 1e-5;
+  const double max_norm_to_break = 1e-1; //1e-5;
 
 
   //quick check to see if we can avoid calling this function

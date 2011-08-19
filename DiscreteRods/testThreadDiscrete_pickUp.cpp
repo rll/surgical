@@ -46,7 +46,7 @@ void initGL();
 #define MOVE_TAN_CONST 0.2
 #define ROTATE_TAN_CONST 0.2
 #define HAPTICS true
-#define VIEW3D
+//#define VIEW3D
 
 enum key_code {NONE, MOVEPOS, MOVETAN, ROTATETAN};
 
@@ -89,7 +89,7 @@ vector<Matrix3d> all_rotations;
 
 key_code key_pressed;
 
-Vector3d start_proxy_pos, end_proxy_pos, start_tip_pos, end_tip_pos;
+Vector3d start_proxy_pos(-40.0, -30.0, 0.0), end_proxy_pos(-40.0, -30.0, 0.0), start_tip_pos, end_tip_pos;
 Matrix3d start_proxy_rot = Matrix3d::Identity(), end_proxy_rot = Matrix3d::Identity();
 bool start_proxybutton[2] = {false, false}, end_proxybutton[2] = {false, false};
 bool last_start_proxybutton[2] = {false, false}, last_end_proxybutton[2] = {false, false};
@@ -97,7 +97,7 @@ double start_feedback_pos[3], end_feedback_pos[3];
 bool start_feedback_enabled = false, end_feedback_enabled = false;
 bool change_constraint = false;
 bool choose_mode = false;
-int toggle = 0, selected_vertex_num = 0;
+int toggle = 1, selected_vertex_num = 0;
 vector<int> constrained_vertices_nums;
 Vector3d extra_end_effectors_pos = Vector3d(-40.0, -30.0, 0.0);
 Matrix3d extra_end_effectors_rot = Matrix3d::Identity();
@@ -490,19 +490,20 @@ int main (int argc, char * argv[])
 	textured_sphere = new SimpleTexturedSphere(Vector3d::Zero(), 150.0, "../utils/wmap.bmp");
 	env = new SimpleEnv();
 	
+	EndEffector* end_effector0 = new EndEffector(positions[0], rotations[0]);
+	EndEffector* end_effector1 = new EndEffector(positions[1], rotations[1]);
+	end_effector0->constraint = constrained_vertices_nums[0];
+	end_effector0->constraint = constrained_vertices_nums[1];
+	end_effector1->constraint_ind = 0;
+	end_effector1->constraint_ind = 1;
+	constrained_ee.push_back(end_effector0);
+ 	constrained_ee.push_back(end_effector1);
+
 	if (HAPTICS) {
 		cursor0 = new Cursor(Vector3d::Zero(), Matrix3d::Identity());
 		cursor1 = new Cursor(Vector3d::Zero(), Matrix3d::Identity());
 		base = new Cylinder(extra_end_effectors_pos+Vector3d(20.0, -1.2, 0.0), (Matrix3d) AngleAxisd(0.5*M_PI, Vector3d::UnitZ()), 15, 8, 0.0, 1.0, 0.0);
 		extra_end_effector = new EndEffector(extra_end_effectors_pos, extra_end_effectors_rot);
-		EndEffector* end_effector0 = new EndEffector(positions[0], rotations[0]);
-		EndEffector* end_effector1 = new EndEffector(positions[1], rotations[1]);
-		end_effector0->constraint = constrained_vertices_nums[0];
-		end_effector0->constraint = constrained_vertices_nums[1];
-		end_effector1->constraint_ind = 0;
-		end_effector1->constraint_ind = 1;
-		constrained_ee.push_back(end_effector0);
-	 	constrained_ee.push_back(end_effector1);
 
 		connectionInit();
 	}
@@ -658,8 +659,8 @@ void processInput()
   	thread->getConstrainedTransforms(positions, rotations);
 		vector<Vector3d> positionConstraints = positions;
 		vector<Matrix3d> rotationConstraints = rotations;
-		if ((!cursor0->isAttached() || (cursor0->isAttached() && toggle!=cursor0->end_eff->constraint_ind)) && 
-				(!cursor1->isAttached() || (cursor1->isAttached() && toggle!=cursor1->end_eff->constraint_ind)))
+		if (!HAPTICS || ((!cursor0->isAttached() || (cursor0->isAttached() && toggle!=cursor0->end_eff->constraint_ind)) && 
+										 (!cursor1->isAttached() || (cursor1->isAttached() && toggle!=cursor1->end_eff->constraint_ind))))
 			mouseTransform(positionConstraints[toggle], rotationConstraints[toggle], positions, rotations, toggle);
 		
 		if (HAPTICS) {
@@ -682,38 +683,33 @@ void processInput()
 		}
 		constrained_ee[toggle]->highlight();
 			
-		if (cursor0->isAttached() && cursor0->end_eff->constraint < 0) {
-			//cursor0->end_eff->draw();
-			env->addObj(cursor0->end_eff);
+		if (HAPTICS) {
+			if (cursor0->isAttached() && cursor0->end_eff->constraint < 0) {
+				env->addObj(cursor0->end_eff);
+			}
+			if (cursor1->isAttached() && cursor1->end_eff->constraint < 0) {
+				env->addObj(cursor0->end_eff);
+			}
+			env->addObj(cursor0);
+			env->addObj(cursor1);
 		}
-		if (cursor1->isAttached() && cursor1->end_eff->constraint < 0) {
-			//cursor1->end_eff->draw();
-			env->addObj(cursor0->end_eff);
-		}
-		//cursor0->draw();
-		//cursor1->draw();
-		env->addObj(cursor0);
-		env->addObj(cursor1);
 	}
 	
 	//thread->adapt_links();
-	
-	//drawThread();
-	//thread->draw();
+
 	env->addObj(thread);
-	
-	//base->draw();
-	env->addObj(base);
-	
-	//extra_end_effector->draw();
-	env->addObj(extra_end_effector);
+
+	if (HAPTICS) {
+		env->addObj(base);
+		env->addObj(extra_end_effector);
+	}
 	
 	for(int i=0; i<positions.size(); i++) {
 		//constrained_ee[i]->draw();
 		env->addObj(constrained_ee[i]);
 	}
 	
-	env->addObj(textured_sphere);
+	//env->addObj(textured_sphere);
 	
 	glPopMatrix();
 }

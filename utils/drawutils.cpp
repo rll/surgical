@@ -203,28 +203,36 @@ void labelAxes(Vector3d pos, Matrix3d rot) {
   glPopMatrix();
 }
 
-void renderBitmapString( float x, float y, float z, void *font, std::string s ) 
-{
-  glDisable(GL_LIGHTING);
-  glColor3f(0.0,0.0,0.0);
-	glRasterPos3f(x, y, z);
-	for (std::string::iterator i = s.begin(); i != s.end(); ++i)
-	{
-		char c = *i;
-		glutBitmapCharacter(font, c);
-	}
-  glEnable(GL_LIGHTING);
+void drawArrow(Vector3d pos, Vector3d direction, float color0, float color1, float color2) {
+	double norm = direction.norm();
+	Matrix3d rot;
+	rotation_from_tangent(direction.normalized(), rot);
+	glPushMatrix();
+	double transform[16] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
+												 	 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
+												 	 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
+													 pos(0), pos(1), pos(2), 1};
+	glMultMatrixd(transform);
+	glBegin(GL_LINES);
+	glEnable(GL_LINE_SMOOTH);
+	glEnable(GL_COLOR_MATERIAL);
+	glColor3d(color0, color1, color2);
+	glVertex3f(0.0, 0.0, 0.0);
+	glVertex3f(norm,0,0);
+	glEnd();
+	glTranslated(norm-0.2*norm,0,0);
+	glRotated(90,0,1,0);
+	glutSolidCone(0.05*norm,0.2*norm,20,16);
+	glPopMatrix();
 }
 
-void setOrthographicProjection(int window_width, int window_height) 
+void printText(float x, float y, const char *string)
 {
-	glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
-	glLoadIdentity();
-	
-	gluOrtho2D(0, window_width, 0, window_height);
-	
-	glMatrixMode(GL_MODELVIEW);
-	glPushMatrix();
-	glLoadIdentity();
+  int len, i;
+  glRasterPos2f(x, y);
+  len = (int) strlen(string);
+  for (i = 0; i < len; i++) {
+    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, string[i]);
+  }
 }
+

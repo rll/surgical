@@ -15,6 +15,7 @@ static Matrix2d B = Matrix2d::Identity()*BEND_COEFF;
 static double TWIST_COEFF = BEND_COEFF*3.00;
 static double STRETCH_COEFF = 0.0;
 static double GRAV_COEFF = BEND_COEFF*1e-4;
+static double REPULSION_COEFF = 100.0;
 
 static Matrix2d J = Matrix2d(Eigen::Rotation2Dd(M_PI/2.0));
 static Matrix2d JB = J*B;
@@ -81,6 +82,7 @@ class ThreadPiece
     double energy_twist();
     double energy_stretch();
 		double energy_grav();
+    double energy_repulsion();
 
 		//Energy Params
 		void set_bend_coeff(double bend_coeff);

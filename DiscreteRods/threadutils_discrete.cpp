@@ -160,6 +160,19 @@ void intermediate_rotation(Matrix3d &inter_rot, const Matrix3d& end_rot, const M
   inter_rot = interp_q.toRotationMatrix();
 }
 
+//assumes tan is already normalized
+void rotation_from_tangent(const Vector3d& tan, Matrix3d& rot)
+{
+	std::cerr << "Verify that rotation_from_tangent works correctly" << std::endl;
+	exit(0);
+	rot.col(0) = tan;
+	Vector3d arb = tan + Vector3d(1,1,1);
+	rot.col(1) = arb - arb.dot(tan)*tan;
+	rot.col(1).normalize();
+	rot.col(2) = rot.col(0).cross(rot.col(1));
+	rot.col(2).normalize();
+}
+
 bool almost_equal(const Vector3d &a, const Vector3d &b) {
 	Vector3d diff = a-b;
 	double eps = 0.00001;

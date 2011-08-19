@@ -24,9 +24,9 @@
 #include "thread_discrete.h"
 #include "drawutils.h"
 
-#define LIMITED_DISPLACEMENT false
-#define MAX_DISPLACEMENT 1 //(0.49*THREAD_RADIUS)
-#define MAX_ANGLE_CHANGE (0.05*M_PI)
+#define LIMITED_DISPLACEMENT true
+#define MAX_DISPLACEMENT 1000 //1 //(0.49*THREAD_RADIUS)
+#define MAX_ANGLE_CHANGE (M_PI/180) //in radians
 
 //CONTOUR STUFF
 #define SCALE 1.0
