@@ -13,10 +13,9 @@
 
 #include <iostream>
 #include <fstream>
-#include <algorithm> // for debugging purposes. to be removed.
+#include <stdarg.h>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/lexical_cast.hpp>
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -36,7 +35,7 @@ void processInput();
 void updateState(const Vector3d& proxy_pos, const Matrix3d& proxy_rot, Cursor* cursor);
 bool closeEnough(Vector3d my_pos, Matrix3d my_rot, Vector3d pos, Matrix3d rot);
 void mouseTransform(Vector3d &new_pos, Matrix3d &new_rot, vector<Vector3d> &positions, vector<Matrix3d> &rotations, int cvnum);
-void displayTextInScreen(string text);
+void displayTextInScreen(const char* textline, ...);
 void initThread();
 void glutMenu(int ID);
 void initGL();
@@ -47,7 +46,7 @@ void initGL();
 #define MOVE_TAN_CONST 0.2
 #define ROTATE_TAN_CONST 0.2
 #define HAPTICS true
-//#define VIEW3D
+#define VIEW3D
 
 enum key_code {NONE, MOVEPOS, MOVETAN, ROTATETAN};
 
@@ -535,9 +534,9 @@ void drawStuff()
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
   env->drawObjs();
   glPopMatrix();
-  int test = 1;
-  string text = "eye_focus_depth: " + test + "\ncamera to sphere center: " + (-translate_frame[2]);
-  displayTextInScreen(text);
+#ifdef VIEW3D
+  displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
+#endif
   glutSwapBuffers ();
   
 #ifdef VIEW3D
@@ -555,40 +554,13 @@ void drawStuff()
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
 	env->drawObjs();
 	glPopMatrix();
-	displayTextInScreen("testing");
+	displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
 	glutSwapBuffers ();
 		
 	glutSetWindow(main_window);
-	
-	//cout << "eye_separation: " << eye_separation << "\t" << "eye_focus_depth: " << eye_focus_depth << "\t" << "camera to sphere center: " << (-translate_frame[2]) << "\t" << "angle(degrees): " << atan(eye_separation/(2.0*eye_focus_depth)) * 180.0/M_PI << endl;
-	cout << "eye_focus_depth: " << eye_focus_depth << "\t" << "camera to sphere center: " << (-translate_frame[2]) << endl;
 #endif
   
 	env->clearObjs();
-}
-
-void
-output(float x, float y, const char *string)
-{
-  int len, i;
-
-  glRasterPos2f(x, y);
-  len = (int) strlen(string);
-  for (i = 0; i < len; i++) {
-    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, string[i]);
-  }
-}
-
-void displayTextInScreen(string text)
-{
-	glPushMatrix();
-	glTranslatef(0.0, 0.0, -50.1 );
-	vector<string> text_vect;
-	boost::split(text_vect, text, boost::is_any_of("\n"));
-	for (int i=0; i<text_vect.size(); i++) {
-		output(-28, 28-i*1.5, text_vect[i].c_str());
-	}
-  glPopMatrix();
 }
 
 void processInput()
@@ -880,6 +852,23 @@ void mouseTransform(Vector3d &new_pos, Matrix3d &new_rot, vector<Vector3d> &posi
 bool closeEnough(Vector3d my_pos, Matrix3d my_rot, Vector3d pos, Matrix3d rot) {
 	double angle = 2*asin((my_rot.col(0) - rot.col(0)).norm()/2);
   return (((my_pos - pos).norm() < 4.0) && angle < 0.25*M_PI);
+}
+
+void displayTextInScreen(const char* textline, ...)
+{
+	glPushMatrix();
+	glTranslatef(0.0, 0.0, -50.1 );
+	va_list argList;
+	char cbuffer[5000];
+	va_start(argList, textline);
+	vsnprintf(cbuffer, 5000, textline, argList);
+	va_end(argList);
+	vector<string> textvect;
+	boost::split(textvect, cbuffer, boost::is_any_of("\n"));
+	for (int i=0; i<textvect.size(); i++) {
+		printText(-28, 28-i*1.5, textvect[i].c_str());
+	}
+  glPopMatrix();
 }
 
 void initThread()
