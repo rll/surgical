@@ -202,3 +202,29 @@ void labelAxes(Vector3d pos, Matrix3d rot) {
 	glutBitmapCharacter(font, 'Z');
   glPopMatrix();
 }
+
+void renderBitmapString( float x, float y, float z, void *font, std::string s ) 
+{
+  glDisable(GL_LIGHTING);
+  glColor3f(0.0,0.0,0.0);
+	glRasterPos3f(x, y, z);
+	for (std::string::iterator i = s.begin(); i != s.end(); ++i)
+	{
+		char c = *i;
+		glutBitmapCharacter(font, c);
+	}
+  glEnable(GL_LIGHTING);
+}
+
+void setOrthographicProjection(int window_width, int window_height) 
+{
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity();
+	
+	gluOrtho2D(0, window_width, 0, window_height);
+	
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+}

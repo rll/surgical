@@ -30,6 +30,8 @@ void drawSphere(Vector3d position, float radius, float color0, float color1, flo
 void drawCursor(int device_id, float color);
 void drawAxes(Vector3d pos, Matrix3d rot);
 void labelAxes(Vector3d pos, Matrix3d rot);
+void renderBitmapString( float x, float y, float z, void *font, std::string s );
+void setOrthographicProjection(int window_width, int window_height);
 
 static double gCursorScale = 6;
 static GLuint gCursorDisplayList = 0;
