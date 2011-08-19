@@ -15,6 +15,9 @@
 #include <fstream>
 #include <algorithm> // for debugging purposes. to be removed.
 
+#include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
+
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <math.h>
@@ -33,6 +36,7 @@ void processInput();
 void updateState(const Vector3d& proxy_pos, const Matrix3d& proxy_rot, Cursor* cursor);
 bool closeEnough(Vector3d my_pos, Matrix3d my_rot, Vector3d pos, Matrix3d rot);
 void mouseTransform(Vector3d &new_pos, Matrix3d &new_rot, vector<Vector3d> &positions, vector<Matrix3d> &rotations, int cvnum);
+void displayTextInScreen(string text);
 void initThread();
 void glutMenu(int ID);
 void initGL();
@@ -43,7 +47,7 @@ void initGL();
 #define MOVE_TAN_CONST 0.2
 #define ROTATE_TAN_CONST 0.2
 #define HAPTICS true
-#define VIEW3D
+//#define VIEW3D
 
 enum key_code {NONE, MOVEPOS, MOVETAN, ROTATETAN};
 
@@ -109,6 +113,7 @@ SimpleTexturedSphere* textured_sphere;
 
 SimpleEnv *env;
 
+int window_width, window_height;
 
 void processLeft(int x, int y) {
 	if (key_pressed == MOVEPOS)	{
@@ -440,22 +445,27 @@ int main (int argc, char * argv[])
 	glutInit (&argc, argv); //can i do that?
 	glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
 #ifdef VIEW3D	
-	int screenWidth, screenHeight;
- 	screenWidth = glutGet(GLUT_SCREEN_WIDTH);
-	screenHeight = glutGet(GLUT_SCREEN_HEIGHT);
-	glutInitWindowSize(screenWidth/2.0, screenHeight);
+	int screen_width, screen_height;
+ 	screen_width = glutGet(GLUT_SCREEN_WIDTH);
+	screen_height = glutGet(GLUT_SCREEN_HEIGHT);
+	glutInitWindowSize(screen_width/4.0, screen_height);
+	window_width = screen_width/4.0;
+	window_height = screen_height;
 	
 	side_window = glutCreateWindow ("Thread");
-	glutPositionWindow(screenWidth/2.0, 0);
+	glutPositionWindow(3.0*screen_width/4.0, 0);
 	initGL();
 	glutSetCursor(GLUT_CURSOR_NONE);
 	
 	main_window = glutCreateWindow ("Thread");
+	glutPositionWindow(screen_width/2.0,0);
 #else
 	glutInitWindowSize(900,900);
+	window_width = 900;
+	window_height = 900;
 	glutCreateWindow ("Thread");
-#endif
 	glutPositionWindow(0,0);
+#endif
 	glutDisplayFunc (drawStuff);
 	glutMotionFunc (MouseMotion);
   glutMouseFunc (processMouse);
@@ -507,10 +517,9 @@ void drawStuff()
 #ifdef VIEW3D
  	glutSetWindow(main_window);
 #endif
-
-  glPushMatrix ();
+  
+	glPushMatrix ();
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
   /* set up some matrices so that the object spins with the mouse */
   glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
 #ifdef VIEW3D
@@ -526,6 +535,9 @@ void drawStuff()
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
   env->drawObjs();
   glPopMatrix();
+  int test = 1;
+  string text = "eye_focus_depth: " + test + "\ncamera to sphere center: " + (-translate_frame[2]);
+  displayTextInScreen(text);
   glutSwapBuffers ();
   
 #ifdef VIEW3D
@@ -543,6 +555,7 @@ void drawStuff()
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
 	env->drawObjs();
 	glPopMatrix();
+	displayTextInScreen("testing");
 	glutSwapBuffers ();
 		
 	glutSetWindow(main_window);
@@ -552,6 +565,30 @@ void drawStuff()
 #endif
   
 	env->clearObjs();
+}
+
+void
+output(float x, float y, const char *string)
+{
+  int len, i;
+
+  glRasterPos2f(x, y);
+  len = (int) strlen(string);
+  for (i = 0; i < len; i++) {
+    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, string[i]);
+  }
+}
+
+void displayTextInScreen(string text)
+{
+	glPushMatrix();
+	glTranslatef(0.0, 0.0, -50.1 );
+	vector<string> text_vect;
+	boost::split(text_vect, text, boost::is_any_of("\n"));
+	for (int i=0; i<text_vect.size(); i++) {
+		output(-28, 28-i*1.5, text_vect[i].c_str());
+	}
+  glPopMatrix();
 }
 
 void processInput()
