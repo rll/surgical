@@ -21,8 +21,10 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <math.h>
-#include "thread_discrete.h"
-#include "drawutils.h"
+
+#include "threadutils_discrete.h"
+#include "../utils/drawUtils.h"
+#include "EnvObjects/World.h"
 
 #define LIMITED_DISPLACEMENT true
 #define MAX_DISPLACEMENT 1000 //1 //(0.49*THREAD_RADIUS)
@@ -49,6 +51,8 @@
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
+
+class Thread;
 
 class ThreadConstrained {
 	public:
@@ -87,12 +91,14 @@ class ThreadConstrained {
 		Vector3d position(int absolute_vertex_num);
 		Matrix3d rotation(int absolute_vertex_num);
 		void draw();
+		void setWorld(World* w);
 		void toggleExamineMode();
 
 	private:
 		int num_vertices;
 		vector<Thread*> threads;
 		double zero_angle;
+		World* world;
 		bool examine_mode;
 		vector<Matrix3d> rot_diff;
 		vector<Matrix3d> rot_offset;

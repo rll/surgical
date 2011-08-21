@@ -1,4 +1,5 @@
 #include "ThreadConstrained.h"
+#include "thread_discrete.h"
 
 ThreadConstrained::ThreadConstrained(int num_vertices_init) {
 	num_vertices = num_vertices_init;
@@ -545,6 +546,12 @@ void ThreadConstrained::toggleExamineMode() {
   initContour();
 }
 
+void ThreadConstrained::setWorld(World* w) {
+	world = w;
+	for(int i=0; i<threads.size(); i++)
+		threads[i]->setWorld(world);
+}
+
 void ThreadConstrained::intermediateRotation(Matrix3d &inter_rot, Matrix3d end_rot, Matrix3d start_rot) {
 	Quaterniond start_q(start_rot);
   Quaterniond end_q(end_rot);
@@ -580,6 +587,8 @@ void ThreadConstrained::splitThread(int thread_num, int vertex_num) {
 	
 	Thread* thread0 = new Thread(point0, twist_angle0, (Matrix3d&) (threads[thread_num])->start_rot(), vertex_end_rot);
 	Thread* thread1 = new Thread(point1, twist_angle1, vertex_start_rot, (Matrix3d&) (threads[thread_num])->end_rot());
+	thread0->setWorld(world);
+	thread1->setWorld(world);
 	delete threads[thread_num];
 	threads[thread_num] = thread0;
 	threads.insert(threads.begin()+thread_num+1, thread1);
@@ -619,6 +628,7 @@ void ThreadConstrained::mergeThread(int thread_num) {
 	}
 
 	Thread* thread = new Thread(point, twist_angle, (Matrix3d&) (threads[thread_num])->start_rot(), (Matrix3d&) (threads[thread_num+1])->end_rot());
+	thread->setWorld(world);
 	delete threads[thread_num];
 	delete threads[thread_num+1];
 	threads[thread_num] = thread;

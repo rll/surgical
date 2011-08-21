@@ -135,11 +135,11 @@ double ThreadPiece::energy_repulsion()
 				continue;
 			Vector3d direction;
 			double dist = _my_thread->self_intersection(piece_ind, other_ind, THREAD_RADIUS, direction);
-			if (dist > 0 || -dist > THREAD_RADIUS)
+			if (dist < 0 || dist > THREAD_RADIUS)
 				continue;
-			double overlap = (THREAD_RADIUS + dist);
-			//energy += REPULSION_COEFF/2.0 * pow(-dist/THREAD_RADIUS-1,2) * THREAD_RADIUS;
-			energy += REPULSION_COEFF/2.0 * pow(-dist-THREAD_RADIUS,2);
+			double overlap = (THREAD_RADIUS - dist);
+			//energy += REPULSION_COEFF/2.0 * pow(dist/THREAD_RADIUS-1,2) * THREAD_RADIUS;
+			energy += REPULSION_COEFF/2.0 * pow(dist-THREAD_RADIUS,2);
 		}
 	}
 	piece_ind--;
@@ -149,11 +149,11 @@ double ThreadPiece::energy_repulsion()
 				continue;
 			Vector3d direction;
 			double dist = _my_thread->self_intersection(piece_ind, other_ind, THREAD_RADIUS, direction);
-			if (dist > 0 || -dist > THREAD_RADIUS)
+			if (dist < 0 || dist > THREAD_RADIUS)
 				continue;
-			double overlap = (THREAD_RADIUS + dist);
-			//energy += REPULSION_COEFF/2.0 * pow(-dist/THREAD_RADIUS-1,2) * THREAD_RADIUS;
-			energy += REPULSION_COEFF/2.0 * pow(-dist-THREAD_RADIUS,2);
+			double overlap = (THREAD_RADIUS - dist);
+			//energy += REPULSION_COEFF/2.0 * pow(dist/THREAD_RADIUS-1,2) * THREAD_RADIUS;
+			energy += REPULSION_COEFF/2.0 * pow(dist-THREAD_RADIUS,2);
 		}
 	}
   return energy;
@@ -299,9 +299,9 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
 					continue;
 				Vector3d direction;
 				double dist = _my_thread->self_intersection(piece_ind, other_ind, THREAD_RADIUS, direction);
-				if (dist > 0 || -dist > THREAD_RADIUS)
+				if (dist < 0 || dist > THREAD_RADIUS)
 					continue;
-				double overlap = (THREAD_RADIUS + dist);
+				double overlap = (THREAD_RADIUS - dist);
 				//double overlap = 1/pow(dist,4);
 				grad -= REPULSION_COEFF * overlap * direction.normalized();
 			}
@@ -313,9 +313,9 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
 					continue;
 				Vector3d direction;
 				double dist = _my_thread->self_intersection(piece_ind, other_ind, THREAD_RADIUS, direction);
-				if (dist > 0 || -dist > THREAD_RADIUS)
+				if (dist < 0 || dist > THREAD_RADIUS)
 					continue;
-				double overlap = (THREAD_RADIUS + dist);
+				double overlap = (THREAD_RADIUS - dist);
 				//double overlap = 1/pow(dist,4);
 				grad -= REPULSION_COEFF * overlap * direction.normalized();
 			}

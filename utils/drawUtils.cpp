@@ -1,4 +1,4 @@
-#include "drawutils.h"
+#include "drawUtils.h"
 
 void drawCylinder(Vector3d pos, Matrix3d rot, double h, double r, float color0, float color1, float color2) {
 	glPushMatrix();
@@ -12,6 +12,29 @@ void drawCylinder(Vector3d pos, Matrix3d rot, double h, double r, float color0, 
 															 {1.0, 0.0, 0.0} };
 	glePolyCylinder(4, cylinder, NULL, r);
 	glPopMatrix();
+}
+
+void drawCylinder(Vector3d start_pos, Vector3d end_pos, double r, float color0, float color1, float color2)
+{
+	glPushMatrix();	
+	glColor3f(color0, color1, color2);
+  Vector3d vector_array[4];
+  double point_array[4][3];
+
+  vector_array[0] = start_pos - (end_pos - start_pos);
+  vector_array[1] = start_pos;
+  vector_array[2] = end_pos;
+  vector_array[3] = end_pos + (end_pos - start_pos);
+
+  for (int pt_ind = 0; pt_ind < 4; pt_ind++)
+  {
+    point_array[pt_ind][0] = vector_array[pt_ind](0);
+    point_array[pt_ind][1] = vector_array[pt_ind](1);
+    point_array[pt_ind][2] = vector_array[pt_ind](2);
+  }
+
+  glePolyCylinder(4, point_array, NULL, r);
+  glPopMatrix();
 }
 
 void drawEndEffector(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2) {
@@ -223,6 +246,25 @@ void drawArrow(Vector3d pos, Vector3d direction, float color0, float color1, flo
 	glTranslated(norm-0.2*norm,0,0);
 	glRotated(90,0,1,0);
 	glutSolidCone(0.05*norm,0.2*norm,20,16);
+	glPopMatrix();
+}
+
+void drawPlane(Vector3d pos, Vector3d normal, float side, float color0, float color1, float color2) {
+	Matrix3d rot;
+	rotation_from_tangent(normal.normalized(), rot);
+	Vector3d x = rot.col(1);
+	Vector3d y = rot.col(2);
+
+	glPushMatrix();	
+	glColor3f(color0, color1, color2);
+
+	glBegin(GL_QUADS);
+	glVertex3f(pos(0) + side*(x(0)+y(0)), pos(1) + side*(x(1)+y(1)), pos(2) + side*(x(2)+y(2)));
+	glVertex3f(pos(0) + side*(x(0)-y(0)), pos(1) + side*(x(1)-y(1)), pos(2) + side*(x(2)-y(2)));
+	glVertex3f(pos(0) + side*(-x(0)-y(0)), pos(1) + side*(-x(1)-y(1)), pos(2) + side*(-x(2)-y(2)));
+	glVertex3f(pos(0) + side*(-x(0)+y(0)), pos(1) + side*(-x(1)+y(1)), pos(2) + side*(-x(2)+y(2)));
+	glEnd();
+
 	glPopMatrix();
 }
 

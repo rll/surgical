@@ -23,9 +23,14 @@
 #include "thread_discrete.h"
 #include "thread_socket_interface.h"
 #include "ThreadConstrained.h"
-#include "EnvObjects.h"
-#include "SimpleEnv.h"
-#include "drawutils.h"
+//#include "EnvObjects.h"
+//#include "SimpleEnv.h"
+#include "EnvObjects/World.h"
+#include "EnvObjects/EnvObject.h"
+#include "EnvObjects/Capsule.h"
+#include "EnvObjects/Cursor.h"
+#include "EnvObjects/EndEffector.h"
+#include "EnvObjects/InfinitePlane.h"
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
@@ -102,15 +107,14 @@ vector<int> constrained_vertices_nums;
 Vector3d extra_end_effectors_pos = Vector3d(-40.0, -30.0, 0.0);
 Matrix3d extra_end_effectors_rot = Matrix3d::Identity();
 double grab_offset = EndEffector::grab_offset;
+Vector3d plane_origin = Vector3d(0.0, -30.0, 0.0);
 
 //Objects in environment
+World *world;
 Cursor *cursor0, *cursor1;
-Cylinder* base;
-EndEffector* extra_end_effector;
-vector<EndEffector*> constrained_ee;
-SimpleTexturedSphere* textured_sphere;
-
-SimpleEnv *env;
+vector<EndEffector*> end_effectors;
+EndEffector *end_effector0, *end_effector1;
+InfinitePlane *plane;
 
 int window_width, window_height;
 
@@ -470,8 +474,8 @@ int main (int argc, char * argv[])
   glutMouseFunc (processMouse);
   glutKeyboardFunc(processNormalKeys);
   glutKeyboardUpFunc(processKeyUp);
-  if (HAPTICS)
-  	glutTimerFunc(100, processHapticDevice, 0);
+
+ 	glutTimerFunc(100, processHapticDevice, 0);
 	
 	/* create popup menu */
 	glutCreateMenu (glutMenu);
@@ -486,27 +490,34 @@ int main (int argc, char * argv[])
 
   zero_location = Vector3d::Zero(); //points[0];
   zero_angle = 0.0;
+
+	cursor0 = new Cursor(Vector3d::Zero(), Matrix3d::Identity());
+	cursor1 = new Cursor(Vector3d::Zero(), Matrix3d::Identity());
+	end_effector0 = new EndEffector(positions[0], rotations[0]);
+	end_effector1 = new EndEffector(positions[1], rotations[1]);
+	EndEffector* end_effector2 = new EndEffector(plane_origin + Vector3d(30.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()));
+	EndEffector* end_effector3 = new EndEffector(plane_origin + Vector3d(35.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()));
+	end_effectors.push_back(end_effector0);
+	end_effectors.push_back(end_effector1);
+	end_effectors.push_back(end_effector2);
+	end_effectors.push_back(end_effector3);
+	plane = new InfinitePlane(plane_origin, Vector3d(0.0, 1.0, 0.0), 0.8, 0.8, 0.8);
+	//textured_sphere = new SimpleTexturedSphere(Vector3d::Zero(), 150.0, "../utils/wmap.bmp");
 	
-	textured_sphere = new SimpleTexturedSphere(Vector3d::Zero(), 150.0, "../utils/wmap.bmp");
-	env = new SimpleEnv();
-	
-	EndEffector* end_effector0 = new EndEffector(positions[0], rotations[0]);
-	EndEffector* end_effector1 = new EndEffector(positions[1], rotations[1]);
 	end_effector0->constraint = constrained_vertices_nums[0];
-	end_effector0->constraint = constrained_vertices_nums[1];
-	end_effector1->constraint_ind = 0;
+	end_effector1->constraint = constrained_vertices_nums[1];
+	end_effector0->constraint_ind = 0;
 	end_effector1->constraint_ind = 1;
-	constrained_ee.push_back(end_effector0);
- 	constrained_ee.push_back(end_effector1);
+	
+	world = new World();
+	world->addThread(thread);
+	world->addEnvObj(cursor0);
+	world->addEnvObj(cursor1);
+	for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++)
+		world->addEnvObj(end_effectors[ee_ind]);
+	world->addEnvObj(plane);
 
-	if (HAPTICS) {
-		cursor0 = new Cursor(Vector3d::Zero(), Matrix3d::Identity());
-		cursor1 = new Cursor(Vector3d::Zero(), Matrix3d::Identity());
-		base = new Cylinder(extra_end_effectors_pos+Vector3d(20.0, -1.2, 0.0), (Matrix3d) AngleAxisd(0.5*M_PI, Vector3d::UnitZ()), 15, 8, 0.0, 1.0, 0.0);
-		extra_end_effector = new EndEffector(extra_end_effectors_pos, extra_end_effectors_rot);
-
-		connectionInit();
-	}
+	connectionInit();
 	
 	processInput();
   glutMainLoop ();
@@ -533,7 +544,7 @@ void drawStuff()
 #endif
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
-  env->drawObjs();
+  world->draw();
   glPopMatrix();
 #ifdef VIEW3D
   displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
@@ -553,19 +564,54 @@ void drawStuff()
 	glTranslatef(0.0, 0.0, -eye_focus_depth);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
-	env->drawObjs();
+	world->draw();
 	glPopMatrix();
 	displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
 	glutSwapBuffers ();
 		
 	glutSetWindow(main_window);
 #endif
-  
-	env->clearObjs();
 }
 
 void processInput()
-{
+{/*
+	updateState(start_proxy_pos, start_proxy_rot, cursor0);
+	updateState(end_proxy_pos, end_proxy_rot, cursor1);
+	
+	toggle = (toggle+constrained_vertices_nums.size())%constrained_vertices_nums.size();
+	
+	thread->getConstrainedTransforms(positions, rotations);
+	vector<Vector3d> positionConstraints = positions;
+	vector<Matrix3d> rotationConstraints = rotations;
+	if (((!cursor0->isAttached() || (cursor0->isAttached() && toggle!=cursor0->end_eff->constraint_ind)) && 
+									 (!cursor1->isAttached() || (cursor1->isAttached() && toggle!=cursor1->end_eff->constraint_ind))))
+		mouseTransform(positionConstraints[toggle], rotationConstraints[toggle], positions, rotations, toggle);
+	
+
+  if (cursor0->isAttached() && cursor0->end_eff->constraint_ind>=0) {
+  	positionConstraints[cursor0->end_eff->constraint_ind] = start_proxy_pos - grab_offset * start_proxy_rot.col(0);
+  	rotationConstraints[cursor0->end_eff->constraint_ind] = start_proxy_rot;
+  }
+  if (cursor1->isAttached() && cursor1->end_eff->constraint_ind>=0) {
+  	positionConstraints[cursor1->end_eff->constraint_ind] = end_proxy_pos - grab_offset * end_proxy_rot.col(0);
+  	rotationConstraints[cursor1->end_eff->constraint_ind] = end_proxy_rot;
+  }
+
+	thread->updateConstraints(positionConstraints, rotationConstraints);
+	
+	thread->getConstrainedTransforms(positions, rotations);
+			
+	for(int i=0; i<positions.size(); i++) {
+		constrained_ee[i]->unhighlight();
+		constrained_ee[i]->setTransform(positions[i], rotations[i]);
+	}
+	constrained_ee[toggle]->highlight();
+
+	//thread->adapt_links();
+
+	glPopMatrix();
+*/
+#ifdef NEVERDEFINED
 	glPushMatrix ();
   /* set up some matrices so that the object spins with the mouse */
   glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
@@ -697,8 +743,6 @@ void processInput()
 	
 	//thread->adapt_links();
 
-	env->addObj(thread);
-
 	if (HAPTICS) {
 		env->addObj(base);
 		env->addObj(extra_end_effector);
@@ -712,6 +756,7 @@ void processInput()
 	//env->addObj(textured_sphere);
 	
 	glPopMatrix();
+#endif
 }
 
 void updateState(const Vector3d& proxy_pos, const Matrix3d& proxy_rot, Cursor* cursor) {
@@ -953,4 +998,3 @@ void glutMenu(int ID) {
       break;
   }
 }
-

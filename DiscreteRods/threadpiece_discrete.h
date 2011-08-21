@@ -1,11 +1,11 @@
 #ifndef _threadpiece_discrete_h
 #define _threadpiece_discrete_h
 
-#include "threadutils_discrete.h"
 #include <math.h>
 
-
-
+#include "threadutils_discrete.h"
+#include "Collisions/collisionUtils.h"
+#include "EnvObjects/World.h"
 
 using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN
