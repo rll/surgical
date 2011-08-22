@@ -81,15 +81,9 @@ vector<double> twist_angles;
 Vector3d zero_location;
 double zero_angle;
 
-ThreadConstrained* thread;
+vector<ThreadConstrained*> threads;
 
 int pressed_mouse_button;
-
-vector<Vector3d> positions;
-vector<Matrix3d> rotations;
-
-vector<Vector3d> all_positions;
-vector<Matrix3d> all_rotations;
 
 key_code key_pressed;
 
@@ -102,9 +96,6 @@ bool start_feedback_enabled = false, end_feedback_enabled = false;
 bool change_constraint = false;
 bool choose_mode = false;
 int toggle = 1, selected_vertex_num = 0;
-vector<int> constrained_vertices_nums;
-Vector3d extra_end_effectors_pos = Vector3d(-40.0, -30.0, 0.0);
-Matrix3d extra_end_effectors_rot = Matrix3d::Identity();
 double grab_offset = EndEffector::grab_offset;
 Vector3d plane_origin = Vector3d(0.0, -30.0, 0.0);
 
@@ -112,7 +103,6 @@ Vector3d plane_origin = Vector3d(0.0, -30.0, 0.0);
 World *world;
 Cursor *cursor0, *cursor1;
 vector<EndEffector*> end_effectors;
-EndEffector *end_effector0, *end_effector1;
 InfinitePlane *plane;
 TexturedSphere *textured_sphere;
 
@@ -212,10 +202,10 @@ void processNormalKeys(unsigned char key, int x, int y) {
     rotate_frame[0] = 0.0;
     rotate_frame[1] = 0.0;
   } else if (key == 'c') {
-  	if (!choose_mode)	//from normal mode to choose mode
-  		thread->getAllTransforms(all_positions, all_rotations);
-  	else
-  		thread->setAllTransforms(all_positions, all_rotations);
+  	//if (!choose_mode)	//from normal mode to choose mode
+  	//	threads[0]->getAllTransforms(all_positions, all_rotations);
+  	//else
+  	//	threads[0]->setAllTransforms(all_positions, all_rotations);
   	toggle = 0;
   	if (cursor0->isAttached())
   		cursor0->dettach();
@@ -239,7 +229,7 @@ void processNormalKeys(unsigned char key, int x, int y) {
   } else if (key == 'd') {
     vector<Vector3d> vv3d; 
     vector <double> vd;
-    thread->get_thread_data(vv3d, vd);
+    threads[0]->get_thread_data(vv3d, vd);
     cout << "get_thread_data: absolute_points: " << vv3d.size() << endl;
     for (int i=0; i<(vv3d.size()+4)/5; i++) {
       for (int k=0; k<3; k++) {
@@ -258,9 +248,9 @@ void processNormalKeys(unsigned char key, int x, int y) {
       printf("\n");
     }
   } else if (key == 'f') {
-    vector<Vector3d> vv3d(positions.size());
-    vector<Matrix3d> vm3d(positions.size());
-    thread->getConstrainedTransforms(vv3d, vm3d);
+    vector<Vector3d> vv3d;
+    vector<Matrix3d> vm3d;
+    threads[0]->getConstrainedTransforms(vv3d, vm3d);
     cout << "getConstrainedTransforms: positions: " << vv3d.size() << endl;
     for (int i=0; i<(vv3d.size()+4)/5; i++) {
       for (int k=0; k<3; k++) {
@@ -273,7 +263,7 @@ void processNormalKeys(unsigned char key, int x, int y) {
     }
   } else if ( key == 'g') {
     vector<int> vi;
-    thread->getConstrainedVerticesNums(vi);
+    threads[0]->getConstrainedVerticesNums(vi);
     cout << "getConstrainedVerticesNums: vertices_num: " << vi.size() << endl;
     for (int i=0; i<(vi.size()+4)/5; i++) {
       for (int j=0; j<5 && (i*5+j)<vi.size(); j++) {
@@ -283,7 +273,7 @@ void processNormalKeys(unsigned char key, int x, int y) {
     }
   } else if ( key == 'h') {
     vector<int> vi;
-    thread->getOperableFreeVertices(vi);
+    threads[0]->getOperableFreeVertices(vi);
     cout << "getOperableFreeVertices: vertices_num: " << vi.size() << endl;
     for (int i=0; i<(vi.size()+4)/5; i++) {
       for (int j=0; j<5 && (i*5+j)<vi.size(); j++) {
@@ -293,7 +283,7 @@ void processNormalKeys(unsigned char key, int x, int y) {
     }
   } else if (key == 'j') {
     vector<Vector3d> vv3d;
-    thread->getConstrainedVertices(vv3d);
+    threads[0]->getConstrainedVertices(vv3d);
 		cout << "getConstrainedVertices: constrained_vertices: " << vv3d.size() << endl;
     for (int i=0; i<(vv3d.size()+4)/5; i++) {
       for (int k=0; k<3; k++) {
@@ -302,16 +292,11 @@ void processNormalKeys(unsigned char key, int x, int y) {
         }
         printf("\n");
       }
-      printf("\n");  glPushMatrix ();  
-  glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  /* set up some matrices so that the object spins with the mouse */
-  glTranslatef (0.0,0.0,-110.0);
-  glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
-  glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
+      printf("\n");
     }
   } else if (key == 'k') {
 		vector<Vector3d> vv3d;
-    thread->getFreeVertices(vv3d);
+    threads[0]->getFreeVertices(vv3d);
 		cout << "getFreeVertices: free_vertices: " << vv3d.size() << endl;
     for (int i=0; i<(vv3d.size()+4)/5; i++) {
       for (int k=0; k<3; k++) {
@@ -325,7 +310,7 @@ void processNormalKeys(unsigned char key, int x, int y) {
   } else if (key == 'l') {
 		vector<int> vi;
 		vector<bool> vb;
-    thread->getOperableVertices(vi, vb);
+    threads[0]->getOperableVertices(vi, vb);
     cout << "getOperableVertices: operable_vertices_num: " << vi.size() << endl;
     for (int i=0; i<(vi.size()+4)/5; i++) {
       for (int j=0; j<5 && (i*5+j)<vi.size(); j++) {
@@ -341,7 +326,8 @@ void processNormalKeys(unsigned char key, int x, int y) {
       printf("\n");
     }
   } else if(key == 'e') {
-  	thread->toggleExamineMode();
+  	for (int thread_ind=0; thread_ind<threads.size(); thread_ind++)
+  		threads[thread_ind]->toggleExamineMode();
   	processInput();
   	//glutPostRedisplay ();
 #ifdef VIEW3D
@@ -485,38 +471,63 @@ int main (int argc, char * argv[])
 	initGL();
 	
   initThread();
-	thread->minimize_energy();
-  thread->getConstrainedTransforms(positions, rotations);
 
   zero_location = Vector3d::Zero(); //points[0];
   zero_angle = 0.0;
 
+	//setting up objects in environment
 	cursor0 = new Cursor(Vector3d::Zero(), Matrix3d::Identity());
-	cursor1 = new Cursor(Vector3d::Zero(), Matrix3d::Identity());
-	end_effector0 = new EndEffector(positions[0], rotations[0]);
-	end_effector1 = new EndEffector(positions[1], rotations[1]);
-	EndEffector* end_effector2 = new EndEffector(plane_origin + Vector3d(30.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()));
-	EndEffector* end_effector3 = new EndEffector(plane_origin + Vector3d(35.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()));
-	end_effectors.push_back(end_effector0);
-	end_effectors.push_back(end_effector1);
-	end_effectors.push_back(end_effector2);
-	end_effectors.push_back(end_effector3);
+	cursor1 = new Cursor(Vector3d::Zero(), Matrix3d::Identity());	
 	plane = new InfinitePlane(plane_origin, Vector3d(0.0, 1.0, 0.0), 0.8, 0.8, 0.8);
 	textured_sphere = new TexturedSphere(Vector3d::Zero(), 150.0, "../utils/wmap.bmp");
 	
-	end_effector0->constraint = constrained_vertices_nums[0];
-	end_effector1->constraint = constrained_vertices_nums[1];
+	//setting up end effectors
+	vector<Vector3d> positions;
+	vector<Matrix3d> rotations;
+	threads[0]->getConstrainedTransforms(positions, rotations);
+	EndEffector* end_effector0 = new EndEffector(positions[0], rotations[0]);
+	end_effector0->attachThread(threads[0]);
 	end_effector0->constraint_ind = 0;
+	end_effector0->updateConstraint();
+	end_effectors.push_back(end_effector0);
+		
+	EndEffector* end_effector1 = new EndEffector(positions[1], rotations[1]);
+	end_effector1->attachThread(threads[0]);
 	end_effector1->constraint_ind = 1;
+	end_effector1->updateConstraint();	
+	end_effectors.push_back(end_effector1);
 	
+	threads[1]->getConstrainedTransforms(positions, rotations);
+	EndEffector* end_effector2 = new EndEffector(positions[0], rotations[0]);
+	end_effector2->attachThread(threads[1]);
+	end_effector2->constraint_ind = 0;
+	end_effector2->updateConstraint();
+	end_effectors.push_back(end_effector2);
+	
+	EndEffector* end_effector3 = new EndEffector(positions[1], rotations[1]);
+	end_effector3->attachThread(threads[1]);
+	end_effector3->constraint_ind = 1;
+	end_effector3->updateConstraint();
+	end_effectors.push_back(end_effector3);
+	
+	EndEffector* end_effector4 = new EndEffector(plane_origin + Vector3d(30.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()));
+	end_effectors.push_back(end_effector4);
+	
+	EndEffector* end_effector5 = new EndEffector(plane_origin + Vector3d(35.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()));
+	end_effectors.push_back(end_effector5);
+
+	// adding objects to environment
 	world = new World();
-	world->addThread(thread);
+	for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++)
+		world->addThread(threads[thread_ind]);
 	world->addEnvObj(cursor0);
 	world->addEnvObj(cursor1);
 	for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++)
 		world->addEnvObj(end_effectors[ee_ind]);
 	world->addEnvObj(plane);
 	world->addEnvObj(textured_sphere);
+	
+	threads[0]->initializeThreadsInEnvironment();
 
 	connectionInit();
 	
@@ -578,31 +589,33 @@ void processInput()
 {
 	updateState(start_proxy_pos, start_proxy_rot, cursor0);
 	updateState(end_proxy_pos, end_proxy_rot, cursor1);
+		
+	for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
+		vector<Vector3d> positionConstraints;
+		vector<Matrix3d> rotationConstraints;
+		threads[thread_ind]->getConstrainedTransforms(positionConstraints, rotationConstraints);
+
+		if (cursor0->isAttached() && cursor0->end_eff->getThread()==threads[thread_ind]) {
+			positionConstraints[cursor0->end_eff->constraint_ind] = start_proxy_pos - grab_offset * start_proxy_rot.col(0);
+			rotationConstraints[cursor0->end_eff->constraint_ind] = start_proxy_rot;
+		}
+		if (cursor1->isAttached() && cursor1->end_eff->getThread()==threads[thread_ind]) {
+			positionConstraints[cursor1->end_eff->constraint_ind] = end_proxy_pos - grab_offset * end_proxy_rot.col(0);
+			rotationConstraints[cursor1->end_eff->constraint_ind] = end_proxy_rot;
+		}
+
+		threads[thread_ind]->updateConstraints(positionConstraints, rotationConstraints);
 	
-	thread->getConstrainedTransforms(positions, rotations);
-	vector<Vector3d> positionConstraints = positions;
-	vector<Matrix3d> rotationConstraints = rotations;
+		threads[thread_ind]->getConstrainedTransforms(positionConstraints, rotationConstraints);
 
-  if (cursor0->isAttached() && cursor0->end_eff->constraint_ind>=0) {
-  	positionConstraints[cursor0->end_eff->constraint_ind] = start_proxy_pos - grab_offset * start_proxy_rot.col(0);
-  	rotationConstraints[cursor0->end_eff->constraint_ind] = start_proxy_rot;
-  }
-  if (cursor1->isAttached() && cursor1->end_eff->constraint_ind>=0) {
-  	positionConstraints[cursor1->end_eff->constraint_ind] = end_proxy_pos - grab_offset * end_proxy_rot.col(0);
-  	rotationConstraints[cursor1->end_eff->constraint_ind] = end_proxy_rot;
-  }
-
-	thread->updateConstraints(positionConstraints, rotationConstraints);
+		for (int ee_ind = 0; ee_ind < 4; ee_ind++) {
+			EndEffector* ee = end_effectors[ee_ind];
+			if (ee->getThread()==threads[thread_ind])
+				ee->setTransform(positionConstraints[ee->constraint_ind], rotationConstraints[ee->constraint_ind]);
+		}
 	
-	thread->getConstrainedTransforms(positions, rotations);
-
-	for (int ee_ind = 0; ee_ind < 4; ee_ind++) {
-		EndEffector* ee = end_effectors[ee_ind];
-		if (ee->constraint_ind != -1)
-			ee->setTransform(positions[ee->constraint_ind], rotations[ee->constraint_ind]);
+		//threads[thread_ind]->adapt_links();
 	}
-
-	//thread->adapt_links();
 
 	glPopMatrix();
 }
@@ -613,52 +626,53 @@ void updateState(const Vector3d& proxy_pos, const Matrix3d& proxy_rot, Cursor* c
 	cursor->setTransform(proxy_pos, proxy_rot);
 	if (cursor->isAttached()) {																																				// cursor has an end effector
 		EndEffector* ee = cursor->end_eff;
-	  if (ee->constraint<0) {																																					// cursor has an end effector but it isn't holding the thread
-	  	int nearest_vertex = thread->nearestVertex(tip_pos);
+	  if (!ee->isThreadAttached()) {																																					// cursor has an end effector but it isn't holding the thread
+	  	int nearest_vertex = threads[0]->nearestVertex(tip_pos);
+	  	ThreadConstrained* thread = threads[0];
+	  	for (int thread_ind = 1; thread_ind < threads.size(); thread_ind++) {
+	  		int candidate_nearest_vertex = threads[thread_ind]->nearestVertex(tip_pos);
+	  		if ( (threads[thread_ind]->position(candidate_nearest_vertex) - tip_pos).squaredNorm() <
+	  				 (threads[thread_ind]->position(nearest_vertex) - tip_pos).squaredNorm() ) {	  		
+	  			nearest_vertex = candidate_nearest_vertex;
+	  			thread = threads[thread_ind];
+	  		}
+	  	}
 	  	if (cursor->justClosed() && ((thread->position(nearest_vertex) - tip_pos).squaredNorm() < 16.0)) {	// cursor has an end effector which just started holding the thread
 	  		ee->constraint = nearest_vertex;
-		  	positions.resize(positions.size()+1);
-		    rotations.resize(rotations.size()+1);
 		    thread->addConstraint(nearest_vertex);
-		    thread->getConstrainedTransforms(positions, rotations);
-				thread->getConstrainedVerticesNums(constrained_vertices_nums);
-		    ee->constraint_ind = find(constrained_vertices_nums, nearest_vertex);
-		    positions[ee->constraint_ind] = tip_pos;
-		    rotations[ee->constraint_ind] = proxy_rot;
-		    thread->setConstrainedTransforms(positions, rotations);			// the end effector's orientation matters when it grips the thread. This updates the offset rotation.
+		    ee->attachThread(thread);
+		    for (int ee_ind = 0; ee_ind < 4; ee_ind++)
+					end_effectors[ee_ind]->updateConstraintIndex();
+		    thread->setConstrainedTransforms(ee->constraint_ind, tip_pos, proxy_rot);										// the end effector's orientation matters when it grips the thread. This updates the offset rotation.
 		  } else {																																											// cursor has an end effector which remains without holding the thread
 	  		ee->setTransform(tip_pos, proxy_rot);
 		  }
 	  } else {																																												// cursor has an end effector which is holding the thread
-	  	if ((ee->constraint==0 || ee->constraint==(thread->numVertices()-1)) && cursor->isOpen()) {		// cursor has an end effector which is holding the thread end and trying to be opened
+	  	if ((ee->constraint==0 || ee->constraint==(ee->getThread()->numVertices()-1)) && cursor->isOpen()) {		// cursor has an end effector which is holding the thread end and trying to be opened
 				cout << "You cannot open the end effector holding the end constraint" << endl;
 			 	cursor->forceClose();
 			} else if (cursor->isOpen()) {																																// cursor has an end effector which is holding the thread and trying to be opened
-				positions.resize(positions.size()-1);
-			  rotations.resize(rotations.size()-1);
-			  thread->removeConstraint(ee->constraint);
+			  cout << "removing constraint" << endl;
+			  ee->getThread()->removeConstraint(ee->constraint);
 			 	ee->constraint = ee->constraint_ind = -1;
-				thread->getConstrainedVerticesNums(constrained_vertices_nums);
+			 	ee->dettachThread();
+			 	for (int ee_ind = 0; ee_ind < 4; ee_ind++)
+					end_effectors[ee_ind]->updateConstraintIndex();
 			}
 		}
 		if (cursor->attach_dettach_attempt) {
 			cursor->dettach();
-			thread->getConstrainedVerticesNums(constrained_vertices_nums);
-			if (cursor==cursor0 && cursor1->end_eff!=NULL)
-				cursor1->end_eff->constraint_ind = find(constrained_vertices_nums, cursor1->end_eff->constraint);
-			else if (cursor==cursor1 && cursor0->end_eff!=NULL)
-				cursor0->end_eff->constraint_ind = find(constrained_vertices_nums, cursor0->end_eff->constraint);
-			else if ((cursor != cursor0) && (cursor != cursor1))
-				cout << "Internal error: updateState(): (cursor->attach_dettach_attempt): assumes there's only two cursors." << endl;
+			for (int ee_ind = 0; ee_ind < 4; ee_ind++)
+				end_effectors[ee_ind]->updateConstraintIndex();
 		}
 	} else {																				// cursor doesn't have an end effector, THUS it isn't holding the thread i.e. ee->constraint = ee->constraint_ind = -1;
   	for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++) {
   		EndEffector* ee = end_effectors[ee_ind];
   		if (cursor->attach_dettach_attempt && closeEnough(tip_pos, proxy_rot, ee->getPosition(), ee->getRotation())) {
   			cursor->attach(ee);
-  			if (ee->constraint_ind != -1) {
-  				ee->constraint = constrained_vertices_nums[ee->constraint_ind];
-  				if ((ee->constraint==0 || ee->constraint==(thread->numVertices()-1)) && cursor->isOpen()) 
+  			if (ee->isThreadAttached()) {
+					ee->updateConstraint();
+  				if ((ee->constraint==0 || ee->constraint==(ee->getThread()->numVertices()-1)) && cursor->isOpen()) 
 	  				cursor->forceClose();
   			}
   		}
@@ -752,24 +766,75 @@ void displayTextInScreen(const char* textline, ...)
 }
 
 void initThread()
-{	
-	int num_vertices=15;
-  thread = new ThreadConstrained(num_vertices);
-  positions.resize(2);
-  rotations.resize(2);
-  thread->getConstrainedTransforms(positions, rotations);
-  all_positions.resize(num_vertices);
-  all_rotations.resize(num_vertices);
-  thread->getConstrainedVerticesNums(constrained_vertices_nums);
+{
+  int numInit = 5;
 
+	double first_length = 3.0; //DEFAULT_REST_LENGTH;
+	double second_length = 2.0; //DEFAULT_REST_LENGTH;
+	double middle_length = 4.0; //DEFAULT_REST_LENGTH;
+
+  vector<Vector3d> vertices;
+  vector<double> angles;
+  vector<double> lengths;
+  vector<Vector3d> directions;
+  
+	for (int i=0; i < 2*numInit + 5; i++)
+		angles.push_back(0.0);
+  
+  lengths.push_back(first_length);
+  lengths.push_back(second_length);
+  for (int i=0; i < 2*numInit; i++)
+  	lengths.push_back(middle_length);
+  lengths.push_back(second_length);
+  lengths.push_back(first_length);
+  lengths.push_back(first_length);
+  
+  directions.push_back(Vector3d::UnitX());
+  directions.push_back(Vector3d::UnitX());
+  Vector3d direction = Vector3d(1.0, -2.0, 0.0);
+  direction.normalize();
+  for (int i=0; i < numInit; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(1.0, 2.0, 0.0);
+  direction.normalize();
+  for (int i=0; i < numInit; i++)
+  	directions.push_back(direction);
+  directions.push_back(Vector3d::UnitX());
+  directions.push_back(Vector3d::UnitX());
+  
+  vertices.push_back(Vector3d::Zero());
+  for (int i=1; i < 2*numInit + 5; i++) {
+  	Vector3d next_vertex;
+  	next_vertex(0) = vertices[i-1](0) + directions[i-1](0) * lengths[i-1];
+  	next_vertex(1) = vertices[i-1](1) + directions[i-1](1) * lengths[i-1];
+  	next_vertex(2) = vertices[i-1](2) + directions[i-1](2) * lengths[i-1];
+    vertices.push_back(next_vertex);
+  }
+  
+	Vector3d center_pos = (vertices.front() + vertices.back())/2.0;
+	for (int i=0; i<vertices.size(); i++)
+		vertices[i] -= center_pos;
+
+  Matrix3d rotation = Matrix3d::Identity();
+
+  ThreadConstrained* thread0 = new ThreadConstrained(vertices, angles, lengths, rotation, rotation);
+  threads.push_back(thread0);
+  
+  for (int i=0; i<vertices.size(); i++)
+		vertices[i] += Vector3d(0,20.0,0);
+  ThreadConstrained* thread1 = new ThreadConstrained(vertices, angles, lengths, rotation, rotation);
+  threads.push_back(thread1);
+
+	for (int thread_ind=0; thread_ind < threads.size(); thread_ind++) {
 #ifndef ISOTROPIC
-	Matrix2d B = Matrix2d::Zero();
-	B(0,0) = 10.0;
-	B(1,1) = 1.0;
-	thread->set_coeffs_normalized(B, 3.0, 1e-4);
+		Matrix2d B = Matrix2d::Zero();
+		B(0,0) = 10.0;
+		B(1,1) = 1.0;
+		threads[thread_ind]->set_coeffs_normalized(B, 3.0, 1e-4);
 #else
-  thread->set_coeffs_normalized(1.0, 3.0, 1e-4);
+  	threads[thread_ind]->set_coeffs_normalized(1.0, 3.0, 1e-4);
 #endif
+	}
 }
 
 void initGL()        

@@ -1,6 +1,60 @@
 #include "ThreadConstrained.h"
 #include "thread_discrete.h"
 
+ThreadConstrained::ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, Matrix3d& end_rot) {
+	num_vertices = vertices.size();
+	Thread* thread = new Thread(vertices, twist_angles, rest_lengths, start_rot, end_rot);
+	threads.push_back(thread);
+
+	thread->minimize_energy();
+	
+	zero_angle = 0.0;
+	rot_diff.push_back(Matrix3d::Identity());
+	rot_diff.push_back(Matrix3d::Identity());
+	rot_offset.push_back((Matrix3d) (AngleAxisd(M_PI, Vector3d::UnitZ())));
+	for (int i=0; i<num_vertices-2; i++)
+		rot_offset.push_back((Matrix3d) (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
+	rot_offset.push_back(Matrix3d::Identity());
+	if (LIMITED_DISPLACEMENT) {
+		last_pos.push_back(vertices.front());
+		last_pos.push_back(vertices.back());
+		last_rot.push_back(threads[0]->start_rot() * rot_offset.front().transpose());
+		last_rot.push_back(threads[0]->end_rot() * rot_offset.back().transpose());
+	}
+	constrained_vertices_nums.push_back(0);
+	constrained_vertices_nums.push_back(num_vertices-1);
+	
+	examine_mode = false;
+	initContour();
+}
+
+ThreadConstrained::ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot) {
+	num_vertices = vertices.size();
+	Thread* thread = new Thread(vertices, twist_angles, start_rot, end_rot);
+	threads.push_back(thread);
+
+	thread->minimize_energy();
+
+	zero_angle = 0.0;
+	rot_diff.push_back(Matrix3d::Identity());
+	rot_diff.push_back(Matrix3d::Identity());
+	rot_offset.push_back((Matrix3d) (AngleAxisd(M_PI, Vector3d::UnitZ())));
+	for (int i=0; i<num_vertices-2; i++)
+		rot_offset.push_back((Matrix3d) (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
+	rot_offset.push_back(Matrix3d::Identity());
+	if (LIMITED_DISPLACEMENT) {
+		last_pos.push_back(vertices.front());
+		last_pos.push_back(vertices.back());
+		last_rot.push_back(threads[0]->start_rot() * rot_offset.front().transpose());
+		last_rot.push_back(threads[0]->end_rot() * rot_offset.back().transpose());
+	}
+	constrained_vertices_nums.push_back(0);
+	constrained_vertices_nums.push_back(num_vertices-1);
+	
+	examine_mode = false;
+	initContour();
+}
+
 ThreadConstrained::ThreadConstrained(int num_vertices_init) {
 	num_vertices = num_vertices_init;
 	if (num_vertices < 5)
@@ -132,8 +186,8 @@ void ThreadConstrained::get_thread_data(vector<Vector3d> &absolute_points, vecto
 // parameters have to be of the right size, i.e. threads.size()+1
 void ThreadConstrained::getConstrainedTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations) {
 	int threads_size = threads.size();
-	if (positions.size()!=(threads_size+1) || rotations.size()!=(threads_size+1))
-    cout << "Internal error: getConstrainedTransforms: at least one of the vector parameters is of the wrong size" << endl;
+	positions.resize(threads_size+1);
+	rotations.resize(threads_size+1);
 	vector<vector<Vector3d> > points(threads_size);	
 	int thread_num = 0;
 	threads[thread_num]->get_thread_data(points[thread_num]);
@@ -171,6 +225,29 @@ void ThreadConstrained::setConstrainedTransforms(vector<Vector3d> positions, vec
 		if (LIMITED_DISPLACEMENT)
 			last_rot[i] = rotations[i];
 	}
+}
+
+void ThreadConstrained::setConstrainedTransforms(int constraint_ind, Vector3d position, Matrix3d rotation) {
+	if (constraint_ind < 0 || constraint_ind >= threads.size()+1)
+		cout << "Internal error: getConstrainedTransforms: constraint_ind is out of bounds" << endl;
+	vector<Vector3d> positions;
+	vector<Matrix3d> material_frames;
+	get_thread_data(positions, material_frames);	
+	if (constrained_vertices_nums[constraint_ind]==0) {
+		rot_offset[0] = rotation.transpose() * start_rot();
+		rot_offset[0] = (Matrix3d) AngleAxisd(rot_offset[0]); // to fix numerical errors and rot_offset stays orthonormal
+	} else if (constrained_vertices_nums[constraint_ind]==num_vertices-1) {
+		rot_offset[num_vertices-1] = rotation.transpose() * end_rot();
+		rot_offset[num_vertices-1] = (Matrix3d) AngleAxisd(rot_offset[num_vertices-1]); // to fix numerical errors and rot_offset stays orthonormal
+	} else {
+		Matrix3d inter_rot;
+		int vertex_num = constrained_vertices_nums[constraint_ind];
+		intermediateRotation(inter_rot, material_frames[vertex_num-1], material_frames[vertex_num]);
+		rot_offset[vertex_num] = rotation.transpose() * material_frames[vertex_num];
+		rot_offset[vertex_num] = (Matrix3d) AngleAxisd(rot_offset[vertex_num]); // to fix numerical errors and rot_offset stays orthonormal
+	}
+	if (LIMITED_DISPLACEMENT)
+		last_rot[constraint_ind] = rotation;
 }
 
 void ThreadConstrained::getAllTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations) {
@@ -397,6 +474,23 @@ int ThreadConstrained::nearestVertex(Vector3d pos) {
 	return free_vertices_num[min_ind];
 }
 
+void ThreadConstrained::initializeThreadsInEnvironment() {
+	vector<ThreadConstrained*>* all_thread_constrained = world->getThreads();
+	vector<Thread*> all_threads;
+	for (int k=0; k<(*all_thread_constrained).size(); k++) {
+		ThreadConstrained* thread_constrained = (*all_thread_constrained)[k];
+		for (int i=0; i<thread_constrained->threads.size(); i++)
+			all_threads.push_back(thread_constrained->threads[i]);
+	}
+	for (int i=0; i<all_threads.size(); i++) {
+		all_threads[i]->clear_threads_in_env();
+		for (int j=0; j<all_threads.size(); j++) {
+			if (i!=j) 
+				all_threads[i]->add_thread_to_env(all_threads[j]);
+		}
+	}
+}
+
 Vector3d ThreadConstrained::position(int absolute_vertex_num) {
 	vector<Vector3d> positions;
 	get_thread_data(positions);
@@ -593,13 +687,7 @@ void ThreadConstrained::splitThread(int thread_num, int vertex_num) {
 	threads[thread_num] = thread0;
 	threads.insert(threads.begin()+thread_num+1, thread1);
 	
-	for (int i=0; i<threads.size(); i++) {
-		threads[i]->clear_threads_in_env();
-		for (int j=0; j<threads.size(); j++) {
-			if (i!=j) 
-				threads[i]->add_thread_to_env(threads[j]);
-		}
-	}
+	initializeThreadsInEnvironment();
 	
 	threads[thread_num]->minimize_energy();
 	threads[thread_num+1]->minimize_energy();
@@ -634,13 +722,7 @@ void ThreadConstrained::mergeThread(int thread_num) {
 	threads[thread_num] = thread;
 	threads.erase(threads.begin()+thread_num+1);
 	
-	for (int i=0; i<threads.size(); i++) {
-		threads[i]->clear_threads_in_env();
-		for (int j=0; j<threads.size(); j++) {
-			if (i!=j) 
-				threads[i]->add_thread_to_env(threads[j]);
-		}
-	}
+	initializeThreadsInEnvironment();
 	
 	threads[thread_num]->minimize_energy();
 }

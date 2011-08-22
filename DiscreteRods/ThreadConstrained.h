@@ -56,7 +56,9 @@ class Thread;
 
 class ThreadConstrained {
 	public:
-		ThreadConstrained(int vertices_num);
+		ThreadConstrained(int num_vertices_init);
+		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, Matrix3d& end_rot);
+		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot);
 		int numVertices() { return num_vertices; }
 		void get_thread_data(vector<Vector3d> &absolute_points);
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<double> &absolute_twist_angles);
@@ -65,6 +67,7 @@ class ThreadConstrained {
 		// parameters have to be of the right size, i.e. threads.size()+1
 		void getConstrainedTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations);
 		void setConstrainedTransforms(vector<Vector3d> positions, vector<Matrix3d> rotations);
+		void setConstrainedTransforms(int constraint_int, Vector3d position, Matrix3d rotation);
 		void getAllTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations);
 		void setAllTransforms(vector<Vector3d> positions, vector<Matrix3d> rotations);
 		// parameters have to be of the right size.
@@ -88,6 +91,7 @@ class ThreadConstrained {
 		void removeConstraint (int absolute_vertex_num);
 		// Returns the number of the vertex that is nearest to pos. The chosen vertex have to be a free operable vertex.
 		int nearestVertex(Vector3d pos);
+		void initializeThreadsInEnvironment();
 		Vector3d position(int absolute_vertex_num);
 		Matrix3d rotation(int absolute_vertex_num);
 		void draw();

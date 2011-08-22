@@ -30,8 +30,12 @@ void Cursor::recomputeFromTransform(const Vector3d& pos, const Matrix3d& rot)
 
 void Cursor::draw()
 {
-	drawCylinder(i_obj->_start_pos, i_obj->_end_pos, i_obj->_radius, open?0.0:0.5, open?0.5:0.0, 0.0);
-	drawSphere(i_obj->_start_pos, i_obj->_radius, open?0.0:0.5, open?0.5:0.0, 0.0);
+	Vector3d before_mid_point = i_obj->_start_pos + (2.0/5.0)*(i_obj->_end_pos - i_obj->_start_pos);
+	Vector3d after_mid_point = i_obj->_start_pos + (3.0/5.0)*(i_obj->_end_pos - i_obj->_start_pos);
+	drawCylinder(i_obj->_start_pos, before_mid_point, i_obj->_radius, isAttached()?0.0:0.5, isAttached()?0.5:0.0, 0.0);
+	drawCylinder(before_mid_point, after_mid_point, i_obj->_radius, 0.0, 0.0, 0.4);
+	drawCylinder(after_mid_point, i_obj->_end_pos, i_obj->_radius, open?0.0:0.5, open?0.5:0.0, 0.0);
+	drawSphere(i_obj->_start_pos, i_obj->_radius, isAttached()?0.0:0.5, isAttached()?0.5:0.0, 0.0);
 	drawSphere(i_obj->_end_pos, i_obj->_radius, open?0.0:0.5, open?0.5:0.0, 0.0);
 }
 

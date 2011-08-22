@@ -18,4 +18,6 @@ double capsuleInfinitePlaneDistance(const Vector3d& a_start, const Vector3d& a_e
 //direction is a vector pointing in the direction from capsule b to capsule a, and its norm is the minimun distance from its centers.
 double capsuleCapsuleDistance(const Vector3d& a_start, const Vector3d& a_end, const double a_radius, const Vector3d& b_start, const Vector3d& b_end, const double b_radius, Vector3d& direction);
 
+double capsuleSphereDistance(const Vector3d& a_start, const Vector3d& a_end, const double a_radius, const Vector3d& b_start, const double b_radius, Vector3d& direction);
+
 #endif

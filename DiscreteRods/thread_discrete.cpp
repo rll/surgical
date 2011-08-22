@@ -946,6 +946,8 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
 		}
   }
   
+  //cout << "threads in environment: " << threads_in_env.size() << endl;
+  
   if (found || obj_intersection)
   	cout << "intersections. obj_intersection = " << obj_intersection << endl;
 

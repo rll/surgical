@@ -1,11 +1,13 @@
 #include "EndEffector.h"
 #include "../threadpiece_discrete.h"
+#include "../ThreadConstrained.h"
 
 EndEffector::EndEffector(const Vector3d& pos, const Matrix3d& rot)
 	: EnvObject(pos, rot, 0.7, 0.7, 0.7)
 	, degrees(0.0)
 	, constraint(-1)
 	, constraint_ind(-1)
+	, thread(NULL)
 	, attachment(NULL)
 {
 	Intersection_Object* short_handle = new Intersection_Object();
@@ -56,7 +58,7 @@ void EndEffector::recomputeFromTransform(const Vector3d& pos, const Matrix3d& ro
 	i_objs[0]->_start_pos = start_pos;
 	i_objs[0]->_end_pos 	= end_pos;
 	
-	start_pos = rot * Vector3d(end, 0.0, 0.0) + pos;
+	start_pos = rot * Vector3d(end-2.5, 0.0, 0.0) + pos;
 	end_pos = rot * Vector3d(end+30.0, 0.0, 0.0) + pos;
 	i_objs[1]->_start_pos = start_pos;
 	i_objs[1]->_end_pos 	= end_pos;
@@ -90,9 +92,22 @@ bool EndEffector::capsuleIntersection(int capsule_ind, const Vector3d& start, co
     double intersection_dist = capsuleCapsuleDistance(start, end, radius, i_objs[i]->_start_pos, i_objs[i]->_end_pos, i_objs[i]->_radius, direction);
     if(intersection_dist < 0) {
       found = true;
-      intersections.push_back(Intersection(capsule_ind, -intersection_dist, direction));
+      if (i==1) {		// if the handle is intersecting and the part intersecting is the one close to the grippers, then this case have to be treated differently because the thread can oscillate between this part of the handle and the grippers in an infinite loop.
+      	Vector3d handle_direction;
+      	double handle_intersection_dist = capsuleSphereDistance(start, end, radius, i_objs[i]->_start_pos, i_objs[i]->_radius, handle_direction);
+      	if (handle_intersection_dist < 0) {
+      		handle_direction = (i_objs[i]->_start_pos-i_objs[i]->_end_pos).normalized();
+      		intersections.push_back(Intersection(capsule_ind, -handle_intersection_dist, handle_direction));
+      	} else {
+      		intersections.push_back(Intersection(capsule_ind, -intersection_dist, direction));
+      	}
+      } else {
+      	intersections.push_back(Intersection(capsule_ind, -intersection_dist, direction));
+      }
+      cout << i << " ";
     }
   }
+  if (found) cout << endl;
   return found;
 }
 
@@ -146,4 +161,26 @@ void EndEffector::dettach()
 	if (attachment == NULL)
 		cout << "Internal errror: EndEffector::dettach(): end effector cannot dettach since it does't have a cursor attached" << endl;
 	attachment = NULL;
+}
+
+void EndEffector::updateConstraint()
+{
+	if (constraint_ind != -1) {
+		if (thread == NULL)
+			cout << "Internal errror: EndEffector::updateConstraint(): thread should not be NULL because constraint_ind!=-1" << endl;
+		vector<int> constrained_vertices_nums;
+		thread->getConstrainedVerticesNums(constrained_vertices_nums);
+		constraint = constrained_vertices_nums[constraint_ind];
+	}
+}
+
+void EndEffector::updateConstraintIndex()
+{
+	if (constraint != -1) {
+		if (thread == NULL)
+			cout << "Internal errror: EndEffector::updateConstraintIndex(): thread should not be NULL because constraint!=-1" << endl;
+		vector<int> constrained_vertices_nums;
+		thread->getConstrainedVerticesNums(constrained_vertices_nums);
+		constraint_ind = find(constrained_vertices_nums, constraint);
+	}
 }
