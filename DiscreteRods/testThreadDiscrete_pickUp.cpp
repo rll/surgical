@@ -23,14 +23,13 @@
 #include "thread_discrete.h"
 #include "thread_socket_interface.h"
 #include "ThreadConstrained.h"
-//#include "EnvObjects.h"
-//#include "SimpleEnv.h"
 #include "EnvObjects/World.h"
 #include "EnvObjects/EnvObject.h"
 #include "EnvObjects/Capsule.h"
 #include "EnvObjects/Cursor.h"
 #include "EnvObjects/EndEffector.h"
 #include "EnvObjects/InfinitePlane.h"
+#include "EnvObjects/TexturedSphere.h"
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
@@ -115,6 +114,7 @@ Cursor *cursor0, *cursor1;
 vector<EndEffector*> end_effectors;
 EndEffector *end_effector0, *end_effector1;
 InfinitePlane *plane;
+TexturedSphere *textured_sphere;
 
 int window_width, window_height;
 
@@ -502,7 +502,7 @@ int main (int argc, char * argv[])
 	end_effectors.push_back(end_effector2);
 	end_effectors.push_back(end_effector3);
 	plane = new InfinitePlane(plane_origin, Vector3d(0.0, 1.0, 0.0), 0.8, 0.8, 0.8);
-	//textured_sphere = new SimpleTexturedSphere(Vector3d::Zero(), 150.0, "../utils/wmap.bmp");
+	textured_sphere = new TexturedSphere(Vector3d::Zero(), 150.0, "../utils/wmap.bmp");
 	
 	end_effector0->constraint = constrained_vertices_nums[0];
 	end_effector1->constraint = constrained_vertices_nums[1];
@@ -516,6 +516,7 @@ int main (int argc, char * argv[])
 	for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++)
 		world->addEnvObj(end_effectors[ee_ind]);
 	world->addEnvObj(plane);
+	world->addEnvObj(textured_sphere);
 
 	connectionInit();
 	
@@ -574,19 +575,13 @@ void drawStuff()
 }
 
 void processInput()
-{/*
+{
 	updateState(start_proxy_pos, start_proxy_rot, cursor0);
 	updateState(end_proxy_pos, end_proxy_rot, cursor1);
-	
-	toggle = (toggle+constrained_vertices_nums.size())%constrained_vertices_nums.size();
 	
 	thread->getConstrainedTransforms(positions, rotations);
 	vector<Vector3d> positionConstraints = positions;
 	vector<Matrix3d> rotationConstraints = rotations;
-	if (((!cursor0->isAttached() || (cursor0->isAttached() && toggle!=cursor0->end_eff->constraint_ind)) && 
-									 (!cursor1->isAttached() || (cursor1->isAttached() && toggle!=cursor1->end_eff->constraint_ind))))
-		mouseTransform(positionConstraints[toggle], rotationConstraints[toggle], positions, rotations, toggle);
-	
 
   if (cursor0->isAttached() && cursor0->end_eff->constraint_ind>=0) {
   	positionConstraints[cursor0->end_eff->constraint_ind] = start_proxy_pos - grab_offset * start_proxy_rot.col(0);
@@ -600,163 +595,16 @@ void processInput()
 	thread->updateConstraints(positionConstraints, rotationConstraints);
 	
 	thread->getConstrainedTransforms(positions, rotations);
-			
-	for(int i=0; i<positions.size(); i++) {
-		constrained_ee[i]->unhighlight();
-		constrained_ee[i]->setTransform(positions[i], rotations[i]);
+
+	for (int ee_ind = 0; ee_ind < 4; ee_ind++) {
+		EndEffector* ee = end_effectors[ee_ind];
+		if (ee->constraint_ind != -1)
+			ee->setTransform(positions[ee->constraint_ind], rotations[ee->constraint_ind]);
 	}
-	constrained_ee[toggle]->highlight();
 
 	//thread->adapt_links();
 
 	glPopMatrix();
-*/
-#ifdef NEVERDEFINED
-	glPushMatrix ();
-  /* set up some matrices so that the object spins with the mouse */
-  glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
-  glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
-  glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
-  
-  //thread->getConstrainedTransforms(positions, rotations);
-  
-  if (choose_mode) {
-	  vector<int> operable_vertices_num;
-	  vector<bool> constrained_or_free;
-	  thread->getOperableVertices(operable_vertices_num, constrained_or_free);
-		toggle = (toggle+operable_vertices_num.size())%operable_vertices_num.size();
-		selected_vertex_num = operable_vertices_num[toggle];
-		if (change_constraint) {
-	  	if (selected_vertex_num==0 || selected_vertex_num==(thread->numVertices()-1)) {
-	  		cout << "You cannot remove the constraint at the ends" << endl;
-	  	} else {
-		  	if (constrained_or_free[toggle]) {
-		  		int selected_vertex_ind = find(constrained_vertices_nums, selected_vertex_num);
-		  		EndEffector* ee = constrained_ee[selected_vertex_ind];
-			    positions.resize(positions.size()-1);
-			    rotations.resize(rotations.size()-1);
-			    thread->removeConstraint(selected_vertex_num);
-					constrained_ee.erase(constrained_ee.begin() + ee->constraint_ind);
-				 	ee->constraint = ee->constraint_ind = -1;
-					thread->getConstrainedVerticesNums(constrained_vertices_nums);
-			  } else {
-			    positions.resize(positions.size()+1);
-			    rotations.resize(rotations.size()+1);
-			    thread->addConstraint(selected_vertex_num);
-			    thread->getConstrainedTransforms(positions, rotations);
-					thread->getConstrainedVerticesNums(constrained_vertices_nums);
-					int selected_vertex_ind = find(constrained_vertices_nums, selected_vertex_num);
-					EndEffector* ee = new EndEffector(positions[selected_vertex_ind], rotations[selected_vertex_ind]);
-					ee->constraint_ind = selected_vertex_ind;
-					ee->constraint = selected_vertex_num;
-					constrained_ee.insert(constrained_ee.begin() + ee->constraint_ind, ee);
-			  }
-			  thread->getOperableVertices(operable_vertices_num, constrained_or_free);
-			  for (int i=0; i<operable_vertices_num.size(); i++) {					// adjust toggle such that selected vertex after change is the same as the one before change
-			  	if(selected_vertex_num == operable_vertices_num[i]) {
-			  		toggle = i;
-			  		break;
-			  	}
-			  }
-			}
-		  change_constraint = false;
-		  //thread->getConstrainedVerticesNums(constrained_vertices_nums);
-		  thread->setAllTransforms(all_positions, all_rotations);
-		  thread->getAllTransforms(all_positions, all_rotations);
-	  }
-	  Vector3d dummy_pos;
-		mouseTransform(dummy_pos, all_rotations[selected_vertex_num], all_positions, all_rotations, selected_vertex_num);
-	  for (int i=0; i<operable_vertices_num.size(); i++) {
-	  	if (constrained_or_free[i]) {
-		  	//drawSphere(all_positions[operable_vertices_num[i]], 1.2, 1.0, 0.0, 0.0);
-		  	env->addObj(SimpleSphere(all_positions[operable_vertices_num[i]], 1.2, 1.0, 0.0, 0.0));
-		  } else {
-		  	//drawSphere(all_positions[operable_vertices_num[i]], 1.2, 0.0, 1.0, 0.0);
-		  	env->addObj(SimpleSphere(all_positions[operable_vertices_num[i]], 1.2, 0.0, 1.0, 0.0));
-		  }
-		}
-		for (int i=0; i<constrained_vertices_nums.size(); i++) {
-			constrained_ee[i]->setTransform(all_positions[constrained_vertices_nums[i]], all_rotations[constrained_vertices_nums[i]]);
-		}
-	  int selected_vertex_ind = find(constrained_vertices_nums, selected_vertex_num);
-		if (constrained_or_free[toggle]) {
-	  	//drawSphere(all_positions[selected_vertex_num], 1.4, 0.5, 0.0, 0.0);
-	  	env->addObj(SimpleSphere(all_positions[selected_vertex_num], 1.4, 0.5, 0.0, 0.0));
-	  	if (selected_vertex_ind == -1)
-	  		cout << "Internal error: drawStuff(): if (constrained_or_free[toggle]): selected vertex should be constrained by an end effector." << endl;
-	  	constrained_ee[selected_vertex_ind]->highlight();
-	  } else {
-	  	//drawSphere(all_positions[selected_vertex_num], 1.4, 0.0, 0.5, 0.0);
-	  	env->addObj(SimpleSphere(all_positions[selected_vertex_num], 1.4, 0.0, 0.5, 0.0));
-	  	if (selected_vertex_ind != -1)
-	  		cout << "Internal error: drawStuff(): if (constrained_or_free[toggle]): selected vertex should be constrained by an end effector." << endl;
-  		//drawEndEffector(all_positions[selected_vertex_num], all_rotations[selected_vertex_num], 15, 0.4, 0.4, 0.4);
-  		env->addObj(SimpleEndEffector(all_positions[selected_vertex_num], all_rotations[selected_vertex_num], 15, 0.4, 0.4, 0.4));
-	  }
-	} else {
-		// starts non-choose mode
-  	if (HAPTICS) {
-  		updateState(start_proxy_pos, start_proxy_rot, cursor0);
-  		updateState(end_proxy_pos, end_proxy_rot, cursor1);
-		}
-		
-		toggle = (toggle+constrained_vertices_nums.size())%constrained_vertices_nums.size();
-		
-  	thread->getConstrainedTransforms(positions, rotations);
-		vector<Vector3d> positionConstraints = positions;
-		vector<Matrix3d> rotationConstraints = rotations;
-		if (!HAPTICS || ((!cursor0->isAttached() || (cursor0->isAttached() && toggle!=cursor0->end_eff->constraint_ind)) && 
-										 (!cursor1->isAttached() || (cursor1->isAttached() && toggle!=cursor1->end_eff->constraint_ind))))
-			mouseTransform(positionConstraints[toggle], rotationConstraints[toggle], positions, rotations, toggle);
-		
-		if (HAPTICS) {
-		  if (cursor0->isAttached() && cursor0->end_eff->constraint_ind>=0) {
-		  	positionConstraints[cursor0->end_eff->constraint_ind] = start_proxy_pos - grab_offset * start_proxy_rot.col(0);
-		  	rotationConstraints[cursor0->end_eff->constraint_ind] = start_proxy_rot;
-		  }
-		  if (cursor1->isAttached() && cursor1->end_eff->constraint_ind>=0) {
-		  	positionConstraints[cursor1->end_eff->constraint_ind] = end_proxy_pos - grab_offset * end_proxy_rot.col(0);
-		  	rotationConstraints[cursor1->end_eff->constraint_ind] = end_proxy_rot;
-		  }
-		}
-		thread->updateConstraints(positionConstraints, rotationConstraints);
-		
-		thread->getConstrainedTransforms(positions, rotations);
-				
-		for(int i=0; i<positions.size(); i++) {
-			constrained_ee[i]->unhighlight();
-			constrained_ee[i]->setTransform(positions[i], rotations[i]);
-		}
-		constrained_ee[toggle]->highlight();
-			
-		if (HAPTICS) {
-			if (cursor0->isAttached() && cursor0->end_eff->constraint < 0) {
-				env->addObj(cursor0->end_eff);
-			}
-			if (cursor1->isAttached() && cursor1->end_eff->constraint < 0) {
-				env->addObj(cursor0->end_eff);
-			}
-			env->addObj(cursor0);
-			env->addObj(cursor1);
-		}
-	}
-	
-	//thread->adapt_links();
-
-	if (HAPTICS) {
-		env->addObj(base);
-		env->addObj(extra_end_effector);
-	}
-	
-	for(int i=0; i<positions.size(); i++) {
-		//constrained_ee[i]->draw();
-		env->addObj(constrained_ee[i]);
-	}
-	
-	//env->addObj(textured_sphere);
-	
-	glPopMatrix();
-#endif
 }
 
 void updateState(const Vector3d& proxy_pos, const Matrix3d& proxy_rot, Cursor* cursor) {
@@ -775,12 +623,9 @@ void updateState(const Vector3d& proxy_pos, const Matrix3d& proxy_rot, Cursor* c
 		    thread->getConstrainedTransforms(positions, rotations);
 				thread->getConstrainedVerticesNums(constrained_vertices_nums);
 		    ee->constraint_ind = find(constrained_vertices_nums, nearest_vertex);
-		    constrained_ee.insert(constrained_ee.begin() + ee->constraint_ind, ee);
 		    positions[ee->constraint_ind] = tip_pos;
 		    rotations[ee->constraint_ind] = proxy_rot;
 		    thread->setConstrainedTransforms(positions, rotations);			// the end effector's orientation matters when it grips the thread. This updates the offset rotation.
-		    //for (int i=0; i<constrained_ee.size(); i++)
-		    	//constrained_ee[i]->setTransform(positions[i], rotations[i]);
 		  } else {																																											// cursor has an end effector which remains without holding the thread
 	  		ee->setTransform(tip_pos, proxy_rot);
 		  }
@@ -792,7 +637,6 @@ void updateState(const Vector3d& proxy_pos, const Matrix3d& proxy_rot, Cursor* c
 				positions.resize(positions.size()-1);
 			  rotations.resize(rotations.size()-1);
 			  thread->removeConstraint(ee->constraint);
-			  constrained_ee.erase(constrained_ee.begin() + ee->constraint_ind);
 			 	ee->constraint = ee->constraint_ind = -1;
 				thread->getConstrainedVerticesNums(constrained_vertices_nums);
 			}
@@ -808,19 +652,14 @@ void updateState(const Vector3d& proxy_pos, const Matrix3d& proxy_rot, Cursor* c
 				cout << "Internal error: updateState(): (cursor->attach_dettach_attempt): assumes there's only two cursors." << endl;
 		}
 	} else {																				// cursor doesn't have an end effector, THUS it isn't holding the thread i.e. ee->constraint = ee->constraint_ind = -1;
-  	if (cursor->attach_dettach_attempt && closeEnough(tip_pos, proxy_rot, extra_end_effectors_pos, extra_end_effectors_rot)) {
-  		EndEffector* ee = new EndEffector(extra_end_effectors_pos, extra_end_effectors_rot);
-  		cursor->attach(ee);
-  	} else {
-  		for (int i=0; i<positions.size(); i++) {
-  			if (cursor->attach_dettach_attempt && closeEnough(tip_pos, proxy_rot, positions[i], rotations[i])) {
-  				EndEffector* ee = constrained_ee[i];
-  				cursor->attach(ee);
-  				ee->constraint = constrained_vertices_nums[i];
-  				ee->constraint_ind = i;
+  	for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++) {
+  		EndEffector* ee = end_effectors[ee_ind];
+  		if (cursor->attach_dettach_attempt && closeEnough(tip_pos, proxy_rot, ee->getPosition(), ee->getRotation())) {
+  			cursor->attach(ee);
+  			if (ee->constraint_ind != -1) {
+  				ee->constraint = constrained_vertices_nums[ee->constraint_ind];
   				if ((ee->constraint==0 || ee->constraint==(thread->numVertices()-1)) && cursor->isOpen()) 
 	  				cursor->forceClose();
-  				break;
   			}
   		}
   	}

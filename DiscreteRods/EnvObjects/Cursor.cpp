@@ -72,13 +72,11 @@ void Cursor::attach(EndEffector* ee)
 	end_eff->attach(this);
 }
 
-// Dettaches the cursor from the end effector it is holding. It has to be holding an end effector. If the end effector isn't holding the thread, it is removed from the environment.
+// Dettaches the cursor from the end effector it is holding. It has to be holding an end effector.
 void Cursor::dettach()
 {
 	if (end_eff == NULL)
 		cout << "Internal errror: Cursor::dettach(): cursor cannot dettach since it does't have an end effector attached" << endl;
 	end_eff->dettach();
-	if (end_eff->constraint<0)
-		delete end_eff;
 	end_eff = NULL;
 }

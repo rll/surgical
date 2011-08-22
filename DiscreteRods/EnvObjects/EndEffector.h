@@ -33,10 +33,13 @@ class EndEffector : public EnvObject
 		void unhighlight() { color0 = color1 = color2 = 0.7; }
 		void open() { degrees = 15.0; }
 		void close() { degrees = 0.0; }
+		
+		const Vector3d& getPosition() const { return position; }
+		const Matrix3d& getRotation() const { return rotation; }
 	
 	//protected:
-		static const double pieces = 4.0;
-		static const double h = 9.0/4.0; // (end-start)/pieces
+		static const double pieces = 3.0; //4.0;
+		static const double h = 9.0/3.0; //9.0/4.0; // (end-start)/pieces
 		static const double start = -3.0;
 		static const double handle_r = 1.2;
 		static const double short_handle_r = 1.6; // corresponds to the capsule where the cursor can get attached

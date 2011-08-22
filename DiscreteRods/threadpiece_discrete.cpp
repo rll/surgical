@@ -141,6 +141,8 @@ double ThreadPiece::energy_repulsion()
 			//energy += REPULSION_COEFF/2.0 * pow(dist/THREAD_RADIUS-1,2) * THREAD_RADIUS;
 			energy += REPULSION_COEFF/2.0 * pow(dist-THREAD_RADIUS,2);
 		}
+		if (_my_thread->world != NULL)
+			energy += _my_thread->world->capsuleObjectRepulsionEnergy(_my_thread->_thread_pieces[piece_ind]->vertex(), _my_thread->_thread_pieces[piece_ind+1]->vertex(), THREAD_RADIUS);
 	}
 	piece_ind--;
 	if (piece_ind > 0 && piece_ind < (_my_thread->_thread_pieces.size() - 2)) {
@@ -155,6 +157,8 @@ double ThreadPiece::energy_repulsion()
 			//energy += REPULSION_COEFF/2.0 * pow(dist/THREAD_RADIUS-1,2) * THREAD_RADIUS;
 			energy += REPULSION_COEFF/2.0 * pow(dist-THREAD_RADIUS,2);
 		}
+		if (_my_thread->world != NULL)
+			energy += _my_thread->world->capsuleObjectRepulsionEnergy(_my_thread->_thread_pieces[piece_ind]->vertex(), _my_thread->_thread_pieces[piece_ind+1]->vertex(), THREAD_RADIUS);
 	}
   return energy;
 }
@@ -305,6 +309,8 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
 				//double overlap = 1/pow(dist,4);
 				grad -= REPULSION_COEFF * overlap * direction.normalized();
 			}
+			if (_my_thread->world != NULL)
+				_my_thread->world->capsuleObjectRepulsionEnergyGradient(_my_thread->_thread_pieces[piece_ind]->vertex(), _my_thread->_thread_pieces[piece_ind+1]->vertex(), THREAD_RADIUS, grad);
 		}
 		piece_ind--;
 		if (piece_ind > 0 && piece_ind < (_my_thread->_thread_pieces.size() - 2)) {
@@ -319,6 +325,8 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
 				//double overlap = 1/pow(dist,4);
 				grad -= REPULSION_COEFF * overlap * direction.normalized();
 			}
+			if (_my_thread->world != NULL)
+				_my_thread->world->capsuleObjectRepulsionEnergyGradient(_my_thread->_thread_pieces[piece_ind]->vertex(), _my_thread->_thread_pieces[piece_ind+1]->vertex(), THREAD_RADIUS, grad);
 		}
 	}
 

@@ -18,13 +18,13 @@ EndEffector::EndEffector(const Vector3d& pos, const Matrix3d& rot)
   
   for (int piece=0; piece<pieces; piece++) {
  		Intersection_Object* tip_piece = new Intersection_Object();
- 		tip_piece->_radius = 0.5+((double) piece)*((0.8*handle_r)-0.5)/((double) pieces-1);
+ 		tip_piece->_radius = 0.9+((double) piece)*((handle_r)-0.9)/((double) pieces-1);
   	i_objs.push_back(tip_piece);
 	}
   
   for (int piece=0; piece<pieces; piece++) {
  		Intersection_Object* tip_piece = new Intersection_Object();
- 		tip_piece->_radius = 0.5+((double) piece)*((0.8*handle_r)-0.5)/((double) pieces-1);
+ 		tip_piece->_radius = 0.9+((double) piece)*((handle_r)-0.9)/((double) pieces-1);
   	i_objs.push_back(tip_piece);
 	}
 	

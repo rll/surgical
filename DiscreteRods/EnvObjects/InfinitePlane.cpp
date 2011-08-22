@@ -64,5 +64,9 @@ void InfinitePlane::capsuleRepulsionEnergyGradient(const Vector3d& start, const 
 	double dist = capsuleInfinitePlaneDistance(start, end, radius, position, normal, direction);
 	if (dist < 0 || dist > radius)
 		return;
-	gradient -= REPULSION_COEFF * (radius - dist) * direction.normalized();
+	//if (direction == Vector3d::Zero()) {
+	//	cout << "dist: " << dist << endl;
+	//	return;
+	//}
+	gradient -= REPULSION_COEFF * (radius - dist) * normal;
 }
