@@ -676,9 +676,52 @@ double Thread::calculate_energy()
 	
 	//std::cout << _thread_pieces[2]->get_twist_coeff() << " " << _thread_pieces.size() << " " << _thread_pieces[_thread_pieces.size()-2]->angle_twist() << " " << _thread_pieces.front()->angle_twist() << " " << 2.0*_rest_length*(_thread_pieces.size()-2) << std::endl;
 
+  if (REPULSION_COEFF>0) {
+	  Vector3d direction;
+	  
+	  //self repulsion
+		for(int i = 0; i < _thread_pieces.size() - 3; i++) {
+			//+2 so you don't check the adjacent piece - bug?
+			for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
+			  //skip if both ends, since these are constraints
+			  if(i == 0 && j == _thread_pieces.size() - 2) 
+			    continue;
+			  double dist = self_intersection(i,j,THREAD_RADIUS,direction);
+			  if (dist < 0 || dist > THREAD_RADIUS)
+					continue;
+			  //energy += REPULSION_COEFF/2.0 * pow(dist/THREAD_RADIUS-1,2) * THREAD_RADIUS;
+				energy += REPULSION_COEFF * pow(dist-THREAD_RADIUS,2); //it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
+			}
+		}
+
+		//repulsions between threads
+		for (int k=0; k < threads_in_env.size(); k++) {
+			for(int i = 0; i < _thread_pieces.size()-1; i++) {
+				for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
+				  //skip if both ends, since these are constraints
+				  if((i==0 && j==0) ||
+				  	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
+				  	 (i==_thread_pieces.size()-2 && j==0) ||
+				  	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
+				    continue;
+				  double dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
+				  if (dist < 0 || dist > THREAD_RADIUS)
+						continue;
+					//energy += REPULSION_COEFF/2.0 * pow(dist/THREAD_RADIUS-1,2) * THREAD_RADIUS;
+					energy += REPULSION_COEFF * pow(dist-THREAD_RADIUS,2); //it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
+				}
+			}
+		}
+		
+		//object repulsions
+		if (world != NULL)
+			for(int i = 2; i < _thread_pieces.size() - 3; i++)
+				energy += world->capsuleObjectRepulsionEnergy(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS);
+	}
+
   for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
-    energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav() + _thread_pieces[piece_ind]->energy_stretch() + _thread_pieces[piece_ind]->energy_repulsion();
+    energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav() + _thread_pieces[piece_ind]->energy_stretch();
   }
   return energy;
 #else
@@ -891,8 +934,8 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
      }
   */
 	
-	if (opt_iter!=-1)
-		std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
+	//if (opt_iter!=-1)
+		//std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
 	
 	return (opt_iter != num_opt_iters);
 } // end minimize_energy
@@ -1811,6 +1854,58 @@ void Thread::calculate_gradient_vertices(vector<Vector3d>& vertex_gradients)
     //std::cout << "piece ind " << piece_ind << " new grad: " << vertex_gradients[piece_ind].transpose() << std::endl;
 
   }
+  
+  if (REPULSION_COEFF>0) {
+	  Vector3d direction;
+
+	  //self repulsion
+		for(int i = 0; i < _thread_pieces.size() - 3; i++) {
+			//+2 so you don't check the adjacent piece - bug?
+			for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
+			  //skip if both ends, since these are constraints
+			  if(i == 0 && j == _thread_pieces.size() - 2) 
+			    continue;
+			  double dist = self_intersection(i,j,THREAD_RADIUS,direction);
+			  if (dist < 0 || dist > THREAD_RADIUS)
+					continue;
+				Vector3d grad = REPULSION_COEFF * (THREAD_RADIUS - dist) * direction.normalized();
+				vertex_gradients[i] -= grad;
+				vertex_gradients[i+1] -= grad;
+				vertex_gradients[j] += grad;
+				vertex_gradients[j+1] += grad;
+			}
+		}
+
+		//repulsions between threads
+		for (int k=0; k < threads_in_env.size(); k++) {
+			for(int i = 0; i < _thread_pieces.size()-1; i++) {
+				for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
+				  //skip if both ends, since these are constraints
+				  if((i==0 && j==0) ||
+				  	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
+				  	 (i==_thread_pieces.size()-2 && j==0) ||
+				  	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
+				    continue;
+				  double dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
+				  if (dist < 0 || dist > THREAD_RADIUS)
+						continue;
+					Vector3d grad = REPULSION_COEFF * (THREAD_RADIUS - dist) * direction.normalized();
+					vertex_gradients[i] -= grad;
+					vertex_gradients[i+1] -= grad;
+				}
+			}
+		}
+		
+		//object repulsions
+		if (world != NULL)
+			for(int i = 2; i < _thread_pieces.size() - 3; i++) {
+				Vector3d grad = Vector3d::Zero();
+				world->capsuleObjectRepulsionEnergyGradient(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS, grad);
+				vertex_gradients[i] += grad;
+				vertex_gradients[i+1] += grad;
+			}
+	}
+  
 }
 
 

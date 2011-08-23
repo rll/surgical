@@ -60,6 +60,7 @@ class ThreadConstrained {
 	public:
 		ThreadConstrained(int num_vertices_init);
 		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, Matrix3d& end_rot);
+		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot);
 		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot);
 		
 		void writeToFile(ofstream& file);
@@ -97,11 +98,11 @@ class ThreadConstrained {
 		void removeConstraint (int absolute_vertex_num);
 		// Returns the number of the vertex that is nearest to pos. The chosen vertex have to be a free operable vertex.
 		int nearestVertex(Vector3d pos);
-		void initializeThreadsInEnvironment();
 		Vector3d position(int absolute_vertex_num);
 		Matrix3d rotation(int absolute_vertex_num);
 		void draw();
 		void setWorld(World* w);
+		vector<Thread*>* getThreads() { return &threads; }
 		void toggleExamineMode();
 
 	private:

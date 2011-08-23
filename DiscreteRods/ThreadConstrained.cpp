@@ -26,6 +26,37 @@ ThreadConstrained::ThreadConstrained(vector<Vector3d>& vertices, vector<double>&
 	
 	type = THREAD_CONSTRAINED;
 	
+	world = NULL;
+	examine_mode = false;
+	initContour();
+}
+
+ThreadConstrained::ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot) {
+	num_vertices = vertices.size();
+	Thread* thread = new Thread(vertices, twist_angles, rest_lengths, start_rot);
+	threads.push_back(thread);
+
+	thread->minimize_energy();
+	
+	zero_angle = 0.0;
+	rot_diff.push_back(Matrix3d::Identity());
+	rot_diff.push_back(Matrix3d::Identity());
+	rot_offset.push_back((Matrix3d) (AngleAxisd(M_PI, Vector3d::UnitZ())));
+	for (int i=0; i<num_vertices-2; i++)
+		rot_offset.push_back((Matrix3d) (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
+	rot_offset.push_back(Matrix3d::Identity());
+#ifdef LIMITED_DISPLACEMENT
+	last_pos.push_back(vertices.front());
+	last_pos.push_back(vertices.back());
+	last_rot.push_back(threads[0]->start_rot() * rot_offset.front().transpose());
+	last_rot.push_back(threads[0]->end_rot() * rot_offset.back().transpose());
+#endif
+	constrained_vertices_nums.push_back(0);
+	constrained_vertices_nums.push_back(num_vertices-1);
+	
+	type = THREAD_CONSTRAINED;
+	
+	world = NULL;
 	examine_mode = false;
 	initContour();
 }
@@ -55,6 +86,7 @@ ThreadConstrained::ThreadConstrained(vector<Vector3d>& vertices, vector<double>&
 	
 	type = THREAD_CONSTRAINED;
 	
+	world = NULL;
 	examine_mode = false;
 	initContour();
 }
@@ -136,6 +168,7 @@ ThreadConstrained::ThreadConstrained(int num_vertices_init) {
 	
 	type = THREAD_CONSTRAINED;
 	
+	world = NULL;
 	examine_mode = false;
 	initContour();
 }
@@ -299,6 +332,7 @@ ThreadConstrained::ThreadConstrained(ifstream& file)
 	for (int k=0; k<constrained_vertices_nums.size(); k++)
 		file >> constrained_vertices_nums[k];
 
+	world = NULL;
 	examine_mode = false;
 	initContour();
 }
@@ -646,23 +680,6 @@ int ThreadConstrained::nearestVertex(Vector3d pos) {
 	return free_vertices_num[min_ind];
 }
 
-void ThreadConstrained::initializeThreadsInEnvironment() {
-	vector<ThreadConstrained*>* all_thread_constrained = world->getThreads();
-	vector<Thread*> all_threads;
-	for (int k=0; k<(*all_thread_constrained).size(); k++) {
-		ThreadConstrained* thread_constrained = (*all_thread_constrained)[k];
-		for (int i=0; i<thread_constrained->threads.size(); i++)
-			all_threads.push_back(thread_constrained->threads[i]);
-	}
-	for (int i=0; i<all_threads.size(); i++) {
-		all_threads[i]->clear_threads_in_env();
-		for (int j=0; j<all_threads.size(); j++) {
-			if (i!=j) 
-				all_threads[i]->add_thread_to_env(all_threads[j]);
-		}
-	}
-}
-
 Vector3d ThreadConstrained::position(int absolute_vertex_num) {
 	vector<Vector3d> positions;
 	get_thread_data(positions);
@@ -933,7 +950,8 @@ void ThreadConstrained::splitThread(int thread_num, int vertex_num) {
 	threads[thread_num] = thread0;
 	threads.insert(threads.begin()+thread_num+1, thread1);
 	
-	initializeThreadsInEnvironment();
+	if (world!=NULL)
+		world->initializeThreadsInEnvironment();
 	
 	threads[thread_num]->minimize_energy();
 	threads[thread_num+1]->minimize_energy();
@@ -972,7 +990,8 @@ void ThreadConstrained::mergeThread(int thread_num) {
 	threads[thread_num] = thread;
 	threads.erase(threads.begin()+thread_num+1);
 	
-	initializeThreadsInEnvironment();
+	if (world!=NULL)
+		world->initializeThreadsInEnvironment();
 	
 	threads[thread_num]->minimize_energy();
 }

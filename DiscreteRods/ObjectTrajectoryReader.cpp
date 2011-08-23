@@ -74,10 +74,12 @@ int ObjectTrajectoryReader::readObjectsFromFile(World* world)
     if (type == NO_OBJECT) break;
   }
 
-  vector<ThreadConstrained*> threads = *(world->getThreads());
+	vector<ThreadConstrained*> threads = *(world->getThreads());
   for (int i = 0; i < threads.size(); i++) {
     threads[i]->setWorld(world);
   }
+
+  world->initializeThreadsInEnvironment();
 
   vector<EnvObject*> objects = *(world->getEnvObjs());
   for (int i = 0; i < objects.size(); i++) {

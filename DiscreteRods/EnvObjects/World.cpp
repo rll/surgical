@@ -1,6 +1,7 @@
 #include "World.h"
 #include "EnvObject.h"
 #include "../ThreadConstrained.h"
+#include "../thread_discrete.h"
 
 World::World()
 {}
@@ -36,6 +37,25 @@ vector<EnvObject*> World::getEnvObjs(object_type type)
 vector<ThreadConstrained*>* World::getThreads()
 {
 	return &threads;
+}
+
+// Updates the threads_in_env variable of every Thread object in the world (i.e. every Thread of every ThreadConstrained in the world). This variable is used for thread-thread collisions.
+void World::initializeThreadsInEnvironment() {
+	vector<ThreadConstrained*>* all_thread_constrained = this->getThreads();
+	vector<Thread*> all_threads;
+	for (int k=0; k<(*all_thread_constrained).size(); k++) {
+		ThreadConstrained* thread_constrained = (*all_thread_constrained)[k];
+		vector<Thread*>* threads = thread_constrained->getThreads();
+		for (int i=0; i<(*threads).size(); i++)
+			all_threads.push_back((*threads)[i]);
+	}
+	for (int i=0; i<all_threads.size(); i++) {
+		all_threads[i]->clear_threads_in_env();
+		for (int j=0; j<all_threads.size(); j++) {
+			if (i!=j) 
+				all_threads[i]->add_thread_to_env(all_threads[j]);
+		}
+	}
 }
 
 void World::clearObjs()

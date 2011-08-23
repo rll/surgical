@@ -45,8 +45,9 @@ class World
 		vector<EnvObject*>* getEnvObjs();
 		vector<EnvObject*> getEnvObjs(object_type type);
 		vector<ThreadConstrained*>* getThreads();
+		void initializeThreadsInEnvironment();
 		void clearObjs();
-		
+
 		void draw();
 		bool capsuleObjectIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections);
 		double capsuleObjectRepulsionEnergy(const Vector3d& start, const Vector3d& end, const double radius);

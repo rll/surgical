@@ -295,7 +295,7 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
 		if (piece_ind > 1)
 			grad += factor * STRETCH_COEFF * (_prev_piece->_edge_norm/_prev_piece->_rest_length - 1.0) * _prev_piece->_edge.normalized();
 	}
-	
+	/*
 	if (REPULSION_COEFF > 0.0) {
 		if (piece_ind > 0 && piece_ind < (_my_thread->_thread_pieces.size() - 2)) {
 			for (int other_ind = 1; other_ind < _my_thread->_thread_pieces.size() - 2; other_ind++) {
@@ -329,7 +329,7 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
 				_my_thread->world->capsuleObjectRepulsionEnergyGradient(_my_thread->_thread_pieces[piece_ind]->vertex(), _my_thread->_thread_pieces[piece_ind+1]->vertex(), THREAD_RADIUS, grad);
 		}
 	}
-
+	*/
 #else
   grad.setZero();
 

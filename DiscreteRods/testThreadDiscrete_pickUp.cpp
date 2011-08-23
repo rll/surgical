@@ -45,6 +45,7 @@ void mouseTransform(Vector3d &new_pos, Matrix3d &new_rot, vector<Vector3d> &posi
 void displayTextInScreen(const char* textline, ...);
 void initThread();
 void initLongerThread();
+void initRestingThread();
 void glutMenu(int ID);
 void initGL();
 
@@ -418,7 +419,8 @@ int main (int argc, char * argv[])
 	initGL();
 	
   //initThread();
-  initLongerThread();
+  //initLongerThread();
+  initRestingThread();
 
   zero_location = Vector3d::Zero(); //points[0];
   zero_angle = 0.0;
@@ -474,8 +476,7 @@ int main (int argc, char * argv[])
 		world->addEnvObj(end_effectors[ee_ind]);
 	world->addEnvObj(plane);
 	world->addEnvObj(textured_sphere);
-	
-	threads[0]->initializeThreadsInEnvironment();
+	world->initializeThreadsInEnvironment();
 
 	connectionInit();
 	
@@ -893,6 +894,162 @@ void initLongerThread()
 	Matrix3d start_rotation1 = (Matrix3d) AngleAxisd(M_PI, Vector3d::UnitZ());
   Matrix3d end_rotation1 = (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitZ());
   ThreadConstrained* thread1 = new ThreadConstrained(vertices, angles, lengths, start_rotation1, end_rotation1);
+  threads.push_back(thread1);
+  
+	for (int thread_ind=0; thread_ind < threads.size(); thread_ind++) {
+#ifndef ISOTROPIC
+		Matrix2d B = Matrix2d::Zero();
+		B(0,0) = 10.0;
+		B(1,1) = 1.0;
+		threads[thread_ind]->set_coeffs_normalized(B, 3.0, 1e-4);
+#else
+  	threads[thread_ind]->set_coeffs_normalized(1.0, 3.0, 1e-4);
+#endif
+	}
+}
+
+void initRestingThread()
+{
+  int numInit = 5;
+
+	double first_length = 3.0; //FIRST_REST_LENGTH;
+	double second_length = SECOND_REST_LENGTH;
+	double middle_length = DEFAULT_REST_LENGTH;
+
+  vector<Vector3d> vertices;
+  vector<double> angles;
+  vector<double> lengths;
+  vector<Vector3d> directions;
+  
+	for (int i=0; i < 4*numInit + 5; i++)
+		angles.push_back(0.0);
+  
+  lengths.push_back(first_length);
+  lengths.push_back(second_length);
+  for (int i=0; i < 4*numInit; i++)
+  	lengths.push_back(middle_length);
+  lengths.push_back(second_length);
+  lengths.push_back(first_length);
+  lengths.push_back(first_length);
+  
+  directions.push_back(Vector3d::UnitX());
+  directions.push_back(Vector3d::UnitX());
+  Vector3d direction = Vector3d(1.0, 1.0, 0.0);
+  direction.normalize();
+  for (int i=0; i < numInit; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(1.0, -1.0, 0.4);
+  direction.normalize();
+  for (int i=0; i < numInit; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(-1.0, -1.0, -0.4);
+  direction.normalize();
+  for (int i=0; i < numInit; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(0.0, -1.0, 0.0);
+  direction.normalize();
+  for (int i=0; i < numInit; i++)
+  	directions.push_back(direction);
+  directions.push_back(-Vector3d::UnitY());
+  directions.push_back(-Vector3d::UnitY());
+  
+  vertices.push_back(Vector3d::Zero());
+  for (int i=1; i < 4*numInit + 5; i++) {
+  	Vector3d next_vertex;
+  	next_vertex(0) = vertices[i-1](0) + directions[i-1](0) * lengths[i-1];
+  	next_vertex(1) = vertices[i-1](1) + directions[i-1](1) * lengths[i-1];
+  	next_vertex(2) = vertices[i-1](2) + directions[i-1](2) * lengths[i-1];
+    vertices.push_back(next_vertex);
+  }
+  
+	Vector3d last_pos = Vector3d(-10.0, -30.0, 0.0);
+	for (int i=0; i<vertices.size(); i++)
+		vertices[i] += -vertices.back() + last_pos;
+
+  Matrix3d start_rotation0 = Matrix3d::Identity();
+  Matrix3d end_rotation0 = (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitZ());
+
+  ThreadConstrained* thread0 = new ThreadConstrained(vertices, angles, lengths, start_rotation0, end_rotation0);
+  threads.push_back(thread0);
+  
+  int numInit1 = 2;
+  
+  angles.clear();
+  for (int i=0; i < 16*numInit1 + 5; i++)
+		angles.push_back(0.0);
+  
+  lengths.clear();
+  lengths.push_back(first_length);
+  lengths.push_back(second_length);
+  for (int i=0; i < 16*numInit1; i++)
+  	lengths.push_back(middle_length);
+  lengths.push_back(second_length);
+  lengths.push_back(first_length);
+  lengths.push_back(first_length);
+  
+  directions.clear();
+  directions.push_back(-Vector3d::UnitX());
+  directions.push_back(-Vector3d::UnitX());
+  direction = Vector3d(-1.0, 0.0, 1.0);
+  direction.normalize();
+  for (int i=0; i < 1.5*numInit1; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(0.0, -1.0, 2.0);
+  direction.normalize();
+  for (int i=0; i < 1.5*numInit1; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(-2.0, 1.0, 0.0);
+  direction.normalize();
+  for (int i=0; i < numInit1; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(-2.0, -1.0, 0.0);
+  direction.normalize();
+  for (int i=0; i < numInit1; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(0.0, 1.0, -2.0);
+  direction.normalize();
+  for (int i=0; i < 3*numInit1; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(0.0, -1.0, -2.0);
+  direction.normalize();
+  for (int i=0; i < 3*numInit1; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(2.0, 1.0, 0.0);
+  direction.normalize();
+  for (int i=0; i < numInit1; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(2.0, -1.0, 0.0);
+  direction.normalize();
+  for (int i=0; i < numInit1; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(0.0, 1.0, 2.0);
+  direction.normalize();
+  for (int i=0; i < 1.5*numInit1; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(0.0, -1.0, 2.0);
+  direction.normalize();
+  for (int i=0; i < 1.5*numInit1; i++)
+  	directions.push_back(direction);
+  directions.push_back(-Vector3d::UnitY());
+  directions.push_back(-Vector3d::UnitY());
+  
+  vertices.clear();
+  vertices.push_back(Vector3d::Zero());
+  for (int i=1; i < 16*numInit1 + 5; i++) {
+  	Vector3d next_vertex;
+  	next_vertex(0) = vertices[i-1](0) + directions[i-1](0) * lengths[i-1];
+  	next_vertex(1) = vertices[i-1](1) + directions[i-1](1) * lengths[i-1];
+  	next_vertex(2) = vertices[i-1](2) + directions[i-1](2) * lengths[i-1];
+    vertices.push_back(next_vertex);
+  }
+  
+	last_pos = Vector3d(10.0, -30.0, 0.0);
+	for (int i=0; i<vertices.size(); i++)
+		vertices[i] += -vertices.back() + last_pos;
+  
+	Matrix3d start_rotation1 = (Matrix3d) AngleAxisd(M_PI, Vector3d::UnitZ());
+  Matrix3d end_rotation1 = (Matrix3d) AngleAxisd(M_PI/2.0, Vector3d::UnitZ());
+  ThreadConstrained* thread1 = new ThreadConstrained(vertices, angles, lengths, start_rotation1);
   threads.push_back(thread1);
   
 	for (int thread_ind=0; thread_ind < threads.size(); thread_ind++) {
