@@ -25,7 +25,8 @@ void Iterative_Control::resize_controller(int num_threads, int num_vertices)
 
   _num_threads = num_threads;
   _num_vertices = num_vertices;
-  _size_each_state = (-3 + 6*num_vertices) + 1;
+  //_size_each_state = (-3 + 6*num_vertices) + 2;
+  _size_each_state = 3*num_vertices + 2; 
   _cols_all_unknown_states = (num_threads-2)*_size_each_state;
   _all_trans.resize(_size_each_state*(_num_threads-1), (_num_threads-2)*_size_each_state + (_num_threads-1)*_size_each_control);
   _all_trans.setZero();
@@ -41,7 +42,7 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
 
 
 
-bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vector<VectorXd>& controls, vector<vector<Thread*> >& sqp_debug_data, int num_opts) 
+bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vector<VectorXd>& controls, vector<vector<Thread*> >& sqp_debug_data, int num_opts, bool return_best_opt, double threshold) 
 {
   if (trajectory.size() != _num_threads && trajectory.front()->num_pieces() != _num_vertices)
     return false;
@@ -61,6 +62,9 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
 
   sqp_debug_data.resize(0); 
 
+  vector<Thread*> best_trajectory;
+  vector<VectorXd> best_controls; 
+  double best_score = DBL_MAX;
 
   for (int opt_iter=0; opt_iter < num_opts; opt_iter++)
   {
@@ -139,20 +143,43 @@ bool Iterative_Control::iterative_control_opt(vector<Thread*>& trajectory, vecto
     for (int i=0; i < _num_threads-1; i++)
     {
       controls[i] = new_states.segment(_size_each_state*(_num_threads-2) + i*_size_each_control, _size_each_control);
-      vector<VectorXd> control_wrapper;
-      control_wrapper.push_back(controls[i]);
-      control_vector.push_back(control_wrapper);
     }
 
     vector<Thread*> trajectory_copy;  
     trajectory_copy.push_back(new Thread(*trajectory[0]));
     vector<Thread*> OLTrajectory;
     openLoopController(trajectory_copy, controls, OLTrajectory);
+    double sqp_olc_score = util_planner.l2PointsDifference(OLTrajectory.back(), trajectory.back());
+    cout << "SQP OLC score = " << sqp_olc_score << endl;
     OLTrajectory[OLTrajectory.size()-1] = trajectory[trajectory.size()-1];
     trajectory = OLTrajectory;
+    //if (return_best_opt && sqp_olc_score < threshold) return true; 
+    if (return_best_opt && sqp_olc_score < best_score) {
+      best_score = sqp_olc_score;
+      // cleanup
+      if (best_trajectory.size() > 0) { 
+        for (int i = 0; i < best_trajectory.size(); i++) {
+          delete best_trajectory[i];
+        }
+      }
+      best_trajectory.resize(trajectory.size());
+      for (int i = 0; i < trajectory.size(); i++) { 
+          best_trajectory[i] = new Thread(*trajectory[i]);
+      }
+      best_controls.resize(controls.size());
+      for (int i = 0; i < controls.size(); i++) {
+        best_controls[i] = controls[i];
+      }
+    }
   }
 
-
+  if (return_best_opt) { 
+    trajectory = best_trajectory;
+    controls = best_controls;
+    //for (int i = 10; i < controls.size(); i++) {
+    //  controls[i].setZero();
+    //}
+  }
 
   return true;
 }
@@ -254,18 +281,21 @@ void Iterative_Control::AllFiles_To_Traj(int num_iters, vector< vector<Thread*> 
   }
 }
 
-void thread_to_state(const Thread* thread, VectorXd& state)
+void Iterative_Control::thread_to_state(const Thread* thread, VectorXd& state)
 {
   const int num_pieces = thread->num_pieces();
-  state.resize(6*num_pieces-3 + 1);
+  state.resize(_size_each_state);
   for (int piece_ind=0; piece_ind < thread->num_pieces(); piece_ind++)
   {
     state.segment(piece_ind*3, 3) = thread->vertex_at_ind(piece_ind);
-    if (piece_ind < thread->num_edges()) { 
+    /*if (piece_ind < thread->num_edges()) { 
       state.segment(piece_ind*3 + 3*num_pieces, 3) = thread->edge_at_ind(piece_ind);
-    }
+    }*/
   }
-  state(6*num_pieces - 3) = thread->end_angle();
+  //state(6*num_pieces - 3) = thread->end_angle();
+  //state(6*num_pieces - 2) = ((Thread*)thread)->calculate_energy();
+  state(3*num_pieces) = thread->end_angle();
+  state(3*num_pieces+1) = ((Thread*)thread)->calculate_energy();
 }
 
 /*
@@ -320,5 +350,4 @@ void Vector_To_File(VectorXd& vec, const char* filename)
   toFile << vec << std::endl;
   toFile.close();
 }
-
 

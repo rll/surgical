@@ -37,7 +37,7 @@
 
 #endif
 
-#define DEFAULT_REST_LENGTH 4.0 /*default rest length for each threadpiece*/
+#define DEFAULT_REST_LENGTH 3.0 /*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
 
 #define REFINE_THRESHHOLD 145.0			// maximun angle (in degrees) between this piece and its two neighbors before this piece gets split
@@ -281,14 +281,14 @@ class Thread
     void make_max_norm_one_allPieces(vector<Vector3d>& to_normalize);
 
     //energy coefficients
-	void set_bend_coeff(double bend_coeff){_thread_pieces.front()->set_bend_coeff(bend_coeff);}
-	void set_bend_matrix(const Matrix2d& bend_matrix){_thread_pieces.front()->set_bend_matrix(bend_matrix);}
-	void set_twist_coeff(double twist_coeff){_thread_pieces.front()->set_twist_coeff(twist_coeff);}
-	void set_grav_coeff(double grav_coeff){_thread_pieces.front()->set_grav_coeff(grav_coeff);}
-	double get_bend_coeff(void){return _thread_pieces[2]->get_bend_coeff();}
-	Matrix2d get_bend_matrix(void){return _thread_pieces[2]->get_bend_matrix();}
-	double get_twist_coeff(void){return _thread_pieces[2]->get_twist_coeff();}
-	double get_grav_coeff(void){return _thread_pieces[2]->get_grav_coeff();}
+    void set_bend_coeff(double bend_coeff){_thread_pieces.front()->set_bend_coeff(bend_coeff);}
+    void set_bend_matrix(const Matrix2d& bend_matrix){_thread_pieces.front()->set_bend_matrix(bend_matrix);}
+    void set_twist_coeff(double twist_coeff){_thread_pieces.front()->set_twist_coeff(twist_coeff);}
+    void set_grav_coeff(double grav_coeff){_thread_pieces.front()->set_grav_coeff(grav_coeff);}
+    double get_bend_coeff(void){return _thread_pieces[2]->get_bend_coeff();}
+    Matrix2d get_bend_matrix(void){return _thread_pieces[2]->get_bend_matrix();}
+    double get_twist_coeff(void){return _thread_pieces[2]->get_twist_coeff();}
+    double get_grav_coeff(void){return _thread_pieces[2]->get_grav_coeff();}
     void set_coeffs_normalized(double bend_coeff, double twist_coeff, double grav_coeff);
     void set_coeffs_normalized(const Matrix2d& bend_matrix, double twist_coeff, double grav_coeff);
 

@@ -16,7 +16,8 @@ endif
 THREAD_DIR = ../DiscreteRods/
 VISION_DIR = ../vision/
 #INCLUDES = -I/usr/local/include/ -I/usr/local/include/opencv/ -I/usr/local/include/libPvAPI -I $(UTILS_DIR)
-OPT_COMP = -DEIGEN_NO_DEBUG -O3 
+OPT_COMP = -O3
+#OPT_COMP = -DEIGEN_NO_DEBUG -O3 
 #OPT_COMP = -O2
 # OPT_COMP = 
 FOPENMP = -fopenmp
@@ -31,7 +32,7 @@ FAKEIMS= -DFAKEIMS
 
 #target: test_linearization test_planner run_planner_libs visualize_trajs run_planner_libs_dim1 run_planner_libs_dim2 vis_onetraj
 
-target: test_planner run_test_jacobian 
+target: test_planner 
 
 test_linearization: test_linearization.cpp clock.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o trajectory_follower.o iterative_control.o
 	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o test_linearization test_linearization.cpp clock.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o trajectory_follower.o iterative_control.o $(LIBS) $(PROFILER)

@@ -551,7 +551,7 @@ double Thread::calculate_energy()
 
   for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
-    energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav() + _thread_pieces[piece_ind]->energy_stretch();
+    energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav() + _thread_pieces[piece_ind]->energy_stretch() + _thread_pieces[piece_ind]->energy_repulsion();
   }
   return energy;
 #else
@@ -569,20 +569,20 @@ void Thread::dynamic_step_until_convergence(double step_size, double mass, int m
   VectorXd current_position;
 
   int current_step = 0; 
-
   do {
     toVector(&last_position);
-    dynamic_step(step_size, mass, 1);
-    //minimize_energy();
+    //dynamic_step(step_size, mass, 1);
+    minimize_energy();
     toVector(&current_position); 
-    current_step += 1; 
+    current_step += 1;
+    //current_step += max_steps;
 
   } while ((last_position - current_position).norm() > 1e-4 && current_step < max_steps);
 
   
   if ((last_position - current_position).norm() > 1e-4) {
     cout << "WARNING: Did not converge in " << current_step << " steps. Current norm = " << (last_position - current_position).norm() << endl;
-    //minimize_energy();
+    minimize_energy();
   }
 
   //cout << (last_position - current_position).norm() << endl; ;
@@ -616,8 +616,7 @@ void Thread::dynamic_step(double step_size, double mass, int steps) {
     calculate_gradient_vertices(vertex_gradients);
 
     for (int i = 0; i < velocity.size(); i++) { 
-      last_velocity[i] = 0.1*last_velocity[i] + (-vertex_gradients[i] / mass) * step_size;
-
+      last_velocity[i] = 0.10*last_velocity[i] + (-vertex_gradients[i] / mass) * step_size;
       velocity[i] = last_velocity[i];
       position_offsets[i] = velocity[i] * step_size;  
     }
@@ -640,7 +639,7 @@ void Thread::dynamic_step(double step_size, double mass, int steps) {
     }
     apply_vertex_offsets(position_offsets);
 
-    if (COLLISION_CHECKING) {
+    /*if (COLLISION_CHECKING) {
       bool project_length_constraint_pass = true;
       vector<Self_Intersection> self_intersections;
       vector<Thread_Intersection> thread_intersections;
@@ -652,9 +651,9 @@ void Thread::dynamic_step(double step_size, double mass, int steps) {
         intersection_iters++;
         //cout << "fixing for " << intersection_iters << " iterations." << endl;
       }
-    }
+    }*/
     minimize_energy_twist_angles();
-    //project_length_constraint();
+    project_length_constraint();
   }
 }
 
@@ -858,7 +857,6 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
      cout << edge_at_ind(i).norm() << endl;; 
      }
   */
-	
 	//std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
 	
 	return (opt_iter != num_opt_iters);
@@ -2234,7 +2232,7 @@ void Thread::calculate_gradient_twist(vector<double>& angle_twist_gradients)
     edge_before = _thread_pieces[_thread_pieces.size()-3]->vertex() - _thread_pieces[_thread_pieces.size()-4].vertex();
     edge_before_norm = edge_before.norm();
     edge_after = _thread_pieces[_thread_pieces.size()-3]->vertex() - _thread_pieces[_thread_pieces.size()-2]->vertex();
-    edge_after_norm = edge_after.norm();
+    edge_after_norm = edge_after.norm();;
     vertex_offsets[_thread_pieces.size()-3] = 0.5*(edge_before/edge_before_norm)*(_rest_length-edge_before_norm) + (edge_after/edge_after_norm) * (_rest_length-edge_after_norm);
 
     //projected_enough &= abs(edge_after_norm-_rest_length) < max_norm_to_break;
@@ -2275,6 +2273,7 @@ void Thread::calculate_gradient_twist(vector<double>& angle_twist_gradients)
 //this function might introduce intersections. fix_intersections should be called (with caution) afterwards. 
 bool Thread::project_length_constraint(int recursive_depth)
 {
+
   if (recursive_depth <= 0) {
     //cout << "project length constraint recursively called too much!" << endl;
     return false; 
@@ -2282,7 +2281,7 @@ bool Thread::project_length_constraint(int recursive_depth)
 
   const int num_iters_project = 50;
   const double projection_scale_factor = 1.0;
-  const double max_norm_to_break = 1e-5;
+  const double max_norm_to_break = 1e-2;
 
 
   //quick check to see if we can avoid calling this function
@@ -2341,7 +2340,7 @@ bool Thread::project_length_constraint(int recursive_depth)
     // VectorXd dy = -gradC.transpose()*dl;
 
     //gradC*gradC.transpose();
-    (gradC*gradC.transpose()).llt().solveInPlace(C);
+    (gradC*gradC.transpose()).ldlt().solveInPlace(C);
     dy = -gradC.transpose()*C;
 
     for(int i = 2; i < N-2; i++) {

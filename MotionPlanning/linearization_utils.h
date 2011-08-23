@@ -14,8 +14,8 @@
 #define WEIGHT_ANGLE 1.0
 
 #define STEP_DT 1
-#define STEP_MASS 50
-#define MAX_STEPS 500000
+#define STEP_MASS 1
+#define MAX_STEPS 50000
 
 using namespace Eigen;
 

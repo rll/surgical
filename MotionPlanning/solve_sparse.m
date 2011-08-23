@@ -28,8 +28,9 @@ goal_state = b(end-size_each_state+1: end);
 
 num_points = (size_each_state-1)/3;
 
-weighted_state_diff_constraint = 10;
-control_constraint = 3e-1;
+weighted_state_diff_constraint = 0.1;
+control_constraint = 1e-1;
+
 %min_control = 0.1;
 %consecutive_state_diff_constraint = 10;
 
@@ -41,15 +42,20 @@ cvx_begin
     variable u((num_threads-1))
     %variable consecutive_state_diff(num_threads)
     %variable edge_violations((num_threads-2)*num_points)
-    %variable consecutive_control_diff(num_threads-2) 
-    %variable u_block(size_each_control*(num_threads-1))
-    %variable forward_scores((num_threads-1)*size_each_state)
+    variable consecutive_control_diff((num_threads-2)*size_each_control)
+    variable u_block(size_each_control*(num_threads-1))
+    variable forward_scores((num_threads-1)*size_each_state)
     %minimize (square_pos(norm(A*x - b)) + 2*sum(sum(reshape(x((num_threads-2)*size_each_state+1:end), num_threads-1, size_each_control).^2,2)));
   
     %minimize(norm(A*x-b))
-    minimize(norm(A*x-b) +  norm(u))
+    %minimize(norm(A*x-b))
 
-    %minimize(norm(forward_scores) + norm(u)) 
+    %minimize(norm(forward_scores) + 0.0001 * norm(u_block,1))
+    minimize(norm(forward_scores) + 0.05 * norm(u_block,1))
+
+
+
+
     %minimize(norm(A*x-b) + norm(edge_violations,2) + norm(u,2)) %+ norm(consecutive_control_diff, 2) + norm(u,2) + norm(forward_scores)) %+ consectuve_state_diff_weight'*consecutive_state_diff)%norm(consecutive_state_diff,1)) %sum(w)
     subject to
 
@@ -58,9 +64,11 @@ cvx_begin
      %for j = 1:num_threads-2
      %   forward_scores(size_each_state*(j-1)+1:size_each_state*j) == J_block(:,1:size_each_control*j)*u_block(1:size_each_control*j) + initial_state - x(size_each_state*(j-1)+1 : size_each_state*j); 
      %   forward_scores(size_each_state*(j-1)+1:size_each_state*j) == J_block(:,1:size_each_control*j)*u_block(1:size_each_control*j) + initial_state - goal_state;
+      %J_block(:,1:size_each_control*j)*u_block(1:size_each_control*j) + -initial_state - b_data(j*size_each_state + 1 : (j+1)*size_each_state) < weighted_state_diff_constraint;
      %end
 
-      %forward_scores((num_threads-2)*size_each_state+1:end) == J_block*u_block + initial_state - goal_state;
+
+      forward_scores((num_threads-2)*size_each_state+1:end) == J_block*u_block + initial_state - goal_state;
 %TODO: CHANGE EDGE VIOLATIONS TO BE REST LENGTH
       %for thread_num=1:num_threads-2
       %  for vertex_num = 1:num_points-1
@@ -97,13 +105,17 @@ cvx_begin
         %abs(x(size_each_state*(num_threads-2) + (thread_num-1)*size_each_control +4 : size_each_state*(num_threads-2) + (thread_num-1)*size_each_control + 6)) < 1e-2;
         %abs(x(size_each_state*(num_threads-2) + (thread_num-1)*size_each_control +10 : size_each_state*(num_threads-2) + (thread_num-1)*size_each_control + 12)) < 1e-2;
       end
-      u(1:end) < control_constraint;
+      %u(1:end) < control_constraint;
 
-     % for thread_num=1:num_threads-2
-     %   consecutive_control_diff(thread_num) >= norm( x(size_each_state*(num_threads-2)+(thread_num-1)*size_each_control+1 : size_each_state*(num_threads-2) + (thread_num)*size_each_control) - x(size_each_state*(num_threads-2)+thread_num*size_each_control+1 : size_each_state*(num_threads-2) + (thread_num+1)*size_each_control))
+      for thread_num=1:num_threads-2
+        consecutive_control_diff(size_each_control*(thread_num-1) + 1 : size_each_control*thread_num) == x(size_each_state*(num_threads-2)+(thread_num-1)*size_each_control+1 : size_each_state*(num_threads-2) + (thread_num)*size_each_control) - x(size_each_state*(num_threads-2)+thread_num*size_each_control+1 : size_each_state*(num_threads-2) + (thread_num+1)*size_each_control)
+     end
+
+      u_block(1:end) == x(size_each_state*(num_threads-2)+1:end)
+      %for thread_num=1:num_threads-1
+      %  u_block(6+(thread_num-1)*size_each_control + 1 : thread_num*size_each_control) == 0; 
       %end
-
-      %u_block(1:end) == x(size_each_state*(num_threads-2)+1:end)
+      abs(u_block(1:end)) < control_constraint; 
       %abs(x(size_each_state*(num_threads-2)+1:end)) < control_constraint;
       %u(1:end) > min_control;
 
@@ -112,7 +124,7 @@ cvx_end
 
 
 tmp = full(x);
-%reshape(tmp(size_each_state*(num_threads-2)+1:end)', 12, [])
+reshape(tmp(size_each_state*(num_threads-2)+1:end)', 12, [])
 
 
 dlmwrite(x_file, full(x), 'precision', 10); 

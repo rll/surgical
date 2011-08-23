@@ -603,7 +603,7 @@ void InitStuff (void)
 
 void idle() {
   double dt = 1;
-  double M =  1;
+  double M =  10;
   double steps = 500;
   currentTime += dt;
   //thread->dynamic_step(dt, M, steps);
@@ -1169,7 +1169,7 @@ void updateThreadPoints()
 
 void initThread()
 {
-  int numInit = 7;//(3*3)/DEFAULT_REST_LENGTH;
+  int numInit = 3;//(3*3)/DEFAULT_REST_LENGTH;
   double noise_factor = 0.0;
 
 	double end_length = DEFAULT_REST_LENGTH;

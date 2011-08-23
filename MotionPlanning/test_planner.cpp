@@ -96,6 +96,9 @@ Thread_RRT planner;
 vector<Frame_Motion> movements;
 Trajectory_Follower* follower = NULL;
 
+vector<Thread*> OLCTrajectory; 
+
+
 int curmotion = 0;
 bool initialized = false;
 RRTNode* curNode;
@@ -128,14 +131,16 @@ GLfloat lightFourColor[] = {0.99, 0.99, 0.99, 1.0};
 
 void stepSimulation() { 
 
-  double dt = 1;
-  double M = 400;
+  double dt = STEP_DT;
+  double M = STEP_MASS;
  
   #pragma omp parallel for num_threads(NUM_CPU_THREADS)
   for (int i = 0; i < totalThreads; i++) {
     //glThreads[i]->getThread()->dynamic_step(dt, M);
     glThreads[i]->getThread()->dynamic_step_until_convergence(dt, M, 50000);
   }
+
+  cout << glThreads[curThread]->getThread()->calculate_energy() << endl; 
 
   glutPostRedisplay();
 }
@@ -382,6 +387,7 @@ void initializeSQP() {
   //                            glThreads[endThread]->getThread(),
   //                            interpTraj);
 
+  // TODO: interpEnds is currently BROKEN because of apply motion NEAR ends
   interpolateEndsTrajectory(glThreads[planThread]->getThread(),
                             glThreads[endThread]->getThread(),
                             interpTraj);
@@ -390,7 +396,7 @@ void initializeSQP() {
   vector<Thread*> initialTraj;
  // linearizeViaTrajectory(interpTraj, initialTraj);
 //
-  double eps = 2.0e-1; 
+  double eps = 10e-2;   
   VectorXd du(12);
   du.setZero();
 
@@ -446,9 +452,18 @@ void initializeSQP() {
     JU_states[i+1]->copy_data_from_vector(new_state);
   }
   */
+  
+  vector<Thread*> OLCTraj;
+  /*
+  for (int i = 0; i < interpTraj.size() - 1; i++) {
+    OLCTraj.push_back(interpTraj[i]);
+  }
+  */
 
-  vector<Thread*> OLCTraj; 
-  openLoopController(SQPTraj, SQPControls, OLCTraj); 
+  openLoopController(SQPTraj, SQPControls, OLCTraj);
+
+  cout << "Current Error = " <<
+    cost_metric(initialTraj.back(), OLCTraj.back()) << endl;
   //openLoopController(sqp_debug_data, SQPControls, OLCTraj);
   vector<vector<Thread*> > visualizationData;
   //visualizationData.push_back(initialTraj);
@@ -459,11 +474,12 @@ void initializeSQP() {
   //visualizationData.push_back(JU_states);
 
   //visualizationData.push_back(SQPTraj);
-  visualizationData.push_back(interpTraj);
+  //visualizationData.push_back(interpTraj);
   visualizationData.push_back(initialTraj);
   visualizationData.push_back(OLCTraj);
 
   lastReachedThread = OLCTraj.back();
+  OLCTrajectory = OLCTraj;
   setThreads(visualizationData);
 
 }
@@ -503,7 +519,7 @@ void sqpTillSolved() {
   cout << cost_metric(lastReachedThread, glThreads[endThread]->getThread()) << endl; 
   int num_iters = 0;
 
-  while(cost_metric(lastReachedThread, glThreads[endThread]->getThread()) > 2) {  
+  while(cost_metric(lastReachedThread, glThreads[endThread]->getThread()) > 2 && !interruptEnabled) {  
     num_iters++; 
     cout << "Generating Initial Trajectory" << endl; 
     boost::progress_display progress(interpTraj.size()-1); 
@@ -532,22 +548,61 @@ void sqpTillSolved() {
     vector<Thread*> OLCTraj; 
     openLoopController(SQPTraj, SQPControls, OLCTraj); 
 
-    for (int i = 0; i < OLCTraj.size(); i++) { 
+    for (int i = 0; i < OLCTraj.size(); i++) {
+    //for(int i = 0; i < 10; i++) {
       complete_OLC_traj.push_back(new Thread(*OLCTraj[i]));
+      lastReachedThread = OLCTraj[i];
     }
 
-    lastReachedThread = OLCTraj.back();
+    //lastReachedThread = OLCTraj.back();
     cout << "Current error = " << cost_metric(lastReachedThread, glThreads[endThread]->getThread()) << endl;
   }
   
   if (num_iters > 0) {
     vector<vector<Thread*> > visualizationData;
     visualizationData.push_back(initialTraj);
+    OLCTrajectory = complete_OLC_traj;
     visualizationData.push_back(complete_OLC_traj);
     setThreads(visualizationData);
   } else { 
     cout << "Not running SQP because the initial error is less than the threshold." << endl; 
   }
+}
+
+void write_OLC_file() { 
+  if (OLCTrajectory.size() == 0) {
+    cout << "No trajectory to analyze!" << endl;
+    return;
+  }
+  for (int i = 0; i < OLCTrajectory.size(); i++) { 
+    cout << OLCTrajectory[i]->calculate_energy() << endl; 
+  }
+}
+
+void SQPSmoother() {
+  if (OLCTrajectory.size() == 0) {
+    cout << "No trajectory to smooth!" << endl;
+    return;
+  }
+  
+  vector<Thread*> SQPTraj; 
+  vector<VectorXd> SQPControls;
+  vector<vector<Thread*> >sqp_debug_data;
+  string namestring = "sqp_debug"; 
+  solveSQP(OLCTrajectory, SQPTraj, SQPControls, sqp_debug_data, namestring.c_str());   
+
+  vector<Thread*> OLCTraj; 
+  openLoopController(SQPTraj, SQPControls, OLCTraj); 
+
+    cout << "Current error = " << cost_metric(OLCTrajectory.back(), OLCTraj.back()) << endl;
+  vector<vector<Thread*> > visualizationData;
+  visualizationData.push_back(OLCTrajectory);
+  visualizationData.push_back(OLCTraj);
+
+  lastReachedThread = OLCTraj.back();
+  //OLCTrajectory = OLCTraj;
+  setThreads(visualizationData);
+
 }
 
 
@@ -808,67 +863,6 @@ void SQPPlanner() {
   thread_visualization_data.push_back(control_traj);
   setThreads(thread_visualization_data);
 
-
-}
-
-void SQPSmoother() { 
-  Thread* start = new Thread(*glThreads[planThread]->getThread());
-  Thread* end = new Thread(*glThreads[endThread]->getThread());
-  vector<Thread*> traj; 
-  vector<vector<VectorXd> > mot; 
-
-  DimensionReductionBestPath(start, end, 0, traj, mot);
-  initialized = false; // set to false to prevent visualizer from segfault
-  
-  vector<VectorXd> U;
-  vector<Thread*> smoothTraj;
-  vector<Thread*> downSampledTraj; 
-  for (int i = 0; i < traj.size(); i++) {
-    if ( i % 5 == 0) { 
-      VectorXd ctrl(12);
-      ctrl.setZero();
-      U.push_back(ctrl); 
-      smoothTraj.push_back(new Thread(*traj[i]));
-      downSampledTraj.push_back(new Thread(*traj[i]));
-    }
-  }
-
-  int numGoalCopies = smoothTraj.size() / 50;
-  if (numGoalCopies == 0) numGoalCopies = 1; 
-
-  for (int i = 0; i < numGoalCopies; i++) { 
-    smoothTraj.push_back(new Thread(*end));
-    VectorXd ctrl(12);
-    ctrl.setZero();
-    U.push_back(ctrl); 
-  }
-  
-  Iterative_Control* ic = new Iterative_Control(smoothTraj.size(), smoothTraj.front()->num_pieces());
-
-  int num_iters = 2; 
-
-  ic->iterative_control_opt(smoothTraj, U, num_iters); 
-	vector<vector<VectorXd> > thread_control_data;
-  for (int i = 0; i < smoothTraj.size(); i++) { 
-    //vector<Thread*> tmp;
-    //tmp.push_back(traj[i]);
-    //thread_visualization_data.push_back(tmp); 
-    vector<VectorXd> motion_wrapper;
-    motion_wrapper.push_back(U[i]);
-    thread_control_data.push_back(motion_wrapper);
-  }
-  Trajectory_Follower *pathFollower = 
-    new Trajectory_Follower(smoothTraj, thread_control_data, new Thread(*start)); 
-
-  pathFollower->control_to_finish();
-
-  vector<Thread*> control_traj;
-  pathFollower->getReachedStates(control_traj);
-  vector<vector<Thread*> > thread_visualization_data;
-  thread_visualization_data.push_back(downSampledTraj);
-  thread_visualization_data.push_back(smoothTraj);
-  thread_visualization_data.push_back(control_traj);
-  setThreads(thread_visualization_data);
 
 }
 
@@ -1149,11 +1143,22 @@ void processNormalKeys(unsigned char key, int x, int y)
     drawSet_2 = !drawSet_2;
   }
   else if (key == 'a') {
-    planRRT();
+    //planRRT();
+    stepRRT(100);
   } 
   else if (key == 's') { 
     //stepRRT(100);
-    stepSimulation();
+    //stepSimulation();
+    glThreads[endThread]->setThread(new Thread(*glThreads[planThread]->getThread()));
+  }
+  else if (key == 'S') {
+    SQPSmoother();
+  }
+  else if (key == 'e') {
+    cout << glThreads[curThread]->getThread()->calculate_energy() << endl; 
+  }
+  else if (key == 'E') {
+    write_OLC_file(); 
   }
   else if (key == 'v') {
     writeGoalThreadToFile(1);
@@ -1221,7 +1226,8 @@ void interruptHandler(int sig) {
 	//exit(0);
   cout << "Signal " << sig << " caught..." << endl;
   interruptEnabled = true;
-  exit(0);
+  //exit(0);
+
 }
 
 

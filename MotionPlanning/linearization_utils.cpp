@@ -402,7 +402,7 @@ void estimate_transition_matrix_withTwist(Thread* thread, MatrixXd& A, const mov
   thread->save_thread_pieces_and_resize(thread_backup_pieces);
 
   VectorXd du(A.cols());
-  const double eps = 5e-1;
+  const double eps = 1e-1;
   for(int i = 0; i < A.cols(); i++)
   {
     du.setZero();
@@ -415,11 +415,15 @@ void estimate_transition_matrix_withTwist(Thread* thread, MatrixXd& A, const mov
     {
       A.block(piece_ind*3, i, 3,1) = thread->vertex_at_ind(piece_ind);
     }
-    for (int piece_ind=0; piece_ind < num_edges; piece_ind++)
+    /*for (int piece_ind=0; piece_ind < num_edges; piece_ind++)
     {
       A.block(3*num_pieces + piece_ind*3, i, 3,1) = thread->edge_at_ind(piece_ind);
     }
-    A(6*num_pieces-3, i) = thread->end_angle(); 
+    A(6*num_pieces-3, i) = thread->end_angle();
+    A(6*num_pieces-2, i) = thread->calculate_energy();
+    */
+    A(3*num_pieces, i) = thread->end_angle();
+    A(3*num_pieces+1,i) = thread->calculate_energy();
 
     du(i) = -eps;
     thread->restore_thread_pieces(thread_backup_pieces);
@@ -429,14 +433,21 @@ void estimate_transition_matrix_withTwist(Thread* thread, MatrixXd& A, const mov
     {
       A.block(piece_ind*3, i, 3,1) -= thread->vertex_at_ind(piece_ind);
     }
-    for (int piece_ind=0; piece_ind < num_edges; piece_ind++)
+    /*for (int piece_ind=0; piece_ind < num_edges; piece_ind++)
     {
+
       A.block(3*num_pieces + piece_ind*3, i, 3,1) -= thread->edge_at_ind(piece_ind);
     }
-    A(6*num_pieces-3, i) -= thread->end_angle(); 
+    A(6*num_pieces-3, i) -= thread->end_angle();
+    A(6*num_pieces-2, i) -= thread->calculate_energy();
+    */
+
+    A(3*num_pieces, i) -= thread->end_angle();
+    A(3*num_pieces+1,i) -= thread->calculate_energy();
   }
   //A /= 2.0*eps;
   A /= eps; 
+
   thread->restore_thread_pieces(thread_backup_pieces);
 }
 

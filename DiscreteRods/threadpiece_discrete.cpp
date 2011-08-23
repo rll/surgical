@@ -60,7 +60,7 @@ void ThreadPiece::set_vertex(const Vector3d& vertex)
 
 double ThreadPiece::energy()
 {
-  return energy_curvature() + energy_twist() + energy_grav() + energy_stretch();
+  return energy_curvature() + energy_twist() + energy_grav() + energy_stretch() + energy_repulsion();
 }
 
 //not defined for first or last piece
@@ -117,6 +117,61 @@ double ThreadPiece::energy_stretch()
   //return STRETCH_COEFF*abs(_edge_norm - _rest_length);
 
 }
+
+
+
+double ThreadPiece::energy_repulsion()
+{
+  int piece_ind;
+  for (piece_ind=0; piece_ind<_my_thread->_thread_pieces.size() &&
+      _my_thread->_thread_pieces[piece_ind]!=this; piece_ind++) {}
+  if (piece_ind==_my_thread->_thread_pieces.size())
+    cout << "Internal error: ThreadPiece::energy_repulsion: this piece is not in _my_thread->_thread_pieces." << endl;
+
+  double dt = 1;
+  double M =  50;
+
+  double energy = 0;
+
+  if (piece_ind > 0 && piece_ind < (_my_thread->_thread_pieces.size() - 2)) {
+    for (int other_ind = 1; other_ind < _my_thread->_thread_pieces.size() -
+        2; other_ind++) {
+      if (other_ind == (piece_ind - 1) || other_ind == piece_ind || other_ind
+          == (piece_ind + 1))
+        continue;
+      Vector3d direction;
+      double dist = _my_thread->self_intersection(piece_ind, other_ind,
+          THREAD_RADIUS, direction);
+      if (-dist > THREAD_RADIUS)
+        continue;
+      double overlap = (THREAD_RADIUS + dist);
+      energy += M/(dt*dt) * 0.5 * pow(-dist/THREAD_RADIUS-1,2)
+        * THREAD_RADIUS;
+    }
+  }
+  piece_ind--;
+  if (piece_ind > 0 && piece_ind < (_my_thread->_thread_pieces.size() - 2)) {
+    for (int other_ind = 1; other_ind < _my_thread->_thread_pieces.size() -
+        2; other_ind++) {
+      if (other_ind == (piece_ind - 1) || other_ind == piece_ind || other_ind
+          == (piece_ind + 1))
+        continue;
+      Vector3d direction;
+      double dist = _my_thread->self_intersection(piece_ind, other_ind,
+          THREAD_RADIUS, direction);
+      if (-dist > THREAD_RADIUS)
+        continue;
+      double overlap = (THREAD_RADIUS + dist);
+      energy += M/(dt*dt) * 0.5 * pow(-dist/THREAD_RADIUS-1,2)
+        * THREAD_RADIUS;
+    }
+  }
+
+  return energy;
+
+}
+
+
 
 double ThreadPiece::energy_grav()
 {
@@ -226,14 +281,16 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
 	grad += (2.0*BEND_COEFF/(_prev_piece->_rest_length + _rest_length))*(-del_kb_i_im1-del_kb_i_ip1).transpose()*_curvature_binormal - beta_angle_diff_over_L*(-del_psi_i_im1-del_psi_i_ip1);
 
 	grad += Vector3d::UnitZ()*GRAV_COEFF;
-
+  
+  
   if (_next_piece!=NULL && _next_piece->_next_piece!=NULL)
     grad -= STRETCH_COEFF * (_edge_norm/_rest_length - 1.0) * _edge.normalized();
   if (_prev_piece != NULL)
     grad += STRETCH_COEFF * (_prev_piece->_edge_norm/_prev_piece->_rest_length - 1.0) * _prev_piece->_edge.normalized();
   
+
   double dt = 1;
-  double M =  0.002;
+  double M =  50;
 
   int piece_ind;
   for (piece_ind=0; piece_ind<_my_thread->_thread_pieces.size() && _my_thread->_thread_pieces[piece_ind]!=this; piece_ind++) {}
@@ -250,10 +307,10 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
       Vector3d direction;
       double dist = _my_thread->self_intersection(piece_ind, other_ind,
           THREAD_RADIUS, direction);
-      if (dist > 0 || -dist > THREAD_RADIUS)
+      if (-dist > THREAD_RADIUS)
         continue;
       double overlap = (THREAD_RADIUS + dist);
-      //double overlap = 1/pow(dist,4);
+      //double overlap = -1/pow(dist,1);
       grad -= M/(dt*dt) * overlap * direction.normalized();
     }
   }
@@ -267,10 +324,10 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
       Vector3d direction;
       double dist = _my_thread->self_intersection(piece_ind, other_ind,
           THREAD_RADIUS, direction);
-      if (dist > 0 || -dist > THREAD_RADIUS)
+      if (-dist > THREAD_RADIUS)
         continue;
       double overlap = (THREAD_RADIUS + dist);
-      //double overlap = 1/pow(dist,4);
+      //double overlap = -1/pow(dist,1);
       grad -= M/(dt*dt) * overlap * direction.normalized();
     }
   }
