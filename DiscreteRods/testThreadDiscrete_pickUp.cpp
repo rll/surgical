@@ -31,6 +31,9 @@
 #include "EnvObjects/InfinitePlane.h"
 #include "EnvObjects/TexturedSphere.h"
 
+#include "ObjectTrajectoryRecorder.h"
+#include "ObjectTrajectoryReader.h"
+
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
@@ -41,6 +44,7 @@ bool closeEnough(Vector3d my_pos, Matrix3d my_rot, Vector3d pos, Matrix3d rot);
 void mouseTransform(Vector3d &new_pos, Matrix3d &new_rot, vector<Vector3d> &positions, vector<Matrix3d> &rotations, int cvnum);
 void displayTextInScreen(const char* textline, ...);
 void initThread();
+void initLongerThread();
 void glutMenu(int ID);
 void initGL();
 
@@ -201,130 +205,73 @@ void processNormalKeys(unsigned char key, int x, int y) {
   else if (key == 'w') {
     rotate_frame[0] = 0.0;
     rotate_frame[1] = 0.0;
-  } else if (key == 'c') {
-  	//if (!choose_mode)	//from normal mode to choose mode
-  	//	threads[0]->getAllTransforms(all_positions, all_rotations);
-  	//else
-  	//	threads[0]->setAllTransforms(all_positions, all_rotations);
-  	toggle = 0;
-  	if (cursor0->isAttached())
-  		cursor0->dettach();
-  	if (cursor1->isAttached())
-  		cursor1->dettach();
-    choose_mode = !choose_mode;
-    processInput();
-    //glutPostRedisplay();
-  } else if (key == 'v' && choose_mode) {
-    change_constraint = true;
-    processInput();
-    //glutPostRedisplay();
-  } else if (key == 'b') {
-  	toggle--;
-  	processInput();
-    //glutPostRedisplay();
-  } else if (key == 'n') {
-  	toggle++;
-  	processInput();
-    //glutPostRedisplay();
-  } else if (key == 'd') {
-    vector<Vector3d> vv3d; 
-    vector <double> vd;
-    threads[0]->get_thread_data(vv3d, vd);
-    cout << "get_thread_data: absolute_points: " << vv3d.size() << endl;
-    for (int i=0; i<(vv3d.size()+4)/5; i++) {
-      for (int k=0; k<3; k++) {
-        for (int j=0; j<5 && (i*5+j)<vv3d.size(); j++) {
-          printf("%d:%3.4f\t",i*5+j,vv3d[i*5+j](k));
-        }
-        printf("\n");
-      }
-      printf("\n");
-    }
-    cout << "get_thread_data: absolute_twist_angles: " << vd.size() << endl;
-    for (int i=0; i<(vd.size()+4)/5; i++) {
-      for (int j=0; j<5 && (i*5+j)<vd.size(); j++) {
-        printf("%d:%3.4f\t",i*5+j,vd[i*5+j]);
-      }
-      printf("\n");
-    }
-  } else if (key == 'f') {
-    vector<Vector3d> vv3d;
-    vector<Matrix3d> vm3d;
-    threads[0]->getConstrainedTransforms(vv3d, vm3d);
-    cout << "getConstrainedTransforms: positions: " << vv3d.size() << endl;
-    for (int i=0; i<(vv3d.size()+4)/5; i++) {
-      for (int k=0; k<3; k++) {
-        for (int j=0; j<5 && (i*5+j)<vv3d.size(); j++) {
-          printf("%d:%3.4f\t",i*5+j,vv3d[i*5+j](k));
-        }
-        printf("\n");
-      }
-      printf("\n");
-    }
-  } else if ( key == 'g') {
-    vector<int> vi;
-    threads[0]->getConstrainedVerticesNums(vi);
-    cout << "getConstrainedVerticesNums: vertices_num: " << vi.size() << endl;
-    for (int i=0; i<(vi.size()+4)/5; i++) {
-      for (int j=0; j<5 && (i*5+j)<vi.size(); j++) {
-        printf("%d:%d\t",i*5+j,vi[i*5+j]);
-      }
-      printf("\n");
-    }
-  } else if ( key == 'h') {
-    vector<int> vi;
-    threads[0]->getOperableFreeVertices(vi);
-    cout << "getOperableFreeVertices: vertices_num: " << vi.size() << endl;
-    for (int i=0; i<(vi.size()+4)/5; i++) {
-      for (int j=0; j<5 && (i*5+j)<vi.size(); j++) {
-        printf("%d:%d\t",i*5+j,vi[i*5+j]);
-      }
-      printf("\n");
-    }
-  } else if (key == 'j') {
-    vector<Vector3d> vv3d;
-    threads[0]->getConstrainedVertices(vv3d);
-		cout << "getConstrainedVertices: constrained_vertices: " << vv3d.size() << endl;
-    for (int i=0; i<(vv3d.size()+4)/5; i++) {
-      for (int k=0; k<3; k++) {
-        for (int j=0; j<5 && (i*5+j)<vv3d.size(); j++) {
-          printf("%d:%3.4f\t",i*5+j,vv3d[i*5+j](k));
-        }
-        printf("\n");
-      }
-      printf("\n");
-    }
-  } else if (key == 'k') {
-		vector<Vector3d> vv3d;
-    threads[0]->getFreeVertices(vv3d);
-		cout << "getFreeVertices: free_vertices: " << vv3d.size() << endl;
-    for (int i=0; i<(vv3d.size()+4)/5; i++) {
-      for (int k=0; k<3; k++) {
-        for (int j=0; j<5 && (i*5+j)<vv3d.size(); j++) {
-          printf("%d:%3.4f\t",i*5+j,vv3d[i*5+j](k));
-        }
-        printf("\n");
-      }
-      printf("\n");
-    }
-  } else if (key == 'l') {
-		vector<int> vi;
-		vector<bool> vb;
-    threads[0]->getOperableVertices(vi, vb);
-    cout << "getOperableVertices: operable_vertices_num: " << vi.size() << endl;
-    for (int i=0; i<(vi.size()+4)/5; i++) {
-      for (int j=0; j<5 && (i*5+j)<vi.size(); j++) {
-        printf("%d:%d\t",i*5+j,vi[i*5+j]);
-      }
-      printf("\n");
-    }
-    cout << "getOperableVertices: constrained_or_free: " << vb.size() << endl;
-    for (int i=0; i<(vb.size()+4)/5; i++) {
-      for (int j=0; j<5 && (i*5+j)<vb.size(); j++) {
-        printf("%d:%d\t",i*5+j,vb[i*5+j]?1:0);
-      }
-      printf("\n");
-    }
+	} else if(key == 's') {
+    cout << "Saving...\n";
+    cout << "Please enter destination file name (without extension): ";
+    char *dstFileName = new char[256];
+    cin >> dstFileName;
+    char *fullPath = new char[256];
+    sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
+		ObjectTrajectoryRecorder traj_recorder(fullPath);
+    traj_recorder.writeObjectsToFile(world);
+  } else if((key == 'l') ||
+						(key == '1') || (key == '2') || (key == '3') || (key == '4') || (key == '5') || 
+  					(key == '6') || (key == '7') || (key == '8') || (key == '9') || (key == '0')) {
+  	cout << "Loading...\n";
+  	ObjectTrajectoryReader traj_reader;
+  	char *fullPath = new char[256];
+  	if (key == '1')
+	    sprintf(fullPath, "%s%s", "environmentFiles/", "o1");
+	  else if (key == '2')
+	  	sprintf(fullPath, "%s%s", "environmentFiles/", "o2");
+	  else if (key == '3')
+	  	sprintf(fullPath, "%s%s", "environmentFiles/", "o3");
+	  else if (key == '4')
+	  	sprintf(fullPath, "%s%s", "environmentFiles/", "o4");
+	  else if (key == '5')
+	  	sprintf(fullPath, "%s%s", "environmentFiles/", "o5");
+	  else if (key == '6')
+	  	sprintf(fullPath, "%s%s", "environmentFiles/", "o6");
+	  else if (key == '7')
+	  	sprintf(fullPath, "%s%s", "environmentFiles/", "o7");
+	  else if (key == '8')
+	  	sprintf(fullPath, "%s%s", "environmentFiles/", "o8");
+	  else if (key == '9')
+	  	sprintf(fullPath, "%s%s", "environmentFiles/", "o9");
+	  else if (key == '0')
+	  	sprintf(fullPath, "%s%s", "environmentFiles/", "o0");
+	  else {
+	  	cout << "Please enter destination file name (without extension): ";
+	  	char *dstFileName = new char[256];
+    	cin >> dstFileName;
+    	sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
+	  }
+    traj_reader.setFileName(fullPath);
+    if (traj_reader.readObjectsFromFile(world) == 0) {
+
+			vector<ThreadConstrained*> world_thread = *(world->getThreads());
+			for (int i = 0; i < threads.size(); i++) {
+				threads[i] = world_thread[i];
+			}
+
+			vector<EnvObject*> world_cursors = world->getEnvObjs(CURSOR);
+			cursor0 = (Cursor*) world_cursors[0];
+			cursor1 = (Cursor*) world_cursors[1];
+
+			vector<EnvObject*> world_end_effs = world->getEnvObjs(END_EFFECTOR);
+			for (int i = 0; i < end_effectors.size(); i++) {
+				end_effectors[i] = (EndEffector*) world_end_effs[i];
+			}
+
+			vector<EnvObject*> world_planes = world->getEnvObjs(INFINITE_PLANE);
+			plane = (InfinitePlane*) world_planes[0];
+
+			vector<EnvObject*> world_spheres = world->getEnvObjs(TEXTURED_SPHERE);
+			textured_sphere = (TexturedSphere*) world_spheres[0];
+			
+			cout << "Thread loading was sucessful." << endl;
+			glutPostRedisplay();  
+		}
   } else if(key == 'e') {
   	for (int thread_ind=0; thread_ind<threads.size(); thread_ind++)
   		threads[thread_ind]->toggleExamineMode();
@@ -470,7 +417,8 @@ int main (int argc, char * argv[])
 	
 	initGL();
 	
-  initThread();
+  //initThread();
+  initLongerThread();
 
   zero_location = Vector3d::Zero(); //points[0];
   zero_angle = 0.0;
@@ -490,7 +438,7 @@ int main (int argc, char * argv[])
 	end_effector0->constraint_ind = 0;
 	end_effector0->updateConstraint();
 	end_effectors.push_back(end_effector0);
-		
+
 	EndEffector* end_effector1 = new EndEffector(positions[1], rotations[1]);
 	end_effector1->attachThread(threads[0]);
 	end_effector1->constraint_ind = 1;
@@ -608,7 +556,7 @@ void processInput()
 	
 		threads[thread_ind]->getConstrainedTransforms(positionConstraints, rotationConstraints);
 
-		for (int ee_ind = 0; ee_ind < 4; ee_ind++) {
+		for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++) {
 			EndEffector* ee = end_effectors[ee_ind];
 			if (ee->getThread()==threads[thread_ind])
 				ee->setTransform(positionConstraints[ee->constraint_ind], rotationConstraints[ee->constraint_ind]);
@@ -637,12 +585,13 @@ void updateState(const Vector3d& proxy_pos, const Matrix3d& proxy_rot, Cursor* c
 	  			thread = threads[thread_ind];
 	  		}
 	  	}
-	  	if (cursor->justClosed() && ((thread->position(nearest_vertex) - tip_pos).squaredNorm() < 16.0)) {	// cursor has an end effector which just started holding the thread
+	  	if (cursor->justClosed() && ((thread->position(nearest_vertex) - tip_pos).squaredNorm() < 32.0)) {	// cursor has an end effector which just started holding the thread
 	  		ee->constraint = nearest_vertex;
 		    thread->addConstraint(nearest_vertex);
 		    ee->attachThread(thread);
-		    for (int ee_ind = 0; ee_ind < 4; ee_ind++)
+		    for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++) {
 					end_effectors[ee_ind]->updateConstraintIndex();
+		    }
 		    thread->setConstrainedTransforms(ee->constraint_ind, tip_pos, proxy_rot);										// the end effector's orientation matters when it grips the thread. This updates the offset rotation.
 		  } else {																																											// cursor has an end effector which remains without holding the thread
 	  		ee->setTransform(tip_pos, proxy_rot);
@@ -652,17 +601,16 @@ void updateState(const Vector3d& proxy_pos, const Matrix3d& proxy_rot, Cursor* c
 				cout << "You cannot open the end effector holding the end constraint" << endl;
 			 	cursor->forceClose();
 			} else if (cursor->isOpen()) {																																// cursor has an end effector which is holding the thread and trying to be opened
-			  cout << "removing constraint" << endl;
 			  ee->getThread()->removeConstraint(ee->constraint);
 			 	ee->constraint = ee->constraint_ind = -1;
 			 	ee->dettachThread();
-			 	for (int ee_ind = 0; ee_ind < 4; ee_ind++)
+			 	for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++)
 					end_effectors[ee_ind]->updateConstraintIndex();
 			}
 		}
 		if (cursor->attach_dettach_attempt) {
 			cursor->dettach();
-			for (int ee_ind = 0; ee_ind < 4; ee_ind++)
+			for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++)
 				end_effectors[ee_ind]->updateConstraintIndex();
 		}
 	} else {																				// cursor doesn't have an end effector, THUS it isn't holding the thread i.e. ee->constraint = ee->constraint_ind = -1;
@@ -767,11 +715,11 @@ void displayTextInScreen(const char* textline, ...)
 
 void initThread()
 {
-  int numInit = 5;
+  int numInit = 6;
 
-	double first_length = 3.0; //DEFAULT_REST_LENGTH;
-	double second_length = 2.0; //DEFAULT_REST_LENGTH;
-	double middle_length = 4.0; //DEFAULT_REST_LENGTH;
+	double first_length = 3.0; //FIRST_REST_LENGTH;
+	double second_length = SECOND_REST_LENGTH;
+	double middle_length = DEFAULT_REST_LENGTH;
 
   vector<Vector3d> vertices;
   vector<double> angles;
@@ -791,16 +739,16 @@ void initThread()
   
   directions.push_back(Vector3d::UnitX());
   directions.push_back(Vector3d::UnitX());
-  Vector3d direction = Vector3d(1.0, -2.0, 0.0);
+  Vector3d direction = Vector3d(2.0, -1.0, 0.0);
   direction.normalize();
   for (int i=0; i < numInit; i++)
   	directions.push_back(direction);
-  direction = Vector3d(1.0, 2.0, 0.0);
+  direction = Vector3d(1.0, -2.0, 0.0);
   direction.normalize();
   for (int i=0; i < numInit; i++)
   	directions.push_back(direction);
-  directions.push_back(Vector3d::UnitX());
-  directions.push_back(Vector3d::UnitX());
+  directions.push_back(-Vector3d::UnitY());
+  directions.push_back(-Vector3d::UnitY());
   
   vertices.push_back(Vector3d::Zero());
   for (int i=1; i < 2*numInit + 5; i++) {
@@ -811,20 +759,142 @@ void initThread()
     vertices.push_back(next_vertex);
   }
   
-	Vector3d center_pos = (vertices.front() + vertices.back())/2.0;
+	Vector3d last_pos = Vector3d(-10.0, -30.0, 0.0);
 	for (int i=0; i<vertices.size(); i++)
-		vertices[i] -= center_pos;
+		vertices[i] += -vertices.back() + last_pos;
 
-  Matrix3d rotation = Matrix3d::Identity();
+  Matrix3d start_rotation0 = Matrix3d::Identity();
+  Matrix3d end_rotation0 = (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitZ());
 
-  ThreadConstrained* thread0 = new ThreadConstrained(vertices, angles, lengths, rotation, rotation);
+  ThreadConstrained* thread0 = new ThreadConstrained(vertices, angles, lengths, start_rotation0, end_rotation0);
   threads.push_back(thread0);
   
   for (int i=0; i<vertices.size(); i++)
-		vertices[i] += Vector3d(0,20.0,0);
-  ThreadConstrained* thread1 = new ThreadConstrained(vertices, angles, lengths, rotation, rotation);
+		vertices[i](0) *= -1;
+	Matrix3d start_rotation1 = (Matrix3d) AngleAxisd(M_PI, Vector3d::UnitZ());
+  Matrix3d end_rotation1 = (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitZ());
+  ThreadConstrained* thread1 = new ThreadConstrained(vertices, angles, lengths, start_rotation1, end_rotation1);
   threads.push_back(thread1);
+  
+	for (int thread_ind=0; thread_ind < threads.size(); thread_ind++) {
+#ifndef ISOTROPIC
+		Matrix2d B = Matrix2d::Zero();
+		B(0,0) = 10.0;
+		B(1,1) = 1.0;
+		threads[thread_ind]->set_coeffs_normalized(B, 3.0, 1e-4);
+#else
+  	threads[thread_ind]->set_coeffs_normalized(1.0, 3.0, 1e-4);
+#endif
+	}
+}
 
+void initLongerThread()
+{
+  int numInit = 5;
+
+	double first_length = 3.0; //FIRST_REST_LENGTH;
+	double second_length = SECOND_REST_LENGTH;
+	double middle_length = DEFAULT_REST_LENGTH;
+
+  vector<Vector3d> vertices;
+  vector<double> angles;
+  vector<double> lengths;
+  vector<Vector3d> directions;
+  
+	for (int i=0; i < 4*numInit + 5; i++)
+		angles.push_back(0.0);
+  
+  lengths.push_back(first_length);
+  lengths.push_back(second_length);
+  for (int i=0; i < 4*numInit; i++)
+  	lengths.push_back(middle_length);
+  lengths.push_back(second_length);
+  lengths.push_back(first_length);
+  lengths.push_back(first_length);
+  
+  directions.push_back(Vector3d::UnitX());
+  directions.push_back(Vector3d::UnitX());
+  Vector3d direction = Vector3d(1.0, 1.0, 0.0);
+  direction.normalize();
+  for (int i=0; i < numInit; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(1.0, -1.0, 0.4);
+  direction.normalize();
+  for (int i=0; i < numInit; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(-1.0, -1.0, -0.4);
+  direction.normalize();
+  for (int i=0; i < numInit; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(0.0, -1.0, 0.0);
+  direction.normalize();
+  for (int i=0; i < numInit; i++)
+  	directions.push_back(direction);
+  directions.push_back(-Vector3d::UnitY());
+  directions.push_back(-Vector3d::UnitY());
+  
+  vertices.push_back(Vector3d::Zero());
+  for (int i=1; i < 4*numInit + 5; i++) {
+  	Vector3d next_vertex;
+  	next_vertex(0) = vertices[i-1](0) + directions[i-1](0) * lengths[i-1];
+  	next_vertex(1) = vertices[i-1](1) + directions[i-1](1) * lengths[i-1];
+  	next_vertex(2) = vertices[i-1](2) + directions[i-1](2) * lengths[i-1];
+    vertices.push_back(next_vertex);
+  }
+  
+	Vector3d last_pos = Vector3d(-10.0, -30.0, 0.0);
+	for (int i=0; i<vertices.size(); i++)
+		vertices[i] += -vertices.back() + last_pos;
+
+  Matrix3d start_rotation0 = Matrix3d::Identity();
+  Matrix3d end_rotation0 = (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitZ());
+
+  ThreadConstrained* thread0 = new ThreadConstrained(vertices, angles, lengths, start_rotation0, end_rotation0);
+  threads.push_back(thread0);
+  
+  directions.clear();
+  directions.push_back(Vector3d::UnitX());
+  directions.push_back(Vector3d::UnitX());
+  direction = Vector3d(1.0, 1.0, 0.0);
+  direction.normalize();
+  for (int i=0; i < numInit; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(1.0, -1.0, -0.4);
+  direction.normalize();
+  for (int i=0; i < numInit; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(-1.0, -1.0, 0.4);
+  direction.normalize();
+  for (int i=0; i < numInit; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(0.0, -1.0, 0.0);
+  direction.normalize();
+  for (int i=0; i < numInit; i++)
+  	directions.push_back(direction);
+  directions.push_back(-Vector3d::UnitY());
+  directions.push_back(-Vector3d::UnitY());
+  
+  vertices.clear();
+  vertices.push_back(Vector3d::Zero());
+  for (int i=1; i < 4*numInit + 5; i++) {
+  	Vector3d next_vertex;
+  	next_vertex(0) = vertices[i-1](0) + directions[i-1](0) * lengths[i-1];
+  	next_vertex(1) = vertices[i-1](1) + directions[i-1](1) * lengths[i-1];
+  	next_vertex(2) = vertices[i-1](2) + directions[i-1](2) * lengths[i-1];
+    vertices.push_back(next_vertex);
+  }
+  
+	last_pos = Vector3d(-10.0, -30.0, 0.0);
+	for (int i=0; i<vertices.size(); i++)
+		vertices[i] += -vertices.back() + last_pos;
+  
+  for (int i=0; i<vertices.size(); i++)
+		vertices[i](0) *= -1;
+	Matrix3d start_rotation1 = (Matrix3d) AngleAxisd(M_PI, Vector3d::UnitZ());
+  Matrix3d end_rotation1 = (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitZ());
+  ThreadConstrained* thread1 = new ThreadConstrained(vertices, angles, lengths, start_rotation1, end_rotation1);
+  threads.push_back(thread1);
+  
 	for (int thread_ind=0; thread_ind < threads.size(); thread_ind++) {
 #ifndef ISOTROPIC
 		Matrix2d B = Matrix2d::Zero();

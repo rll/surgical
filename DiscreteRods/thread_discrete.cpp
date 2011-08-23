@@ -514,11 +514,130 @@ Thread::Thread(const Thread& rhs)
   set_all_pieces_mythread();
 }
 
+Thread::Thread(ifstream& file)
+{
+  int num_pts_each;
+  file >> num_pts_each;
+
+  vector<Vector3d> points;
+  points.resize(num_pts_each);
+  vector<double> twist_angles;
+  twist_angles.resize(num_pts_each);
+  vector<double> rest_lengths;
+  rest_lengths.resize(num_pts_each);
+  Matrix3d start_rot;
+  Matrix3d end_rot;
+
+  for (int r=0; r < 3; r++)
+  {
+    for (int c=0; c < 3; c++)
+    {
+      file >> start_rot (r,c);
+    }
+  }
+
+  for (int r=0; r < 3; r++)
+  {
+    for (int c=0; c < 3; c++)
+    {
+      file >> end_rot (r,c);
+    }
+  }
+
+  for (int i=0; i < points.size(); i++)
+  {
+    file >> points[i](0) >> points[i](1) >> points[i](2) >> twist_angles[i] >> rest_lengths[i];
+  }
+
+  world = NULL;
+  _thread_pieces_backup.resize(points.size());
+  _angle_twist_backup.resize(points.size());
+  _thread_pieces.resize(points.size());
+  for (int i=0; i < points.size(); i++)
+  {
+    _thread_pieces[i] = new ThreadPiece(points[i], twist_angles[i], rest_lengths[i], this);
+  }
+
+  for (int i=1; i < points.size(); i++)
+  {
+    _thread_pieces[i]->set_prev(_thread_pieces[i-1]);
+  }
+	_thread_pieces[0]->set_prev(NULL);
+  for (int i=0; i < points.size()-1; i++)
+  {
+    _thread_pieces[i]->set_next(_thread_pieces[i+1]);
+  }
+  _thread_pieces[points.size()-1]->set_next(NULL);
+  
+  _total_length = 0;
+	for (int piece_ind = 0; piece_ind < _thread_pieces.size()-1; piece_ind++)
+	{
+		_total_length += _thread_pieces[piece_ind]->rest_length();
+	}
+
+	//setup backups
+  for (int i=0; i < points.size(); i++)
+  {
+    _thread_pieces_backup[i] = new ThreadPiece(points[i], twist_angles[i], rest_lengths[i], this);
+  }
+
+  for (int i=1; i < points.size(); i++)
+  {
+    _thread_pieces_backup[i]->set_prev(_thread_pieces_backup[i-1]);
+  }
+	_thread_pieces_backup[0]->set_prev(NULL);
+  for (int i=0; i < points.size()-1; i++)
+  {
+    _thread_pieces_backup[i]->set_next(_thread_pieces_backup[i+1]);
+  }
+  _thread_pieces_backup[points.size()-1]->set_next(NULL);
+
+  _thread_pieces.front()->set_bishop_frame(start_rot);
+  _thread_pieces.front()->set_material_frame(start_rot);
+
+  _thread_pieces.front()->initializeFrames();
+
+  set_constraints(points.front(), start_rot, points.back(), end_rot);
+}
+
+void Thread::writeToFile(ofstream& file)
+{
+  vector<Vector3d> points;
+  vector<double> twist_angles;
+  vector<double> rest_lengths;
+  Matrix3d start_rot = this->start_rot();
+  Matrix3d end_rot = this->end_rot();
+  get_thread_data(points, twist_angles, rest_lengths);
+
+	file << (double)points.size() << "\n";
+
+  for (int r=0; r < 3; r++)
+  {
+    for (int c=0; c < 3; c++)
+    {
+      file << start_rot(r,c) << " ";
+    }
+  }
+
+  for (int r=0; r < 3; r++)
+  {
+    for (int c=0; c < 3; c++)
+    {
+      file << end_rot(r,c) << " ";
+    }
+  }
+
+  for (int j=0; j < points.size(); j++)
+  {
+    file << points[j](0) << " " << points[j](1) << " " << points[j](2) << " " << twist_angles[j] << " " << rest_lengths[j] << " ";
+  }
+  file << "\n";
+}
+
 Thread::~Thread()
 {
   delete_current_threadpieces();
 }
-
 
 void Thread::delete_current_threadpieces()
 {
@@ -945,8 +1064,6 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
 			found = temp_obj_intersection || found;
 		}
   }
-  
-  //cout << "threads in environment: " << threads_in_env.size() << endl;
   
   if (found || obj_intersection)
   	cout << "intersections. obj_intersection = " << obj_intersection << endl;

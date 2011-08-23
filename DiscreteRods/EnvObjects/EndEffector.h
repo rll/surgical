@@ -20,9 +20,18 @@ class EndEffector : public EnvObject
 		int constraint_ind;					// constained_vertices_nums[constrained_ind] is the vertex number of the constraint the end effector is holding. -1 if it isn't holding the thread.
 		ThreadConstrained* thread;		// The thread this end effector is holding. NULL if it isn't holding a thread.
 		Cursor* attachment;
-	
+			
 		EndEffector(const Vector3d& pos, const Matrix3d& rot);
 		~EndEffector();
+		
+		// For saving and loading objects to and from files
+		// The following two are used to link the thread and attachment pointers after the object has been loaded from file. Thus, thread_ind and attachment_ind only needs to be updated before saving the object to file.
+		int thread_ind;
+		int attachment_ind;
+		void writeToFile(ofstream& file);
+		EndEffector(ifstream& file);
+		void updateIndFromPointers(World* world);
+		void linkPointersFromInd(World* world);
 		
 		void recomputeFromTransform(const Vector3d& pos, const Matrix3d& rot);
 		void draw();

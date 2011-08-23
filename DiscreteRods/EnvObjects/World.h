@@ -1,7 +1,36 @@
 #ifndef _World_h
 #define _World_h
 
-#include "EnvObject.h"
+#include <stdlib.h>
+
+#ifdef MAC
+#include <OpenGL/gl.h>
+#include <GLUT/glut.h>
+#include <GL/gle.h>
+#else
+#include <GL/gl.h>
+#include <GL/glut.h>
+#include <GL/gle.h>
+#endif
+
+#include <iostream>
+#include <fstream>
+
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+#include <math.h>
+#include <vector>
+
+#include "../utils/drawUtils.h"
+#include "../Collisions/intersectionStructs.h"
+#include "../Collisions/collisionUtils.h"
+
+using namespace std;
+USING_PART_OF_NAMESPACE_EIGEN
+
+enum object_type {NO_OBJECT, THREAD_CONSTRAINED, CAPSULE, CURSOR, END_EFFECTOR, INFINITE_PLANE, TEXTURED_SPHERE};
+
+class EnvObject;
 
 class ThreadConstrained;
 
@@ -10,10 +39,11 @@ class World
 	public:
 		World();
 		~World();
-		
+
 		void addThread(ThreadConstrained* thread);
 		void addEnvObj(EnvObject* obj);
 		vector<EnvObject*>* getEnvObjs();
+		vector<EnvObject*> getEnvObjs(object_type type);
 		vector<ThreadConstrained*>* getThreads();
 		void clearObjs();
 		

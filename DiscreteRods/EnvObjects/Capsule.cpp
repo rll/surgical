@@ -2,7 +2,7 @@
 #include "../threadpiece_discrete.h"
 
 Capsule::Capsule(const Vector3d& pos, const Matrix3d& rot, double h, double r, float c0, float c1, float c2)
-	: EnvObject(pos, rot, c0, c1, c2)
+	: EnvObject(pos, rot, c0, c1, c2, CAPSULE)
 	, height(h)
 	, radius(r)
 {
@@ -16,6 +16,43 @@ Capsule::~Capsule()
 {
 	delete i_obj;
 	i_obj = NULL;
+}
+
+void Capsule::writeToFile(ofstream& file)
+{
+	file << type << " ";
+	for (int i=0; i<3; i++)
+		file << position(i) << " ";
+	for (int r=0; r < 3; r++)
+  {
+    for (int c=0; c < 3; c++)
+    {
+      file << rotation(r,c) << " ";
+    }
+  }
+  file << height << " " << radius << " " << color0 << " " << color1 << " " << color2 << " ";
+  file << "\n";
+}
+
+Capsule::Capsule(ifstream& file)
+{
+	type = CAPSULE;
+  
+	for (int i=0; i<3; i++)
+		file >> position(i);
+	for (int r=0; r < 3; r++)
+  {
+    for (int c=0; c < 3; c++)
+    {
+      file >> rotation(r,c);
+    }
+  }
+  file >> height >> radius >> color0 >> color1 >> color2;
+
+	i_obj = new Intersection_Object();
+	i_obj->_radius = radius;
+  i_obj->_start_pos = position;
+  i_obj->_end_pos = position - height * rotation.col(0);
 }
 
 void Capsule::recomputeFromTransform(const Vector3d& pos, const Matrix3d& rot)

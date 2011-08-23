@@ -2,7 +2,7 @@
 #include "../threadpiece_discrete.h"
 
 InfinitePlane::InfinitePlane(const Vector3d& pos, const Vector3d& norm, float c0, float c1, float c2)
-	: EnvObject(pos, Matrix3d::Identity(), c0, c1, c2)
+	: EnvObject(pos, Matrix3d::Identity(), c0, c1, c2, INFINITE_PLANE)
 	, normal(norm)
 	, side(100.0)
 {
@@ -10,6 +10,28 @@ InfinitePlane::InfinitePlane(const Vector3d& pos, const Vector3d& norm, float c0
 }
 
 InfinitePlane::~InfinitePlane() {}
+
+void InfinitePlane::writeToFile(ofstream& file)
+{
+	file << type << " ";
+	for (int i=0; i<3; i++)
+		file << position(i) << " ";
+
+  file << normal(0) << " " << normal(1) << " " << normal(2) << " " << side << " " << color0 << " " << color1 << " " << color2 << " ";
+
+  file << "\n";
+}
+
+InfinitePlane::InfinitePlane(ifstream& file)
+{
+  type = INFINITE_PLANE;
+  
+	for (int i=0; i<3; i++)
+		file >> position(i);
+
+  file >> normal(0) >> normal(1) >> normal(2) >> side >> color0 >> color1 >> color2;
+  rotation_from_tangent(normal.normalized(), rotation);
+}
 
 void InfinitePlane::recomputeFromTransform(const Vector3d& pos, const Matrix3d& rot)
 {

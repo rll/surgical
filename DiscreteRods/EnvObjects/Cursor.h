@@ -12,6 +12,14 @@ class Cursor : public EnvObject
 		Cursor(const Vector3d& pos, const Matrix3d& rot);
 		~Cursor();
 		
+		// For saving and loading objects to and from files
+		// The following is used to link the end_eff pointer after the object has been loaded from file. Thus, end_eff_ind only needs to be updated before saving the object to file.
+		int end_eff_ind;
+		void writeToFile(ofstream& file);
+		Cursor(ifstream& file);
+		void updateIndFromPointers(World* world);
+		void linkPointersFromInd(World* world);		
+		
 		void recomputeFromTransform(const Vector3d& pos, const Matrix3d& rot);
 		void draw();
 		bool capsuleIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections);

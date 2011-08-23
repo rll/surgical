@@ -17,6 +17,12 @@ class TexturedSphere : public EnvObject
 		TexturedSphere(const Vector3d& pos, double r, string filename);
 		~TexturedSphere();
 		
+		// For saving and loading objects to and from files
+		void writeToFile(ofstream& file);
+		TexturedSphere(ifstream& file);
+		void updateIndFromPointers(World* world) {}
+		void linkPointersFromInd(World* world) {}
+		
 		void recomputeFromTransform(const Vector3d& pos, const Matrix3d& rot) {}
 		void draw();
 		bool capsuleIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections) { return false; }
@@ -26,6 +32,7 @@ class TexturedSphere : public EnvObject
 	protected:
 		double radius;
 		GLUquadric *earth;
+		string file_name;
 		
 		struct TextureHandle {
 			ILubyte *p;  /* pointer to image data loaded into memory */

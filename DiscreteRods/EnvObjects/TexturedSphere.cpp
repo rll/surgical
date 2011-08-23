@@ -3,8 +3,9 @@
 
 //textured sphere based on http://www.mfwweb.com/OpenGL/Loading_Textures/
 TexturedSphere::TexturedSphere(const Vector3d& pos, double r, string filename)
-	: EnvObject(pos, Matrix3d::Identity(), 0.6, 0.6, 0.6)
+	: EnvObject(pos, Matrix3d::Identity(), 0.6, 0.6, 0.6, TEXTURED_SPHERE)
 	, radius(r)
+	, file_name(filename)
 {
 	earth = 0;
 	ilInit();
@@ -31,6 +32,36 @@ TexturedSphere::~TexturedSphere()
     gluDeleteQuadric(earth);
   } 
   printf(" }\n");
+}
+
+void TexturedSphere::writeToFile(ofstream& file)
+{
+	file << type << " ";
+	for (int i=0; i<3; i++)
+		file << position(i) << " ";
+
+  file << radius << " " << file_name << " ";
+
+  file << "\n";
+}
+
+TexturedSphere::TexturedSphere(ifstream& file)
+{
+	rotation = Matrix3d::Identity();
+	color0 = color1 = color2 = 0.6;
+	type = TEXTURED_SPHERE;
+  
+	for (int i=0; i<3; i++)
+		file >> position(i);
+
+  file >> radius >> file_name;
+  
+  earth = 0;
+	ilInit();
+  if (! LoadImageDevIL ((char*) file_name.c_str(), &texture) )
+  	cerr << "Failed to load texture from file_name " << file_name << endl;
+  else
+  	earth = gluNewQuadric();
 }
 
 void TexturedSphere::draw()

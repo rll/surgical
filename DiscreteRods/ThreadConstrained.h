@@ -26,9 +26,11 @@
 #include "../utils/drawUtils.h"
 #include "EnvObjects/World.h"
 
-#define LIMITED_DISPLACEMENT true
-#define MAX_DISPLACEMENT 1000 //1 //(0.49*THREAD_RADIUS)
+#define LIMITED_DISPLACEMENT
+#ifdef LIMITED_DISPLACEMENT
+#define MAX_DISPLACEMENT THREAD_RADIUS //1 //(0.49*THREAD_RADIUS)
 #define MAX_ANGLE_CHANGE (M_PI/180) //in radians
+#endif
 
 //CONTOUR STUFF
 #define SCALE 1.0
@@ -59,6 +61,10 @@ class ThreadConstrained {
 		ThreadConstrained(int num_vertices_init);
 		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, Matrix3d& end_rot);
 		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot);
+		
+		void writeToFile(ofstream& file);
+		ThreadConstrained(ifstream& file);
+		
 		int numVertices() { return num_vertices; }
 		void get_thread_data(vector<Vector3d> &absolute_points);
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<double> &absolute_twist_angles);
@@ -106,9 +112,12 @@ class ThreadConstrained {
 		bool examine_mode;
 		vector<Matrix3d> rot_diff;
 		vector<Matrix3d> rot_offset;
+#ifdef LIMITED_DISPLACEMENT
 		vector<Vector3d> last_pos;
 		vector<Matrix3d> last_rot;
+#endif
     vector<int> constrained_vertices_nums;
+    object_type type;
     double contour[NUM_PTS_CONTOUR][2];
 		double contour_norms[NUM_PTS_CONTOUR][2];
     void initContour();

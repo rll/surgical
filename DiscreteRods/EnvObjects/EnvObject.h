@@ -24,6 +24,7 @@
 #include "../utils/drawUtils.h"
 #include "../Collisions/intersectionStructs.h"
 #include "../Collisions/collisionUtils.h"
+#include "World.h"
 
 using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN
@@ -34,9 +35,14 @@ class EnvObject
 public:
 
   EnvObject() {}
-  EnvObject(Vector3d pos, Matrix3d rot, float c0, float c1, float c2) { position = pos; rotation = rot; color0 = c0; color1 = c1; color2 = c2; }
-
+  EnvObject(Vector3d pos, Matrix3d rot, float c0, float c1, float c2, object_type t) { position = pos; rotation = rot; color0 = c0; color1 = c1; color2 = c2; type = t; }
+  
   virtual ~EnvObject() {}
+
+  virtual void writeToFile(ofstream& file) = 0;
+	EnvObject(ifstream& file);
+	virtual void updateIndFromPointers(World* world) = 0;
+	virtual void linkPointersFromInd(World* world) = 0;
 
   virtual void recomputeFromTransform(const Vector3d& pos, const Matrix3d& rot) = 0;
   void setTransform(const Vector3d& pos, const Matrix3d& rot) { position = pos; rotation = rot; recomputeFromTransform(pos, rot); }
@@ -46,10 +52,13 @@ public:
   virtual double capsuleRepulsionEnergy(const Vector3d& start, const Vector3d& end, const double radius) = 0;
   virtual void capsuleRepulsionEnergyGradient(const Vector3d& start, const Vector3d& end, const double radius, Vector3d& gradient) = 0;
   
+  object_type getType() { return type; }
+  
 protected:
   Vector3d position;
   Matrix3d rotation;
   float color0, color1, color2;
+  object_type type;
 };
 
 #endif // _EnvObject_h

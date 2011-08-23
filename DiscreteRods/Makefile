@@ -40,8 +40,8 @@ target: testThreadDiscrete_pickUp
 #testThreadDiscrete_phantom: testThreadDiscrete_phantom.cpp threadutils_discrete.o drawUtils.o collisionUtils.o threadpiece_discrete.o thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o
 #	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete_phantom testThreadDiscrete_phantom.cpp threadutils_discrete.o drawUtils.o collisionUtils.o threadpiece_discrete.o  thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o $(LIBS) $(PROFILER)
 
-testThreadDiscrete_pickUp: testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o World.o Capsule.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o thread_socket_interface.o UDPSocket.o Socket.o
-	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete_pickUp testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o World.o Capsule.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o thread_socket_interface.o UDPSocket.o Socket.o $(LIBS) $(PROFILER)
+testThreadDiscrete_pickUp: testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o World.o Capsule.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o thread_socket_interface.o UDPSocket.o Socket.o ObjectTrajectoryRecorder.o ObjectTrajectoryReader.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete_pickUp testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o World.o Capsule.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o thread_socket_interface.o UDPSocket.o Socket.o ObjectTrajectoryRecorder.o ObjectTrajectoryReader.o $(LIBS) $(PROFILER)
 
 recordThreadVideo: recordThreadVideo.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_reader.o
 	$(LD) $(INCLUDES) $(VISION_INCLUDES) $(DEBUG) -o recordThreadVideo recordThreadVideo.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o $(LIBS) $(VISION_LIBS)
@@ -108,6 +108,12 @@ imageloader.o: $(UTILS_DIR)/imageloader.cpp
 	
 collisionUtils.o: $(COLLISIONS_DIR)/collisionUtils.cpp
 	$(CC) $(INCLUDES) $(DEBUG) -c $(COLLISIONS_DIR)/collisionUtils.cpp $(PROFILER)
+	
+ObjectTrajectoryRecorder.o: ObjectTrajectoryRecorder.cpp
+	$(CC) $(INCLUDES) $(DEBUG) -c ObjectTrajectoryRecorder.cpp $(PROFILER)
+	
+ObjectTrajectoryReader.o: ObjectTrajectoryReader.cpp
+	$(CC) $(INCLUDES) $(DEBUG) -c ObjectTrajectoryReader.cpp $(PROFILER)
 
 
 thread_discrete_noniso.o: thread_discrete.cpp thread_discrete.h

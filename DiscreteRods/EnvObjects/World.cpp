@@ -1,4 +1,5 @@
 #include "World.h"
+#include "EnvObject.h"
 #include "../ThreadConstrained.h"
 
 World::World()
@@ -20,6 +21,16 @@ void World::addEnvObj(EnvObject* obj) {	objs.push_back(obj); }
 vector<EnvObject*>* World::getEnvObjs()
 {
 	return &objs;
+}
+
+vector<EnvObject*> World::getEnvObjs(object_type type)
+{
+	vector<EnvObject*> objs_of_type;
+	for (int i=0; i<objs.size(); i++) {
+		if (objs[i]->getType() == type)
+			objs_of_type.push_back(objs[i]);
+	}
+	return objs_of_type;
 }
 
 vector<ThreadConstrained*>* World::getThreads()

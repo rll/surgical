@@ -40,8 +40,10 @@
 
 #endif
 
-#define DEFAULT_REST_LENGTH 5 /*default rest length for each threadpiece*/
-#define LENGTH_THRESHHOLD 0.5 /*we must be this much shorter than the total length */
+#define DEFAULT_REST_LENGTH 4 	/*default rest length for each threadpiece*/
+#define LENGTH_THRESHHOLD 0.5 	/*we must be this much shorter than the total length */
+#define FIRST_REST_LENGTH 1.2 	/*rest length for the first threadpiece. currently the radius of the end effectors. */
+#define SECOND_REST_LENGTH 2.0 	/*rest length for the second threadpiece*/
 
 #define REFINE_THRESHHOLD 145.0			// maximun angle (in degrees) between this piece and its two neighbors before this piece gets split
 																		// increase this for merging to be easier
@@ -78,7 +80,10 @@ class Thread
     Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, const double rest_length);
     Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot);
     Thread(const Thread& rhs);
+    Thread(ifstream& file);
     virtual ~Thread();
+    
+    void writeToFile(ofstream& file);
 
     //getting thread configuration
     void get_thread_data(vector<Vector3d>& points);
