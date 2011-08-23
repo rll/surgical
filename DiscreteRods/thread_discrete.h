@@ -22,7 +22,7 @@
     #define MIN_ROTATION_TWIST (M_PI/1000.0)
     
     #define ENERGY_FOR_CONVERGENCE 1e-8 //speedy at 1e-5
-    #define NUM_MAX_ITERS 10000 //speedy at 6000
+    #define NUM_MAX_ITERS 40000 //speedy at 6000
 #else
 
     #define MAX_MOVEMENT_VERTICES 0.2

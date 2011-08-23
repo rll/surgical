@@ -1169,7 +1169,7 @@ void updateThreadPoints()
 
 void initThread()
 {
-  int numInit = 3;//(3*3)/DEFAULT_REST_LENGTH;
+  int numInit = 40;//(3*3)/DEFAULT_REST_LENGTH;
   double noise_factor = 0.0;
 
 	double end_length = DEFAULT_REST_LENGTH;

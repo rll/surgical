@@ -548,10 +548,11 @@ double Thread::calculate_energy()
 	double energy = _thread_pieces[2]->get_twist_coeff() * (pow(end_angle() - start_angle(),2)) / (2.0*total_length() - start_rest_length() - end_rest_length());
 	
 	//std::cout << _thread_pieces[2]->get_twist_coeff() << " " << _thread_pieces.size() << " " << _thread_pieces[_thread_pieces.size()-2]->angle_twist() << " " << _thread_pieces.front()->angle_twist() << " " << 2.0*_rest_length*(_thread_pieces.size()-2) << std::endl;
-
+#pragma omp parallel for num_threads(NUM_CPU_THREADS) reduction(+ : energy) 
   for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
-    energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav() + _thread_pieces[piece_ind]->energy_stretch() + _thread_pieces[piece_ind]->energy_repulsion();
+    energy = energy + _thread_pieces[piece_ind]->energy();
+    //energy = energy + _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav() + _thread_pieces[piece_ind]->energy_stretch() + _thread_pieces[piece_ind]->energy_repulsion();
   }
   return energy;
 #else
@@ -2281,7 +2282,7 @@ bool Thread::project_length_constraint(int recursive_depth)
 
   const int num_iters_project = 50;
   const double projection_scale_factor = 1.0;
-  const double max_norm_to_break = 1e-2;
+  const double max_norm_to_break = 5e-2;
 
 
   //quick check to see if we can avoid calling this function

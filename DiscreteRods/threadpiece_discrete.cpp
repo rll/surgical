@@ -129,7 +129,7 @@ double ThreadPiece::energy_repulsion()
     cout << "Internal error: ThreadPiece::energy_repulsion: this piece is not in _my_thread->_thread_pieces." << endl;
 
   double dt = 1;
-  double M =  50;
+  double M = 0.01;
 
   double energy = 0;
 
@@ -290,7 +290,7 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
   
 
   double dt = 1;
-  double M =  50;
+  double M = 0.01;
 
   int piece_ind;
   for (piece_ind=0; piece_ind<_my_thread->_thread_pieces.size() && _my_thread->_thread_pieces[piece_ind]!=this; piece_ind++) {}
