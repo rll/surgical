@@ -60,7 +60,7 @@ void ThreadPiece::set_vertex(const Vector3d& vertex)
 
 double ThreadPiece::energy()
 {
-  return energy_curvature() + energy_twist() + energy_grav(); // + energy_stretch();
+  return energy_curvature() + energy_twist() + energy_grav() + energy_stretch() + energy_repulsion();
 }
 
 //not defined for first or last piece
@@ -110,11 +110,57 @@ double ThreadPiece::energy_twist()
 //not defined for first or last piece
 double ThreadPiece::energy_stretch()
 {
+  if (STRETCH_COEFF<=0)
+  	return 0.0;
   if (_next_piece == NULL)
     return 0.0;
   //std::cout << "energy stretch: " << STRETCH_COEFF*(edge_after.norm() - (my_thread->rest_length())) << std::endl;
-  return STRETCH_COEFF*abs(_edge_norm - _rest_length);
+  return STRETCH_COEFF/2.0 * pow(_edge_norm/_rest_length - 1.0, 2.0) * _rest_length;
+}
 
+double ThreadPiece::energy_repulsion()
+{
+  if (REPULSION_COEFF<=0)
+  	return 0.0;
+  int piece_ind;
+  for (piece_ind=0; piece_ind<_my_thread->_thread_pieces.size() && _my_thread->_thread_pieces[piece_ind]!=this; piece_ind++) {}
+	if (piece_ind==_my_thread->_thread_pieces.size())
+		cout << "Internal error: ThreadPiece::energy_repulsion: this piece is not in _my_thread->_thread_pieces." << endl;
+
+	double energy = 0;
+	
+	if (piece_ind > 0 && piece_ind < (_my_thread->_thread_pieces.size() - 2)) {
+		for (int other_ind = 1; other_ind < _my_thread->_thread_pieces.size() - 2; other_ind++) {
+			if (other_ind == (piece_ind - 1) || other_ind == piece_ind || other_ind == (piece_ind + 1))
+				continue;
+			Vector3d direction;
+			double dist = _my_thread->self_intersection(piece_ind, other_ind, THREAD_RADIUS, direction);
+			if (dist < 0 || dist > THREAD_RADIUS)
+				continue;
+			double overlap = (THREAD_RADIUS - dist);
+			//energy += REPULSION_COEFF/2.0 * pow(dist/THREAD_RADIUS-1,2) * THREAD_RADIUS;
+			energy += REPULSION_COEFF/2.0 * pow(dist-THREAD_RADIUS,2);
+		}
+		if (_my_thread->world != NULL)
+			energy += _my_thread->world->capsuleObjectRepulsionEnergy(_my_thread->_thread_pieces[piece_ind]->vertex(), _my_thread->_thread_pieces[piece_ind+1]->vertex(), THREAD_RADIUS);
+	}
+	piece_ind--;
+	if (piece_ind > 0 && piece_ind < (_my_thread->_thread_pieces.size() - 2)) {
+		for (int other_ind = 1; other_ind < _my_thread->_thread_pieces.size() - 2; other_ind++) {
+			if (other_ind == (piece_ind - 1) || other_ind == piece_ind || other_ind == (piece_ind + 1))
+				continue;
+			Vector3d direction;
+			double dist = _my_thread->self_intersection(piece_ind, other_ind, THREAD_RADIUS, direction);
+			if (dist < 0 || dist > THREAD_RADIUS)
+				continue;
+			double overlap = (THREAD_RADIUS - dist);
+			//energy += REPULSION_COEFF/2.0 * pow(dist/THREAD_RADIUS-1,2) * THREAD_RADIUS;
+			energy += REPULSION_COEFF/2.0 * pow(dist-THREAD_RADIUS,2);
+		}
+		if (_my_thread->world != NULL)
+			energy += _my_thread->world->capsuleObjectRepulsionEnergy(_my_thread->_thread_pieces[piece_ind]->vertex(), _my_thread->_thread_pieces[piece_ind+1]->vertex(), THREAD_RADIUS);
+	}
+  return energy;
 }
 
 double ThreadPiece::energy_grav()
@@ -232,7 +278,58 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
 	grad += (2.0*BEND_COEFF/(_prev_piece->_rest_length + _rest_length))*(-del_kb_i_im1-del_kb_i_ip1).transpose()*_curvature_binormal - beta_angle_diff_over_L*(-del_psi_i_im1-del_psi_i_ip1);
 
 	grad += Vector3d::UnitZ()*GRAV_COEFF;
-
+	
+  int piece_ind;
+  for (piece_ind=0; piece_ind<_my_thread->_thread_pieces.size() && _my_thread->_thread_pieces[piece_ind]!=this; piece_ind++) {}
+	if (piece_ind==_my_thread->_thread_pieces.size())
+		cout << "Internal error: ThreadPiece::energy_repulsion: this piece is not in _my_thread->_thread_pieces." << endl;
+	
+	if (STRETCH_COEFF > 0.0) {
+		double factor;
+		if (piece_ind == (_my_thread->_thread_pieces.size()-3) ||	piece_ind == 2)
+			factor = 0.25;
+		else
+			factor = 1.0;
+		if (piece_ind < _my_thread->_thread_pieces.size()-2)
+			grad -= factor * STRETCH_COEFF * (_edge_norm/_rest_length - 1.0) * _edge.normalized();
+		if (piece_ind > 1)
+			grad += factor * STRETCH_COEFF * (_prev_piece->_edge_norm/_prev_piece->_rest_length - 1.0) * _prev_piece->_edge.normalized();
+	}
+	/*
+	if (REPULSION_COEFF > 0.0) {
+		if (piece_ind > 0 && piece_ind < (_my_thread->_thread_pieces.size() - 2)) {
+			for (int other_ind = 1; other_ind < _my_thread->_thread_pieces.size() - 2; other_ind++) {
+				if (other_ind == (piece_ind - 1) || other_ind == piece_ind || other_ind == (piece_ind + 1))
+					continue;
+				Vector3d direction;
+				double dist = _my_thread->self_intersection(piece_ind, other_ind, THREAD_RADIUS, direction);
+				if (dist < 0 || dist > THREAD_RADIUS)
+					continue;
+				double overlap = (THREAD_RADIUS - dist);
+				//double overlap = 1/pow(dist,4);
+				grad -= REPULSION_COEFF * overlap * direction.normalized();
+			}
+			if (_my_thread->world != NULL)
+				_my_thread->world->capsuleObjectRepulsionEnergyGradient(_my_thread->_thread_pieces[piece_ind]->vertex(), _my_thread->_thread_pieces[piece_ind+1]->vertex(), THREAD_RADIUS, grad);
+		}
+		piece_ind--;
+		if (piece_ind > 0 && piece_ind < (_my_thread->_thread_pieces.size() - 2)) {
+			for (int other_ind = 1; other_ind < _my_thread->_thread_pieces.size() - 2; other_ind++) {
+				if (other_ind == (piece_ind - 1) || other_ind == piece_ind || other_ind == (piece_ind + 1))
+					continue;
+				Vector3d direction;
+				double dist = _my_thread->self_intersection(piece_ind, other_ind, THREAD_RADIUS, direction);
+				if (dist < 0 || dist > THREAD_RADIUS)
+					continue;
+				double overlap = (THREAD_RADIUS - dist);
+				//double overlap = 1/pow(dist,4);
+				grad -= REPULSION_COEFF * overlap * direction.normalized();
+			}
+			if (_my_thread->world != NULL)
+				_my_thread->world->capsuleObjectRepulsionEnergyGradient(_my_thread->_thread_pieces[piece_ind]->vertex(), _my_thread->_thread_pieces[piece_ind+1]->vertex(), THREAD_RADIUS, grad);
+		}
+	}
+	*/
 #else
   grad.setZero();
 

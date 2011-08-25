@@ -48,7 +48,7 @@ void connectionInit() {
 	sender.set_timeout(0);    
 }
 
-void getDeviceState (Vector3d& start_proxy_pos, Matrix3d& start_proxy_rot, bool start_proxybutton[], Vector3d& end_proxy_pos, Matrix3d& end_proxy_rot, bool end_proxybutton[]) {
+bool getDeviceState (Vector3d& start_proxy_pos, Matrix3d& start_proxy_rot, bool start_proxybutton[], Vector3d& end_proxy_pos, Matrix3d& end_proxy_rot, bool end_proxybutton[]) {
   if (receiver.recv(buf)) {
     while (receiver.recv(buf));
     
@@ -96,7 +96,10 @@ void getDeviceState (Vector3d& start_proxy_pos, Matrix3d& start_proxy_rot, bool 
     start_proxybutton[1] = boost::lexical_cast<int>(vect1[17].c_str());
     end_proxybutton[0]  = boost::lexical_cast<int>(vect2[16].c_str());
     end_proxybutton[1]  = boost::lexical_cast<int>(vect2[17].c_str());
+    
+    return true;
   }
+  return false;
 }
 
 void sendDeviceState (const Vector3d& start_feedback_pos, bool start_feedback_enabled, const Vector3d& end_feedback_pos, bool end_feedback_enabled) {

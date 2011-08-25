@@ -21,12 +21,10 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <math.h>
-#include "thread_discrete.h"
-#include "drawutils.h"
 
-#define LIMITED_DISPLACEMENT false
-#define MAX_DISPLACEMENT 1 //(0.49*THREAD_RADIUS)
-#define MAX_ANGLE_CHANGE (0.05*M_PI)
+#include "threadutils_discrete.h"
+#include "../utils/drawUtils.h"
+#include "EnvObjects/World.h"
 
 //CONTOUR STUFF
 #define SCALE 1.0
@@ -50,9 +48,18 @@
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
+class Thread;
+
 class ThreadConstrained {
 	public:
-		ThreadConstrained(int vertices_num);
+		ThreadConstrained(int num_vertices_init);
+		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, Matrix3d& end_rot);
+		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot);
+		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot);
+		
+		void writeToFile(ofstream& file);
+		ThreadConstrained(ifstream& file);
+		
 		int numVertices() { return num_vertices; }
 		void get_thread_data(vector<Vector3d> &absolute_points);
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<double> &absolute_twist_angles);
@@ -61,6 +68,7 @@ class ThreadConstrained {
 		// parameters have to be of the right size, i.e. threads.size()+1
 		void getConstrainedTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations);
 		void setConstrainedTransforms(vector<Vector3d> positions, vector<Matrix3d> rotations);
+		void setConstrainedTransforms(int constraint_int, Vector3d position, Matrix3d rotation);
 		void getAllTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations);
 		void setAllTransforms(vector<Vector3d> positions, vector<Matrix3d> rotations);
 		// parameters have to be of the right size.
@@ -87,18 +95,20 @@ class ThreadConstrained {
 		Vector3d position(int absolute_vertex_num);
 		Matrix3d rotation(int absolute_vertex_num);
 		void draw();
+		void setWorld(World* w);
+		vector<Thread*>* getThreads() { return &threads; }
 		void toggleExamineMode();
 
 	private:
 		int num_vertices;
 		vector<Thread*> threads;
 		double zero_angle;
+		World* world;
 		bool examine_mode;
 		vector<Matrix3d> rot_diff;
 		vector<Matrix3d> rot_offset;
-		vector<Vector3d> last_pos;
-		vector<Matrix3d> last_rot;
     vector<int> constrained_vertices_nums;
+    object_type type;
     double contour[NUM_PTS_CONTOUR][2];
 		double contour_norms[NUM_PTS_CONTOUR][2];
     void initContour();
