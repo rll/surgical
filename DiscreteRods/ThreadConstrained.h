@@ -26,12 +26,6 @@
 #include "../utils/drawUtils.h"
 #include "EnvObjects/World.h"
 
-#define LIMITED_DISPLACEMENT
-#ifdef LIMITED_DISPLACEMENT
-#define MAX_DISPLACEMENT THREAD_RADIUS //1 //(0.49*THREAD_RADIUS)
-#define MAX_ANGLE_CHANGE (M_PI/180) //in radians
-#endif
-
 //CONTOUR STUFF
 #define SCALE 1.0
 #define CONTOUR(x,y) {					\
@@ -113,10 +107,6 @@ class ThreadConstrained {
 		bool examine_mode;
 		vector<Matrix3d> rot_diff;
 		vector<Matrix3d> rot_offset;
-#ifdef LIMITED_DISPLACEMENT
-		vector<Vector3d> last_pos;
-		vector<Matrix3d> last_rot;
-#endif
     vector<int> constrained_vertices_nums;
     object_type type;
     double contour[NUM_PTS_CONTOUR][2];

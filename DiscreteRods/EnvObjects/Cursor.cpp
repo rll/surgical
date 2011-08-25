@@ -35,7 +35,7 @@ void Cursor::writeToFile(ofstream& file)
       file << rotation(r,c) << " ";
     }
   }
-  file << (double)end_eff_ind << " ";
+  file << (double)end_eff_ind << " " << open << " ";
   file << "\n";
 }
 
@@ -45,8 +45,6 @@ Cursor::Cursor(ifstream& file)
 	, height(3)
 	, radius(2)
 	,	attach_dettach_attempt(false)
-	, open(false)
-	, last_open(false)
 {
 	
   color0 = color1 = color2 = 0.0;
@@ -63,7 +61,8 @@ Cursor::Cursor(ifstream& file)
     }
   }
   
-  file >> end_eff_ind;
+  file >> end_eff_ind >> open;
+  last_open = open;
 
 	i_obj = new Intersection_Object();
 	i_obj->_radius = radius;
@@ -107,10 +106,11 @@ void Cursor::recomputeFromTransform(const Vector3d& pos, const Matrix3d& rot)
 
 void Cursor::draw()
 {
-	Vector3d before_mid_point = i_obj->_start_pos + (2.0/5.0)*(i_obj->_end_pos - i_obj->_start_pos);
-	Vector3d after_mid_point = i_obj->_start_pos + (3.0/5.0)*(i_obj->_end_pos - i_obj->_start_pos);
+	const Vector3d before_mid_point = i_obj->_start_pos + (2.0/6.0)*(i_obj->_end_pos - i_obj->_start_pos);
+	const Vector3d after_mid_point = i_obj->_start_pos + (4.0/6.0)*(i_obj->_end_pos - i_obj->_start_pos);
 	drawCylinder(i_obj->_start_pos, before_mid_point, i_obj->_radius, isAttached()?0.0:0.5, isAttached()?0.5:0.0, 0.0);
-	drawCylinder(before_mid_point, after_mid_point, i_obj->_radius, 0.0, 0.0, 0.4);
+	drawCylinder(before_mid_point, (before_mid_point+after_mid_point)/2.0, i_obj->_radius, 0.0, 0.0, 0.0);
+	drawCylinder((before_mid_point+after_mid_point)/2.0, after_mid_point, i_obj->_radius, 1.0, 1.0, 1.0);
 	drawCylinder(after_mid_point, i_obj->_end_pos, i_obj->_radius, open?0.0:0.5, open?0.5:0.0, 0.0);
 	drawSphere(i_obj->_start_pos, i_obj->_radius, isAttached()?0.0:0.5, isAttached()?0.5:0.0, 0.0);
 	drawSphere(i_obj->_end_pos, i_obj->_radius, open?0.0:0.5, open?0.5:0.0, 0.0);

@@ -2,6 +2,7 @@
 #include "../threadpiece_discrete.h"
 
 //textured sphere based on http://www.mfwweb.com/OpenGL/Loading_Textures/
+//Image should be saved as BMP 24 bits R8 G8 B8, RGB mode
 TexturedSphere::TexturedSphere(const Vector3d& pos, double r, string filename)
 	: EnvObject(pos, Matrix3d::Identity(), 0.6, 0.6, 0.6, TEXTURED_SPHERE)
 	, radius(r)
@@ -18,20 +19,12 @@ TexturedSphere::TexturedSphere(const Vector3d& pos, double r, string filename)
 TexturedSphere::~TexturedSphere()
 {
   //  Clear out the memory used by loading image files.
-  printf("cleanup image memory:{");
-  if (texture.id) {
-    printf(" %d",texture.id); 
+  if (texture.id)
     ilDeleteImages(1, &texture.id);
-  }
-  printf(" }\n");
 
 	//  Clear out the memory created by gluNewQuadric() calls.
-  printf("cleanup gluQuadric memory:{");
-  if (earth) {
-    printf(" %p",earth); 
-    gluDeleteQuadric(earth);
-  } 
-  printf(" }\n");
+  if (earth)
+    gluDeleteQuadric(earth); 
 }
 
 void TexturedSphere::writeToFile(ofstream& file)
@@ -132,6 +125,6 @@ ILuint TexturedSphere::LoadImageDevIL (char *szFileName, struct TextureHandle *T
     T->w = ilGetInteger(IL_IMAGE_WIDTH);
     T->h = ilGetInteger(IL_IMAGE_HEIGHT);
     
-    printf("%s %d %d %d\n",szFileName,T->id,T->w,T->h);
+    //printf("%s %d %d %d\n",szFileName,T->id,T->w,T->h);
     return 1; // success
 }

@@ -30,6 +30,7 @@ EndEffector::EndEffector(const Vector3d& pos, const Matrix3d& rot)
   	i_objs.push_back(tip_piece);
 	}
 	
+	setLimitDisplacement(false);
 	recomputeFromTransform(pos, rot);
 }
 
@@ -98,6 +99,7 @@ EndEffector::EndEffector(ifstream& file)
   	i_objs.push_back(tip_piece);
 	}
 	
+  setLimitDisplacement(false);
 	recomputeFromTransform(position, rotation);
 }
 
@@ -147,11 +149,51 @@ void EndEffector::linkPointersFromInd(World* world)
 		if (attachment_ind < 0 || attachment_ind >= cursors.size())
 			cout << "Internal error: EndEffector::linkPointersFromInd: attachment_ind is out of bounds." << endl;
 		attachment = dynamic_cast<Cursor*>(cursors[attachment_ind]);
+		degrees = attachment->isOpen() ? 15.0 : 0.0;
+		recomputeFromTransform(position, rotation); //this is needed because of the change in degrees
+	}
+}
+
+void EndEffector::setLimitDisplacement(bool limit, double maximun_displacement, double maximun_angle_change)
+{
+	if (limit) {
+		last_position = position;
+		last_rotation = rotation;
+		max_displacement = maximun_displacement;
+		max_angle_change = maximun_angle_change;
+	}
+	limit_displacement = limit;
+}
+
+void EndEffector::forceSetTransform(const Vector3d& pos, const Matrix3d& rot)
+{
+	if (!limit_displacement) {
+		setTransform(pos, rot);
+	} else {
+		setLimitDisplacement(false);
+		setTransform(pos, rot);
+		setLimitDisplacement(true);
 	}
 }
 
 void EndEffector::recomputeFromTransform(const Vector3d& pos, const Matrix3d& rot)
 {
+	if (limit_displacement) {
+		double displacement = (pos-last_position).norm();
+		double angle_change	= 2*asin((rot.col(0) - last_rotation.col(0)).norm()/2);
+		Quaterniond new_q(rot);
+		Quaterniond last_q(last_rotation);
+		if (displacement > max_displacement) {
+			position = last_position + (max_displacement/displacement) * (pos-last_position);
+		}
+		if (angle_change > max_angle_change) {
+			Quaterniond interp_q = last_q.slerp(max_angle_change/angle_change, new_q);
+			rotation = interp_q.toRotationMatrix(); 
+		}
+		last_position = position;
+		last_rotation = rotation;
+	}
+	
 	if (attachment != NULL) {
 		degrees = attachment->isOpen() ? 15.0 : 0.0;
 	} else
@@ -160,22 +202,22 @@ void EndEffector::recomputeFromTransform(const Vector3d& pos, const Matrix3d& ro
 	Vector3d end_pos;
 	Vector3d new_pos;
 	Matrix3d new_rot;
-	Matrix3d open_rot = (Matrix3d) AngleAxisd(-degrees*M_PI/180, rot*Vector3d::UnitZ());
+	Matrix3d open_rot = (Matrix3d) AngleAxisd(-degrees*M_PI/180, rotation*Vector3d::UnitZ());
 	
-	start_pos = rot * Vector3d(grab_offset-3.0, 0.0, 0.0) + pos;
-	end_pos = rot * Vector3d(grab_offset, 0.0, 0.0) + pos;
+	start_pos = rotation * Vector3d(grab_offset-3.0, 0.0, 0.0) + position;
+	end_pos = rotation * Vector3d(grab_offset, 0.0, 0.0) + position;
 	i_objs[0]->_start_pos = start_pos;
 	i_objs[0]->_end_pos 	= end_pos;
 	
-	start_pos = rot * Vector3d(end, 0.0, 0.0) + pos;
-	end_pos = rot * Vector3d(end+30.0, 0.0, 0.0) + pos;
+	start_pos = rotation * Vector3d(end, 0.0, 0.0) + position;
+	end_pos = rotation * Vector3d(end+30.0, 0.0, 0.0) + position;
 	i_objs[1]->_start_pos = start_pos;
 	i_objs[1]->_end_pos 	= end_pos;
 	
 	for (int piece=0; piece<pieces; piece++) {
 		double r = i_objs[piece+pieces+2]->_radius;
-		new_rot = open_rot * rot;
-		new_pos = open_rot * rot * Vector3d(-end, 0.0, 0.0) + rot * Vector3d(end, 0.0, 0.0) + pos;
+		new_rot = open_rot * rotation;
+		new_pos = open_rot * rotation * Vector3d(-end, 0.0, 0.0) + rotation * Vector3d(end, 0.0, 0.0) + position;
 		start_pos = new_rot * Vector3d(start+((double) piece)*h, r, 0.0) + new_pos;
 		end_pos = new_rot * Vector3d(start+((double) piece+1)*h, r, 0.0) + new_pos;
  		i_objs[piece+2]->_start_pos = start_pos;
@@ -184,8 +226,8 @@ void EndEffector::recomputeFromTransform(const Vector3d& pos, const Matrix3d& ro
 	
 	for (int piece=0; piece<pieces; piece++) {
 		double r = i_objs[piece+pieces+2]->_radius;
-		new_rot = open_rot.transpose() * rot;
-		new_pos = open_rot.transpose() * rot * Vector3d(-end, 0.0, 0.0) + rot * Vector3d(end, 0.0, 0.0) + pos;
+		new_rot = open_rot.transpose() * rotation;
+		new_pos = open_rot.transpose() * rotation * Vector3d(-end, 0.0, 0.0) + rotation * Vector3d(end, 0.0, 0.0) + position;
 		start_pos = new_rot * Vector3d(start+((double) piece)*h, -r, 0.0) + new_pos;
 		end_pos = new_rot * Vector3d(start+((double) piece+1)*h, -r, 0.0) + new_pos;
   	i_objs[piece+pieces+2]->_start_pos = start_pos;

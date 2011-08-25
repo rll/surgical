@@ -35,7 +35,14 @@ class EnvObject
 public:
 
   EnvObject() {}
-  EnvObject(Vector3d pos, Matrix3d rot, float c0, float c1, float c2, object_type t) { position = pos; rotation = rot; color0 = c0; color1 = c1; color2 = c2; type = t; }
+  EnvObject(Vector3d pos, Matrix3d rot, float c0, float c1, float c2, object_type t) 
+    : position(pos)
+    , rotation(rot)
+    , color0(c0)
+    , color1(c1)
+    , color2(c2)
+    , type(t)
+  {}
   
   virtual ~EnvObject() {}
 
@@ -45,8 +52,37 @@ public:
 	virtual void linkPointersFromInd(World* world) = 0;
 
   virtual void recomputeFromTransform(const Vector3d& pos, const Matrix3d& rot) = 0;
-  void setTransform(const Vector3d& pos, const Matrix3d& rot) { position = pos; rotation = rot; recomputeFromTransform(pos, rot); }
-	void setColor(float c0, float c1, float c2) { color0 = c0; color1 = c1; color2 = c2; }
+  
+  void setTransform(const Vector3d& pos, const Matrix3d& rot)
+  { 
+    position = pos; 
+    rotation = rot; 
+    recomputeFromTransform(pos, rot);
+  }
+  
+	void setColor(float c0, float c1, float c2)
+	{ 
+	  color0 = c0;
+	  color1 = c1;
+	  color2 = c2;
+	}
+	
+	void getTransform(Vector3d& pos, Matrix3d& rot)
+  {
+  	pos = position;
+  	rot = rotation;
+  }
+  
+  const Vector3d& getPosition() const
+  {
+  	return position;
+  }
+
+  const Matrix3d& getRotation() const
+  {
+  	return rotation;
+  }
+  
   virtual void draw() = 0;
   virtual bool capsuleIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections) = 0;
   virtual double capsuleRepulsionEnergy(const Vector3d& start, const Vector3d& end, const double radius) = 0;

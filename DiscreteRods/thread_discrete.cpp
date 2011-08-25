@@ -718,7 +718,8 @@ double Thread::calculate_energy()
 			for(int i = 2; i < _thread_pieces.size() - 3; i++)
 				energy += world->capsuleObjectRepulsionEnergy(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS);
 	}
-
+	
+//#pragma omp parallel for num_threads(NUM_CPU_THREADS) reduction(+ : energy)
   for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
     energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav() + _thread_pieces[piece_ind]->energy_stretch();
@@ -934,8 +935,8 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
      }
   */
 	
-	//if (opt_iter!=-1)
-		//std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
+	if (opt_iter!=-1)
+		std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
 	
 	return (opt_iter != num_opt_iters);
 } // end minimize_energy
@@ -1108,8 +1109,8 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
 		}
   }
   
-  if (found || obj_intersection)
-  	cout << "intersections. obj_intersection = " << obj_intersection << endl;
+  //if (found || obj_intersection)
+  //	cout << "intersections. obj_intersection = " << obj_intersection << endl;
 
   return found;
 }

@@ -13,6 +13,11 @@ class EndEffector : public EnvObject
 	//protected:	
 	public:	
 		vector<Intersection_Object*> i_objs;
+		bool limit_displacement;
+		double max_displacement;
+		double max_angle_change;
+		Vector3d last_position;
+		Matrix3d last_rotation;
 		float degrees;				// The opening angle of the end of the end effector.
 	
 	public:
@@ -32,6 +37,9 @@ class EndEffector : public EnvObject
 		EndEffector(ifstream& file);
 		void updateIndFromPointers(World* world);
 		void linkPointersFromInd(World* world);
+		
+		void setLimitDisplacement(bool limit, double limit_displacement = 0.2, double limit_angle_change = M_PI/180.0);
+		void forceSetTransform(const Vector3d& pos, const Matrix3d& rot);
 		
 		void recomputeFromTransform(const Vector3d& pos, const Matrix3d& rot);
 		void draw();

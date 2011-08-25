@@ -15,12 +15,7 @@ ThreadConstrained::ThreadConstrained(vector<Vector3d>& vertices, vector<double>&
 	for (int i=0; i<num_vertices-2; i++)
 		rot_offset.push_back((Matrix3d) (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
 	rot_offset.push_back(Matrix3d::Identity());
-#ifdef LIMITED_DISPLACEMENT
-	last_pos.push_back(vertices.front());
-	last_pos.push_back(vertices.back());
-	last_rot.push_back(threads[0]->start_rot() * rot_offset.front().transpose());
-	last_rot.push_back(threads[0]->end_rot() * rot_offset.back().transpose());
-#endif
+
 	constrained_vertices_nums.push_back(0);
 	constrained_vertices_nums.push_back(num_vertices-1);
 	
@@ -45,12 +40,7 @@ ThreadConstrained::ThreadConstrained(vector<Vector3d>& vertices, vector<double>&
 	for (int i=0; i<num_vertices-2; i++)
 		rot_offset.push_back((Matrix3d) (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
 	rot_offset.push_back(Matrix3d::Identity());
-#ifdef LIMITED_DISPLACEMENT
-	last_pos.push_back(vertices.front());
-	last_pos.push_back(vertices.back());
-	last_rot.push_back(threads[0]->start_rot() * rot_offset.front().transpose());
-	last_rot.push_back(threads[0]->end_rot() * rot_offset.back().transpose());
-#endif
+
 	constrained_vertices_nums.push_back(0);
 	constrained_vertices_nums.push_back(num_vertices-1);
 	
@@ -75,12 +65,7 @@ ThreadConstrained::ThreadConstrained(vector<Vector3d>& vertices, vector<double>&
 	for (int i=0; i<num_vertices-2; i++)
 		rot_offset.push_back((Matrix3d) (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
 	rot_offset.push_back(Matrix3d::Identity());
-#ifdef LIMITED_DISPLACEMENT
-	last_pos.push_back(vertices.front());
-	last_pos.push_back(vertices.back());
-	last_rot.push_back(threads[0]->start_rot() * rot_offset.front().transpose());
-	last_rot.push_back(threads[0]->end_rot() * rot_offset.back().transpose());
-#endif
+
 	constrained_vertices_nums.push_back(0);
 	constrained_vertices_nums.push_back(num_vertices-1);
 	
@@ -157,12 +142,7 @@ ThreadConstrained::ThreadConstrained(int num_vertices_init) {
 	for (int i=0; i<num_vertices-2; i++)
 		rot_offset.push_back((Matrix3d) (AngleAxisd(0.5*M_PI, Vector3d::UnitZ())));
 	rot_offset.push_back(Matrix3d::Identity());
-#ifdef LIMITED_DISPLACEMENT
-	last_pos.push_back(vertices.front());
-	last_pos.push_back(vertices.back());
-	last_rot.push_back(threads[0]->start_rot() * rot_offset.front().transpose());
-	last_rot.push_back(threads[0]->end_rot() * rot_offset.back().transpose());
-#endif
+
 	constrained_vertices_nums.push_back(0);
 	constrained_vertices_nums.push_back(num_vertices_init-1);
 	
@@ -217,22 +197,6 @@ void ThreadConstrained::writeToFile(ofstream& file)
 		  for (int c=0; c < 3; c++)
 		    file << rot_offset[i](r,c) << " ";
 
-#ifdef LIMITED_DISPLACEMENT
-	file << 1 << " ";
-
-	file << last_pos.size() << " ";
-	for (int k=0; k<last_pos.size(); k++)
-		for (int i=0; i<3; i++)
-			file << last_pos[k](i) << " ";
-
-	file << last_rot.size() << " ";
-	for (int i=0; i<last_rot.size(); i++)
-		for (int r=0; r < 3; r++)
-		  for (int c=0; c < 3; c++)
-		    file << last_rot[i](r,c) << " ";
-#else
-	file << 0 << " ";
-#endif
 	file << constrained_vertices_nums.size() << " ";
 	for (int k=0; k<constrained_vertices_nums.size(); k++)
 		file << constrained_vertices_nums[k] << " ";
@@ -248,6 +212,7 @@ ThreadConstrained::ThreadConstrained(ifstream& file)
 
 	int size;
 	file >> size;
+
 	threads.resize(size);
 	//write each point for each thread
   for (int i=0; i < threads.size(); i++)
@@ -289,43 +254,6 @@ ThreadConstrained::ThreadConstrained(ifstream& file)
 		for (int r=0; r < 3; r++)
 		  for (int c=0; c < 3; c++)
 		    file >> rot_offset[i](r,c);
-
-	bool limited_displacement;
-	file >> limited_displacement;
-#ifdef LIMITED_DISPLACEMENT
-	if (limited_displacement) {
-		file >> size;
-		last_pos.resize(size);
-		for (int k=0; k<last_pos.size(); k++)
-			for (int i=0; i<3; i++)
-				file >> last_pos[k](i);
-
-		file >> size;
-		last_rot.resize(size);
-		for (int i=0; i<last_rot.size(); i++)
-			for (int r=0; r < 3; r++)
-				for (int c=0; c < 3; c++)
-				  file >> last_rot[i](r,c);
-	} else {
-		cout << "Internal error: the versions of LIMITED_DISPLACEMENT are incompatible." << endl;
-		exit(0);
-	}
-#else
-	if (limited_displacement) {
-		file >> size;
-		vector<Vector3d> last_pos(size);
-		for (int k=0; k<last_pos.size(); k++)
-			for (int i=0; i<3; i++)
-				file >> last_pos[k](i);
-
-		file >> size;
-		vector<Matrix3d> last_rot(size);
-		for (int i=0; i<last_rot.size(); i++)
-			for (int r=0; r < 3; r++)
-				for (int c=0; c < 3; c++)
-				  file >> last_rot[i](r,c);
-	}
-#endif
 
 	file >> size;
 	constrained_vertices_nums.resize(size);
@@ -425,9 +353,6 @@ void ThreadConstrained::setConstrainedTransforms(vector<Vector3d> positions, vec
 			rot_offset[vertex_num] = rotations[i].transpose() * material_frames[vertex_num];
 			rot_offset[vertex_num] = (Matrix3d) AngleAxisd(rot_offset[vertex_num]); // to fix numerical errors and rot_offset stays orthonormal
 		}
-#ifdef LIMITED_DISPLACEMENT
-		last_rot[i] = rotations[i];
-#endif
 	}
 }
 
@@ -450,9 +375,6 @@ void ThreadConstrained::setConstrainedTransforms(int constraint_ind, Vector3d po
 		rot_offset[vertex_num] = rotation.transpose() * material_frames[vertex_num];
 		rot_offset[vertex_num] = (Matrix3d) AngleAxisd(rot_offset[vertex_num]); // to fix numerical errors and rot_offset stays orthonormal
 	}
-#ifdef LIMITED_DISPLACEMENT
-	last_rot[constraint_ind] = rotation;
-#endif
 }
 
 void ThreadConstrained::getAllTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations) {
@@ -478,10 +400,6 @@ void ThreadConstrained::setAllTransforms(vector<Vector3d> positions, vector<Matr
 	}
 	rot_offset[num_vertices-1] = rotations[num_vertices-1].transpose() * end_rot();
 	rot_offset[num_vertices-1] = (Matrix3d) AngleAxisd(rot_offset[num_vertices-1]); // to fix numerical errors and rot_offset stays orthonormal
-#ifdef LIMITED_DISPLACEMENT
-	for (int i=0; i<constrained_vertices_nums.size(); i++)
-		last_rot[i] = rotations[constrained_vertices_nums[i]];
-#endif
 }
 
 void ThreadConstrained::getConstrainedVerticesNums(vector<int> &vertices_nums) {
@@ -613,28 +531,6 @@ void ThreadConstrained::updateConstraints (vector<Vector3d> poss, vector<Matrix3
 		Matrix3d new_start_rot;
 		Matrix3d new_end_rot;
 			
-#ifdef LIMITED_DISPLACEMENT
-		double start_displacement = (poss[i]-last_pos[i]).norm();
-		double end_displacement 	= (poss[i+1]-last_pos[i+1]).norm();
-		double start_angle_change	= 2*asin((rots[i].col(0) - last_rot[i].col(0)).norm()/2);
-		double end_angle_change		= 2*asin((rots[i+1].col(0) - last_rot[i+1].col(0)).norm()/2);
-		Quaterniond new_start_q(rots[i]);
- 		Quaterniond last_start_q(last_rot[i]);
-		Quaterniond new_end_q(rots[i+1]);
-		Quaterniond last_end_q(last_rot[i+1]);		
-		if (start_displacement > MAX_DISPLACEMENT)
-			poss[i] = last_pos[i] + (MAX_DISPLACEMENT/start_displacement) * (poss[i]-last_pos[i]);
-		if (end_displacement > MAX_DISPLACEMENT)
-			poss[i+1] = last_pos[i+1] + (MAX_DISPLACEMENT/end_displacement) * (poss[i+1]-last_pos[i+1]);
-		if (start_angle_change > MAX_ANGLE_CHANGE) {
-			Quaterniond start_interp_q = last_start_q.slerp(MAX_ANGLE_CHANGE/start_angle_change, new_start_q);
-			rots[i] = start_interp_q.toRotationMatrix(); 
-		}
-		if (end_angle_change > MAX_ANGLE_CHANGE) {
-			Quaterniond end_interp_q = last_end_q.slerp(MAX_ANGLE_CHANGE/end_angle_change, new_end_q);
-			rots[i+1] = end_interp_q.toRotationMatrix();
-		}
-#endif
 		new_start_pos = poss[i];
 		new_end_pos 	= poss[i+1];
 		new_start_rot = rots[i]*rot_offset[constrained_vertices_nums[i]];
@@ -644,12 +540,6 @@ void ThreadConstrained::updateConstraints (vector<Vector3d> poss, vector<Matrix3
 		if (i==0)
 			zero_angle += angle_change - M_PI*((int) (angle_change/M_PI));
 	  threads[i]->set_constraints_check(new_start_pos, new_start_rot, new_end_pos, new_end_rot);
-#ifdef LIMITED_DISPLACEMENT
-		last_pos[i] 	= new_start_pos;
-		last_pos[i+1] = new_end_pos;
-		last_rot[i]		= rots[i];
-		last_rot[i+1] = rots[i+1];
-#endif
 	}
 }
 
@@ -863,10 +753,6 @@ void ThreadConstrained::splitThread(int thread_num, int vertex_num) {
   Matrix3d vertex_start_rot = threads[thread_num]->material_at_ind(vertex_num);
   Matrix3d rot_diff_matrix = vertex_start_rot.transpose()*vertex_end_rot;
   rot_diff.insert(rot_diff.begin()+thread_num+1, rot_diff_matrix);
-#ifdef LIMITED_DISPLACEMENT
-	last_pos.insert(last_pos.begin()+thread_num+1, points[vertex_num]);
-	last_rot.insert(last_rot.begin()+thread_num+1, (Matrix3d) (vertex_start_rot * rot_offset[constrained_vertices_nums[thread_num+1]].transpose()));
-#endif
 	
 	mapAdd(twist_angle1, -twist_angle1.front());
 	twist_angle0.back() = 2.0*twist_angle0[twist_angle0.size()-2] - twist_angle0[twist_angle0.size()-3];
@@ -978,10 +864,6 @@ void ThreadConstrained::mergeThread(int thread_num) {
 	mergeVector(length, lengths0, lengths1);
 	
 	rot_diff.erase(rot_diff.begin() + thread_num+1);
-#ifdef LIMITED_DISPLACEMENT
-	last_pos.erase(last_pos.begin() + thread_num+1);
-	last_rot.erase(last_rot.begin() + thread_num+1);
-#endif
 
 	Thread* thread = new Thread(point, twist_angle, length, (Matrix3d&) (threads[thread_num])->start_rot(), (Matrix3d&) (threads[thread_num+1])->end_rot());
 	thread->setWorld(world);

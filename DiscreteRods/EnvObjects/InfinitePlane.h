@@ -1,12 +1,16 @@
 #ifndef _InfinitePlane_h
 #define _InfinitePlane_h
 
+#include <IL/ilut.h>
+#include "imageloader.h"
+
 #include "EnvObject.h"
 
 class InfinitePlane : public EnvObject
 {
 	public:
 		InfinitePlane(const Vector3d& pos, const Vector3d& norm, float c0, float c1, float c2);
+		InfinitePlane(const Vector3d& pos, const Vector3d& norm, string filename);
 		~InfinitePlane();
 		
 		// For saving and loading objects to and from files
@@ -24,6 +28,16 @@ class InfinitePlane : public EnvObject
 	protected:
 		Vector3d normal;
 		double side;
+		string file_name;
+		
+		struct TextureHandle {
+			ILubyte *p;  /* pointer to image data loaded into memory */
+			ILuint id;   /* unique DevIL id of image */
+			ILint w;     /* image width */
+			ILint h;     /* image height */
+		};
+		TextureHandle texture;
+		ILuint LoadImageDevIL (char *szFileName, struct TextureHandle *T);
 };
 
 #endif
