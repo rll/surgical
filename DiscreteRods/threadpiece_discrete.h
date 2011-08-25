@@ -1,11 +1,11 @@
 #ifndef _threadpiece_discrete_h
 #define _threadpiece_discrete_h
 
-#include "threadutils_discrete.h"
 #include <math.h>
 
-
-
+#include "threadutils_discrete.h"
+#include "Collisions/collisionUtils.h"
+#include "EnvObjects/World.h"
 
 using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN
@@ -13,8 +13,9 @@ USING_PART_OF_NAMESPACE_EIGEN
 static double BEND_COEFF = 1.00;
 static Matrix2d B = Matrix2d::Identity()*BEND_COEFF;
 static double TWIST_COEFF = BEND_COEFF*3.00;
-static double STRETCH_COEFF = 0.0;
+static double STRETCH_COEFF = 0.1;
 static double GRAV_COEFF = BEND_COEFF*1e-4;
+static double REPULSION_COEFF = 10.0;
 
 static Matrix2d J = Matrix2d(Eigen::Rotation2Dd(M_PI/2.0));
 static Matrix2d JB = J*B;
@@ -81,6 +82,7 @@ class ThreadPiece
     double energy_twist();
     double energy_stretch();
 		double energy_grav();
+    double energy_repulsion();
 
 		//Energy Params
 		void set_bend_coeff(double bend_coeff);
