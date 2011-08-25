@@ -8,7 +8,7 @@ ifeq ($(MACHINE),Darwin)
     LDFLAG=$(COMPILEFLAG) -L"/System/Library/Frameworks/OpenGL.framework/Libraries" -L"/System/Library/Frameworks/GLUT.framework" -framework GLUT -framework OpenGL -lGL -lGLU -L/usr/X11R6/lib -L/opt/local/lib -lopencv_core -lopencv_highgui
     INCLUDES = -I/usr/local/include/ -I $(UTILS_DIR) -I/opt/local/include/eigen2/ -I/opt/local/include/  -I/opt/local/include/lshkit/ -I/opt/local/include/opencv/  
 else
-    LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/ -lglut -lgle -llshkit -lgsl -lgslcblas -lboost_program_options-mt 
+    LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/ -lglut -lgle -llshkit -lgsl -lgslcblas -lboost_program_options-mt  
     COMPILEFLAG=
     LDFLAG=
     INCLUDES = -I/usr/local/include/ -I $(UTILS_DIR) -I/usr/local/include/eigen2/ -I/usr/include/boost/  -I/usr/local/include/lshkit/ -I/usr/local/include/opencv/  
@@ -16,7 +16,7 @@ endif
 THREAD_DIR = ../DiscreteRods/
 VISION_DIR = ../vision/
 #INCLUDES = -I/usr/local/include/ -I/usr/local/include/opencv/ -I/usr/local/include/libPvAPI -I $(UTILS_DIR)
-OPT_COMP = -O3
+OPT_COMP = -Os -O3 -DEIGEN_NO_DEBUG
 #OPT_COMP = -DEIGEN_NO_DEBUG -O3 
 #OPT_COMP = -O2
 # OPT_COMP = 
@@ -32,7 +32,7 @@ FAKEIMS= -DFAKEIMS
 
 #target: test_linearization test_planner run_planner_libs visualize_trajs run_planner_libs_dim1 run_planner_libs_dim2 vis_onetraj
 
-target: test_planner 
+target: test_planner
 
 test_linearization: test_linearization.cpp clock.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o trajectory_follower.o iterative_control.o
 	$(LD) $(ISOTROPIC) $(INCLUDES) $(DEBUG) -o test_linearization test_linearization.cpp clock.o threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_recorder.o trajectory_reader.o glThread.o linearization_utils.o trajectory_follower.o iterative_control.o $(LIBS) $(PROFILER)
@@ -127,5 +127,5 @@ iterative_control.o : iterative_control.cpp iterative_control.h
 	$(CC) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -c iterative_control.cpp $(PROFILER)
 
 clean:
-	rm -r *.o *.gch test_linearization test_planner benchmark_runner benchmark_planner run_planner_libs visualize_trajs run_sample_generator vis_onetraj run_planner_libs_dim1 run_planner_libs_dim2 run_test_reversibility run_test_jacobian *.dSYM
+	rm -r *.o *.gch test_linearization test_planner benchmark_runner benchmark_planner run_planner_libs visualize_trajs run_sample_generator vis_onetraj run_planner_libs_dim1 run_planner_libs_dim2 run_test_reversibility run_test_jacobian test_ls *.dSYM
 

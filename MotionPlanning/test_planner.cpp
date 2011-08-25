@@ -140,7 +140,7 @@ void stepSimulation() {
     glThreads[i]->getThread()->dynamic_step_until_convergence(dt, M, 50000);
   }
 
-  cout << glThreads[curThread]->getThread()->calculate_energy() << endl; 
+  //cout << glThreads[curThread]->getThread()->calculate_energy() << endl; 
 
   glutPostRedisplay();
 }

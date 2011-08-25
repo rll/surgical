@@ -26,17 +26,17 @@ b(end-size_each_state+1: end) = b_data(end-size_each_state+1:end) .* weight_vect
 initial_state = -b(1:size_each_state);
 goal_state = b(end-size_each_state+1: end);
 
-num_points = (size_each_state-1)/3;
+%num_points = (size_each_state-1)/3;
 
 weighted_state_diff_constraint = 0.1;
-control_constraint = 1e-1;
+control_constraint = 5e-2;
 
 %min_control = 0.1;
 %consecutive_state_diff_constraint = 10;
 
 consectuve_state_diff_weight = zeros(100,1);
 
-cvx_solver sdpt3
+cvx_solve sdpt3
 cvx_begin
     variable x(A_n)
     variable u((num_threads-1))

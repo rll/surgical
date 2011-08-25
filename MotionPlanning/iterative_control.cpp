@@ -25,8 +25,8 @@ void Iterative_Control::resize_controller(int num_threads, int num_vertices)
 
   _num_threads = num_threads;
   _num_vertices = num_vertices;
-  //_size_each_state = (-3 + 6*num_vertices) + 2;
-  _size_each_state = 3*num_vertices + 2; 
+  _size_each_state = (-3 + 6*num_vertices) + 2;
+  //_size_each_state = 3*num_vertices + 2; 
   _cols_all_unknown_states = (num_threads-2)*_size_each_state;
   _all_trans.resize(_size_each_state*(_num_threads-1), (_num_threads-2)*_size_each_state + (_num_threads-1)*_size_each_control);
   _all_trans.setZero();
@@ -288,14 +288,14 @@ void Iterative_Control::thread_to_state(const Thread* thread, VectorXd& state)
   for (int piece_ind=0; piece_ind < thread->num_pieces(); piece_ind++)
   {
     state.segment(piece_ind*3, 3) = thread->vertex_at_ind(piece_ind);
-    /*if (piece_ind < thread->num_edges()) { 
+    if (piece_ind < thread->num_edges()) { 
       state.segment(piece_ind*3 + 3*num_pieces, 3) = thread->edge_at_ind(piece_ind);
-    }*/
+    }
   }
-  //state(6*num_pieces - 3) = thread->end_angle();
-  //state(6*num_pieces - 2) = ((Thread*)thread)->calculate_energy();
-  state(3*num_pieces) = thread->end_angle();
-  state(3*num_pieces+1) = ((Thread*)thread)->calculate_energy();
+  state(6*num_pieces - 3) = thread->end_angle();
+  state(6*num_pieces - 2) = ((Thread*)thread)->calculate_energy();
+  //state(3*num_pieces) = thread->end_angle();
+  //state(3*num_pieces+1) = ((Thread*)thread)->calculate_energy();
 }
 
 /*
