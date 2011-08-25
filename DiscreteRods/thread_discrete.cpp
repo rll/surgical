@@ -2167,7 +2167,7 @@ bool Thread::project_length_constraint(int recursive_depth)
 
   const int num_iters_project = 50;
   const double projection_scale_factor = 1.0;
-  const double max_norm_to_break = 1e-1; //1e-5;
+  const double max_norm_to_break = 5e-2; //DEFAULT_REST_LENGTH * 1e-2; //1e-5;
 
 
   //quick check to see if we can avoid calling this function
