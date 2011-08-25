@@ -21,6 +21,8 @@
 #include <math.h>
 #include <vector>
 
+#include "../EnvObjects/EnvObject.h"
+
 using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN
 
@@ -31,7 +33,7 @@ class ControlBase
 public:
 
   ControlBase()
-  	: position(-40.0, -30.0, 0.0)
+  	: position(0.0, 0.0, 0.0)
   	, rotation(Matrix3d::Identity())
   {
 		button_state[UP] = button_state[DOWN] = false;
@@ -50,6 +52,12 @@ public:
   {
   	position = control->position;
   	rotation = control->rotation;
+  }
+  
+  void setTransform(EnvObject* obj)
+  {
+  	position = obj->getPosition();
+  	rotation = obj->getRotation();
   }
   
   void getTransform(Vector3d& pos, Matrix3d& rot)

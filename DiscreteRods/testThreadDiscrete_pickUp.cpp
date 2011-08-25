@@ -48,6 +48,7 @@ void updateCursorFromButton(Cursor* cursor, ControlBase* control);
 void updateCursorFromTransform(Cursor* cursor, ControlBase* control);
 void processInput(ControlBase* control0, ControlBase* control1);
 void updateObjectsFromCursor(Cursor* cursor);
+void moveMouseToClosestEE(Mouse* mouse);
 void linkObjectsToWorldObjects();
 void displayTextInScreen(const char* textline, ...);
 void initThread();
@@ -187,12 +188,16 @@ void processNormalKeys(unsigned char key, int x, int y)
 		mouse0->setButtonState(true, UP);
 		glutIgnoreKeyRepeat(1);
   } else if (key == 'j') {
+    moveMouseToClosestEE(mouse0);
+		updateCursorFromTransform(cursor0, mouse0);
     mouse0->setButtonState(true, DOWN);
 		glutIgnoreKeyRepeat(1);
   } else if (key == 'U') {
     mouse1->setButtonState(true, UP);
 		glutIgnoreKeyRepeat(1);
   } else if (key == 'J') {
+    moveMouseToClosestEE(mouse1);
+		updateCursorFromTransform(cursor1, mouse1);
     mouse1->setButtonState(true, DOWN);
 		glutIgnoreKeyRepeat(1);
 	} else if(key == 's') {
@@ -206,7 +211,6 @@ void processNormalKeys(unsigned char key, int x, int y)
     state_recorder.writeObjectsToFile(world);
   } else if((key == 'a') || (key >= '0' && key <= '9')) {
   	cout << "Loading...\n";
-  	StateReader state_reader;
   	char *fullPath = new char[256];
   	if (key == 'l') {
   		cout << "Please enter destination file name (without extension): ";
@@ -216,7 +220,7 @@ void processNormalKeys(unsigned char key, int x, int y)
   	} else {
 	    sprintf(fullPath, "%s%s%c", "environmentFiles/", "o", key);
 	  }
-    state_reader.setFileName(fullPath);
+    StateReader state_reader(fullPath);
     if (state_reader.readObjectsFromFile(world)) {
 			linkObjectsToWorldObjects();
 			cout << "State loading was sucessful." << endl;
@@ -370,7 +374,7 @@ void processSpecialKeys(int key, int x, int y) {
 	glutPostRedisplay ();
 }
 
-void processHapticDevice(int value)
+void processHapticDevice()
 {
 	Vector3d start_proxy_pos, end_proxy_pos;
 	Matrix3d start_proxy_rot, end_proxy_rot;
@@ -393,11 +397,6 @@ void processHapticDevice(int value)
 		processInput(haptic0, haptic1);
 		glutPostRedisplay ();
 	}
-	
-	if (haptics)
-		glutTimerFunc(10, processHapticDevice, value);
-	else
-		glutTimerFunc(100, processHapticDevice, value);
 }
 
 void drawStuff()
@@ -517,8 +516,7 @@ int main (int argc, char * argv[])
   glutKeyboardFunc(processNormalKeys);
   glutKeyboardUpFunc(processKeyUp);
   glutSpecialFunc(processSpecialKeys);
-
- 	glutTimerFunc(100, processHapticDevice, 0);
+	glutIdleFunc(processHapticDevice);
 		
 	/* create popup menu */
 	glutCreateMenu (glutMenu);
@@ -731,6 +729,22 @@ void updateObjectsFromCursor(Cursor* cursor)
 	cursor->attach_dettach_attempt = false;
 }
 
+void moveMouseToClosestEE(Mouse* mouse) {
+	const Vector3d tip_pos = mouse->getPosition() - EndEffector::grab_offset * mouse->getRotation().col(0);
+	const Matrix3d tip_rot = mouse->getRotation();
+	int min_ee_ind = 0;
+	float min_squared_dist = (tip_pos - end_effectors[min_ee_ind]->getPosition()).squaredNorm();
+	for (int ee_ind = 1; ee_ind < end_effectors.size(); ee_ind++) {
+		float squared_dist = (tip_pos - end_effectors[ee_ind]->getPosition()).squaredNorm();
+		if (squared_dist < min_squared_dist) {
+			min_squared_dist = squared_dist;
+			min_ee_ind = ee_ind;
+		}				
+	}
+	EndEffector* ee = end_effectors[min_ee_ind];
+	mouse->setTransform(ee->getPosition() + EndEffector::grab_offset * ee->getRotation().col(0), ee->getRotation());
+}
+
 // This should be called everytime the pointer world is set to another
 // world; i.e. after loading a world from a file.
 void linkObjectsToWorldObjects()
@@ -754,6 +768,9 @@ void linkObjectsToWorldObjects()
 
 	vector<EnvObject*> world_spheres = world->getEnvObjs(TEXTURED_SPHERE);
 	textured_sphere = dynamic_cast<TexturedSphere*>(world_spheres[0]);
+	
+	mouse0->setTransform(cursor0);
+	mouse1->setTransform(cursor1);
 }
 
 void displayTextInScreen(const char* textline, ...)
