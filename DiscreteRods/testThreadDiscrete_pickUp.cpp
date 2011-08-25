@@ -67,7 +67,6 @@ float lasty_M=0;
 
 int pressed_mouse_button;
 float rotate_frame[2] = { 0.0, 0.0 };
-float last_rotate_frame[2];
 float translate_frame[3] = { 0.0, 0.0, -110.0 };
 #ifdef VIEW3D
 int main_window = 0;
@@ -117,8 +116,8 @@ void processLeft(int x, int y)
 		translate_frame[0] += 0.1*(x-lastx_L);
 		translate_frame[1] += 0.1*(lasty_L-y);
 	} else {
-		rotate_frame[0] += x-lastx_L;
-		rotate_frame[1] += lasty_L-y;
+		rotate_frame[0] += 0.2*(x-lastx_L);
+		rotate_frame[1] += -0.2*(lasty_L-y);
 	}
 	lastx_L = x;
 	lasty_L = y;
@@ -184,17 +183,18 @@ void processNormalKeys(unsigned char key, int x, int y)
     mouse1->setKeyPressed(MOVEPOS);
   else if (key == 'R')
     mouse1->setKeyPressed(ROTATETAN);
- 	else if (key == 'u')
-    mouse0->setButtonState(true, UP);
-  else if (key == 'j')
+ 	else if (key == 'u') {
+		mouse0->setButtonState(true, UP);
+		glutIgnoreKeyRepeat(1);
+  } else if (key == 'j') {
     mouse0->setButtonState(true, DOWN);
-  else if (key == 'U')
+		glutIgnoreKeyRepeat(1);
+  } else if (key == 'U') {
     mouse1->setButtonState(true, UP);
-  else if (key == 'J')
+		glutIgnoreKeyRepeat(1);
+  } else if (key == 'J') {
     mouse1->setButtonState(true, DOWN);
-  else if (key == 'w') {
-    rotate_frame[0] = 0.0;
-    rotate_frame[1] = 0.0;
+		glutIgnoreKeyRepeat(1);
 	} else if(key == 's') {
     cout << "Saving...\n";
     cout << "Please enter destination file name (without extension): ";
@@ -319,15 +319,18 @@ void processKeyUp(unsigned char key, int x, int y)
   mouse0->add2DMove(0.0, 0.0);
   mouse1->add2DMove(0.0, 0.0);
   
-  if (!haptics && (key == 'u') || (key == 'j') || (key == 'U') || (key == 'J')) {	
-		mouse0->setButtonState(false, UP);
-		mouse0->setButtonState(false, DOWN);
-		mouse1->setButtonState(false, UP);
-		mouse1->setButtonState(false, DOWN);
-		updateCursorFromButton(cursor0, mouse0);
-		updateCursorFromButton(cursor1, mouse1);
-		processInput(mouse0, mouse1);
-		glutPostRedisplay();
+  if ((key == 'u') || (key == 'j') || (key == 'U') || (key == 'J')) {
+  	glutIgnoreKeyRepeat(0);
+  	if (!haptics) {	
+			mouse0->setButtonState(false, UP);
+			mouse0->setButtonState(false, DOWN);
+			mouse1->setButtonState(false, UP);
+			mouse1->setButtonState(false, DOWN);
+			updateCursorFromButton(cursor0, mouse0);
+			updateCursorFromButton(cursor1, mouse1);
+			processInput(mouse0, mouse1);
+			glutPostRedisplay();
+		}
 	}
 }
 
@@ -364,6 +367,7 @@ void processSpecialKeys(int key, int x, int y) {
 				translate_frame[1] += 1;
 				break;
 	}
+	glutPostRedisplay ();
 }
 
 void processHapticDevice(int value)
@@ -389,7 +393,11 @@ void processHapticDevice(int value)
 		processInput(haptic0, haptic1);
 		glutPostRedisplay ();
 	}
-	glutTimerFunc(100, processHapticDevice, value);
+	
+	if (haptics)
+		glutTimerFunc(10, processHapticDevice, value);
+	else
+		glutTimerFunc(100, processHapticDevice, value);
 }
 
 void drawStuff()
@@ -411,7 +419,7 @@ void drawStuff()
 	glTranslatef(0.0, 0.0, -eye_focus_depth);
 #endif
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
-  glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
+  glRotatef (rotate_frame[0], 0.0, 1.0, 0.0);
   glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
 	glGetDoublev(GL_PROJECTION_MATRIX, projection);
 	glGetIntegerv(GL_VIEWPORT, viewport);
@@ -508,8 +516,6 @@ int main (int argc, char * argv[])
   glutMouseFunc (processMouse);
   glutKeyboardFunc(processNormalKeys);
   glutKeyboardUpFunc(processKeyUp);
-  //TODO handle keyUps differently for u and j and not for all the keys
-  //glutIgnoreKeyRepeat(1);
   glutSpecialFunc(processSpecialKeys);
 
  	glutTimerFunc(100, processHapticDevice, 0);
@@ -521,9 +527,9 @@ int main (int argc, char * argv[])
 	
 	initGL();
 	
-  //initThread();
+  initThread();
   //initLongerThread();
-  initRestingThread();
+  //initRestingThread();
 
   zero_location = Vector3d::Zero();
   zero_angle = 0.0;
