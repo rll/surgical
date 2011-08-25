@@ -58,7 +58,7 @@ void initGL();
 
 #define NUM_PTS 500
 #define THREAD_RADII 1.0
-#define VIEW3D
+//#define VIEW3D
 
 float lastx_L=0;
 float lasty_L=0;
