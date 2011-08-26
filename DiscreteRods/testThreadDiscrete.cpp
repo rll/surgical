@@ -33,7 +33,6 @@ void IdleAndDrawLeft();
 void DrawRight();
 void drawAxesBishop(Vector3d pos, Matrix3d rot);
 void drawAxesMaterial(Vector3d pos, Matrix3d rot);
-void drawSphere(Vector3d position, float radius, float color0, float color1, float color2);
 void DrawObjectsInEnv();
 void updateThreadPoints();
 void initThread();
@@ -1093,21 +1092,6 @@ void drawAxesMaterial(Vector3d pos, Matrix3d rot) {
 	glVertex3f(0.0, 0.0, 10.0);
 	glEnd();
 	glPopMatrix();
-}
-
-void drawSphere(Vector3d position, float radius, float color0, float color1, float color2) {
-	glPushMatrix();
-	double transform[16] = {1,0,0,0,
-													0,1,0,0,
-													0,0,1,0,
-													position(0), position(1), position(2), 1};
-	glMultMatrixd(transform);
-	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glEnable(GL_COLOR_MATERIAL);
-  glColor3f(color0, color1, color2);
-  glutSolidSphere(radius, 20, 16);
-  //glFlush ();
-  glPopMatrix();
 }
 
 void DrawObjectsInEnv()

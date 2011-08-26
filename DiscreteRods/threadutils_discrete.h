@@ -51,6 +51,7 @@ double angle_between(const Vector3d& tan1, const Vector3d& tan2);
 void rotation_from_euler_angles(Matrix3d& rotation, double angZ, double angY, double angX);
 void euler_angles_from_rotation(const Matrix3d& rotation, double& angZ, double& angY, double& angX);
 void intermediate_rotation(Matrix3d &inter_rot, const Matrix3d& end_rot, const Matrix3d& start_rot);
+void rotation_from_tangent(const Vector3d& tan, Matrix3d& rot);
 bool almost_equal(const Vector3d &a, const Vector3d &b);
 template<typename T>
 int findInvalidate(vector<T* > v, T* e);
