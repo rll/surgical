@@ -2167,7 +2167,7 @@ bool Thread::project_length_constraint(int recursive_depth)
 
   const int num_iters_project = 50;
   const double projection_scale_factor = 1.0;
-  const double max_norm_to_break = 5e-2; //DEFAULT_REST_LENGTH * 1e-2; //1e-5;
+  const double max_norm_to_break = DEFAULT_REST_LENGTH * 1e-2; //1e-5;
 
 
   //quick check to see if we can avoid calling this function
@@ -3119,8 +3119,55 @@ void Thread::copy_data_from_vector(VectorXd& toCopy)
   set_end_constraint(_thread_pieces.back()->vertex(), this->end_rot());
 }
 
+void Thread::applyControl(const VectorXd& u)
+{
+  double max_ang_start = max( max(abs(u(3)), abs(u(4))), abs(u(5)));
+  double max_ang_end = max( max(abs(u(9)), abs(u(10))), abs(u(11)));
+  double max_ang = max(max_ang_start, max_ang_end);
 
+  int number_steps = max ((int)ceil(max_ang / (M_PI/4.0)), 1);
+  VectorXd u_for_translation = u/((double)number_steps);
 
+	Two_Motions* to_Move = new Two_Motions();
+
+  Vector3d translation_start;
+  translation_start << u_for_translation(0), u_for_translation(1), u_for_translation(2);
+  Vector3d translation_end;
+  translation_end << u_for_translation(6), u_for_translation(7), u_for_translation(8);
+	to_Move->_start._pos_movement = translation_start;
+  to_Move->_end._pos_movement = translation_end;
+
+  Matrix3d rotation_start;
+  rotation_from_euler_angles(rotation_start, u(3), u(4), u(5));
+  Matrix3d rotation_end;
+  rotation_from_euler_angles(rotation_end, u(9), u(10), u(11));
+
+  Quaterniond quat_rotation_start(rotation_start);
+  Quaterniond quat_rotation_end(rotation_end);
+
+  to_Move->_start._frame_rotation = Quaterniond::Identity().slerp(1.0/(double)number_steps, quat_rotation_start);
+  to_Move->_end._frame_rotation = Quaterniond::Identity().slerp(1.0/(double)number_steps, quat_rotation_end);
+
+  for (int i=0; i < number_steps; i++)
+  {
+    apply_motion_nearEnds(*to_Move);
+  }
+}
+
+void Thread::getState(VectorXd& state)
+{
+  const int _num_pieces = num_pieces();
+  state.resize(6*_num_pieces-3+1);
+  for (int piece_ind=0; piece_ind < _num_pieces; piece_ind++)
+  {
+    state.segment(piece_ind*3, 3) = vertex_at_ind(piece_ind);
+  }
+  for (int piece_ind=0; piece_ind < _num_pieces-1; piece_ind++)
+  {
+    state.segment(3*_num_pieces + piece_ind*3, 3) = edge_at_ind(piece_ind);
+  }
+  state(6*_num_pieces-3) = end_angle();
+}
 
 void Thread::set_coeffs_normalized(double bend_coeff, double twist_coeff, double grav_coeff)
 {

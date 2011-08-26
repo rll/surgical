@@ -14,6 +14,32 @@ void drawCylinder(Vector3d pos, Matrix3d rot, double h, double r, float color0, 
 	glPopMatrix();
 }
 
+// height has opposite sign as above
+/*void drawCylinderD(Vector3d pos, Matrix3d rot, float radius, float height, float color0, float color1, float color2) {
+	glPushMatrix();
+	glColor3f(color0, color1, color2);
+  Vector3d vector_array[4];
+  double point_array[4][3];
+	
+	Vector3d a = pos;
+	Vector3d b = pos + height * rot.col(0);
+	
+  vector_array[0] = a - (b - a);
+  vector_array[1] = a;
+  vector_array[2] = b;
+  vector_array[3] = b + (b - a);
+
+  for (int pt_ind = 0; pt_ind < 4; pt_ind++)
+  {
+    point_array[pt_ind][0] = vector_array[pt_ind](0);
+    point_array[pt_ind][1] = vector_array[pt_ind](1);
+    point_array[pt_ind][2] = vector_array[pt_ind](2);
+  }
+
+  glePolyCylinder(4, point_array, NULL, radius);
+  glPopMatrix();
+}*/
+
 void drawCylinder(Vector3d start_pos, Vector3d end_pos, double r, float color0, float color1, float color2)
 {
 	glPushMatrix();	

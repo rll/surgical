@@ -60,6 +60,27 @@ public:
     recomputeFromTransform(pos, rot);
   }
   
+  virtual void applyControl(const VectorXd& u)
+	{
+		double max_ang = max( max(abs(u(3)), abs(u(4))), abs(u(5)));
+
+		int number_steps = max ((int)ceil(max_ang / (M_PI/4.0)), 1);
+		VectorXd u_for_translation = u/((double)number_steps);
+
+		Vector3d translation;
+		translation << u_for_translation(0), u_for_translation(1), u_for_translation(2);
+
+		Matrix3d rotation;
+		rotation_from_euler_angles(rotation, u(3), u(4), u(5));
+		Quaterniond quat_rotation(rotation);
+		rotation = Quaterniond::Identity().slerp(1.0/(double)number_steps, quat_rotation);
+
+		for (int i=0; i < number_steps; i++)
+		{
+		  setTransform(getPosition() + translation, getRotation() * rotation);
+		}
+	}
+  
 	void setColor(float c0, float c1, float c2)
 	{ 
 	  color0 = c0;
@@ -81,6 +102,19 @@ public:
   const Matrix3d& getRotation() const
   {
   	return rotation;
+  }
+  
+  virtual void getState(VectorXd& state)
+  {
+  	state.resize(6);
+  	double angZ, angY, angX;
+  	euler_angles_from_rotation(rotation, angZ, angY, angX);
+  	for (int i = 0; i < 3; i++) {
+  		state(i) = position(i);
+  	}
+  	state(3) = angZ;
+  	state(4) = angY;
+  	state(5) = angX;
   }
   
   virtual void draw() = 0;
