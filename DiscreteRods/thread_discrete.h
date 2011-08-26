@@ -135,6 +135,8 @@ class Thread
     void apply_motion_nearEnds(Two_Motions& motion, bool mini_energy = true);
     void unviolate_total_length_constraint();
     void copy_data_from_vector(VectorXd& toCopy);
+    void applyControl(const VectorXd& u);
+    void getState(VectorXd& state);
     
     //void project_length_constraint_old();
     bool project_length_constraint(int recursive_depth=250);

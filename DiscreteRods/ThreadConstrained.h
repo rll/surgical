@@ -88,6 +88,9 @@ class ThreadConstrained {
 		void minimize_energy();
 		void adapt_links();
 		void updateConstraints (vector<Vector3d> poss, vector<Matrix3d> rots);
+		void applyMotionAtConstraints(vector<Vector3d> translations, vector<Matrix3d> rotations);
+		void applyControl(const VectorXd& u);
+		void getState(VectorXd& state);
 		void addConstraint (int absolute_vertex_num);
 		void removeConstraint (int absolute_vertex_num);
 		// Returns the number of the vertex that is nearest to pos. The chosen vertex have to be a free operable vertex.

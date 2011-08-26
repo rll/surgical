@@ -543,6 +543,68 @@ void ThreadConstrained::updateConstraints (vector<Vector3d> poss, vector<Matrix3
 	}
 }
 
+void ThreadConstrained::applyMotionAtConstraints(vector<Vector3d> translations, vector<Matrix3d> rotations)
+{
+	vector<Vector3d> new_positions(constrained_vertices_nums.size());
+	vector<Matrix3d> new_rotations(constrained_vertices_nums.size());
+	getConstrainedTransforms(new_positions, new_rotations);
+	for (int i = 0; i < constrained_vertices_nums.size(); i++) {
+		new_positions[i] += translations[i];
+		new_rotations[i] = new_rotations[i] * rotations[i];
+	}
+	updateConstraints(new_positions, new_rotations);
+}
+
+void ThreadConstrained::applyControl(const VectorXd& u)
+{
+	if ((u.size() % 3) != 0)
+		cout << "Internal error: ThreadConstrained::applyControl(): control u is not a multiple of 3." << endl;
+	if ((u.size()/3) != constrained_vertices_nums.size())
+		cout << "Internal error: ThreadConstrained::applyControl(): control doesn't match the number of thread constraints." << endl;
+  
+  double max_ang = 0.0;
+  for (int i = 0; i < constrained_vertices_nums.size(); i++) {
+  	double constraint_max_ang = max( max(abs(u(3*i+3)), abs(u(3*i+4))), abs(u(3*i+5)));
+  	if (constraint_max_ang > max_ang) max_ang = constraint_max_ang;
+	}
+	
+  int number_steps = max ((int)ceil(max_ang / (M_PI/4.0)), 1);
+  VectorXd u_for_translation = u/((double)number_steps);
+
+	vector<Vector3d> translations;
+	vector<Matrix3d> rotations;
+	for (int i = 0; i < constrained_vertices_nums.size(); i++) {	
+		translations.push_back(Vector3d(u_for_translation(3*i+0), u_for_translation(3*i+1), u_for_translation(3*i+2)));
+
+		Matrix3d rotation;
+		rotation_from_euler_angles(rotation, u(3*i+3), u(3*i+4), u(3*i+5));
+		Quaterniond quat_rotation(rotation);
+		rotations.push_back((Matrix3d) Quaterniond::Identity().slerp(1.0/(double)number_steps, quat_rotation));
+	}
+
+	for (int j=0; j < number_steps; j++)
+	{
+		applyMotionAtConstraints(translations, rotations);
+	}
+}
+
+void ThreadConstrained::getState(VectorXd& state) {
+	vector<VectorXd> thread_states;
+	int thread_states_size = 0;
+	for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
+		VectorXd thread_state;
+		threads[thread_ind]->getState(thread_state);
+		thread_states.push_back(thread_state);
+		thread_states_size += thread_state.size();
+	}
+	state.resize(thread_states_size);
+	int vector_start = 0;
+	for (int i = 0; i < thread_states.size(); i++) {
+		state.segment(vector_start, thread_states[i].size()) = thread_states[i];
+		vector_start += thread_states[i].size();
+	}
+}
+
 void ThreadConstrained::addConstraint (int absolute_vertex_num) {
 	int thread_num = insertSorted(constrained_vertices_nums, absolute_vertex_num)-1;
 	splitThread(thread_num, localVertex(absolute_vertex_num));
