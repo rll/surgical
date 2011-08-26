@@ -104,3 +104,19 @@ void World::capsuleObjectRepulsionEnergyGradient(const Vector3d& start, const Ve
 		objs[obj_ind]->capsuleRepulsionEnergyGradient(start, end, radius, gradient);
 	}
 }
+
+void World::getStates(vector<VectorXd>& states)
+{
+	states.clear();
+	for (int i = 0; i<threads.size(); i++) {
+		VectorXd state;
+		threads[i]->getState(state);
+		states.push_back(state);
+	}
+	for (int i = 0; i<objs.size(); i++) {
+		VectorXd state;
+		objs[i]->getState(state);
+		states.push_back(state);
+	}
+}
+
