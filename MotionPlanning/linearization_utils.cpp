@@ -1,17 +1,15 @@
 #include "linearization_utils.h"
 #include <boost/progress.hpp>
 
-
 void applyControl(Thread* start, const VectorXd& u, const movement_mode movement) { 
   vector<Two_Motions*> motions;
-
   control_to_TwoMotion(u, motions, movement);
   for (int i=0; i < motions.size(); i++)
   {
     start->apply_motion_nearEnds(*motions[i]);
   }
-
- // start->minimize_energy(); 
+  start->dynamic_step_until_convergence(STEP_DT, STEP_MASS, MAX_STEPS);
+  //start->minimize_energy(); 
 }
 
 /*
@@ -258,7 +256,8 @@ void estimate_transition_matrix(Thread* thread, MatrixXd& A, const movement_mode
       A.block(3*num_pieces + piece_ind*3, i, 3,1) -= thread->edge_at_ind(piece_ind);
     }
   }
-  A /= 2.0*eps;
+  //A /= 2.0*eps;
+  A /= eps; 
   thread->restore_thread_pieces(thread_backup_pieces);
 }
 
@@ -380,7 +379,7 @@ void interpolateThreads(vector<Thread*>&traj, vector<VectorXd>& controls) {
     //ctrl_start_rot = (interp_start_q*start_startq.inverse()).toRotationMatrix();
     //ctrl_end_rot = (interp_end_q*start_endq.inverse()).toRotationMatrix(); 
 
-    Thread* interpolated_thread = new Thread(interpolated_pts, interpolated_angles, start_rot, start->rest_length());
+    Thread* interpolated_thread = new Thread(interpolated_pts, interpolated_angles, start_rot, start->start_rest_length());
     interpolated_thread->set_end_constraint(interpolated_pts.back(), end_rot);
     traj[t] = interpolated_thread;
 
@@ -395,6 +394,63 @@ void interpolateThreads(vector<Thread*>&traj, vector<VectorXd>& controls) {
   }
 }
 
+void estimate_transition_matrix_withTwist(Thread* thread, MatrixXd& A, const movement_mode movement)
+{
+  int num_pieces = thread->num_pieces();
+  int num_edges = thread->num_edges();
+  vector<ThreadPiece*> thread_backup_pieces;
+  thread->save_thread_pieces_and_resize(thread_backup_pieces);
+
+  VectorXd du(A.cols());
+  const double eps = 1e-1;
+  for(int i = 0; i < A.cols(); i++)
+  {
+    du.setZero();
+    
+    du(i) = eps;
+    thread->restore_thread_pieces(thread_backup_pieces);
+    applyControl(thread, du, movement);
+    thread->dynamic_step_until_convergence(STEP_DT, STEP_MASS, MAX_STEPS);
+    for (int piece_ind=0; piece_ind < num_pieces; piece_ind++)
+    {
+      A.block(piece_ind*3, i, 3,1) = thread->vertex_at_ind(piece_ind);
+    }
+    for (int piece_ind=0; piece_ind < num_edges; piece_ind++)
+    {
+      A.block(3*num_pieces + piece_ind*3, i, 3,1) = thread->edge_at_ind(piece_ind);
+    }
+    A(6*num_pieces-3, i) = thread->end_angle();
+    A(6*num_pieces-2, i) = thread->calculate_energy();
+    
+    //A(3*num_pieces, i) = thread->end_angle();
+    //A(3*num_pieces+1,i) = thread->calculate_energy();
+
+    du(i) = -eps;
+    thread->restore_thread_pieces(thread_backup_pieces);
+    applyControl(thread, du, movement);
+    thread->dynamic_step_until_convergence(STEP_DT, STEP_MASS, MAX_STEPS);
+    for (int piece_ind=0; piece_ind < num_pieces; piece_ind++)
+    {
+      A.block(piece_ind*3, i, 3,1) -= thread->vertex_at_ind(piece_ind);
+    }
+    for (int piece_ind=0; piece_ind < num_edges; piece_ind++)
+    {
+
+      A.block(3*num_pieces + piece_ind*3, i, 3,1) -= thread->edge_at_ind(piece_ind);
+    }
+    A(6*num_pieces-3, i) -= thread->end_angle();
+    A(6*num_pieces-2, i) -= thread->calculate_energy();
+    
+
+    //A(3*num_pieces, i) -= thread->end_angle();
+    //A(3*num_pieces+1,i) -= thread->calculate_energy();
+  }
+  //A /= 2.0*eps;
+  A /= eps; 
+
+  thread->restore_thread_pieces(thread_backup_pieces);
+}
+
 
 void estimate_transition_matrix_noEdges_withTwist(Thread* thread, MatrixXd& A, const movement_mode movement)
 {
@@ -403,7 +459,7 @@ void estimate_transition_matrix_noEdges_withTwist(Thread* thread, MatrixXd& A, c
   thread->save_thread_pieces_and_resize(thread_backup_pieces);
 
   VectorXd du(A.cols());
-  const double eps = 1e-4;
+  const double eps = 1e-2;
   for(int i = 0; i < A.cols(); i++)
   {
     du.setZero();
@@ -426,7 +482,8 @@ void estimate_transition_matrix_noEdges_withTwist(Thread* thread, MatrixXd& A, c
     }
     A(3*num_pieces, i) -= thread->end_angle();
   }
-  A /= 2.0*eps;
+  A /= eps;
+  //A /= (2.0*eps);
   thread->restore_thread_pieces(thread_backup_pieces);
 }
 

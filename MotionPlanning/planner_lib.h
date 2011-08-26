@@ -1,10 +1,10 @@
 #ifndef _planner_lib_h_
 #define _planner_lib_h_
 
-#define NUM_INTERPOLATION 100
+#define NUM_INTERPOLATION 10
 #define NUM_NODES 30000
 #define RRT_L2_POINTS_THRESHOLD 2.0
-#define NUM_ITERS_SQP 10
+#define NUM_ITERS_SQP 2
 #define SUBSAMPLE_TO_THIS_NUMBER 100
 
 #include "planner_utils.h"
@@ -39,7 +39,32 @@ void interpolatePointsTrajectory(Thread* start, Thread* end, vector<Thread*>& tr
 
 void interpolateEndsTrajectory(Thread* start, Thread* end, vector<Thread*>& traj)
 {
-  assert("Not implemented yet"); 
+  Thread* start_copy = new Thread(*start);
+  Thread* end_copy = new Thread(*end);
+  traj.resize(NUM_INTERPOLATION);
+  traj[0] = new Thread(*start_copy);
+  traj[NUM_INTERPOLATION - 1] = end_copy;
+
+  int T = NUM_INTERPOLATION - 1; 
+  Vector3d ctrl_start_translation = (end_copy->start_pos() - start_copy->start_pos()) / T;
+  Vector3d ctrl_end_translation = (end_copy->end_pos() - start_copy->end_pos()) / T;
+
+  //TODO: CURRENTLY UNUSED
+  Matrix3d start_start_rot = start_copy->start_rot();
+  Matrix3d start_end_rot = start_copy->end_rot();
+  Matrix3d end_start_rot = end_copy->start_rot();
+  Matrix3d end_end_rot = end_copy->end_rot();
+
+  VectorXd du(12);
+  for(int i = 0; i < 3; i++) {
+    du(i) = ctrl_start_translation(i);
+    du(i+6) = ctrl_end_translation(i);
+  }
+
+  for (int t = 1; t < T; t++) {
+    applyControl(start_copy, du);
+    traj[t] = new Thread(*start_copy);
+  }
 };
 
 
@@ -120,7 +145,7 @@ void linearizeToGoal(Thread* start, Thread* end, vector<Thread*>& traj)
 /*
  * Use SQP solver given traj_in. Puts results in traj_out and control_out
  */
-void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<VectorXd>& control_out, const char* namestring)
+void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<VectorXd>& control_out, vector<vector<Thread*> >& sqp_debug_data, const char* namestring)
 {
   int num_iters = NUM_ITERS_SQP; 
   
@@ -133,8 +158,14 @@ void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<Vector
   Iterative_Control* ic = 
     new Iterative_Control(traj_out.size(), traj_out[0]->num_pieces());
   ic->set_namestring(namestring);
-  ic->iterative_control_opt(traj_out, control_out, num_iters);
+  ic->iterative_control_opt(traj_out, control_out, sqp_debug_data, num_iters);
 
+};
+
+void solveSQP(vector<Thread*>& traj_in, vector<Thread*>& traj_out, vector<VectorXd>& control_out, const char* namestring)
+{
+  vector<vector<Thread*> > sqp_debug_data;
+  solveSQP(traj_in, traj_out, control_out, sqp_debug_data, namestring);
 };
 
 /* 
