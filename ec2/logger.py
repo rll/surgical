@@ -6,6 +6,8 @@ class EC2Logger():
     logger_date_format = '%a, %d %b %Y %H:%M:%S'
     if name == "MASTER" or name == "EC2Tools":
       filepath = "logs/ec2-"
+    elif name == "sc":
+      filepath = "logs/sc-"
     else:
       filepath = "/home/ubuntu/code/trunk/surgical/ec2/logs/ec2-"
     logging.basicConfig(level=logging.DEBUG,

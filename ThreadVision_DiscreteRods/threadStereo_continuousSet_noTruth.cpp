@@ -26,7 +26,7 @@
 #define MAX_LENGTH_VIS 67
 
 
-#define FAKEIMS_FILE "saved_threads/test_trajectories"
+#define FAKEIMS_FILE "for_stereo_fakeims"
 #define IMAGE_SAVE_BASE_OPENGL "saved_threads/saved_opengl"
 
 //#define TRY_ALL false
@@ -35,7 +35,7 @@ vector<Thread> saved_trajectory;
 
 
 #define NUM_THREADS_DISPLAY 2
-#define NUM_THREADS 60
+#define NUM_THREADS 10
 enum DisplayedThreads {optimizedThread, truthThread};
 
 // import most common Eigen types
@@ -151,11 +151,17 @@ double seconds_elapsed()
     return ((double) end_time - start_time)/((double) CLOCKS_PER_SEC);
 }
 
-/* Difference between 2 threads based on l2 norm of distance between vertices.
+/*
+ * Difference between 2 threads based on l2 norm of distance between vertices.
  * Requires that 2 threads be the same length.
  */
 double thread_difference(Thread* t1, Thread* t2)
 {
+    if (t1->_thread_pieces.size() != t2->_thread_pieces.size())
+    {
+        cout << "warning: threads not of same length (thread_difference)" << std::endl;
+        return -1;
+    }
     double difference = 0;
     int length = t1->_thread_pieces.size();
     for (int i = 0; i < length; i++)
@@ -342,7 +348,7 @@ void processNormalKeys(unsigned char key, int x, int y)
     /* Run through all threads, generate guess, save image in test_images */
     else if (key == 'p')
     {
-        thread_ind = 0;
+        thread_ind = -1;
         while (true) {
             next_thread();
             DrawStuff();
@@ -357,7 +363,7 @@ void processNormalKeys(unsigned char key, int x, int y)
             printf("thread %2d |\t runtime (s): %05.3f | difference: %05.3f\n", thread_ind, generation_times[thread_ind], thread_differences[thread_ind]);
             DrawStuff();
             save_opengl_image();
-            if (thread_ind == 59) break;
+            if (thread_ind == NUM_THREADS-1) break;
         }
         cout << endl << "-------------------" << endl;
         cout << "PERFORMANCE SUMMARY" << endl;
@@ -795,9 +801,10 @@ void addThreadDebugInfo()
 
 void save_opengl_image()
 {
+
     const int IMG_COLS_TOTAL = WINDOW_WIDTH;
     const int IMG_ROWS_TOTAL = WINDOW_HEIGHT;
-    //playback and save images
+  
     Mat img(WINDOW_WIDTH, WINDOW_HEIGHT, CV_8UC3);
     vector<Mat> img_planes;
     split(img, img_planes);
@@ -818,9 +825,10 @@ void save_opengl_image()
     merge(img_planes, img);
     flip(img, img, 0);
 
-    char im_name[256];
-    const char*prefix = USE_DISTANCE_METRIC ? "distance" : "energy";
-    sprintf(im_name, "test_images/%s_thread%d_%d.jpg", prefix, NUM_HYPOTHS_MAX, thread_ind);
+    char im_name[256]; 
+    const char* prefixes[] = {"visual", "energy", "distance"};
+    sprintf(im_name, "test_images/%s_thread_knots%d_%d.jpg",
+            prefixes[CURRENT_METRIC], NUM_HYPOTHS_MAX, thread_ind);
     cout << "saving " << im_name << "...\n";
     imwrite(im_name, img);
     waitKey(1);
