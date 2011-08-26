@@ -297,6 +297,10 @@ void processNormalKeys(unsigned char key, int x, int y)
   		mouse0->setTransform(haptic0);
   		mouse1->setTransform(haptic1);
   	}
+  } else if(key == 'g') {
+  	vector<VectorXd> states;
+  	world->getStates(states);
+  	cout << states[4](0) << " " << states[4](1) << " " << states[4](2) << " " << endl;
 
 #ifdef VIEW3D
   } else if(key == '=') {
