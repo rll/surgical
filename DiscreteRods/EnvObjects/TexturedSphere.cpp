@@ -16,6 +16,21 @@ TexturedSphere::TexturedSphere(const Vector3d& pos, double r, string filename)
   	earth = gluNewQuadric();
 }
 
+TexturedSphere::TexturedSphere(const TexturedSphere& rhs)
+	: EnvObject(rhs.position, rhs.rotation, rhs.color0, rhs.color1, rhs.color2, rhs.type)
+	, radius(rhs.radius)
+	, file_name(rhs.file_name)
+{
+	if (type != TEXTURED_SPHERE)
+		cerr << "it is not textrures sphere" << endl; //TODO
+	earth = 0;
+	ilInit();
+  if (! LoadImageDevIL ((char*) file_name.c_str(), &texture) )
+  	cerr << "Failed to load texture from filename " << file_name << endl;
+  else
+  	earth = gluNewQuadric();
+}
+
 TexturedSphere::~TexturedSphere()
 {
   //  Clear out the memory used by loading image files.

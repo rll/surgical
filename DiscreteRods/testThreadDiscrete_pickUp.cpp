@@ -301,6 +301,16 @@ void processNormalKeys(unsigned char key, int x, int y)
   	vector<VectorXd> states;
   	world->getStates(states);
   	cout << states[4](0) << " " << states[4](1) << " " << states[4](2) << " " << endl;
+  } else if(key == 'd') {
+  	cout << "saving to backup" << endl;
+  	world->saveToBackup();
+  } else if(key == 'f') {
+  	cout << "restoring from backup" << endl;
+  	world->restoreFromBackup();
+  } else if(key == 'b') {
+  	cout << "copying world" << endl;
+  	World* world_temp = new World(*world);
+  	world = world_temp;
 
 #ifdef VIEW3D
   } else if(key == '=') {
