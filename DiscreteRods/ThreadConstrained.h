@@ -49,13 +49,17 @@
 USING_PART_OF_NAMESPACE_EIGEN
 
 class Thread;
+class ThreadConstrainedState;
 
 class ThreadConstrained {
 	public:
+		ThreadConstrained();
 		ThreadConstrained(int num_vertices_init);
 		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, Matrix3d& end_rot);
 		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot);
 		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot);
+		ThreadConstrained(const ThreadConstrained& rhs);
+    ThreadConstrained& operator=(const ThreadConstrained& rhs);
 		
 		void writeToFile(ofstream& file);
 		ThreadConstrained(ifstream& file);
@@ -102,6 +106,10 @@ class ThreadConstrained {
 		vector<Thread*>* getThreads() { return &threads; }
 		void toggleExamineMode();
 
+		void saveToBackup();
+		void restoreFromBackup();
+		friend class ThreadConstrainedState;
+
 	private:
 		int num_vertices;
 		vector<Thread*> threads;
@@ -112,6 +120,7 @@ class ThreadConstrained {
 		vector<Matrix3d> rot_offset;
     vector<int> constrained_vertices_nums;
     object_type type;
+    ThreadConstrainedState* backup;
     double contour[NUM_PTS_CONTOUR][2];
 		double contour_norms[NUM_PTS_CONTOUR][2];
     void initContour();
@@ -147,5 +156,19 @@ int insertSorted (vector<int> &v, int e);
 int removeSorted (vector<int> &v, int e);
 //Returns the position of the element to be found.
 int find(vector<int> v, int e);
+
+
+class ThreadConstrainedState {
+	public:
+		ThreadConstrainedState(const ThreadConstrained& rhs);	
+		ThreadConstrainedState(const ThreadConstrainedState& rhs);	
+		int num_vertices;
+		vector<Thread*> threads;
+		double zero_angle;
+		World* world;
+		vector<Matrix3d> rot_diff;
+		vector<Matrix3d> rot_offset;
+		vector<int> constrained_vertices_nums;
+};
 
 #endif //_ThreadConstrained_h

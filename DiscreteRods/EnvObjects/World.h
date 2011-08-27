@@ -38,6 +38,8 @@ class World
 {
 	public:
 		World();
+		World(const World& rhs);
+    World& operator=(const World& rhs);
 		~World();
 
 		void addThread(ThreadConstrained* thread);
@@ -54,6 +56,9 @@ class World
 		void capsuleObjectRepulsionEnergyGradient(const Vector3d& start, const Vector3d& end, const double radius, Vector3d& gradient);
 		
 		void getStates(vector<VectorXd>& states);
+		
+		void saveToBackup();
+		void restoreFromBackup();
 	
 	private:
 		vector<ThreadConstrained*> threads;

@@ -31,10 +31,10 @@ DEBUG = -ggdb
 #DEBUG =
 ISOTROPIC=-DISOTROPIC
 
-target: testThreadDiscrete_pickUp debugIntersection
+target: testThreadDiscrete_pickUp
 
-debugIntersection: debugIntersection.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o Mouse.o Haptic.o World.o Capsule.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o thread_socket_interface.o UDPSocket.o Socket.o StateRecorder.o StateReader.o TrajectoryRecorder.o TrajectoryReader.o
-	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o debugIntersection debugIntersection.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o Mouse.o Haptic.o World.o Capsule.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o thread_socket_interface.o UDPSocket.o Socket.o StateRecorder.o StateReader.o TrajectoryRecorder.o TrajectoryReader.o $(LIBS) $(PROFILER)
+#debugIntersection: debugIntersection.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o Mouse.o Haptic.o World.o Capsule.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o thread_socket_interface.o UDPSocket.o Socket.o StateRecorder.o StateReader.o TrajectoryRecorder.o TrajectoryReader.o
+#	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o debugIntersection debugIntersection.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o Mouse.o Haptic.o World.o Capsule.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o thread_socket_interface.o UDPSocket.o Socket.o StateRecorder.o StateReader.o TrajectoryRecorder.o TrajectoryReader.o $(LIBS) $(PROFILER)
 
 #testThreadDiscrete: testThreadDiscrete.cpp threadutils_discrete.o drawUtils.o collisionUtils.o World.o threadpiece_discrete.o thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o trajectory_reader.o
 #	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete testThreadDiscrete.cpp threadutils_discrete.o drawUtils.o collisionUtils.o World.o threadpiece_discrete.o thread_discrete.o thread_socket_interface.o UDPSocket.o Socket.o trajectory_recorder.o trajectory_reader.o $(LIBS) $(PROFILER)

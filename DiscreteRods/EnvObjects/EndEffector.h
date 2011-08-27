@@ -8,6 +8,8 @@ class Cursor;
 
 class ThreadConstrained;
 
+class EndEffectorState;
+
 class EndEffector : public EnvObject
 {
 	//protected:	
@@ -27,6 +29,7 @@ class EndEffector : public EnvObject
 		Cursor* attachment;
 			
 		EndEffector(const Vector3d& pos, const Matrix3d& rot);
+		EndEffector(const EndEffector& rhs);
 		~EndEffector();
 		
 		// For saving and loading objects to and from files
@@ -72,6 +75,24 @@ class EndEffector : public EnvObject
 		static const double short_handle_r = 1.6; // corresponds to the capsule where the cursor can get attached
 		static const double end = 6.0; // pieces*h + start;
 		static const double grab_offset = 12.0;
+		
+		void saveToBackup();
+		void restoreFromBackup();
+		EndEffectorState* backup;
+		friend class EndEffectorState;
+};
+
+class EndEffectorState
+{
+	public:
+		EndEffectorState(const EndEffector& rhs);
+		EndEffectorState(const EndEffectorState& rhs);
+	
+		Vector3d position;
+		Matrix3d rotation;
+		double degrees;
+		ThreadConstrained* thread;
+		Cursor* attachment;
 };
 
 #endif

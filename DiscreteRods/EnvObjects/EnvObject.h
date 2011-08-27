@@ -35,6 +35,7 @@ class EnvObject
 public:
 
   EnvObject() {}
+  
   EnvObject(Vector3d pos, Matrix3d rot, float c0, float c1, float c2, object_type t) 
     : position(pos)
     , rotation(rot)
@@ -123,6 +124,9 @@ public:
   virtual void capsuleRepulsionEnergyGradient(const Vector3d& start, const Vector3d& end, const double radius, Vector3d& gradient) = 0;
   
   object_type getType() { return type; }
+  
+  virtual void saveToBackup() {}
+  virtual void restoreFromBackup() {}
   
 protected:
   Vector3d position;

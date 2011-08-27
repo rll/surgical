@@ -1,10 +1,103 @@
 #include "World.h"
 #include "EnvObject.h"
+#include "Capsule.h"
+#include "Cursor.h"
+#include "EndEffector.h"
+#include "InfinitePlane.h"
+#include "TexturedSphere.h"
 #include "../ThreadConstrained.h"
 #include "../thread_discrete.h"
 
 World::World()
 {}
+
+//TODO handle NO_OBJECT case and other resmaining cases
+World::World(const World& rhs)
+{
+	threads.resize(rhs.threads.size());
+	for (int i = 0; i<rhs.threads.size(); i++) {
+		threads[i] = new ThreadConstrained(*(rhs.threads[i]));
+	}
+	objs.resize(rhs.objs.size());
+	for (int i = 0; i<rhs.objs.size(); i++) {
+		rhs.objs[i]->updateIndFromPointers((World*) &rhs);
+		switch (rhs.objs[i]->getType())
+    {
+      case CURSOR:
+        {
+          objs[i] = new Cursor(*(dynamic_cast<Cursor*>(rhs.objs[i])));
+          addEnvObj(objs[i]);
+          break;
+        }
+      case END_EFFECTOR:
+        {
+          objs[i] = new EndEffector(*(dynamic_cast<EndEffector*>(rhs.objs[i])));
+          addEnvObj(objs[i]);
+          break;
+        }
+      case INFINITE_PLANE:
+        {
+          objs[i] = new InfinitePlane(*(dynamic_cast<InfinitePlane*>(rhs.objs[i])));
+          addEnvObj(objs[i]);
+          break;
+        }
+      case TEXTURED_SPHERE:
+        {
+          objs[i] = new TexturedSphere(*(dynamic_cast<TexturedSphere*>(rhs.objs[i])));
+          addEnvObj(objs[i]);
+          break;
+        }
+    }
+  }
+  
+  initializeThreadsInEnvironment();
+  
+  for (int i = 0; i<objs.size(); i++) {
+  	objs[i]->linkPointersFromInd(this);
+  }
+}   
+/*
+//TODO old elements should be deleted
+World& World::operator=(const World& rhs)
+{
+	threads.resize(rhs.threads.size());
+	for (int i = 0; i<rhs.threads.size(); i++) {
+		threads[i] = new ThreadConstrained(*(rhs.threads[i]));
+	}
+	objs.resize(rhs.objs.size());
+	for (int i = 0; i<rhs.objs.size(); i++) {
+		switch (rhs.objs[i]->getType())
+    {
+      case CURSOR:
+        {
+          objs[i] = new Cursor(*(dynamic_cast<Cursor*>(rhs.objs[i])));
+          addEnvObj(objs[i]);
+          break;
+        }
+      case END_EFFECTOR:
+        {
+          objs[i] = new EndEffector(*(dynamic_cast<EndEffector*>(rhs.objs[i])));
+          addEnvObj(objs[i]);
+          break;
+        }
+      case INFINITE_PLANE:
+        {
+          objs[i] = new InfinitePlane(*(dynamic_cast<InfinitePlane*>(rhs.objs[i])));
+          addEnvObj(objs[i]);
+          break;
+        }
+      case TEXTURED_SPHERE:
+        {
+          objs[i] = new TexturedSphere(*(dynamic_cast<TexturedSphere*>(rhs.objs[i])));
+          addEnvObj(objs[i]);
+          break;
+        }
+    }
+  }
+  
+  return *this;
+}
+*/
 
 World::~World()
 {
@@ -117,6 +210,26 @@ void World::getStates(vector<VectorXd>& states)
 		VectorXd state;
 		objs[i]->getState(state);
 		states.push_back(state);
+	}
+}
+
+void World::saveToBackup()
+{
+	for (int i = 0; i < threads.size(); i++) {
+		threads[i]->saveToBackup();
+	}
+	for (int i = 0; i<objs.size(); i++) {
+		objs[i]->saveToBackup();
+	}
+}
+
+void World::restoreFromBackup()
+{
+	for (int i = 0; i < threads.size(); i++) {
+		threads[i]->restoreFromBackup();
+	}
+	for (int i = 0; i<objs.size(); i++) {
+		objs[i]->restoreFromBackup();
 	}
 }
 
