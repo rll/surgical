@@ -11,6 +11,7 @@ class InfinitePlane : public EnvObject
 	public:
 		InfinitePlane(const Vector3d& pos, const Vector3d& norm, float c0, float c1, float c2);
 		InfinitePlane(const Vector3d& pos, const Vector3d& norm, string filename);
+		InfinitePlane(const InfinitePlane& rhs);
 		~InfinitePlane();
 		
 		// For saving and loading objects to and from files

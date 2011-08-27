@@ -9,6 +9,7 @@ EndEffector::EndEffector(const Vector3d& pos, const Matrix3d& rot)
 	, constraint_ind(-1)
 	, thread(NULL)
 	, attachment(NULL)
+	, backup(NULL)
 {
 	Intersection_Object* short_handle = new Intersection_Object();
 	short_handle->_radius = short_handle_r;
@@ -32,6 +33,48 @@ EndEffector::EndEffector(const Vector3d& pos, const Matrix3d& rot)
 	
 	setLimitDisplacement(false);
 	recomputeFromTransform(pos, rot);
+}
+
+// rhs ind should be update TODO explain more. is there a better way?
+EndEffector::EndEffector(const EndEffector& rhs)
+	: EnvObject(rhs.position, rhs.rotation, rhs.color0, rhs.color1, rhs.color2, rhs.type)
+	, degrees(rhs.degrees)
+	, constraint(-1)
+	, constraint_ind(-1)
+	, thread(NULL)
+	, attachment(NULL)
+	, thread_ind(rhs.thread_ind)
+	, attachment_ind(rhs.attachment_ind)
+	, backup(NULL)
+{
+	if (type != END_EFFECTOR)
+		cerr << " it is not end effector type" << endl;
+	
+	Intersection_Object* short_handle = new Intersection_Object();
+	short_handle->_radius = short_handle_r;
+  i_objs.push_back(short_handle);
+  
+	Intersection_Object* handle = new Intersection_Object();
+	handle->_radius = handle_r;
+  i_objs.push_back(handle);
+  
+  for (int piece=0; piece<pieces; piece++) {
+ 		Intersection_Object* tip_piece = new Intersection_Object();
+ 		tip_piece->_radius = 0.9+((double) piece)*((handle_r)-0.9)/((double) pieces-1);
+  	i_objs.push_back(tip_piece);
+	}
+  
+  for (int piece=0; piece<pieces; piece++) {
+ 		Intersection_Object* tip_piece = new Intersection_Object();
+ 		tip_piece->_radius = 0.9+((double) piece)*((handle_r)-0.9)/((double) pieces-1);
+  	i_objs.push_back(tip_piece);
+	}
+	
+	setLimitDisplacement(false);
+	recomputeFromTransform(position, rotation);
+
+	if (rhs.backup != NULL)
+		backup = new EndEffectorState(*(rhs.backup));
 }
 
 EndEffector::~EndEffector()
@@ -63,6 +106,7 @@ void EndEffector::writeToFile(ofstream& file)
 EndEffector::EndEffector(ifstream& file)
 	: thread(NULL)
 	, attachment(NULL)
+	, backup(NULL)
 {
 	color0 = color1 = color2 = 0.7;
   type = END_EFFECTOR;
@@ -367,4 +411,39 @@ void EndEffector::updateConstraintIndex()
 		if (constraint_ind == -1)
 			cout << "Internal errror: EndEffector::updateConstraintIndex(): constraint is supposed to be in constrained_vertices_nums but it isn't" << endl;
 	}
+}
+
+void EndEffector::saveToBackup()
+{
+	if (backup != NULL)
+		delete backup;
+	backup = new EndEffectorState(*this);
+}
+
+void EndEffector::restoreFromBackup()
+{
+	if (backup == NULL)
+		cerr << "Internal Error: EndEffector::restoreFromBackup(): unable to restore because end effector has not been saved." << endl;
+	setTransform(backup->position, backup->rotation);
+	degrees = backup->degrees;
+	thread = backup->thread;
+	attachment = backup->attachment;
+}
+
+EndEffectorState::EndEffectorState(const EndEffector& rhs)
+{
+	position = rhs.position;
+	rotation = rhs.rotation;
+	degrees = rhs.degrees;
+	thread = rhs.thread;
+	attachment = rhs.attachment;
+}
+	
+EndEffectorState::EndEffectorState(const EndEffectorState& rhs)
+{
+	position = rhs.position;
+	rotation = rhs.rotation;
+	degrees = rhs.degrees;
+	thread = rhs.thread;
+	attachment = rhs.attachment;
 }
