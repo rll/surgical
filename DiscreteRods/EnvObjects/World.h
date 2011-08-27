@@ -44,21 +44,23 @@ class World
 
 		void addThread(ThreadConstrained* thread);
 		void addEnvObj(EnvObject* obj);
-		vector<EnvObject*>* getEnvObjs();
-		vector<EnvObject*> getEnvObjs(object_type type);
-		vector<ThreadConstrained*>* getThreads();
+		void getEnvObjs(vector<EnvObject*>& env_objs);
+		void getEnvObjs(vector<EnvObject*>& env_objs, object_type type);
+		void getThreads(vector<ThreadConstrained*> threads);
 		void initializeThreadsInEnvironment();
 		void clearObjs();
 
 		void draw();
+
+		void getStates(vector<VectorXd>& states);
+		void applyControl(const VectorXd& u);
+		
+		void backup();
+		void restore();
+		
 		bool capsuleObjectIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections);
 		double capsuleObjectRepulsionEnergy(const Vector3d& start, const Vector3d& end, const double radius);
 		void capsuleObjectRepulsionEnergyGradient(const Vector3d& start, const Vector3d& end, const double radius, Vector3d& gradient);
-		
-		void getStates(vector<VectorXd>& states);
-		
-		void saveToBackup();
-		void restoreFromBackup();
 	
 	private:
 		vector<ThreadConstrained*> threads;

@@ -89,7 +89,7 @@ vector<ThreadConstrained*> threads;
 
 // interactive variables
 bool limit_displacement = false;
-bool haptics = false;
+bool haptics = true;
 
 //IO
 Haptic *haptic0, *haptic1;
@@ -283,8 +283,6 @@ void processNormalKeys(unsigned char key, int x, int y)
 		} else { cout << "There is no next state. worlds is empty." << endl; }
 	} else if(key == 'l') {
 		limit_displacement = !limit_displacement;
-		for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++)
-			end_effectors[ee_ind]->setLimitDisplacement(limit_displacement);
   } else if(key == 'e') {
   	for (int thread_ind=0; thread_ind<threads.size(); thread_ind++)
   		threads[thread_ind]->toggleExamineMode();
@@ -663,7 +661,7 @@ void processInput(ControlBase* control0, ControlBase* control1)
 		
 		for (int ee_ind = 0; ee_ind < thread_end_effs.size(); ee_ind++) {
 			EndEffector* ee = thread_end_effs[ee_ind];
-			ee->forceSetTransform(positionConstraints[ee->constraint_ind], rotationConstraints[ee->constraint_ind]);
+			ee->setTransform(positionConstraints[ee->constraint_ind], rotationConstraints[ee->constraint_ind], false);
 		}
 
 		//threads[thread_ind]->adapt_links();
@@ -721,7 +719,7 @@ void updateObjectsFromCursor(Cursor* cursor)
 					end_effectors[ee_ind]->updateConstraintIndex();
 			}
 		}
-		ee->setTransform(tip_pos, tip_rot);
+		ee->setTransform(tip_pos, tip_rot, limit_displacement);
 		if (cursor->attach_dettach_attempt) {
 			cursor->dettach();
 			for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++)
