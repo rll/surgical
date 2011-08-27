@@ -23,6 +23,22 @@ InfinitePlane::InfinitePlane(const Vector3d& pos, const Vector3d& norm, string f
   	cerr << "Failed to load texture from filename " << filename << endl;
 }
 
+InfinitePlane::InfinitePlane(const InfinitePlane& rhs)
+	: EnvObject(rhs.position, rhs.rotation, rhs.color0, rhs.color1, rhs.color2, rhs.type)
+	, normal(rhs.normal)
+	, side(rhs.side)
+	, file_name(rhs.file_name)
+{
+	if (type != INFINITE_PLANE)
+		cout << "error in infiniteplane" << endl; //TODO assert
+	rotation_from_tangent(normal.normalized(), rotation);
+	if (file_name != "notexture") {
+		ilInit();
+		if (! LoadImageDevIL ((char*) file_name.c_str(), &texture) )
+			cerr << "Failed to load texture from filename " << file_name << endl;
+	}
+}
+
 InfinitePlane::~InfinitePlane()
 {
   //  Clear out the memory used by loading image files.

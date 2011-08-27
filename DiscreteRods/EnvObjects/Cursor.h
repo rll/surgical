@@ -6,10 +6,13 @@
 
 class EndEffector;
 
+class CursorState;
+
 class Cursor : public EnvObject
 {
 	public:
 		Cursor(const Vector3d& pos, const Matrix3d& rot);
+		Cursor(const Cursor& rhs);
 		~Cursor();
 		
 		// For saving and loading objects to and from files
@@ -44,6 +47,27 @@ class Cursor : public EnvObject
 		bool attach_dettach_attempt;
 		bool open;
 		bool last_open;
+
+		void saveToBackup();
+		void restoreFromBackup();
+		CursorState* backup;
+		friend class CursorState;
 };
+
+class CursorState
+{
+	public:
+		CursorState(const Cursor& rhs);
+		CursorState(const CursorState& rhs);
+	
+		Vector3d position;
+		Matrix3d rotation;
+		EndEffector* end_eff;
+		double height, radius;
+		bool attach_dettach_attempt;
+		bool open;
+		bool last_open;
+};
+
 
 #endif
