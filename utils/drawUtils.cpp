@@ -154,18 +154,15 @@ void drawGrip(Vector3d pos, Matrix3d rot, double radius, double degrees, float c
 
 void drawSphere(Vector3d position, float radius, float color0, float color1, float color2) {
 	glPushMatrix();
-	double transform[16] = {1,0,0,0,
-													0,1,0,0,
-													0,0,1,0,
-													position(0), position(1), position(2), 1};
-	glMultMatrixd(transform);
-	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glTranslated(position(0), position(1), position(2));
+  //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	//glEnable(GL_COLOR_MATERIAL);
   glColor3f(color0, color1, color2);
   //glutSolidSphere(radius, 20, 16);  
-  glutSolidSphere(radius, 80, 64);
+  glutSolidSphere(radius, 40, 36);
   //glFlush ();
   glPopMatrix();
+  
 }
 
 void drawCursor(double proxyxform[16], float color) {
