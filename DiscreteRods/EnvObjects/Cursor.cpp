@@ -1,5 +1,7 @@
 #include "Cursor.h"
 #include "../threadpiece_discrete.h"
+#include "World.h"
+#include "../ThreadConstrained.h"
 
 Cursor::Cursor(const Vector3d& pos, const Matrix3d& rot)
 	: EnvObject(pos, rot, 0.0, 0.0, 0.0, CURSOR)
@@ -95,36 +97,11 @@ Cursor::Cursor(ifstream& file)
   i_obj->_end_pos = position - height * rotation.col(0);
 }
 
-void Cursor::updateIndFromPointers(World* world)
-{
-	if (end_eff == NULL) {
-		end_eff_ind = -1;
-	} else {
-		vector<EnvObject*> end_effs = world->getEnvObjs(END_EFFECTOR);
-		for (end_eff_ind = 0; end_eff_ind<end_effs.size(); end_eff_ind++) {
-			EndEffector* ee = dynamic_cast<EndEffector*>(end_effs[end_eff_ind]);
-			if (ee == end_eff)
-				break;
-		}
-		if (end_eff_ind == end_effs.size())
-			cout << "Internal error: Cursor::updateIndFromPointers: end_eff was not in world->getEnvObjs(END_EFFECTOR)." << endl;
-	}
-}
-
-void Cursor::linkPointersFromInd(World* world)
-{
-	if (end_eff_ind == -1) {
-		end_eff = NULL;
-	} else {
-		vector<EnvObject*> end_effs = world->getEnvObjs(END_EFFECTOR);
-		if (end_eff_ind < 0 || end_eff_ind >= end_effs.size())
-			cout << "Internal error: Cursor::linkPointersFromInd: end_eff_ind " << end_eff_ind << " is out of bounds." << endl;
-		end_eff = dynamic_cast<EndEffector*>(end_effs[end_eff_ind]);
-	}
-}
-
 void Cursor::recomputeFromTransform(const Vector3d& pos, const Matrix3d& rot)
 {
+	if (isAttached()) {
+		end_eff->setTransform(position - EndEffector::grab_offset * rotation.col(0), rotation);
+	}
 	i_obj->_start_pos = pos;
 	i_obj->_end_pos = pos - height * rot.col(0);
 }
@@ -175,19 +152,133 @@ void Cursor::capsuleRepulsionEnergyGradient(const Vector3d& start, const Vector3
 	gradient -= REPULSION_COEFF * (radius - dist) * direction.normalized();
 }
 
-void Cursor::attach(EndEffector* ee)
+inline bool closeEnough(const Vector3d& my_pos, const Matrix3d& my_rot, const Vector3d& pos, const Matrix3d& rot)
 {
-	end_eff = ee;
-	end_eff->attach(this);
+	double angle = 2*asin((my_rot.col(0) - rot.col(0)).norm()/2);
+  return (((my_pos - pos).norm() < 4.0) && angle < 0.25*M_PI);
+}
+
+void Cursor::setWorld(World* w) {
+	world = w;
+}
+
+void Cursor::attachDettach()
+{
+	if (isAttached())
+		dettach();
+	else
+		attach();
+}
+
+void Cursor::attach()
+{
+	assert(!isAttached());
+	const Vector3d tip_pos = position - EndEffector::grab_offset * rotation.col(0);
+	vector<EnvObject*> world_end_effs = world->getEnvObjs(END_EFFECTOR);
+	for (int ee_ind = 0; ee_ind < world_end_effs.size(); ee_ind++) {
+		EndEffector* ee = dynamic_cast<EndEffector*>(world_end_effs[ee_ind]);
+		if (closeEnough(tip_pos, rotation, ee->getPosition(), ee->getRotation())) {
+			end_eff = ee;
+			if (ee->isThreadAttached()) {
+				ee->updateConstraint();
+				if ((ee->constraint==0 || ee->constraint==(ee->getThread()->numVertices()-1)) && isOpen()) 
+  				forceClose();
+			}
+			end_eff->attach(this); //TODO delete this line
+			return;
+		}
+	}
+	assert(!isAttached());
 }
 
 // Dettaches the cursor from the end effector it is holding. It has to be holding an end effector.
 void Cursor::dettach()
 {
-	if (end_eff == NULL)
-		cout << "Internal errror: Cursor::dettach(): cursor cannot dettach since it does't have an end effector attached" << endl;
-	end_eff->dettach();
+	assert(isAttached());
+	end_eff->dettach(); // TODO delete this line
 	end_eff = NULL;
+	vector<EnvObject*> world_end_effs = world->getEnvObjs(END_EFFECTOR);
+	for (int ee_ind = 0; ee_ind < world_end_effs.size(); ee_ind++) {
+		(dynamic_cast<EndEffector*>(world_end_effs[ee_ind]))->updateConstraintIndex();
+	}
+}
+
+void Cursor::openClose()
+{
+	if (open) {
+		closeCursor();
+	} else {
+		openCursor();
+	}
+}
+
+void Cursor::closeCursor()
+{
+	assert(open);
+	const Vector3d tip_pos = position - EndEffector::grab_offset * rotation.col(0);
+	if (isAttached()) {
+	  if (!end_eff->isThreadAttached()) {
+	  	vector<ThreadConstrained*> threads = *(world->getThreads());
+	  	int nearest_vertex = threads[0]->nearestVertex(tip_pos);
+	  	ThreadConstrained* thread = threads[0];
+	  	for (int thread_ind = 1; thread_ind < threads.size(); thread_ind++) {
+	  		int candidate_nearest_vertex = threads[thread_ind]->nearestVertex(tip_pos);
+	  		if ( (threads[thread_ind]->position(candidate_nearest_vertex) - tip_pos).squaredNorm() <
+	  				 (threads[thread_ind]->position(nearest_vertex) - tip_pos).squaredNorm() ) {	  		
+	  			nearest_vertex = candidate_nearest_vertex;
+	  			thread = threads[thread_ind];
+	  		}
+	  	}
+	  	if ((thread->position(nearest_vertex) - tip_pos).squaredNorm() < 32.0) {												// cursor has an end effector which just started holding the thread
+	  		end_eff->constraint = nearest_vertex;
+		    thread->addConstraint(nearest_vertex);
+		    end_eff->attachThread(thread);
+		    vector<EnvObject*> world_end_effs = world->getEnvObjs(END_EFFECTOR);
+				for (int ee_ind = 0; ee_ind < world_end_effs.size(); ee_ind++) {
+					(dynamic_cast<EndEffector*>(world_end_effs[ee_ind]))->updateConstraintIndex();
+				}
+		    thread->setConstrainedTransforms(end_eff->constraint_ind, tip_pos, rotation);										// the end effector's orientation matters when it grips the thread. This updates the offset rotation.
+		    end_eff->setTransform(tip_pos, rotation); //TODO should I use the updated transform from previous line?
+		  }
+		} else {
+			assert(0); //impossible to close cursor when the end effector is already holding the thread
+		}
+		last_open = open; //TODO should no longer be needed
+		open = false;
+		end_eff->setTransform(tip_pos, rotation);
+	} else {
+		last_open = open; //TODO should no longer be needed
+		open = false;
+	}
+}
+
+void Cursor::openCursor()
+{
+	assert(!open);
+	if (isAttached()) {																																													// cursor has an end effector
+	  if (end_eff->isThreadAttached()) {																																							// cursor has an end effector which is holding the thread
+	  	if (end_eff->constraint==0 || end_eff->constraint==(end_eff->getThread()->numVertices()-1)) {		// cursor has an end effector which is holding the thread end and trying to be opened
+			 	last_open = open = false;
+			} else {																																// cursor has an end effector which is holding the thread and trying to be opened
+			  end_eff->getThread()->removeConstraint(end_eff->constraint);
+			 	end_eff->constraint = end_eff->constraint_ind = -1;
+			 	end_eff->dettachThread();
+			 	vector<EnvObject*> world_end_effs = world->getEnvObjs(END_EFFECTOR);
+				for (int ee_ind = 0; ee_ind < world_end_effs.size(); ee_ind++) {
+					(dynamic_cast<EndEffector*>(world_end_effs[ee_ind]))->updateConstraintIndex();
+				}
+				last_open = open; //TODO should no longer be needed
+				open = true;
+			}
+		} else {
+			last_open = open; //TODO should no longer be needed
+			open = true;
+		}
+		end_eff->setTransform(position - EndEffector::grab_offset * rotation.col(0), rotation);
+	} else {
+		last_open = open; //TODO should no longer be needed
+		open = true;
+	}
 }
 
 void Cursor::saveToBackup()

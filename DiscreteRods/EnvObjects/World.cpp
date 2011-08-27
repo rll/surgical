@@ -7,6 +7,7 @@
 #include "TexturedSphere.h"
 #include "../ThreadConstrained.h"
 #include "../thread_discrete.h"
+#include "../IO/ControlBase.h"
 
 World::World()
 {}
@@ -127,6 +128,29 @@ vector<EnvObject*> World::getEnvObjs(object_type type)
 	return objs_of_type;
 }
 
+void World::getEnvObjs(vector<EnvObject*>& objects, object_type type)
+{
+	objects.clear();
+	for (int i=0; i<objs.size(); i++) {
+		if (objs[i]->getType() == type)
+			objects.push_back(objs[i]);
+	}
+}
+
+/*EnvObject* World::getEnvObj(int ind, object_type type)
+{	
+	assert(0); //TODO verify it works;
+	for (int i=0; i<objs.size(); i++) {
+		if (objs[i]->getType() == type) {
+			if (ind == 0)
+			 	return objs[i];
+			else if
+				ind--;
+		}
+	}
+	assert(0); //ind was out of bounds for that particulat type of object
+}*/
+
 vector<ThreadConstrained*>* World::getThreads()
 {
 	return &threads;
@@ -163,6 +187,55 @@ void World::clearObjs()
 	}
 	threads.clear();
 	objs.clear();
+}
+
+void World::applyControl(const vector<ControlBase*>& controls)
+{
+	vector<EnvObject*> cursors = getEnvObjs(CURSOR);
+	assert(cursors.size() == controls.size());
+	for (int i = 0; i < cursors.size(); i++) {
+		Cursor* cursor = (dynamic_cast<Cursor*>(cursors[i]));
+		cursor->setTransform(controls[i]->getPosition(), controls[i]->getRotation());
+		if (controls[i]->hasButtonPressedAndReset(UP))
+			cursor->openClose();
+		if (controls[i]->hasButtonPressedAndReset(DOWN))
+			cursor->attachDettach();
+	}
+	
+	vector<EnvObject*> ee_env_objs;
+	getEnvObjs(ee_env_objs, END_EFFECTOR);
+	vector<EndEffector*> end_effectors;
+	for (int i=0; i<ee_env_objs.size(); i++) {
+		end_effectors.push_back(dynamic_cast<EndEffector*>(ee_env_objs[i]));
+	}
+	
+	for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
+		
+		vector<EndEffector*> thread_end_effs;
+		for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++)
+			if (end_effectors[ee_ind]->getThread()==threads[thread_ind])
+				thread_end_effs.push_back(end_effectors[ee_ind]);
+
+		vector<Vector3d> positionConstraints;
+		vector<Matrix3d> rotationConstraints;
+		threads[thread_ind]->getConstrainedTransforms(positionConstraints, rotationConstraints);
+
+		for (int ee_ind = 0; ee_ind < thread_end_effs.size(); ee_ind++) {
+			EndEffector* ee = thread_end_effs[ee_ind];
+			positionConstraints[ee->constraint_ind] = ee->getPosition();
+			rotationConstraints[ee->constraint_ind] = ee->getRotation();
+		}
+
+		threads[thread_ind]->updateConstraints(positionConstraints, rotationConstraints);
+		threads[thread_ind]->getConstrainedTransforms(positionConstraints, rotationConstraints);
+		
+		for (int ee_ind = 0; ee_ind < thread_end_effs.size(); ee_ind++) {
+			EndEffector* ee = thread_end_effs[ee_ind];
+			ee->forceSetTransform(positionConstraints[ee->constraint_ind], rotationConstraints[ee->constraint_ind]);
+		}
+
+		//threads[thread_ind]->adapt_links();
+	}
 }
 
 void World::draw()

@@ -8,6 +8,8 @@ class EndEffector;
 
 class CursorState;
 
+class World;
+
 class Cursor : public EnvObject
 {
 	public:
@@ -29,11 +31,15 @@ class Cursor : public EnvObject
   	double capsuleRepulsionEnergy(const Vector3d& start, const Vector3d& end, const double radius);
   	void capsuleRepulsionEnergyGradient(const Vector3d& start, const Vector3d& end, const double radius, Vector3d& gradient);
 		
-		void attach(EndEffector* ee);
+		
+		void setWorld(World* w);
+		void attachDettach();
+		void attach();
 		// Dettaches the cursor from the end effector it is holding. It has to be holding an end effector. If the end effector isn't holding the thread, it is removed from the environment
 		void dettach();
-		void openClose() { open = !open; }
-		void saveLastOpen() { last_open = open; }
+		void openClose();
+		void openCursor();
+		void closeCursor();
 		void forceClose() { last_open = open = false; }
 		bool isOpen() { return open; }
 		bool justOpened() { return (open && !last_open); }
@@ -52,6 +58,8 @@ class Cursor : public EnvObject
 		void restoreFromBackup();
 		CursorState* backup;
 		friend class CursorState;
+	
+		World* world; //TODO ensure it is initialized properly
 };
 
 class CursorState

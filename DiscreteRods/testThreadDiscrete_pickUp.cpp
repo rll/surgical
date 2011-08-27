@@ -44,12 +44,8 @@
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
-void updateCursorFromButton(Cursor* cursor, ControlBase* control);
-void updateCursorFromTransform(Cursor* cursor, ControlBase* control);
 void processInput(ControlBase* control0, ControlBase* control1);
-void updateObjectsFromCursor(Cursor* cursor);
 void moveMouseToClosestEE(Mouse* mouse);
-void linkObjectsToWorldObjects();
 void displayTextInScreen(const char* textline, ...);
 void initThread();
 void initLongerThread();
@@ -89,7 +85,7 @@ vector<ThreadConstrained*> threads;
 
 // interactive variables
 bool limit_displacement = false;
-bool haptics = true;
+bool haptics = false;
 
 //IO
 Haptic *haptic0, *haptic1;
@@ -148,8 +144,6 @@ void mouseMotion (int x, int y)
 	if (!haptics) {
 		mouse0->applyTransformFrom2DMove(model_view, projection, viewport);
 		mouse1->applyTransformFrom2DMove(model_view, projection, viewport);
-		updateCursorFromTransform(cursor0, mouse0);
-		updateCursorFromTransform(cursor1, mouse1);
 		processInput(mouse0, mouse1);
 	}
 	glutPostRedisplay ();
@@ -185,20 +179,16 @@ void processNormalKeys(unsigned char key, int x, int y)
   else if (key == 'R')
     mouse1->setKeyPressed(ROTATETAN);
  	else if (key == 'u') {
-		mouse0->setButtonState(true, UP);
 		glutIgnoreKeyRepeat(1);
   } else if (key == 'j') {
-    moveMouseToClosestEE(mouse0);
-		updateCursorFromTransform(cursor0, mouse0);
-    mouse0->setButtonState(true, DOWN);
+    if (!cursor0->isAttached())
+   		moveMouseToClosestEE(mouse0);
 		glutIgnoreKeyRepeat(1);
   } else if (key == 'U') {
-    mouse1->setButtonState(true, UP);
 		glutIgnoreKeyRepeat(1);
   } else if (key == 'J') {
-    moveMouseToClosestEE(mouse1);
-		updateCursorFromTransform(cursor1, mouse1);
-    mouse1->setButtonState(true, DOWN);
+    if (!cursor1->isAttached())
+    	moveMouseToClosestEE(mouse1);
 		glutIgnoreKeyRepeat(1);
 	} else if(key == 's') {
     cout << "Saving...\n";
@@ -222,7 +212,6 @@ void processNormalKeys(unsigned char key, int x, int y)
 	  }
     StateReader state_reader(fullPath);
     if (state_reader.readObjectsFromFile(world)) {
-			linkObjectsToWorldObjects();
 			cout << "State loading was sucessful." << endl;
 		}
 	} else if(key == 'c') {
@@ -266,23 +255,22 @@ void processNormalKeys(unsigned char key, int x, int y)
   	cout << "worlds size " << worlds.size() << endl;
   	world_ind = 0;
   	world = worlds[world_ind];
-  	linkObjectsToWorldObjects();
 	} else if(key == '[') {
 		if (worlds.size() > 0) {
 			world_ind = max(0, world_ind-1);
 			world = worlds[world_ind];
-			linkObjectsToWorldObjects();
 			cout << "world " << world_ind << " / " << worlds.size() << endl;
 		} else { cout << "There is no previous state. worlds is empty." << endl; }
 	} else if(key == ']') {
 		if (worlds.size() > 0) {
 			world_ind = min((int) worlds.size()-1, world_ind+1);
 			world = worlds[world_ind];
-			linkObjectsToWorldObjects();
 			cout << "world " << world_ind << " / " << worlds.size() << endl;
 		} else { cout << "There is no next state. worlds is empty." << endl; }
 	} else if(key == 'l') {
 		limit_displacement = !limit_displacement;
+		for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++)
+			end_effectors[ee_ind]->setLimitDisplacement(limit_displacement);
   } else if(key == 'e') {
   	for (int thread_ind=0; thread_ind<threads.size(); thread_ind++)
   		threads[thread_ind]->toggleExamineMode();
@@ -338,12 +326,14 @@ void processKeyUp(unsigned char key, int x, int y)
   if ((key == 'u') || (key == 'j') || (key == 'U') || (key == 'J')) {
   	glutIgnoreKeyRepeat(0);
   	if (!haptics) {	
-			mouse0->setButtonState(false, UP);
-			mouse0->setButtonState(false, DOWN);
-			mouse1->setButtonState(false, UP);
-			mouse1->setButtonState(false, DOWN);
-			updateCursorFromButton(cursor0, mouse0);
-			updateCursorFromButton(cursor1, mouse1);
+			if (key == 'u')
+				mouse0->setPressButton(true, UP);
+			if (key == 'j')
+				mouse0->setPressButton(true, DOWN);
+			if (key == 'U')
+				mouse1->setPressButton(true, UP);
+			if (key == 'J')
+				mouse1->setPressButton(true, DOWN);
 			processInput(mouse0, mouse1);
 			glutPostRedisplay();
 		}
@@ -394,18 +384,14 @@ void processHapticDevice()
 	
 	if (getDeviceState(start_proxy_pos, start_proxy_rot, start_proxybutton, end_proxy_pos, end_proxy_rot, end_proxybutton)) {
 		haptic0->setRelativeTransform(start_proxy_pos, start_proxy_rot);
-		haptic0->setButtonState(start_proxybutton[UP], UP);
-		haptic0->setButtonState(start_proxybutton[DOWN], DOWN);
+		haptic0->setHapticButton(start_proxybutton[UP], UP);
+		haptic0->setHapticButton(start_proxybutton[DOWN], DOWN);
 		haptic1->setRelativeTransform(end_proxy_pos, end_proxy_rot);
-		haptic1->setButtonState(end_proxybutton[UP], UP);
-		haptic1->setButtonState(end_proxybutton[DOWN], DOWN);
+		haptic1->setHapticButton(end_proxybutton[UP], UP);
+		haptic1->setHapticButton(end_proxybutton[DOWN], DOWN);
 	}
 
 	if (haptics) {
-		updateCursorFromButton(cursor0, haptic0);
-		updateCursorFromButton(cursor1, haptic1);
-		updateCursorFromTransform(cursor0, haptic0);		
-		updateCursorFromTransform(cursor1, haptic1);
 		processInput(haptic0, haptic1);
 		glutPostRedisplay ();
 	}
@@ -609,6 +595,9 @@ int main (int argc, char * argv[])
 	world->addEnvObj(textured_sphere);
 	world->initializeThreadsInEnvironment();
 	
+	cursor0->setWorld(world);
+	cursor1->setWorld(world);
+	
 	if (haptics)
 		processInput(haptic0, haptic1);
 	else
@@ -616,173 +605,36 @@ int main (int argc, char * argv[])
   glutMainLoop ();
 }
 
-// This function updates the open/close and attach/dettach state of the 
-// cursor based on the button state change of control. This should always 
-// be called after a possible change of a control's button state.
-// However, it should not be called if the control's button state might
-// not have changed; i.e. don't call it from mouseMotion. bug?
-void updateCursorFromButton(Cursor* cursor, ControlBase* control)
-{
-	cursor->saveLastOpen();
-	if (control->hasButtonPressed(UP))
-		cursor->openClose();
-	cursor->attach_dettach_attempt = control->hasButtonPressed(DOWN);
-}
-
-void updateCursorFromTransform(Cursor* cursor, ControlBase* control)
-{
-	cursor->setTransform(control->getPosition(), control->getRotation());
-}
-
 void processInput(ControlBase* control0, ControlBase* control1)
-{
-	updateObjectsFromCursor(cursor0);
-	updateObjectsFromCursor(cursor1);
-
-	for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
-		
-		vector<EndEffector*> thread_end_effs;
-		for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++)
-			if (end_effectors[ee_ind]->getThread()==threads[thread_ind])
-				thread_end_effs.push_back(end_effectors[ee_ind]);
-
-		vector<Vector3d> positionConstraints;
-		vector<Matrix3d> rotationConstraints;
-		threads[thread_ind]->getConstrainedTransforms(positionConstraints, rotationConstraints);
-
-		for (int ee_ind = 0; ee_ind < thread_end_effs.size(); ee_ind++) {
-			EndEffector* ee = thread_end_effs[ee_ind];
-			positionConstraints[ee->constraint_ind] = ee->getPosition();
-			rotationConstraints[ee->constraint_ind] = ee->getRotation();
-		}
-
-		threads[thread_ind]->updateConstraints(positionConstraints, rotationConstraints);
-		threads[thread_ind]->getConstrainedTransforms(positionConstraints, rotationConstraints);
-		
-		for (int ee_ind = 0; ee_ind < thread_end_effs.size(); ee_ind++) {
-			EndEffector* ee = thread_end_effs[ee_ind];
-			ee->setTransform(positionConstraints[ee->constraint_ind], rotationConstraints[ee->constraint_ind], false);
-		}
-
-		//threads[thread_ind]->adapt_links();
-	}
-
-	if (trajectory_recorder.hasStarted()) {
-		trajectory_recorder.writeStateToFile(world);
-	}
-
-	glPopMatrix();
-}
-
-inline bool closeEnough(const Vector3d& my_pos, const Matrix3d& my_rot, const Vector3d& pos, const Matrix3d& rot)
-{
-	double angle = 2*asin((my_rot.col(0) - rot.col(0)).norm()/2);
-  return (((my_pos - pos).norm() < 4.0) && angle < 0.25*M_PI);
-}
-
-void updateObjectsFromCursor(Cursor* cursor)
-{
-	const Vector3d tip_pos = cursor->getPosition() - EndEffector::grab_offset * cursor->getRotation().col(0);
-	const Matrix3d tip_rot = cursor->getRotation();
+{	
+	vector<ControlBase*> controls;
+	controls.push_back(control0);
+	controls.push_back(control1);
 	
-	if (cursor->isAttached()) {																																				// cursor has an end effector
-		EndEffector* ee = cursor->end_eff;
-	  if (!ee->isThreadAttached()) {																																					// cursor has an end effector but it isn't holding the thread
-	  	int nearest_vertex = threads[0]->nearestVertex(tip_pos);
-	  	ThreadConstrained* thread = threads[0];
-	  	for (int thread_ind = 1; thread_ind < threads.size(); thread_ind++) {
-	  		int candidate_nearest_vertex = threads[thread_ind]->nearestVertex(tip_pos);
-	  		if ( (threads[thread_ind]->position(candidate_nearest_vertex) - tip_pos).squaredNorm() <
-	  				 (threads[thread_ind]->position(nearest_vertex) - tip_pos).squaredNorm() ) {	  		
-	  			nearest_vertex = candidate_nearest_vertex;
-	  			thread = threads[thread_ind];
-	  		}
-	  	}
-	  	if (cursor->justClosed() && ((thread->position(nearest_vertex) - tip_pos).squaredNorm() < 32.0)) {	// cursor has an end effector which just started holding the thread
-	  		ee->constraint = nearest_vertex;
-		    thread->addConstraint(nearest_vertex);
-		    ee->attachThread(thread);
-		    for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++) {
-					end_effectors[ee_ind]->updateConstraintIndex();
-		    }
-		    thread->setConstrainedTransforms(ee->constraint_ind, tip_pos, tip_rot);										// the end effector's orientation matters when it grips the thread. This updates the offset rotation.
-		  }
-	  } else {																																												// cursor has an end effector which is holding the thread
-	  	if ((ee->constraint==0 || ee->constraint==(ee->getThread()->numVertices()-1)) && cursor->isOpen()) {		// cursor has an end effector which is holding the thread end and trying to be opened
-				cout << "You cannot open the end effector holding the end constraint" << endl;
-			 	cursor->forceClose();
-			} else if (cursor->isOpen()) {																																// cursor has an end effector which is holding the thread and trying to be opened
-			  ee->getThread()->removeConstraint(ee->constraint);
-			 	ee->constraint = ee->constraint_ind = -1;
-			 	ee->dettachThread();
-			 	for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++)
-					end_effectors[ee_ind]->updateConstraintIndex();
-			}
-		}
-		ee->setTransform(tip_pos, tip_rot, limit_displacement);
-		if (cursor->attach_dettach_attempt) {
-			cursor->dettach();
-			for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++)
-				end_effectors[ee_ind]->updateConstraintIndex();
-		}
-	} else {																				// cursor doesn't have an end effector, THUS it isn't holding the thread i.e. ee->constraint = ee->constraint_ind = -1;
-  	for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++) {
-  		EndEffector* ee = end_effectors[ee_ind];
-  		if (cursor->attach_dettach_attempt && closeEnough(tip_pos, tip_rot, ee->getPosition(), ee->getRotation())) {
-  			cursor->attach(ee);
-  			if (ee->isThreadAttached()) {
-					ee->updateConstraint();
-  				if ((ee->constraint==0 || ee->constraint==(ee->getThread()->numVertices()-1)) && cursor->isOpen()) 
-	  				cursor->forceClose();
-  			}
-  		}
-  	}
- 	}
-	cursor->attach_dettach_attempt = false;
+	world->applyControl(controls);
 }
 
 void moveMouseToClosestEE(Mouse* mouse) {
 	const Vector3d tip_pos = mouse->getPosition() - EndEffector::grab_offset * mouse->getRotation().col(0);
-	const Matrix3d tip_rot = mouse->getRotation();
-	int min_ee_ind = 0;
+	int min_ee_ind;
+	for (min_ee_ind = 0; min_ee_ind < end_effectors.size(); min_ee_ind++) {
+		if (cursor0->end_eff!=end_effectors[min_ee_ind] && cursor1->end_eff!=end_effectors[min_ee_ind])
+			break;
+	}	
+	if (min_ee_ind == end_effectors.size()) {
+		cout << "There is no any end effectors that is not being holded by a cursor" << endl;
+		return;
+	}
 	float min_squared_dist = (tip_pos - end_effectors[min_ee_ind]->getPosition()).squaredNorm();
 	for (int ee_ind = 1; ee_ind < end_effectors.size(); ee_ind++) {
 		float squared_dist = (tip_pos - end_effectors[ee_ind]->getPosition()).squaredNorm();
-		if (squared_dist < min_squared_dist) {
+		if (squared_dist < min_squared_dist && cursor0->end_eff!=end_effectors[ee_ind] && cursor1->end_eff!=end_effectors[ee_ind]) {
 			min_squared_dist = squared_dist;
 			min_ee_ind = ee_ind;
 		}				
 	}
 	EndEffector* ee = end_effectors[min_ee_ind];
 	mouse->setTransform(ee->getPosition() + EndEffector::grab_offset * ee->getRotation().col(0), ee->getRotation());
-}
-
-// This should be called everytime the pointer world is set to another
-// world; i.e. after loading a world from a file.
-void linkObjectsToWorldObjects()
-{
-	vector<ThreadConstrained*> world_thread = *(world->getThreads());
-	for (int i = 0; i < threads.size(); i++) {
-		threads[i] = world_thread[i];
-	}
-
-	vector<EnvObject*> world_cursors = world->getEnvObjs(CURSOR);
-	cursor0 = dynamic_cast<Cursor*>(world_cursors[0]);
-	cursor1 = dynamic_cast<Cursor*>(world_cursors[1]);
-
-	vector<EnvObject*> world_end_effs = world->getEnvObjs(END_EFFECTOR);
-	for (int i = 0; i < end_effectors.size(); i++) {
-		end_effectors[i] = dynamic_cast<EndEffector*>(world_end_effs[i]);
-	}
-
-	vector<EnvObject*> world_planes = world->getEnvObjs(INFINITE_PLANE);
-	plane = dynamic_cast<InfinitePlane*>(world_planes[0]);
-
-	vector<EnvObject*> world_spheres = world->getEnvObjs(TEXTURED_SPHERE);
-	textured_sphere = dynamic_cast<TexturedSphere*>(world_spheres[0]);
-	
-	mouse0->setTransform(cursor0);
-	mouse1->setTransform(cursor1);
 }
 
 void displayTextInScreen(const char* textline, ...)

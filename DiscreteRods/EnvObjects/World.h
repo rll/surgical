@@ -20,6 +20,7 @@
 #include <Eigen/Geometry>
 #include <math.h>
 #include <vector>
+#include <typeinfo>
 
 #include "../utils/drawUtils.h"
 #include "../Collisions/intersectionStructs.h"
@@ -34,6 +35,8 @@ class EnvObject;
 
 class ThreadConstrained;
 
+class ControlBase;
+
 class World
 {
 	public:
@@ -44,23 +47,25 @@ class World
 
 		void addThread(ThreadConstrained* thread);
 		void addEnvObj(EnvObject* obj);
-		void getEnvObjs(vector<EnvObject*>& env_objs);
-		void getEnvObjs(vector<EnvObject*>& env_objs, object_type type);
-		void getThreads(vector<ThreadConstrained*> threads);
+		vector<EnvObject*>* getEnvObjs();
+		vector<EnvObject*> getEnvObjs(object_type type);
+		void getEnvObjs(vector<EnvObject*>& objects, object_type type);
+		vector<ThreadConstrained*>* getThreads();
 		void initializeThreadsInEnvironment();
 		void clearObjs();
 
+		//applies controli to cursori
+		void applyControl(const vector<ControlBase*>& controls);
+		
 		void draw();
-
-		void getStates(vector<VectorXd>& states);
-		void applyControl(const VectorXd& u);
-		
-		void backup();
-		void restore();
-		
 		bool capsuleObjectIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections);
 		double capsuleObjectRepulsionEnergy(const Vector3d& start, const Vector3d& end, const double radius);
 		void capsuleObjectRepulsionEnergyGradient(const Vector3d& start, const Vector3d& end, const double radius, Vector3d& gradient);
+		
+		void getStates(vector<VectorXd>& states);
+		
+		void saveToBackup();
+		void restoreFromBackup();
 	
 	private:
 		vector<ThreadConstrained*> threads;

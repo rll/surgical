@@ -35,10 +35,7 @@ public:
   ControlBase()
   	: position(0.0, 0.0, 0.0)
   	, rotation(Matrix3d::Identity())
-  {
-		button_state[UP] = button_state[DOWN] = false;
-		last_button_state[UP] = last_button_state[DOWN] = false;
-  }
+  {}
 
   ~ControlBase() {}
 
@@ -76,27 +73,11 @@ public:
   	return rotation;
   }
 
-	void setButtonState(bool bttn, button_type bttn_type)
-	{
-		last_button_state[bttn_type] = button_state[bttn_type];
-		button_state[bttn_type] = bttn;
-	}
-
-	bool getButtonState(button_type bttn_type)
-	{
-		return button_state[bttn_type];
-	}
-
-	bool hasButtonPressed(button_type bttn_type)
-	{
-		return (last_button_state[bttn_type] && !button_state[bttn_type]);
-	}
+	virtual bool hasButtonPressedAndReset(button_type bttn_type) = 0;
   
 protected:
   Vector3d position;
   Matrix3d rotation;
-  bool button_state[2];
-  bool last_button_state[2];
 };
 
 #endif // _ControlBase_h
