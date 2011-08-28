@@ -52,10 +52,13 @@ class Thread;
 
 class ThreadConstrained {
 	public:
+		ThreadConstrained();
 		ThreadConstrained(int num_vertices_init);
 		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, Matrix3d& end_rot);
 		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot);
 		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot);
+		ThreadConstrained(const ThreadConstrained& rhs, World* w);
+    ThreadConstrained& operator=(const ThreadConstrained& rhs);
 		
 		void writeToFile(ofstream& file);
 		ThreadConstrained(ifstream& file);
@@ -99,8 +102,11 @@ class ThreadConstrained {
 		Matrix3d rotation(int absolute_vertex_num);
 		void draw();
 		void setWorld(World* w);
-		vector<Thread*>* getThreads() { return &threads; }
+		void getThreads(vector<Thread*>& ths);
 		void toggleExamineMode();
+
+		void backup();
+		void restore();
 
 	private:
 		int num_vertices;
@@ -112,6 +118,14 @@ class ThreadConstrained {
 		vector<Matrix3d> rot_offset;
     vector<int> constrained_vertices_nums;
     object_type type;
+    
+    //backup
+		vector<Thread*> backup_threads;
+		double backup_zero_angle;
+		vector<Matrix3d> backup_rot_diff;
+		vector<Matrix3d> backup_rot_offset;
+		vector<int> backup_constrained_vertices_nums;
+        
     double contour[NUM_PTS_CONTOUR][2];
 		double contour_norms[NUM_PTS_CONTOUR][2];
     void initContour();

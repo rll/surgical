@@ -1,3 +1,5 @@
+#ifdef NEVERDEFINED
+
 #include "Capsule.h"
 #include "../threadpiece_discrete.h"
 
@@ -98,3 +100,5 @@ void Capsule::capsuleRepulsionEnergyGradient(const Vector3d& start, const Vector
 		return;
 	gradient -= REPULSION_COEFF * (radius - dist) * direction.normalized();
 }
+
+#endif

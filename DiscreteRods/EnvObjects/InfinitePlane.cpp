@@ -1,3 +1,4 @@
+#ifdef NEVERDEFINED
 #include "InfinitePlane.h"
 #include "../threadpiece_discrete.h"
 
@@ -21,6 +22,22 @@ InfinitePlane::InfinitePlane(const Vector3d& pos, const Vector3d& norm, string f
 	ilInit();
   if (! LoadImageDevIL ((char*) filename.c_str(), &texture) )
   	cerr << "Failed to load texture from filename " << filename << endl;
+}
+
+InfinitePlane::InfinitePlane(const InfinitePlane& rhs)
+	: EnvObject(rhs.position, rhs.rotation, rhs.color0, rhs.color1, rhs.color2, rhs.type)
+	, normal(rhs.normal)
+	, side(rhs.side)
+	, file_name(rhs.file_name)
+{
+	if (type != INFINITE_PLANE)
+		cout << "error in infiniteplane" << endl; //TODO assert
+	rotation_from_tangent(normal.normalized(), rotation);
+	if (file_name != "notexture") {
+		ilInit();
+		if (! LoadImageDevIL ((char*) file_name.c_str(), &texture) )
+			cerr << "Failed to load texture from filename " << file_name << endl;
+	}
 }
 
 InfinitePlane::~InfinitePlane()
@@ -155,3 +172,4 @@ ILuint InfinitePlane::LoadImageDevIL (char *szFileName, struct TextureHandle *T)
     //printf("%s %d %d %d\n",szFileName,T->id,T->w,T->h);
     return 1; // success
 }
+#endif

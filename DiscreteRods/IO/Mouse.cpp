@@ -8,9 +8,23 @@ Mouse::Mouse()
 	: ControlBase()
 	, key_pressed(NONE)
 	, move(0.0, 0.0)
-{}
+{
+	button_state[UP] = button_state[DOWN] = false;
+}
 
 Mouse::~Mouse() {}
+
+void Mouse::setPressButton(bool bttn, button_type bttn_type)
+{
+	button_state[bttn_type] = bttn;
+}
+
+bool Mouse::hasButtonPressedAndReset(button_type bttn_type)
+{
+	bool result = button_state[bttn_type];
+	button_state[bttn_type] = false;
+	return result;
+}
 
 void Mouse::setKeyPressed(key_code key)
 {

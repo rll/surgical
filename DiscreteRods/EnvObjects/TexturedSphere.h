@@ -1,3 +1,4 @@
+#ifdef NEVERDEFINED
 #ifndef _TexturedSphere_h
 #define _TexturedSphere_h
 
@@ -15,6 +16,7 @@ class TexturedSphere : public EnvObject
 {
 	public:
 		TexturedSphere(const Vector3d& pos, double r, string filename);
+		TexturedSphere(const TexturedSphere& rhs);
 		~TexturedSphere();
 		
 		// For saving and loading objects to and from files
@@ -44,4 +46,5 @@ class TexturedSphere : public EnvObject
 		ILuint LoadImageDevIL (char *szFileName, struct TextureHandle *T);
 };
 
+#endif
 #endif
