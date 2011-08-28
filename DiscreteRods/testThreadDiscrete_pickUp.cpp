@@ -36,10 +36,10 @@
 #include "EnvObjects/InfinitePlane.h"
 #include "EnvObjects/TexturedSphere.h"
 
-#include "StateRecorder.h"
-#include "StateReader.h"
-#include "TrajectoryRecorder.h"
-#include "TrajectoryReader.h"
+//TODO//#include "StateRecorder.h"
+//TODO//#include "StateReader.h"
+//TODO//#include "TrajectoryRecorder.h"
+//TODO//#include "TrajectoryReader.h"
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
@@ -47,14 +47,9 @@ USING_PART_OF_NAMESPACE_EIGEN
 void processInput(ControlBase* control0, ControlBase* control1);
 void moveMouseToClosestEE(Mouse* mouse);
 void displayTextInScreen(const char* textline, ...);
-void initThread();
-void initLongerThread();
-void initRestingThread();
 void glutMenu(int ID);
 void initGL();
 
-#define NUM_PTS 500
-#define THREAD_RADII 1.0
 //#define VIEW3D
 
 float lastx_L=0;
@@ -81,8 +76,6 @@ int window_width, window_height;
 Vector3d zero_location;
 double zero_angle;
 
-vector<ThreadConstrained*> threads;
-
 // interactive variables
 bool limit_displacement = false;
 bool haptics = false;
@@ -91,15 +84,11 @@ bool haptics = false;
 Haptic *haptic0, *haptic1;
 Mouse *mouse0, *mouse1;
 
-//Objects in environment
+//Environment
 World *world;
-Cursor *cursor0, *cursor1;
-vector<EndEffector*> end_effectors;
-InfinitePlane *plane;
-TexturedSphere *textured_sphere;
 
 //For recording and playing back trajectories
-TrajectoryRecorder trajectory_recorder;
+//TODO//TrajectoryRecorder trajectory_recorder;
 vector<World*> worlds;
 int world_ind = 0;
 
@@ -181,16 +170,16 @@ void processNormalKeys(unsigned char key, int x, int y)
  	else if (key == 'u') {
 		glutIgnoreKeyRepeat(1);
   } else if (key == 'j') {
-    if (!cursor0->isAttached())
+    if (!world->cursorAtIndex(0)->isAttached())
    		moveMouseToClosestEE(mouse0);
 		glutIgnoreKeyRepeat(1);
   } else if (key == 'U') {
 		glutIgnoreKeyRepeat(1);
   } else if (key == 'J') {
-    if (!cursor1->isAttached())
+    if (!world->cursorAtIndex(1)->isAttached())
     	moveMouseToClosestEE(mouse1);
 		glutIgnoreKeyRepeat(1);
-	} else if(key == 's') {
+	/*} else if(key == 's') {
     cout << "Saving...\n";
     cout << "Please enter destination file name (without extension): ";
     char *dstFileName = new char[256];
@@ -210,6 +199,7 @@ void processNormalKeys(unsigned char key, int x, int y)
   	} else {
 	    sprintf(fullPath, "%s%s%c", "environmentFiles/", "o", key);
 	  }
+    //TODO don't forget to unattach control
     StateReader state_reader(fullPath);
     if (state_reader.readObjectsFromFile(world)) {
 			cout << "State loading was sucessful." << endl;
@@ -251,10 +241,11 @@ void processNormalKeys(unsigned char key, int x, int y)
 	    sprintf(fullPath, "%s%s%c", "environmentFiles/", "t", map_key);
 	  }
   	TrajectoryReader trajectory_reader(fullPath);
+  	//TODO don't forget to unattach control
   	trajectory_reader.readStatesFromFile(worlds);
   	cout << "worlds size " << worlds.size() << endl;
   	world_ind = 0;
-  	world = worlds[world_ind];
+  	world = worlds[world_ind];*/
 	} else if(key == '[') {
 		if (worlds.size() > 0) {
 			world_ind = max(0, world_ind-1);
@@ -269,11 +260,9 @@ void processNormalKeys(unsigned char key, int x, int y)
 		} else { cout << "There is no next state. worlds is empty." << endl; }
 	} else if(key == 'l') {
 		limit_displacement = !limit_displacement;
-		for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++)
-			end_effectors[ee_ind]->setLimitDisplacement(limit_displacement);
   } else if(key == 'e') {
-  	for (int thread_ind=0; thread_ind<threads.size(); thread_ind++)
-  		threads[thread_ind]->toggleExamineMode();
+  	//for (int thread_ind=0; thread_ind<threads.size(); thread_ind++)
+  	//	threads[thread_ind]->toggleExamineMode();
   } else if(key == 'h') {
   	haptics = !haptics;
   	if (haptics) {
@@ -289,14 +278,23 @@ void processNormalKeys(unsigned char key, int x, int y)
   	cout << states[4](0) << " " << states[4](1) << " " << states[4](2) << " " << endl;
   } else if(key == 'd') {
   	cout << "saving to backup" << endl;
-  	world->saveToBackup();
+  	world->backup();
   } else if(key == 'f') {
   	cout << "restoring from backup" << endl;
-  	world->restoreFromBackup();
+  	world->restore();
   } else if(key == 'b') {
   	cout << "copying world" << endl;
   	World* world_temp = new World(*world);
+  	delete world;
   	world = world_temp;
+  } else if(key == 'n') {
+  	vector<VectorXd> v;
+  	world->getStates(v);
+  	cout << "start" << endl;
+  	for(int i=0; i<v.size(); i++) {
+  		cout << v[i] << endl << endl;
+  	}
+  	cout << "end" << endl;
 
 #ifdef VIEW3D
   } else if(key == '=') {
@@ -523,10 +521,6 @@ int main (int argc, char * argv[])
 	
 	initGL();
 	
-  initThread();
-  //initLongerThread();
-  //initRestingThread();
-
   zero_location = Vector3d::Zero();
   zero_angle = 0.0;
 
@@ -536,67 +530,13 @@ int main (int argc, char * argv[])
 	haptic0 = new Haptic();
 	haptic1 = new Haptic();
 	connectionInit();
+	
+	//Environment
+	world = new World();
 
 	glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
 	glGetDoublev(GL_PROJECTION_MATRIX, projection);
 	glGetIntegerv(GL_VIEWPORT, viewport);
-	
-	//setting up objects in environment
-	cursor0 = new Cursor(Vector3d::Zero(), Matrix3d::Identity());
-	cursor1 = new Cursor(Vector3d::Zero(), Matrix3d::Identity());	
-	plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), "../utils/textures/checkerBoardSquare32.bmp");
-	//plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), 0.6, 0.6, 0.6);
-	textured_sphere = new TexturedSphere(Vector3d::Zero(), 150.0, "../utils/textures/checkerBoardRect16.bmp");
-	
-	//setting up end effectors
-	vector<Vector3d> positions;
-	vector<Matrix3d> rotations;
-	threads[0]->getConstrainedTransforms(positions, rotations);
-	EndEffector* end_effector0 = new EndEffector(positions[0], rotations[0]);
-	end_effector0->attachThread(threads[0]);
-	end_effector0->constraint_ind = 0;
-	end_effector0->updateConstraint();
-	end_effectors.push_back(end_effector0);
-
-	EndEffector* end_effector1 = new EndEffector(positions[1], rotations[1]);
-	end_effector1->attachThread(threads[0]);
-	end_effector1->constraint_ind = 1;
-	end_effector1->updateConstraint();	
-	end_effectors.push_back(end_effector1);
-	
-	threads[1]->getConstrainedTransforms(positions, rotations);
-	EndEffector* end_effector2 = new EndEffector(positions[0], rotations[0]);
-	end_effector2->attachThread(threads[1]);
-	end_effector2->constraint_ind = 0;
-	end_effector2->updateConstraint();
-	end_effectors.push_back(end_effector2);
-	
-	EndEffector* end_effector3 = new EndEffector(positions[1], rotations[1]);
-	end_effector3->attachThread(threads[1]);
-	end_effector3->constraint_ind = 1;
-	end_effector3->updateConstraint();
-	end_effectors.push_back(end_effector3);
-	
-	EndEffector* end_effector4 = new EndEffector(plane->getPosition() + Vector3d(30.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()));
-	end_effectors.push_back(end_effector4);
-	
-	EndEffector* end_effector5 = new EndEffector(plane->getPosition() + Vector3d(35.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()));
-	end_effectors.push_back(end_effector5);
-
-	// adding objects to environment
-	world = new World();
-	for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++)
-		world->addThread(threads[thread_ind]);
-	world->addEnvObj(cursor0);
-	world->addEnvObj(cursor1);
-	for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++)
-		world->addEnvObj(end_effectors[ee_ind]);
-	world->addEnvObj(plane);
-	world->addEnvObj(textured_sphere);
-	world->initializeThreadsInEnvironment();
-	
-	cursor0->setWorld(world);
-	cursor1->setWorld(world);
 	
 	if (haptics)
 		processInput(haptic0, haptic1);
@@ -616,24 +556,7 @@ void processInput(ControlBase* control0, ControlBase* control1)
 
 void moveMouseToClosestEE(Mouse* mouse) {
 	const Vector3d tip_pos = mouse->getPosition() - EndEffector::grab_offset * mouse->getRotation().col(0);
-	int min_ee_ind;
-	for (min_ee_ind = 0; min_ee_ind < end_effectors.size(); min_ee_ind++) {
-		if (cursor0->end_eff!=end_effectors[min_ee_ind] && cursor1->end_eff!=end_effectors[min_ee_ind])
-			break;
-	}	
-	if (min_ee_ind == end_effectors.size()) {
-		cout << "There is no any end effectors that is not being holded by a cursor" << endl;
-		return;
-	}
-	float min_squared_dist = (tip_pos - end_effectors[min_ee_ind]->getPosition()).squaredNorm();
-	for (int ee_ind = 1; ee_ind < end_effectors.size(); ee_ind++) {
-		float squared_dist = (tip_pos - end_effectors[ee_ind]->getPosition()).squaredNorm();
-		if (squared_dist < min_squared_dist && cursor0->end_eff!=end_effectors[ee_ind] && cursor1->end_eff!=end_effectors[ee_ind]) {
-			min_squared_dist = squared_dist;
-			min_ee_ind = ee_ind;
-		}				
-	}
-	EndEffector* ee = end_effectors[min_ee_ind];
+	EndEffector* ee = world->closestEndEffector(tip_pos);
 	mouse->setTransform(ee->getPosition() + EndEffector::grab_offset * ee->getRotation().col(0), ee->getRotation());
 }
 
@@ -652,356 +575,6 @@ void displayTextInScreen(const char* textline, ...)
 		printText(-28, 28-i*1.5, textvect[i].c_str());
 	}
   glPopMatrix();
-}
-
-void initThread()
-{
-  int numInit = 6;
-
-	double first_length = 3.0; //FIRST_REST_LENGTH;
-	double second_length = SECOND_REST_LENGTH;
-	double middle_length = DEFAULT_REST_LENGTH;
-
-  vector<Vector3d> vertices;
-  vector<double> angles;
-  vector<double> lengths;
-  vector<Vector3d> directions;
-  
-	for (int i=0; i < 2*numInit + 5; i++)
-		angles.push_back(0.0);
-  
-  lengths.push_back(first_length);
-  lengths.push_back(second_length);
-  for (int i=0; i < 2*numInit; i++)
-  	lengths.push_back(middle_length);
-  lengths.push_back(second_length);
-  lengths.push_back(first_length);
-  lengths.push_back(first_length);
-  
-  directions.push_back(Vector3d::UnitX());
-  directions.push_back(Vector3d::UnitX());
-  Vector3d direction = Vector3d(2.0, -1.0, 0.0);
-  direction.normalize();
-  for (int i=0; i < numInit; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(1.0, -2.0, 0.0);
-  direction.normalize();
-  for (int i=0; i < numInit; i++)
-  	directions.push_back(direction);
-  directions.push_back(-Vector3d::UnitY());
-  directions.push_back(-Vector3d::UnitY());
-  
-  vertices.push_back(Vector3d::Zero());
-  for (int i=1; i < 2*numInit + 5; i++) {
-  	Vector3d next_vertex;
-  	next_vertex(0) = vertices[i-1](0) + directions[i-1](0) * lengths[i-1];
-  	next_vertex(1) = vertices[i-1](1) + directions[i-1](1) * lengths[i-1];
-  	next_vertex(2) = vertices[i-1](2) + directions[i-1](2) * lengths[i-1];
-    vertices.push_back(next_vertex);
-  }
-  
-	Vector3d last_pos = Vector3d(-10.0, -30.0, 0.0);
-	for (int i=0; i<vertices.size(); i++)
-		vertices[i] += -vertices.back() + last_pos;
-
-  Matrix3d start_rotation0 = Matrix3d::Identity();
-  Matrix3d end_rotation0 = (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitZ());
-
-  ThreadConstrained* thread0 = new ThreadConstrained(vertices, angles, lengths, start_rotation0, end_rotation0);
-  threads.push_back(thread0);
-  
-  for (int i=0; i<vertices.size(); i++)
-		vertices[i](0) *= -1;
-	Matrix3d start_rotation1 = (Matrix3d) AngleAxisd(M_PI, Vector3d::UnitZ());
-  Matrix3d end_rotation1 = (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitZ());
-  ThreadConstrained* thread1 = new ThreadConstrained(vertices, angles, lengths, start_rotation1, end_rotation1);
-  threads.push_back(thread1);
-  
-	for (int thread_ind=0; thread_ind < threads.size(); thread_ind++) {
-#ifndef ISOTROPIC
-		Matrix2d B = Matrix2d::Zero();
-		B(0,0) = 10.0;
-		B(1,1) = 1.0;
-		threads[thread_ind]->set_coeffs_normalized(B, 3.0, 1e-4);
-#else
-  	threads[thread_ind]->set_coeffs_normalized(1.0, 3.0, 1e-4);
-#endif
-	}
-}
-
-void initLongerThread()
-{
-  int numInit = 5;
-
-	double first_length = 3.0; //FIRST_REST_LENGTH;
-	double second_length = SECOND_REST_LENGTH;
-	double middle_length = DEFAULT_REST_LENGTH;
-
-  vector<Vector3d> vertices;
-  vector<double> angles;
-  vector<double> lengths;
-  vector<Vector3d> directions;
-  
-	for (int i=0; i < 4*numInit + 5; i++)
-		angles.push_back(0.0);
-  
-  lengths.push_back(first_length);
-  lengths.push_back(second_length);
-  for (int i=0; i < 4*numInit; i++)
-  	lengths.push_back(middle_length);
-  lengths.push_back(second_length);
-  lengths.push_back(first_length);
-  lengths.push_back(first_length);
-  
-  directions.push_back(Vector3d::UnitX());
-  directions.push_back(Vector3d::UnitX());
-  Vector3d direction = Vector3d(1.0, 1.0, 0.0);
-  direction.normalize();
-  for (int i=0; i < numInit; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(1.0, -1.0, 0.4);
-  direction.normalize();
-  for (int i=0; i < numInit; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(-1.0, -1.0, -0.4);
-  direction.normalize();
-  for (int i=0; i < numInit; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(0.0, -1.0, 0.0);
-  direction.normalize();
-  for (int i=0; i < numInit; i++)
-  	directions.push_back(direction);
-  directions.push_back(-Vector3d::UnitY());
-  directions.push_back(-Vector3d::UnitY());
-  
-  vertices.push_back(Vector3d::Zero());
-  for (int i=1; i < 4*numInit + 5; i++) {
-  	Vector3d next_vertex;
-  	next_vertex(0) = vertices[i-1](0) + directions[i-1](0) * lengths[i-1];
-  	next_vertex(1) = vertices[i-1](1) + directions[i-1](1) * lengths[i-1];
-  	next_vertex(2) = vertices[i-1](2) + directions[i-1](2) * lengths[i-1];
-    vertices.push_back(next_vertex);
-  }
-  
-	Vector3d last_pos = Vector3d(-10.0, -30.0, 0.0);
-	for (int i=0; i<vertices.size(); i++)
-		vertices[i] += -vertices.back() + last_pos;
-
-  Matrix3d start_rotation0 = Matrix3d::Identity();
-  Matrix3d end_rotation0 = (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitZ());
-
-  ThreadConstrained* thread0 = new ThreadConstrained(vertices, angles, lengths, start_rotation0, end_rotation0);
-  threads.push_back(thread0);
-  
-  directions.clear();
-  directions.push_back(Vector3d::UnitX());
-  directions.push_back(Vector3d::UnitX());
-  direction = Vector3d(1.0, 1.0, 0.0);
-  direction.normalize();
-  for (int i=0; i < numInit; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(1.0, -1.0, -0.4);
-  direction.normalize();
-  for (int i=0; i < numInit; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(-1.0, -1.0, 0.4);
-  direction.normalize();
-  for (int i=0; i < numInit; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(0.0, -1.0, 0.0);
-  direction.normalize();
-  for (int i=0; i < numInit; i++)
-  	directions.push_back(direction);
-  directions.push_back(-Vector3d::UnitY());
-  directions.push_back(-Vector3d::UnitY());
-  
-  vertices.clear();
-  vertices.push_back(Vector3d::Zero());
-  for (int i=1; i < 4*numInit + 5; i++) {
-  	Vector3d next_vertex;
-  	next_vertex(0) = vertices[i-1](0) + directions[i-1](0) * lengths[i-1];
-  	next_vertex(1) = vertices[i-1](1) + directions[i-1](1) * lengths[i-1];
-  	next_vertex(2) = vertices[i-1](2) + directions[i-1](2) * lengths[i-1];
-    vertices.push_back(next_vertex);
-  }
-  
-	last_pos = Vector3d(-10.0, -30.0, 0.0);
-	for (int i=0; i<vertices.size(); i++)
-		vertices[i] += -vertices.back() + last_pos;
-  
-  for (int i=0; i<vertices.size(); i++)
-		vertices[i](0) *= -1;
-	Matrix3d start_rotation1 = (Matrix3d) AngleAxisd(M_PI, Vector3d::UnitZ());
-  Matrix3d end_rotation1 = (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitZ());
-  ThreadConstrained* thread1 = new ThreadConstrained(vertices, angles, lengths, start_rotation1, end_rotation1);
-  threads.push_back(thread1);
-  
-	for (int thread_ind=0; thread_ind < threads.size(); thread_ind++) {
-#ifndef ISOTROPIC
-		Matrix2d B = Matrix2d::Zero();
-		B(0,0) = 10.0;
-		B(1,1) = 1.0;
-		threads[thread_ind]->set_coeffs_normalized(B, 3.0, 1e-4);
-#else
-  	threads[thread_ind]->set_coeffs_normalized(1.0, 3.0, 1e-4);
-#endif
-	}
-}
-
-void initRestingThread()
-{
-  int numInit = 5;
-
-	double first_length = 3.0; //FIRST_REST_LENGTH;
-	double second_length = SECOND_REST_LENGTH;
-	double middle_length = DEFAULT_REST_LENGTH;
-
-  vector<Vector3d> vertices;
-  vector<double> angles;
-  vector<double> lengths;
-  vector<Vector3d> directions;
-  
-	for (int i=0; i < 4*numInit + 5; i++)
-		angles.push_back(0.0);
-  
-  lengths.push_back(first_length);
-  lengths.push_back(second_length);
-  for (int i=0; i < 4*numInit; i++)
-  	lengths.push_back(middle_length);
-  lengths.push_back(second_length);
-  lengths.push_back(first_length);
-  lengths.push_back(first_length);
-  
-  directions.push_back(Vector3d::UnitX());
-  directions.push_back(Vector3d::UnitX());
-  Vector3d direction = Vector3d(1.0, 1.0, 0.0);
-  direction.normalize();
-  for (int i=0; i < numInit; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(1.0, -1.0, 0.4);
-  direction.normalize();
-  for (int i=0; i < numInit; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(-1.0, -1.0, -0.4);
-  direction.normalize();
-  for (int i=0; i < numInit; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(0.0, -1.0, 0.0);
-  direction.normalize();
-  for (int i=0; i < numInit; i++)
-  	directions.push_back(direction);
-  directions.push_back(-Vector3d::UnitY());
-  directions.push_back(-Vector3d::UnitY());
-  
-  vertices.push_back(Vector3d::Zero());
-  for (int i=1; i < 4*numInit + 5; i++) {
-  	Vector3d next_vertex;
-  	next_vertex(0) = vertices[i-1](0) + directions[i-1](0) * lengths[i-1];
-  	next_vertex(1) = vertices[i-1](1) + directions[i-1](1) * lengths[i-1];
-  	next_vertex(2) = vertices[i-1](2) + directions[i-1](2) * lengths[i-1];
-    vertices.push_back(next_vertex);
-  }
-  
-	Vector3d last_pos = Vector3d(-10.0, -30.0, 0.0);
-	for (int i=0; i<vertices.size(); i++)
-		vertices[i] += -vertices.back() + last_pos;
-
-  Matrix3d start_rotation0 = Matrix3d::Identity();
-  Matrix3d end_rotation0 = (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitZ());
-
-  ThreadConstrained* thread0 = new ThreadConstrained(vertices, angles, lengths, start_rotation0, end_rotation0);
-  threads.push_back(thread0);
-  
-  int numInit1 = 2;
-  
-  angles.clear();
-  for (int i=0; i < 16*numInit1 + 5; i++)
-		angles.push_back(0.0);
-  
-  lengths.clear();
-  lengths.push_back(first_length);
-  lengths.push_back(second_length);
-  for (int i=0; i < 16*numInit1; i++)
-  	lengths.push_back(middle_length);
-  lengths.push_back(second_length);
-  lengths.push_back(first_length);
-  lengths.push_back(first_length);
-  
-  directions.clear();
-  directions.push_back(-Vector3d::UnitX());
-  directions.push_back(-Vector3d::UnitX());
-  direction = Vector3d(-1.0, 0.0, 1.0);
-  direction.normalize();
-  for (int i=0; i < 1.5*numInit1; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(0.0, -1.0, 2.0);
-  direction.normalize();
-  for (int i=0; i < 1.5*numInit1; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(-2.0, 1.0, 0.0);
-  direction.normalize();
-  for (int i=0; i < numInit1; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(-2.0, -1.0, 0.0);
-  direction.normalize();
-  for (int i=0; i < numInit1; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(0.0, 1.0, -2.0);
-  direction.normalize();
-  for (int i=0; i < 3*numInit1; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(0.0, -1.0, -2.0);
-  direction.normalize();
-  for (int i=0; i < 3*numInit1; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(2.0, 1.0, 0.0);
-  direction.normalize();
-  for (int i=0; i < numInit1; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(2.0, -1.0, 0.0);
-  direction.normalize();
-  for (int i=0; i < numInit1; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(0.0, 1.0, 2.0);
-  direction.normalize();
-  for (int i=0; i < 1.5*numInit1; i++)
-  	directions.push_back(direction);
-  direction = Vector3d(0.0, -1.0, 2.0);
-  direction.normalize();
-  for (int i=0; i < 1.5*numInit1; i++)
-  	directions.push_back(direction);
-  directions.push_back(-Vector3d::UnitY());
-  directions.push_back(-Vector3d::UnitY());
-  
-  vertices.clear();
-  vertices.push_back(Vector3d::Zero());
-  for (int i=1; i < 16*numInit1 + 5; i++) {
-  	Vector3d next_vertex;
-  	next_vertex(0) = vertices[i-1](0) + directions[i-1](0) * lengths[i-1];
-  	next_vertex(1) = vertices[i-1](1) + directions[i-1](1) * lengths[i-1];
-  	next_vertex(2) = vertices[i-1](2) + directions[i-1](2) * lengths[i-1];
-    vertices.push_back(next_vertex);
-  }
-  
-	last_pos = Vector3d(10.0, -30.0, 0.0);
-	for (int i=0; i<vertices.size(); i++)
-		vertices[i] += -vertices.back() + last_pos;
-  
-	Matrix3d start_rotation1 = (Matrix3d) AngleAxisd(M_PI, Vector3d::UnitZ());
-  Matrix3d end_rotation1 = (Matrix3d) AngleAxisd(M_PI/2.0, Vector3d::UnitZ());
-  ThreadConstrained* thread1 = new ThreadConstrained(vertices, angles, lengths, start_rotation1);
-  threads.push_back(thread1);
-  
-	for (int thread_ind=0; thread_ind < threads.size(); thread_ind++) {
-#ifndef ISOTROPIC
-		Matrix2d B = Matrix2d::Zero();
-		B(0,0) = 10.0;
-		B(1,1) = 1.0;
-		threads[thread_ind]->set_coeffs_normalized(B, 3.0, 1e-4);
-#else
-  	threads[thread_ind]->set_coeffs_normalized(1.0, 3.0, 1e-4);
-#endif
-	}
 }
 
 void initGL()        

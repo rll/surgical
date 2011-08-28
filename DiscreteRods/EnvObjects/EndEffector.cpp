@@ -39,11 +39,10 @@ EndEffector::EndEffector(const Vector3d& pos, const Matrix3d& rot, World* w, Thr
  		tip_piece->_radius = 0.9+((double) piece)*((handle_r)-0.9)/((double) pieces-1);
   	i_objs.push_back(tip_piece);
 	}
-	
 	setTransform(pos, rot);
 }
 
-EndEffector::EndEffector(const EndEffector& rhs, ThreadConstrained* t, int constrained_vertex_num)
+/*EndEffector::EndEffector(const EndEffector& rhs, ThreadConstrained* t, int constrained_vertex_num)
 	: EnvObject(rhs.color0, rhs.color1, rhs.color2, rhs.type)
 	, thread(t)
 	, constraint(constrained_vertex_num)
@@ -83,6 +82,52 @@ EndEffector::EndEffector(const EndEffector& rhs, ThreadConstrained* t, int const
   	i_objs.push_back(tip_piece);
 	}
 	
+	setTransform(rhs.position, rhs.rotation);
+}*/
+
+//backup info is not passed. user of this object should call again backup() if needed.
+EndEffector::EndEffector(const EndEffector& rhs, World* w)
+	: EnvObject(rhs.color0, rhs.color1, rhs.color2, rhs.type)
+	, thread(rhs.thread)
+	, constraint(rhs.constraint)
+	, world(w)
+	, open(rhs.open)
+{
+	assert(type == END_EFFECTOR);
+	
+	if (thread == NULL) {
+		assert(constraint == -1);
+		constraint_ind = -1;
+	} else {
+		assert(constraint != -1);
+		thread = world->threadAtIndex(rhs.world->threadIndex(rhs.thread));
+		vector<int> constrained_vertices_nums;
+		thread->getConstrainedVerticesNums(constrained_vertices_nums);
+		constraint_ind = find(constrained_vertices_nums, constraint);
+		assert(constraint_ind != -1);
+	}
+	i_objs.clear();
+	
+	Intersection_Object* short_handle = new Intersection_Object();
+	short_handle->_radius = short_handle_r;
+  i_objs.push_back(short_handle);
+  
+	Intersection_Object* handle = new Intersection_Object();
+	handle->_radius = handle_r;
+  i_objs.push_back(handle);
+  
+  for (int piece=0; piece<pieces; piece++) {
+ 		Intersection_Object* tip_piece = new Intersection_Object();
+ 		tip_piece->_radius = 0.9+((double) piece)*((handle_r)-0.9)/((double) pieces-1);
+  	i_objs.push_back(tip_piece);
+	}
+
+  for (int piece=0; piece<pieces; piece++) {
+ 		Intersection_Object* tip_piece = new Intersection_Object();
+ 		tip_piece->_radius = 0.9+((double) piece)*((handle_r)-0.9)/((double) pieces-1);
+  	i_objs.push_back(tip_piece);
+	}
+
 	setTransform(rhs.position, rhs.rotation);
 }
 
@@ -249,7 +294,7 @@ void EndEffector::updateConstraint()
 		thread->getConstrainedVerticesNums(constrained_vertices_nums);
 		constraint = constrained_vertices_nums[constraint_ind];
 	} else {
-		assert(thread = NULL);
+		assert(thread == NULL);
 		constraint = -1;
 	}
 }
@@ -263,7 +308,7 @@ void EndEffector::updateConstraintIndex()
 		constraint_ind = find(constrained_vertices_nums, constraint);
 		assert(constraint_ind != -1); //constraint is supposed to be in constrained_vertices_nums but it isn't
 	} else {
-		assert(thread = NULL);
+		assert(thread == NULL);
 		constraint_ind = -1;
 	}
 }
@@ -282,7 +327,7 @@ void EndEffector::restore()
 {
 	setTransform(backup_position, backup_rotation);
 	constraint = backup_constraint;
-	thread = world->threadAtIndex(thread_ind);
+	thread = world->threadAtIndex(backup_thread_ind);
 	updateConstraintIndex();
 	open = backup_open;
 }

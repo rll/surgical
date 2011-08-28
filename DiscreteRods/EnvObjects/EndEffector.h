@@ -7,6 +7,9 @@ class ThreadConstrained;
 
 class EndEffector : public EnvObject
 {
+	friend class World;
+	friend class Cursor;
+	
 	protected:
 		ThreadConstrained* thread;		// The thread this end effector is holding. NULL if it isn't holding a thread.
 		int constraint;								// The vertex number of the constraint the end effector is holding. -1 if it isn't holding the thread.
@@ -31,7 +34,8 @@ class EndEffector : public EnvObject
 
 	public:		
 		EndEffector(const Vector3d& pos, const Matrix3d& rot, World* w, ThreadConstrained* t = NULL, int constrained_vertex_num = -1);
-		EndEffector(const EndEffector& rhs, ThreadConstrained* t = NULL, int constrained_vertex_num = -1);
+		//EndEffector(const EndEffector& rhs, ThreadConstrained* t = NULL, int constrained_vertex_num = -1);
+		EndEffector(const EndEffector& rhs, World* w);
 		~EndEffector();
 		
 		//saving and loading from and to file
