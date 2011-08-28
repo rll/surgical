@@ -1,3 +1,4 @@
+#ifdef NEVERDEFINED
 #ifndef _TexturedSphere_h
 #define _TexturedSphere_h
 
@@ -45,4 +46,5 @@ class TexturedSphere : public EnvObject
 		ILuint LoadImageDevIL (char *szFileName, struct TextureHandle *T);
 };
 
+#endif
 #endif

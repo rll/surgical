@@ -1,3 +1,4 @@
+#ifdef NEVERDEFINED
 #ifndef _InfinitePlane_h
 #define _InfinitePlane_h
 
@@ -41,4 +42,5 @@ class InfinitePlane : public EnvObject
 		ILuint LoadImageDevIL (char *szFileName, struct TextureHandle *T);
 };
 
+#endif
 #endif

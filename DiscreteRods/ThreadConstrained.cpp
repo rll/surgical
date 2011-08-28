@@ -3,7 +3,6 @@
 
 ThreadConstrained::ThreadConstrained() {
 	type = THREAD_CONSTRAINED;
-	backup = NULL;
 	world = NULL;
 }
 
@@ -27,7 +26,6 @@ ThreadConstrained::ThreadConstrained(vector<Vector3d>& vertices, vector<double>&
 	
 	type = THREAD_CONSTRAINED;
 	
-	backup = NULL;
 	world = NULL;
 	examine_mode = false;
 	initContour();
@@ -53,7 +51,6 @@ ThreadConstrained::ThreadConstrained(vector<Vector3d>& vertices, vector<double>&
 	
 	type = THREAD_CONSTRAINED;
 	
-	backup = NULL;
 	world = NULL;
 	examine_mode = false;
 	initContour();
@@ -79,7 +76,6 @@ ThreadConstrained::ThreadConstrained(vector<Vector3d>& vertices, vector<double>&
 	
 	type = THREAD_CONSTRAINED;
 	
-	backup = NULL;
 	world = NULL;
 	examine_mode = false;
 	initContour();
@@ -157,13 +153,12 @@ ThreadConstrained::ThreadConstrained(int num_vertices_init) {
 	
 	type = THREAD_CONSTRAINED;
 	
-	backup = NULL;
 	world = NULL;
 	examine_mode = false;
 	initContour();
 }
 
-ThreadConstrained::ThreadConstrained(const ThreadConstrained& rhs)
+ThreadConstrained::ThreadConstrained(const ThreadConstrained& rhs, World* w)
 {
 	if (rhs.type != THREAD_CONSTRAINED)
 		cerr << "Internal error: ThreadConstrained(const ThreadConstrained& rhs): rhs.type is not THREAD_CONSTRAINED." << endl;
@@ -171,7 +166,7 @@ ThreadConstrained::ThreadConstrained(const ThreadConstrained& rhs)
 	
 	num_vertices = rhs.num_vertices;
 	zero_angle = rhs.zero_angle;
-	world = rhs.world;
+	world = w;
 
 	threads.resize(rhs.threads.size());	 
   for (int thread_ind = 0; thread_ind < rhs.threads.size(); thread_ind++)
@@ -179,10 +174,8 @@ ThreadConstrained::ThreadConstrained(const ThreadConstrained& rhs)
     threads[thread_ind] = new Thread(*rhs.threads[thread_ind]);
   }
 	
-	if (rhs.backup != NULL)
-		backup = new ThreadConstrainedState(*rhs.backup);
-	else
-		backup = NULL;
+
+	//TODO copy backup too
 	
 	rot_diff = rhs.rot_diff;
 	rot_offset = rhs.rot_offset;
@@ -213,7 +206,7 @@ ThreadConstrained& ThreadConstrained::operator=(const ThreadConstrained& rhs)
     threads[thread_ind] = new Thread(*rhs.threads[thread_ind]);
   }
 	
-	backup = new ThreadConstrainedState(*rhs.backup);
+	//TODO create backup info. maybe not
 	
 	rot_diff = rhs.rot_diff;
 	rot_offset = rhs.rot_offset;
@@ -225,28 +218,62 @@ ThreadConstrained& ThreadConstrained::operator=(const ThreadConstrained& rhs)
 	return *this;
 }
 
-void ThreadConstrained::saveToBackup()
+void ThreadConstrained::backup()
 {
-	if (backup != NULL)
-		delete backup;
-	backup = new ThreadConstrainedState(*this);
+	for (int thread_ind = 0; thread_ind < backup_threads.size(); thread_ind++)
+  {
+    delete backup_threads[thread_ind];
+  }
+	
+	backup_threads.resize(threads.size());	 
+  for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++)
+  {
+    threads[thread_ind] = new Thread(*threads[thread_ind]);
+  }	
+	
+	backup_zero_angle = zero_angle;
+	
+	backup_rot_diff.resize(rot_diff.size());
+	for (int i = 0; i < rot_diff.size(); i++)
+		backup_rot_diff[i] = rot_diff[i];
+	
+	backup_rot_offset.resize(rot_offset.size());
+	for (int i = 0; i < rot_diff.size(); i++)
+		backup_rot_offset[i] = rot_offset[i];
+	
+	backup_constrained_vertices_nums.resize(constrained_vertices_nums.size());
+	for (int i = 0; i < constrained_vertices_nums.size(); i++)
+		backup_constrained_vertices_nums[i] = constrained_vertices_nums[i];
 }
 
-void ThreadConstrained::restoreFromBackup()
+void ThreadConstrained::restore()
 {
-	if (backup == NULL)
-		cerr << "Internal Error: ThreadConstrained::restoreFromBackup(): unable to restore because thread has not been saved." << endl;
-	num_vertices = backup->num_vertices;
-	threads.resize(backup->threads.size());
-	for (int thread_ind = 0; thread_ind < backup->threads.size(); thread_ind++)
-	{
-	  threads[thread_ind] = new Thread(*backup->threads[thread_ind]);
-	}
-	zero_angle = backup->zero_angle;
-	world = backup->world;
-	rot_diff = backup->rot_diff;
-	rot_offset = backup->rot_offset;
-	constrained_vertices_nums = backup->constrained_vertices_nums;
+	for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++)
+  {
+    delete threads[thread_ind];
+  }
+	
+	num_vertices = 1;
+	threads.resize(backup_threads.size());	 
+  for (int thread_ind = 0; thread_ind < backup_threads.size(); thread_ind++)
+  {
+    threads[thread_ind] = new Thread(*backup_threads[thread_ind]);
+    num_vertices += threads.size()-1;
+  }	
+	
+	zero_angle = backup_zero_angle;
+	
+	rot_diff.resize(backup_rot_diff.size());
+	for (int i = 0; i < backup_rot_diff.size(); i++)
+		rot_diff[i] = backup_rot_diff[i];
+	
+	rot_offset.resize(backup_rot_offset.size());
+	for (int i = 0; i < backup_rot_diff.size(); i++)
+		rot_offset[i] = backup_rot_offset[i];
+	
+	constrained_vertices_nums.resize(backup_constrained_vertices_nums.size());
+	for (int i = 0; i < backup_constrained_vertices_nums.size(); i++)
+		constrained_vertices_nums[i] = backup_constrained_vertices_nums[i];
 }
 
 void ThreadConstrained::writeToFile(ofstream& file)
@@ -356,7 +383,6 @@ ThreadConstrained::ThreadConstrained(ifstream& file)
 	for (int k=0; k<constrained_vertices_nums.size(); k++)
 		file >> constrained_vertices_nums[k];
 
-	backup = NULL;
 	world = NULL;
 	examine_mode = false;
 	initContour();
@@ -787,8 +813,10 @@ void ThreadConstrained::draw() {
       twist_cpy);
       
   if (examine_mode)
-		for (int i=0; i<points.size(); i++)
-			drawSphere(points[i], 0.7, 0.0, 0.5, 0.5);
+		for (int i=0; i<points.size(); i++) {
+			glColor3f (0.0, 0.5, 0.5);
+			drawSphere(points[i], 0.7);
+		}
 			
   glPopMatrix ();
 }
@@ -882,6 +910,12 @@ void ThreadConstrained::setWorld(World* w) {
 	world = w;
 	for(int i=0; i<threads.size(); i++)
 		threads[i]->setWorld(world);
+}
+
+void ThreadConstrained::getThreads(vector<Thread*>& ths) {
+	ths.clear();
+	for (int i = 0; i < threads.size(); i++)
+		ths.push_back(threads[i]);
 }
 
 void ThreadConstrained::intermediateRotation(Matrix3d &inter_rot, Matrix3d end_rot, Matrix3d start_rot) {
@@ -1175,34 +1209,4 @@ int find(vector<int> v, int e) {
 	if (i==v.size())
 		return -1;
 	return i;
-}
-
-ThreadConstrainedState::ThreadConstrainedState(const ThreadConstrained& rhs)
-{
-	num_vertices = rhs.num_vertices;
-	threads.resize(rhs.threads.size());
-	for (int thread_ind = 0; thread_ind < rhs.threads.size(); thread_ind++)
-	{
-		threads[thread_ind] = new Thread(*rhs.threads[thread_ind]);
-	}
-	zero_angle = rhs.zero_angle;
-	world = rhs.world;
-	rot_diff = rhs.rot_diff;
-	rot_offset = rhs.rot_offset;
-	constrained_vertices_nums = rhs.constrained_vertices_nums;
-}
-	
-ThreadConstrainedState::ThreadConstrainedState(const ThreadConstrainedState& rhs)
-{
-	num_vertices = rhs.num_vertices;
-	threads.resize(rhs.threads.size());
-	for (int thread_ind = 0; thread_ind < rhs.threads.size(); thread_ind++)
-	{
-		threads[thread_ind] = new Thread(*rhs.threads[thread_ind]);
-	}
-	zero_angle = rhs.zero_angle;
-	world = rhs.world;
-	rot_diff = rhs.rot_diff;
-	rot_offset = rhs.rot_offset;
-	constrained_vertices_nums = rhs.constrained_vertices_nums;
 }
