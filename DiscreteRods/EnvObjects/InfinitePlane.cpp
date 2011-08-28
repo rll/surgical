@@ -1,3 +1,4 @@
+#ifdef NEVERDEFINED
 #include "InfinitePlane.h"
 #include "../threadpiece_discrete.h"
 
@@ -171,3 +172,4 @@ ILuint InfinitePlane::LoadImageDevIL (char *szFileName, struct TextureHandle *T)
     //printf("%s %d %d %d\n",szFileName,T->id,T->w,T->h);
     return 1; // success
 }
+#endif

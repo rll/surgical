@@ -30,7 +30,7 @@
 USING_PART_OF_NAMESPACE_EIGEN
 using namespace std;
 
-
+typedef Matrix<double, 14, 1> Vector14d;
 typedef Matrix<double, 2, 3> Matrix23d;
 
 double Normal(double mu, double sigma);

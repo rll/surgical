@@ -1,5 +1,6 @@
 #include "threadpiece_discrete.h"
 #include "thread_discrete.h"
+#include "EnvObjects/World.h"
 
 ThreadPiece::ThreadPiece() :
   rot(Matrix3d::Zero()), _my_thread(NULL)

@@ -1,16 +1,25 @@
 #include "EndEffector.h"
-#include "../threadpiece_discrete.h"
+#include "../threadpiece_discrete.h" //TODO for repulsion coefficient. should be removed if collision is checked in world.
 #include "../ThreadConstrained.h"
 
-EndEffector::EndEffector(const Vector3d& pos, const Matrix3d& rot)
-	: EnvObject(pos, rot, 0.7, 0.7, 0.7, END_EFFECTOR)
-	, degrees(0.0)
-	, constraint(-1)
-	, constraint_ind(-1)
-	, thread(NULL)
-	, attachment(NULL)
-	, backup(NULL)
+EndEffector::EndEffector(const Vector3d& pos, const Matrix3d& rot, World* w, ThreadConstrained* t, int constrained_vertex_num)
+	: EnvObject(0.7, 0.7, 0.7, END_EFFECTOR)
+	, thread(t)
+	, constraint(constrained_vertex_num)
+	, backup_thread_ind(-1)
+	, world(w)
+	, open(false)
 {
+	assert(((thread == NULL) && (constrained_vertex_num == -1)) || ((thread != NULL) && (constrained_vertex_num != -1)));
+	if (thread == NULL) {
+		constraint_ind = -1;
+	} else {
+		vector<int> constrained_vertices_nums;
+		thread->getConstrainedVerticesNums(constrained_vertices_nums);
+		constraint_ind = find(constrained_vertices_nums, constraint);
+		assert(constraint_ind != -1);
+	}
+	
 	Intersection_Object* short_handle = new Intersection_Object();
 	short_handle->_radius = short_handle_r;
   i_objs.push_back(short_handle);
@@ -30,25 +39,28 @@ EndEffector::EndEffector(const Vector3d& pos, const Matrix3d& rot)
  		tip_piece->_radius = 0.9+((double) piece)*((handle_r)-0.9)/((double) pieces-1);
   	i_objs.push_back(tip_piece);
 	}
-	
-	setLimitDisplacement(false);
-	recomputeFromTransform(pos, rot);
+	setTransform(pos, rot);
 }
 
-// rhs ind should be update TODO explain more. is there a better way?
-EndEffector::EndEffector(const EndEffector& rhs)
-	: EnvObject(rhs.position, rhs.rotation, rhs.color0, rhs.color1, rhs.color2, rhs.type)
-	, degrees(rhs.degrees)
-	, constraint(-1)
-	, constraint_ind(-1)
-	, thread(NULL)
-	, attachment(NULL)
-	, thread_ind(rhs.thread_ind)
-	, attachment_ind(rhs.attachment_ind)
-	, backup(NULL)
+/*EndEffector::EndEffector(const EndEffector& rhs, ThreadConstrained* t, int constrained_vertex_num)
+	: EnvObject(rhs.color0, rhs.color1, rhs.color2, rhs.type)
+	, thread(t)
+	, constraint(constrained_vertex_num)
+	, backup_thread_ind(rhs.backup_thread_ind)
+	, world(rhs.world)
+	, open(rhs.open)
 {
-	if (type != END_EFFECTOR)
-		cerr << " it is not end effector type" << endl;
+	assert(type == END_EFFECTOR);
+	
+	assert(((thread == NULL) && (constrained_vertex_num == -1)) || ((thread != NULL) && (constrained_vertex_num != -1)));
+	if (thread == NULL) {
+		constraint_ind = -1;
+	} else {
+		vector<int> constrained_vertices_nums;
+		thread->getConstrainedVerticesNums(constrained_vertices_nums);
+		constraint_ind = find(constrained_vertices_nums, constraint);
+		assert(constraint_ind != -1);
+	}
 	
 	Intersection_Object* short_handle = new Intersection_Object();
 	short_handle->_radius = short_handle_r;
@@ -70,11 +82,53 @@ EndEffector::EndEffector(const EndEffector& rhs)
   	i_objs.push_back(tip_piece);
 	}
 	
-	setLimitDisplacement(false);
-	recomputeFromTransform(position, rotation);
+	setTransform(rhs.position, rhs.rotation);
+}*/
 
-	if (rhs.backup != NULL)
-		backup = new EndEffectorState(*(rhs.backup));
+//backup info is not passed. user of this object should call again backup() if needed.
+EndEffector::EndEffector(const EndEffector& rhs, World* w)
+	: EnvObject(rhs.color0, rhs.color1, rhs.color2, rhs.type)
+	, thread(rhs.thread)
+	, constraint(rhs.constraint)
+	, world(w)
+	, open(rhs.open)
+{
+	assert(type == END_EFFECTOR);
+	
+	if (thread == NULL) {
+		assert(constraint == -1);
+		constraint_ind = -1;
+	} else {
+		assert(constraint != -1);
+		thread = world->threadAtIndex(rhs.world->threadIndex(rhs.thread));
+		vector<int> constrained_vertices_nums;
+		thread->getConstrainedVerticesNums(constrained_vertices_nums);
+		constraint_ind = find(constrained_vertices_nums, constraint);
+		assert(constraint_ind != -1);
+	}
+	i_objs.clear();
+	
+	Intersection_Object* short_handle = new Intersection_Object();
+	short_handle->_radius = short_handle_r;
+  i_objs.push_back(short_handle);
+  
+	Intersection_Object* handle = new Intersection_Object();
+	handle->_radius = handle_r;
+  i_objs.push_back(handle);
+  
+  for (int piece=0; piece<pieces; piece++) {
+ 		Intersection_Object* tip_piece = new Intersection_Object();
+ 		tip_piece->_radius = 0.9+((double) piece)*((handle_r)-0.9)/((double) pieces-1);
+  	i_objs.push_back(tip_piece);
+	}
+
+  for (int piece=0; piece<pieces; piece++) {
+ 		Intersection_Object* tip_piece = new Intersection_Object();
+ 		tip_piece->_radius = 0.9+((double) piece)*((handle_r)-0.9)/((double) pieces-1);
+  	i_objs.push_back(tip_piece);
+	}
+
+	setTransform(rhs.position, rhs.rotation);
 }
 
 EndEffector::~EndEffector()
@@ -85,7 +139,6 @@ EndEffector::~EndEffector()
 	}
 }
 
-//updateIndFromPointers(World* world) should have been called before calling this
 void EndEffector::writeToFile(ofstream& file)
 {
 	file << type << " ";
@@ -98,19 +151,16 @@ void EndEffector::writeToFile(ofstream& file)
       file << rotation(r,c) << " ";
     }
   }
-  file << degrees << " " << constraint << " " << constraint_ind << " " << thread_ind << " " << attachment_ind << " ";
+  file << constraint << " " << constraint_ind << " " << world->threadIndex(thread) << " " << open << " ";
   file << "\n";
 }
 
 //linkPointersFromInd(World* world) should be called after calling this
-EndEffector::EndEffector(ifstream& file)
-	: thread(NULL)
-	, attachment(NULL)
-	, backup(NULL)
+EndEffector::EndEffector(ifstream& file, World* w)
+	: EnvObject(0.7, 0.7, 0.7, END_EFFECTOR)
+	, thread(NULL)
+	, world(NULL)
 {
-	color0 = color1 = color2 = 0.7;
-  type = END_EFFECTOR;
-	
 	for (int i=0; i<3; i++)
 		file >> position(i);
 	for (int r=0; r < 3; r++)
@@ -121,7 +171,11 @@ EndEffector::EndEffector(ifstream& file)
     }
   }
   
-  file >> degrees >> constraint >> constraint_ind >> thread_ind >> attachment_ind;
+  int world_thread_ind;
+  file >> constraint >> constraint_ind >> world_thread_ind >> open;
+ 	thread = world->threadAtIndex(world_thread_ind);
+	assert(((thread == NULL) && (constraint == -1) && (constraint_ind == -1)) || 
+				 ((thread != NULL) && (constraint != -1) && (constraint_ind != -1)));
 
 	Intersection_Object* short_handle = new Intersection_Object();
 	short_handle->_radius = short_handle_r;
@@ -143,110 +197,33 @@ EndEffector::EndEffector(ifstream& file)
   	i_objs.push_back(tip_piece);
 	}
 	
-  setLimitDisplacement(false);
-	recomputeFromTransform(position, rotation);
+	setTransform(position, rotation);
 }
 
-void EndEffector::updateIndFromPointers(World* world)
-{
-	if (thread == NULL) {
-		thread_ind = -1;
-	} else {
-		vector<ThreadConstrained*> threads = *(world->getThreads());
-		for (thread_ind = 0; thread_ind<threads.size(); thread_ind++) {
-			if (threads[thread_ind] == thread)
-				break;
-		}
-		if (thread_ind == threads.size())
-			cout << "Internal error: EndEffector::updateIndFromPointers: thread was not in *(world->getThreads())." << endl;
-	}
-	
-	if (attachment == NULL) {
-		attachment_ind = -1;
-	} else {
-		vector<EnvObject*> cursors = world->getEnvObjs(CURSOR);
-		for (attachment_ind = 0; attachment_ind<cursors.size(); attachment_ind++) {
-			Cursor* cursor = dynamic_cast<Cursor*>(cursors[attachment_ind]);
-			if (cursor == attachment)
-				break;
-		}
-		if (attachment_ind == cursors.size())
-			cout << "Internal error: EndEffector::updateIndFromPointers: attachment was not in world->getEnvObjs(CURSOR)." << endl;
-	}
-}
-
-void EndEffector::linkPointersFromInd(World* world)
-{
-	if (thread_ind == -1) {
-		thread = NULL;
-	} else {
-		vector<ThreadConstrained*> threads = *(world->getThreads());
-		if (thread_ind < 0 || thread_ind >= threads.size())
-			cout << "Internal error: EndEffector::linkPointersFromInd: thread_ind is out of bounds." << endl;
-		thread = threads[thread_ind];
-	}
-	
-	if (attachment_ind == -1) {
-		attachment = NULL;
-	} else {
-		vector<EnvObject*> cursors = world->getEnvObjs(CURSOR);
-		if (attachment_ind < 0 || attachment_ind >= cursors.size())
-			cout << "Internal error: EndEffector::linkPointersFromInd: attachment_ind is out of bounds." << endl;
-		attachment = dynamic_cast<Cursor*>(cursors[attachment_ind]);
-		degrees = attachment->isOpen() ? 15.0 : 0.0;
-		recomputeFromTransform(position, rotation); //this is needed because of the change in degrees
-	}
-}
-
-void EndEffector::setLimitDisplacement(bool limit, double maximun_displacement, double maximun_angle_change)
-{
-	if (limit) {
-		last_position = position;
-		last_rotation = rotation;
-		max_displacement = maximun_displacement;
-		max_angle_change = maximun_angle_change;
-	}
-	limit_displacement = limit;
-}
-
-void EndEffector::forceSetTransform(const Vector3d& pos, const Matrix3d& rot)
-{
-	if (!limit_displacement) {
-		setTransform(pos, rot);
-	} else {
-		setLimitDisplacement(false);
-		setTransform(pos, rot);
-		setLimitDisplacement(true);
-	}
-}
-
-void EndEffector::recomputeFromTransform(const Vector3d& pos, const Matrix3d& rot)
+void EndEffector::setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_displacement, double max_displacement, double max_angle_change)
 {
 	if (limit_displacement) {
-		double displacement = (pos-last_position).norm();
-		double angle_change	= 2*asin((rot.col(0) - last_rotation.col(0)).norm()/2);
+		double displacement = (pos-position).norm();
+		double angle_change	= 2*asin((rot.col(0) - rotation.col(0)).norm()/2);
 		Quaterniond new_q(rot);
-		Quaterniond last_q(last_rotation);
+		Quaterniond last_q(rotation);
 		if (displacement > max_displacement) {
-			position = last_position + (max_displacement/displacement) * (pos-last_position);
+			position = position + (max_displacement/displacement) * (pos-position);
 		}
 		if (angle_change > max_angle_change) {
 			Quaterniond interp_q = last_q.slerp(max_angle_change/angle_change, new_q);
 			rotation = interp_q.toRotationMatrix(); 
 		}
-		last_position = position;
-		last_rotation = rotation;
-	}
+	} else {
+		position = pos;
+    rotation = rot;
+  }
 	
-	if (attachment != NULL) {
-		degrees = attachment->isOpen() ? 15.0 : 0.0;
-	} else
-		degrees = 0.0;
 	Vector3d start_pos;
 	Vector3d end_pos;
 	Vector3d new_pos;
 	Matrix3d new_rot;
-	Matrix3d open_rot = (Matrix3d) AngleAxisd(-degrees*M_PI/180, rotation*Vector3d::UnitZ());
+	Matrix3d open_rot = (Matrix3d) AngleAxisd(-(open?15.0:0.0)*M_PI/180, rotation*Vector3d::UnitZ());
 	
 	start_pos = rotation * Vector3d(grab_offset-3.0, 0.0, 0.0) + position;
 	end_pos = rotation * Vector3d(grab_offset, 0.0, 0.0) + position;
@@ -277,6 +254,82 @@ void EndEffector::recomputeFromTransform(const Vector3d& pos, const Matrix3d& ro
   	i_objs[piece+pieces+2]->_start_pos = start_pos;
 		i_objs[piece+pieces+2]->_end_pos 	= end_pos;;
 	}
+}
+
+void EndEffector::draw()
+{
+	glColor3f(color0, color1, color2);
+	drawCylinder(i_objs[1]->_start_pos, i_objs[1]->_end_pos, i_objs[1]->_radius);
+	drawSphere(i_objs[1]->_start_pos, i_objs[1]->_radius);
+	drawSphere(i_objs[1]->_end_pos, i_objs[1]->_radius);
+ 	
+ 	int obj_ind;
+  for (obj_ind = 2; obj_ind<2+pieces-1; obj_ind++) {
+ 		drawCylinder(i_objs[obj_ind]->_start_pos, i_objs[obj_ind]->_end_pos, i_objs[obj_ind]->_radius);
+		drawSphere(i_objs[obj_ind]->_start_pos, i_objs[obj_ind]->_radius);
+	}	
+	drawCylinder(i_objs[obj_ind]->_start_pos, i_objs[obj_ind]->_end_pos, i_objs[obj_ind]->_radius);
+	drawSphere(i_objs[obj_ind]->_start_pos, i_objs[obj_ind]->_radius);
+	drawSphere(i_objs[obj_ind]->_end_pos, i_objs[obj_ind]->_radius);
+	
+	for (obj_ind++; obj_ind<2+2*pieces-1; obj_ind++) {
+ 		drawCylinder(i_objs[obj_ind]->_start_pos, i_objs[obj_ind]->_end_pos, i_objs[obj_ind]->_radius);
+		drawSphere(i_objs[obj_ind]->_start_pos, i_objs[obj_ind]->_radius);
+	}	
+	drawCylinder(i_objs[obj_ind]->_start_pos, i_objs[obj_ind]->_end_pos, i_objs[obj_ind]->_radius);
+	drawSphere(i_objs[obj_ind]->_start_pos, i_objs[obj_ind]->_radius);
+	drawSphere(i_objs[obj_ind]->_end_pos, i_objs[obj_ind]->_radius);
+  
+  glColor3f(0.3, 0.3, 0.0);
+  drawCylinder(i_objs[0]->_start_pos, i_objs[0]->_end_pos, i_objs[0]->_radius);
+	drawSphere(i_objs[0]->_start_pos, i_objs[0]->_radius);
+	drawSphere(i_objs[0]->_end_pos, i_objs[0]->_radius);
+}
+
+void EndEffector::updateConstraint()
+{
+	if (constraint_ind != -1) {
+		assert(thread != NULL);
+		vector<int> constrained_vertices_nums;
+		thread->getConstrainedVerticesNums(constrained_vertices_nums);
+		constraint = constrained_vertices_nums[constraint_ind];
+	} else {
+		assert(thread == NULL);
+		constraint = -1;
+	}
+}
+
+void EndEffector::updateConstraintIndex()
+{
+	if (constraint != -1) {
+		assert(thread != NULL);
+		vector<int> constrained_vertices_nums;
+		thread->getConstrainedVerticesNums(constrained_vertices_nums);
+		constraint_ind = find(constrained_vertices_nums, constraint);
+		assert(constraint_ind != -1); //constraint is supposed to be in constrained_vertices_nums but it isn't
+	} else {
+		assert(thread == NULL);
+		constraint_ind = -1;
+	}
+}
+
+void EndEffector::backup()
+{
+	backup_position = position;
+	backup_rotation = rotation;
+	backup_constraint = constraint;
+	backup_thread_ind = world->threadIndex(thread);
+	backup_open = open;
+}
+
+// caller is responsible for having backedup before restoring. the world should change between backup and restore
+void EndEffector::restore()
+{
+	setTransform(backup_position, backup_rotation);
+	constraint = backup_constraint;
+	thread = world->threadAtIndex(backup_thread_ind);
+	updateConstraintIndex();
+	open = backup_open;
 }
 
 bool EndEffector::capsuleIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections)
@@ -355,95 +408,4 @@ void EndEffector::capsuleRepulsionEnergyGradient(const Vector3d& start, const Ve
 	if (dist < 0 || dist > radius)
 		return;
 	gradient -= REPULSION_COEFF * (radius - dist) * direction.normalized();
-}
-
-void EndEffector::draw()
-{
-  for (int obj_ind = 1; obj_ind < i_objs.size(); obj_ind++) {
-		drawCylinder(i_objs[obj_ind]->_start_pos, i_objs[obj_ind]->_end_pos, i_objs[obj_ind]->_radius, color0, color1, color2);
-		drawSphere(i_objs[obj_ind]->_start_pos, i_objs[obj_ind]->_radius, color0, color1, color2);
-		drawSphere(i_objs[obj_ind]->_end_pos, i_objs[obj_ind]->_radius, color0, color1, color2);
-  }
-  
-  drawCylinder(i_objs[0]->_start_pos, i_objs[0]->_end_pos, i_objs[0]->_radius, 0.3, 0.3, 0.0);
-	drawSphere(i_objs[0]->_start_pos, i_objs[0]->_radius, 0.3, 0.3, 0.0);
-	drawSphere(i_objs[0]->_end_pos, i_objs[0]->_radius, 0.3, 0.3, 0.0);
-	
-	/*
-	drawCylinder(i_objs[1]->_start_pos + 9.0*(i_objs[1]->_start_pos - i_objs[1]->_end_pos).normalized(), i_objs[1]->_end_pos, i_objs[1]->_radius, 0.0, 1.0, 0.0);
-	drawSphere(i_objs[1]->_start_pos + 9.0*(i_objs[1]->_start_pos - i_objs[1]->_end_pos).normalized(), i_objs[1]->_radius, 0.0, 1.0, 0.0);
-	drawSphere(i_objs[1]->_end_pos, i_objs[1]->_radius, 0.0, 1.0, 0.0);
-	*/
-}
-
-void EndEffector::attach(Cursor* cursor)
-{
-	degrees = cursor->isOpen() ? 15.0 : 0.0;
-	attachment = cursor;
-}
-
-void EndEffector::dettach()
-{
-	if (attachment == NULL)
-		cout << "Internal errror: EndEffector::dettach(): end effector cannot dettach since it does't have a cursor attached" << endl;
-	attachment = NULL;
-}
-
-void EndEffector::updateConstraint()
-{
-	if (constraint_ind != -1) {
-		if (thread == NULL)
-			cout << "Internal errror: EndEffector::updateConstraint(): thread should not be NULL because constraint_ind!=-1" << endl;
-		vector<int> constrained_vertices_nums;
-		thread->getConstrainedVerticesNums(constrained_vertices_nums);
-		constraint = constrained_vertices_nums[constraint_ind];
-	}
-}
-
-void EndEffector::updateConstraintIndex()
-{
-	if (constraint != -1) {
-		if (thread == NULL)
-			cout << "Internal errror: EndEffector::updateConstraintIndex(): thread should not be NULL because constraint!=-1" << endl;
-		vector<int> constrained_vertices_nums;
-		thread->getConstrainedVerticesNums(constrained_vertices_nums);
-		constraint_ind = find(constrained_vertices_nums, constraint);
-		if (constraint_ind == -1)
-			cout << "Internal errror: EndEffector::updateConstraintIndex(): constraint is supposed to be in constrained_vertices_nums but it isn't" << endl;
-	}
-}
-
-void EndEffector::saveToBackup()
-{
-	if (backup != NULL)
-		delete backup;
-	backup = new EndEffectorState(*this);
-}
-
-void EndEffector::restoreFromBackup()
-{
-	if (backup == NULL)
-		cerr << "Internal Error: EndEffector::restoreFromBackup(): unable to restore because end effector has not been saved." << endl;
-	setTransform(backup->position, backup->rotation);
-	degrees = backup->degrees;
-	thread = backup->thread;
-	attachment = backup->attachment;
-}
-
-EndEffectorState::EndEffectorState(const EndEffector& rhs)
-{
-	position = rhs.position;
-	rotation = rhs.rotation;
-	degrees = rhs.degrees;
-	thread = rhs.thread;
-	attachment = rhs.attachment;
-}
-	
-EndEffectorState::EndEffectorState(const EndEffectorState& rhs)
-{
-	position = rhs.position;
-	rotation = rhs.rotation;
-	degrees = rhs.degrees;
-	thread = rhs.thread;
-	attachment = rhs.attachment;
 }
