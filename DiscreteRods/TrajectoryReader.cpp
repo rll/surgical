@@ -45,5 +45,7 @@ bool TrajectoryReader::readWorldsFromFile(vector<World*>& worlds)
     }
   }
   
+  file.close();
+  
   return true;
 }

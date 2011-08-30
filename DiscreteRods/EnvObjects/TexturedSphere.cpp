@@ -85,12 +85,11 @@ void TexturedSphere::draw()
 		glPushMatrix();
 		glEnable(GL_COLOR_MATERIAL);
 		glColor3f(1.0, 1.0, 1.0);
-	
-		double transform[16] = {-0.5,  0, 0.866,     0,
-														0.866, 0,   0.5,     0,
-														0,     1,     0,     0,
-														position(0), position(1), position(2), 1};
 
+		glTranslated(position(0), position(1), position(2));
+		glRotated(240, 0, 1, 0);
+		glRotated(-90, 1, 0, 0);
+		
 		// //Equivalent to the following
 		// Matrix3d rotation = (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d(1.0,0.0,0.0));
 		// rotation = AngleAxisd(240.0*M_PI/180.0, Vector3d(0.0,1.0,0.0)) * rotation;
@@ -99,12 +98,6 @@ void TexturedSphere::draw()
 		// 												rotation(0,1) , rotation(1,1) , rotation(2,1) , 0 ,
 		// 												rotation(0,2) , rotation(1,2) , rotation(2,2) , 0 ,
 		// 												position(0), position(1), position(2), 1};
-		//TODO test and use this cheaper transform
-		//glTranslated(position(0), position(1), position(2));
-		//glRotated(-90, 1, 0, 0);
-		//glRotated(240, 0, 1, 0);
-		
-		glMultMatrixd(transform);
 		
 		glDisable(GL_CULL_FACE);
 		glEnable (GL_TEXTURE_2D);

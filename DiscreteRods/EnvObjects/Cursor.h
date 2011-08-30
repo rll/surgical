@@ -21,14 +21,14 @@ class Cursor
 
 		void draw();		
 		
-		void attachDettach();
-		void attach();
-		void dettach();
+		void attachDettach(bool limit_displacement = false);
+		void attach(bool limit_displacement = false);
+		void dettach(bool limit_displacement = false);
 		bool isAttached() { return (end_eff!=NULL); }
 		
-		void openClose();
-		void setOpen();
-		void setClose();		
+		void openClose(bool limit_displacement = false);
+		void setOpen(bool limit_displacement = false);
+		void setClose(bool limit_displacement = false);		
 		bool isOpen() { return open; }
 		
 		static const double height = 3.0;

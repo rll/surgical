@@ -9,11 +9,13 @@ Cursor::Cursor(const Vector3d& pos, const Matrix3d& rot, World* w, EndEffector* 
 	, world(w)
 	, end_eff(ee)
 {
-	if (ee!=NULL) {
-		open = ee->isOpen();
+	if (isAttached() && ee->isOpen()) {
+		open = false;			//need this in order to satisfy assertion
+		setOpen();
+	} else {
+		open = true;
+		setClose();
 	}
-	//TODO should i call this->setOpen() instead?
-
 }
 
 Cursor::Cursor(const Cursor& rhs, World* w)
@@ -21,13 +23,20 @@ Cursor::Cursor(const Cursor& rhs, World* w)
 	, rotation(rhs.rotation)
 	, world(w)
 	, end_eff(rhs.end_eff)
-	, open(false)
 {
-	if (end_eff != NULL) {
+	if (isAttached()) {
 		end_eff = dynamic_cast<EndEffector*>(world->envObjAtIndex(rhs.world->envObjIndex(rhs.end_eff)));
-		open = end_eff->isOpen();
+		if (end_eff->isOpen()) {
+			open = false;
+			setOpen();
+		} else {
+			open = true;
+			setClose();
+		}
+	} else {
+		open = true;
+		setClose();
 	}
-	//TODO should i call this->setOpen() instead?
 }
 
 Cursor::~Cursor()
@@ -68,16 +77,16 @@ inline bool closeEnough(const Vector3d& my_pos, const Matrix3d& my_rot, const Ve
   return (((my_pos - pos).norm() < 4.0) && angle < 0.25*M_PI);
 }
 
-void Cursor::attachDettach()
+void Cursor::attachDettach(bool limit_displacement)
 {
 	assert(world!=NULL);
 	if (isAttached())
-		dettach();
+		dettach(limit_displacement);
 	else
-		attach();
+		attach(limit_displacement);
 }
 
-void Cursor::attach()
+void Cursor::attach(bool limit_displacement)
 {
 	assert(!isAttached());
 	const Vector3d tip_pos = position - EndEffector::grab_offset * rotation.col(0);
@@ -101,7 +110,7 @@ void Cursor::attach()
 				} else {
 					ee->setClose();
 				}
-				ee->setTransform(tip_pos, rotation);
+				ee->setTransform(tip_pos, rotation, limit_displacement);
 			}
 			return;
 		}
@@ -110,7 +119,7 @@ void Cursor::attach()
 }
 
 // Dettaches the cursor from the end effector it is holding. It has to be holding an end effector.
-void Cursor::dettach()
+void Cursor::dettach(bool limit_displacement)
 {
 	assert(isAttached());
 	end_eff = NULL;
@@ -121,17 +130,17 @@ void Cursor::dettach()
 	}
 }
 
-void Cursor::openClose()
+void Cursor::openClose(bool limit_displacement)
 {
 	assert(world!=NULL);
 	if (open) {
-		setClose();
+		setClose(limit_displacement);
 	} else {
-		setOpen();
+		setOpen(limit_displacement);
 	}
 }
 
-void Cursor::setOpen()
+void Cursor::setOpen(bool limit_displacement)
 {
 	assert(!open);
 	if (isAttached()) {																																													// cursor has an end effector
@@ -155,13 +164,13 @@ void Cursor::setOpen()
 			open = true;
 			end_eff->setOpen();
 		}
-		end_eff->setTransform(position - EndEffector::grab_offset * rotation.col(0), rotation);
+		end_eff->setTransform(position - EndEffector::grab_offset * rotation.col(0), rotation, limit_displacement);
 	} else {
 		open = true;
 	}
 }
 
-void Cursor::setClose()
+void Cursor::setClose(bool limit_displacement)
 {
 	assert(open);
 	if (isAttached()) {
@@ -189,14 +198,15 @@ void Cursor::setClose()
 					(dynamic_cast<EndEffector*>(world_end_effs[ee_ind]))->updateConstraintIndex();
 				}
 		    thread->setConstrainedTransforms(end_eff->constraint_ind, tip_pos, rotation);										// the end effector's orientation matters when it grips the thread. This updates the offset rotation.
-		    end_eff->setTransform(tip_pos, rotation); //TODO should I use the updated transform from previous line?
+		    end_eff->setTransform(tip_pos, rotation, limit_displacement); //TODO should I use the updated transform from previous line?
 		  }
 		} else {
-			assert(0); //impossible to close cursor when the end effector is already holding the thread
+			//impossible to close cursor when the end effector is already holding the thread.
+			//however, this happens when a world is copyied and probably in other ocasions too.
 		}
 		open = false;
 		end_eff->setClose();
-		end_eff->setTransform(tip_pos, rotation);
+		end_eff->setTransform(tip_pos, rotation, limit_displacement);
 	} else {
 		open = false;
 	}

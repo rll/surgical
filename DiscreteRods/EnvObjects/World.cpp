@@ -12,9 +12,9 @@
 World::World()
 {
 	//any of these pushes two threads into threads.
-	initThread();
+	//initThread();
   //initLongerThread();
-  //initRestingThread();
+  initRestingThread();
 	
 	//setting up control handles
 	cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));
@@ -34,7 +34,7 @@ World::World()
 	objs.push_back(new EndEffector(positions[0], rotations[0], this, threads[0], 0));
 	assert((dynamic_cast<EndEffector*>(objs.back()))->constraint_ind == 0);
 
-	objs.push_back(new EndEffector(positions[1], rotations[1], this, threads[0], threads[1]->numVertices()-1));
+	objs.push_back(new EndEffector(positions[1], rotations[1], this, threads[0], threads[0]->numVertices()-1));
 	assert((dynamic_cast<EndEffector*>(objs.back()))->constraint_ind == 1);
 
 	threads[1]->getConstrainedTransforms(positions, rotations);
@@ -212,13 +212,16 @@ int World::threadIndex(ThreadConstrained* thread)
 {	
 	int i;
 	for (i=0; i<threads.size() && threads[i]!=thread; i++) {}
-	assert(i!=threads.size());
+	if (i == threads.size())
+		return -1;	
 	return i;
 }
 
 ThreadConstrained* World::threadAtIndex(int thread_ind)
 {
-	assert(thread_ind >= 0 && thread_ind < threads.size());
+	assert((thread_ind >= -1) && (thread_ind < (int)threads.size()));
+	if (thread_ind == -1)
+		return NULL;
 	return threads[thread_ind];
 }
 
@@ -325,16 +328,16 @@ void World::draw(bool examine_mode)
 		objs[i]->draw();
 }
 
-void World::applyControl(const vector<ControlBase*>& controls, bool limit_displacement)
+void World::setTransformFromController(const vector<ControlBase*>& controls, bool limit_displacement)
 {
 	assert(cursors.size() == controls.size());
 	for (int i = 0; i < cursors.size(); i++) {
 		Cursor* cursor = (dynamic_cast<Cursor*>(cursors[i]));
 		cursor->setTransform(controls[i]->getPosition(), controls[i]->getRotation(), limit_displacement);
 		if (controls[i]->hasButtonPressedAndReset(UP))
-			cursor->openClose();
+			cursor->openClose(limit_displacement);
 		if (controls[i]->hasButtonPressedAndReset(DOWN))
-			cursor->attachDettach();
+			cursor->attachDettach(limit_displacement);
 	}
 	setThreadConstraintsFromEndEffs();
 	for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
@@ -437,6 +440,7 @@ void World::restore()
 		if(cursors[i]->isAttached())
 			cursors[i]->dettach();
 	}
+	initializeThreadsInEnvironment();
 }
 
 bool World::capsuleObjectIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections)

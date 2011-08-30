@@ -20,7 +20,7 @@ bool StateReader::readWorldFromFile(World* world)
 	std::cout << "filename: " << _fileName << std::endl;
   ifstream file;
   file.open(_fileName);
-  
+    
   if (file.fail()) {
   	cout << "Failed to open file. Objects were not read from file." << endl;
   	return false;

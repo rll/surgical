@@ -27,7 +27,7 @@ PROFILER = -L/usr/lib/ -lprofiler
 CC = g++ $(OPT_COMP) $(COMPILEFLAG) $(HOSTNAME) $(FOPENMP) $(PROFILER)
 LD = g++ $(OPT_COMP) $(LDFLAG) $(HOSTNAME) $(FOPENMP) $(PROFILER)
 DEBUG = -ggdb
-#DEBUG =
+#NDEBUG = -DNDEBUG
 ISOTROPIC=-DISOTROPIC
 
 target: testThreadDiscrete_pickUp

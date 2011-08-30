@@ -194,24 +194,13 @@ void ThreadConstrained::backup()
     delete backup_threads[thread_ind];
 	
 	backup_threads.resize(threads.size());	 
-  for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++)
-    threads[thread_ind] = new Thread(*threads[thread_ind]);
+  for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
+    backup_threads[thread_ind] = new Thread(*threads[thread_ind]);
+    backup_threads[thread_ind]->setWorld(world);
+  }
 	
 	backup_zero_angle = zero_angle;
-	/*
-	backup_rot_diff.resize(rot_diff.size());
-	for (int i = 0; i < rot_diff.size(); i++)
-		backup_rot_diff[i] = rot_diff[i];
-	
-	backup_rot_offset.resize(rot_offset.size());
-	for (int i = 0; i < rot_diff.size(); i++)
-		backup_rot_offset[i] = rot_offset[i];
-	
-	backup_constrained_vertices_nums.resize(constrained_vertices_nums.size());
-	for (int i = 0; i < constrained_vertices_nums.size(); i++)
-		backup_constrained_vertices_nums[i] = constrained_vertices_nums[i];
-	*/
-	//TODO erase commented part above
+
 	backup_rot_diff = rot_diff;	
 	backup_rot_offset = rot_offset;
 	backup_constrained_vertices_nums = constrained_vertices_nums;
@@ -230,25 +219,12 @@ void ThreadConstrained::restore()
   {
     threads[thread_ind] = new Thread(*backup_threads[thread_ind]);
     threads[thread_ind]->setWorld(world);
-    computed_num_vertices += threads.size()-1;
+    computed_num_vertices += (int)threads[thread_ind]->num_pieces()-1;
   }
   assert(computed_num_vertices == num_vertices);
 	
 	zero_angle = backup_zero_angle;
-	/*
-	rot_diff.resize(backup_rot_diff.size());
-	for (int i = 0; i < backup_rot_diff.size(); i++)
-		rot_diff[i] = backup_rot_diff[i];
-	
-	rot_offset.resize(backup_rot_offset.size());
-	for (int i = 0; i < backup_rot_diff.size(); i++)
-		rot_offset[i] = backup_rot_offset[i];
-	
-	constrained_vertices_nums.resize(backup_constrained_vertices_nums.size());
-	for (int i = 0; i < backup_constrained_vertices_nums.size(); i++)
-		constrained_vertices_nums[i] = backup_constrained_vertices_nums[i];
-	*/
-	//TODO erase commented part above
+
 	rot_diff = backup_rot_diff;	
 	rot_offset = backup_rot_offset;
 	constrained_vertices_nums = backup_constrained_vertices_nums;

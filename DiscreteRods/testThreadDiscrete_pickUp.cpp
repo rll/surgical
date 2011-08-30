@@ -50,7 +50,7 @@ void displayTextInScreen(const char* textline, ...);
 void glutMenu(int ID);
 void initGL();
 
-//#define VIEW3D
+#define VIEW3D
 
 float lastx_L=0;
 float lasty_L=0;
@@ -198,7 +198,7 @@ void processNormalKeys(unsigned char key, int x, int y)
     	cin >> dstFileName;
     	sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
   	} else {
-	    sprintf(fullPath, "%s%s%c", "environmentFiles/", "o", key);
+	    sprintf(fullPath, "%s%s%c", "environmentFiles/", "s", key);
 	  }
     StateReader state_reader(fullPath);
     if (state_reader.readWorldFromFile(world)) {
@@ -291,6 +291,10 @@ void processNormalKeys(unsigned char key, int x, int y)
   	}
   } else if(key == 'e') {
   	examine_mode = !examine_mode;
+  } else if(key == 'w') {
+  	rotate_frame[0] = rotate_frame[1] = 0.0;
+		translate_frame[0] = translate_frame[1] = 0.0;
+		translate_frame[2] = -110.0;
   } else if(key == 'g') {
   	vector<VectorXd> states;
   	world->getStates(states);
@@ -426,7 +430,8 @@ void drawStuff()
   glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
 #ifdef VIEW3D
 	glTranslatef(0.0, 0.0, +eye_focus_depth);
-  drawSphere(Vector3d::Zero(), 1, 0.8, 0.8, 0.8);
+	glColor3f(0.8, 0.8, 0.8);
+  drawSphere(Vector3d::Zero(), 1);
 	// (-translate_frame[2]) is distance from camera to sphere center
 	// (-translate_frame[2] - eye_focus_depth) is distance from camera to focus point
 	glRotatef (+atan(eye_separation/(2.0*(-translate_frame[2]-eye_focus_depth))) * 180.0/M_PI, 0.0, 1.0, 0.0);
@@ -438,9 +443,6 @@ void drawStuff()
 	glGetDoublev(GL_PROJECTION_MATRIX, projection);
 	glGetIntegerv(GL_VIEWPORT, viewport);
   world->draw(examine_mode);
-  for (int i = 0; i < world->threads.size(); i++) {
-  	world->threads[i]->minimize_energy();
-  }
   glPopMatrix();
 #ifdef VIEW3D
   displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
@@ -454,11 +456,12 @@ void drawStuff()
 	/* set up some matrices so that the object spins with the mouse */
 	glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
 	glTranslatef(0.0, 0.0, +eye_focus_depth);
-  drawSphere(Vector3d::Zero(), 1, 0.8, 0.8, 0.8);
+	glColor3f(0.8, 0.8, 0.8);
+  drawSphere(Vector3d::Zero(), 1);
 	glRotatef (-atan(eye_separation/(-2.0*translate_frame[2]-eye_focus_depth)) * 180.0/M_PI, 0.0, 1.0, 0.0);
 	glTranslatef(0.0, 0.0, -eye_focus_depth);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
-  glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
+  glRotatef (rotate_frame[0], 0.0, 1.0, 0.0);
 	world->draw(examine_mode);
 	glPopMatrix();
 	displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
@@ -573,7 +576,10 @@ void processInput(ControlBase* control0, ControlBase* control1)
 	controls.push_back(control0);
 	controls.push_back(control1);
 	
-	world->applyControl(controls, limit_displacement);
+	world->setTransformFromController(controls, limit_displacement);
+	
+	if (trajectory_recorder.hasStarted())
+		trajectory_recorder.writeWorldToFile(world);
 }
 
 void moveMouseToClosestEE(Mouse* mouse) {

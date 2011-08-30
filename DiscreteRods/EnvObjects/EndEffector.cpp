@@ -155,7 +155,7 @@ void EndEffector::writeToFile(ofstream& file)
 EndEffector::EndEffector(ifstream& file, World* w)
 	: EnvObject(default_color0, default_color1, default_color2, END_EFFECTOR)
 	, thread(NULL)
-	, world(world)
+	, world(w)
 {
 	for (int i=0; i<3; i++)
 		file >> position(i);
@@ -277,6 +277,13 @@ void EndEffector::draw()
   drawCylinder(i_objs[0]->_start_pos, i_objs[0]->_end_pos, i_objs[0]->_radius);
 	drawSphere(i_objs[0]->_start_pos, i_objs[0]->_radius);
 	drawSphere(i_objs[0]->_end_pos, i_objs[0]->_radius);
+	
+	//To visualize the collision capsule
+	//const Vector3d start = i_objs[1]->_start_pos + 2.0*(i_objs[1]->_start_pos - i_objs[1]->_end_pos).normalized();
+	//const Vector3d end = i_objs[1]->_end_pos;
+	//drawCylinder(start, end, 1.2*i_objs[1]->_radius);
+	//drawSphere(start, 1.2*i_objs[1]->_radius);
+	//drawSphere(end, 1.2*i_objs[1]->_radius);
 }
 
 void EndEffector::updateConstraint()

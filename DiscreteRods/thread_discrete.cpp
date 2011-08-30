@@ -894,7 +894,7 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
         fix_intersections();
         project_length_constraint_pass &= project_length_constraint();
         intersection_iters++;
-        cout << "fixing for " << intersection_iters << " iterations." << endl;
+        //cout << "fixing for " << intersection_iters << " iterations." << endl;
       }
       /*if (opt_iter < 200) { 
       // reset thread_pieces and restore prior end constraints
@@ -936,8 +936,8 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
   */
 	
 	//if (opt_iter!=-1)
-		std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
-	
+		//std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
+
 	return (opt_iter != num_opt_iters);
 } // end minimize_energy
 
@@ -1054,8 +1054,8 @@ void Thread::fix_intersections() {
 			//glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			//glPushMatrix();
 			//glTranslatef (0.0, 0.0, -110.0);
-			drawArrow(_thread_pieces[ind_piece]->vertex(), 100.0*dir*dist, 0, 1, 0);
-			drawArrow(_thread_pieces[ind_piece + 1]->vertex(), 100.0*dir*dist, 0, 1, 0);
+			//drawArrow(_thread_pieces[ind_piece]->vertex(), 100.0*dir*dist, 0, 1, 0);
+			//drawArrow(_thread_pieces[ind_piece + 1]->vertex(), 100.0*dir*dist, 0, 1, 0);
 			//glPopMatrix();
 			//glutSwapBuffers ();
 			//glutPostRedisplay ();
