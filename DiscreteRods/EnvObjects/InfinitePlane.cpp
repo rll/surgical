@@ -1,21 +1,20 @@
-#ifdef NEVERDEFINED
 #include "InfinitePlane.h"
 #include "../threadpiece_discrete.h"
 
-InfinitePlane::InfinitePlane(const Vector3d& pos, const Vector3d& norm, float c0, float c1, float c2)
+InfinitePlane::InfinitePlane(const Vector3d& pos, const Vector3d& norm, float c0, float c1, float c2, World* w)
 	: EnvObject(pos, Matrix3d::Identity(), c0, c1, c2, INFINITE_PLANE)
 	, normal(norm)
-	, side(100.0)
+	, world(w)
 	, file_name("notexture")
 {
 	rotation_from_tangent(norm.normalized(), rotation);
 }
 
 //Image should be saved as BMP 24 bits R8 G8 B8, RGB mode
-InfinitePlane::InfinitePlane(const Vector3d& pos, const Vector3d& norm, string filename)
+InfinitePlane::InfinitePlane(const Vector3d& pos, const Vector3d& norm, string filename, World* w)
 	: EnvObject(pos, Matrix3d::Identity(), 1.0, 1.0, 1.0, INFINITE_PLANE)
 	, normal(norm)
-	, side(100.0)
+	, world(w)
 	, file_name(filename)
 {
 	rotation_from_tangent(norm.normalized(), rotation);
@@ -24,14 +23,13 @@ InfinitePlane::InfinitePlane(const Vector3d& pos, const Vector3d& norm, string f
   	cerr << "Failed to load texture from filename " << filename << endl;
 }
 
-InfinitePlane::InfinitePlane(const InfinitePlane& rhs)
+InfinitePlane::InfinitePlane(const InfinitePlane& rhs, World* w)
 	: EnvObject(rhs.position, rhs.rotation, rhs.color0, rhs.color1, rhs.color2, rhs.type)
 	, normal(rhs.normal)
-	, side(rhs.side)
+	, world(w)
 	, file_name(rhs.file_name)
 {
-	if (type != INFINITE_PLANE)
-		cout << "error in infiniteplane" << endl; //TODO assert
+	assert(type == INFINITE_PLANE);
 	rotation_from_tangent(normal.normalized(), rotation);
 	if (file_name != "notexture") {
 		ilInit();
@@ -39,7 +37,7 @@ InfinitePlane::InfinitePlane(const InfinitePlane& rhs)
 			cerr << "Failed to load texture from filename " << file_name << endl;
 	}
 }
-
+		
 InfinitePlane::~InfinitePlane()
 {
   //  Clear out the memory used by loading image files.
@@ -49,23 +47,25 @@ InfinitePlane::~InfinitePlane()
 
 void InfinitePlane::writeToFile(ofstream& file)
 {
+	assert(type == INFINITE_PLANE);
 	file << type << " ";
 	for (int i=0; i<3; i++)
 		file << position(i) << " ";
 
-  file << normal(0) << " " << normal(1) << " " << normal(2) << " " << side << " " << color0 << " " << color1 << " " << color2 << " " << file_name << " ";
+  file << normal(0) << " " << normal(1) << " " << normal(2) << " " << color0 << " " << color1 << " " << color2 << " " << file_name << " ";
 
   file << "\n";
 }
 
-InfinitePlane::InfinitePlane(ifstream& file)
+InfinitePlane::InfinitePlane(ifstream& file, World* w)
 {
+  world = w;
   type = INFINITE_PLANE;
   
 	for (int i=0; i<3; i++)
 		file >> position(i);
 
-  file >> normal(0) >> normal(1) >> normal(2) >> side >> color0 >> color1 >> color2 >> file_name;
+  file >> normal(0) >> normal(1) >> normal(2) >> color0 >> color1 >> color2 >> file_name;
   rotation_from_tangent(normal.normalized(), rotation);
   if (file_name != "notexture") {
   	ilInit();
@@ -74,8 +74,9 @@ InfinitePlane::InfinitePlane(ifstream& file)
   }
 }
 
-void InfinitePlane::recomputeFromTransform(const Vector3d& pos, const Matrix3d& rot)
+void InfinitePlane::setTransform(const Vector3d& pos, const Matrix3d& rot)
 {
+	position = pos;
 	normal = rot.col(0);
 }
 
@@ -115,6 +116,20 @@ void InfinitePlane::draw()
 		glDisable (GL_TEXTURE_2D);
 	glEnable(GL_CULL_FACE);
 	glPopMatrix();
+}
+
+void InfinitePlane::backup()
+{
+	backup_position = position;
+	backup_normal = normal;
+}
+
+// caller is responsible for having backedup before restoring
+void InfinitePlane::restore()
+{
+	position = backup_position;
+	normal = backup_normal;
+	rotation_from_tangent(normal.normalized(), rotation);
 }
 
 bool InfinitePlane::capsuleIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections)
@@ -172,4 +187,3 @@ ILuint InfinitePlane::LoadImageDevIL (char *szFileName, struct TextureHandle *T)
     //printf("%s %d %d %d\n",szFileName,T->id,T->w,T->h);
     return 1; // success
 }
-#endif

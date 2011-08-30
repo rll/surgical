@@ -36,7 +36,7 @@ class TrajectoryRecorder
 
 		void start();
 		void stop();
-		void writeStateToFile(World* world);
+		void writeWorldToFile(World* world);
 		bool hasStarted() { return started; }
 
 	private:
