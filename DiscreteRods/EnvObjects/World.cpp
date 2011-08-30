@@ -12,19 +12,20 @@
 World::World()
 {
 	//any of these pushes two threads into threads.
-	//initThread();
+	initThread();
   //initLongerThread();
-  initRestingThread();
+  //initRestingThread();
+
 	
 	//setting up control handles
 	cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));
 	cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));	
 	
 	//setting up objects in environment
-	InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), "../utils/textures/checkerBoardSquare32.bmp", this);
-	//InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), 0.6, 0.6, 0.6, this);
+	//InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), "../utils/textures/checkerBoardSquare32.bmp", this);
+	InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), 0.6, 0.6, 0.6, this);
 	objs.push_back(plane);
-	objs.push_back(new TexturedSphere(Vector3d::Zero(), 150.0, "../utils/textures/checkerBoardRect16.bmp", this));
+	//objs.push_back(new TexturedSphere(Vector3d::Zero(), 150.0, "../utils/textures/checkerBoardRect16.bmp", this));
 	
 	//setting up end effectors
 	vector<Vector3d> positions;
@@ -354,7 +355,7 @@ void World::applyRelativeControl(const VectorXd& relative_control, bool limit_di
 		Matrix3d rotation;
 		rotation_from_euler_angles(rotation, relative_control(8*i+3), relative_control(8*i+4), relative_control(8*i+5));
 		const Matrix3d cursor_rot = cursor->rotation * rotation;
-		const Vector3d cursor_pos = cursor->position + relative_control.segment(8*i+0, 8*i+3) + EndEffector::grab_offset * cursor_rot.col(0);
+		const Vector3d cursor_pos = cursor->position + relative_control.segment(8*i+0, 3) + EndEffector::grab_offset * cursor_rot.col(0);
 		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement);
 		
 		if (relative_control(8*i+6))

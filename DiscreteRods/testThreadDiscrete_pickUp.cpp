@@ -747,6 +747,7 @@ void sqpPlanner() {
       vector<World*> sqpWorlds;
       vector<VectorXd> sqpControls;
 
+      cout << "calling SQP solver" << endl; 
       solveSQP(initialization_worlds, sqpWorlds, sqpControls, namestring.c_str());
 
       vector<World*> openLoopWorlds;
