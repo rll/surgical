@@ -758,7 +758,9 @@ void sqpPlanner() {
       }
       initial_world = new World(*openLoopWorlds.back());
     }
-
+    
+    //for smoothing, put objective in there
+    completeOpenLoopTrajectory.push_back(new World(*goal_world));
     sqpSmoother(completeOpenLoopTrajectory);
     //drawWorlds.clear();
     //drawWorlds = worlds;
@@ -778,7 +780,7 @@ void sqpSmoother(vector<World*>& trajectory_to_smooth) {
   vector<VectorXd> sqpControls;
 
   string namestring = "world_sqp_debug";
-  solveSQP(trajectory_to_smooth, sqpWorlds, sqpControls, namestring.c_str());
+  solveSQP(trajectory_to_smooth, sqpWorlds, sqpControls, namestring.c_str(), false);
 
   vector<World*> openLoopWorlds;
   openLoopController(trajectory_to_smooth, sqpControls, openLoopWorlds);
