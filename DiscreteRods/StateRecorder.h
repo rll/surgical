@@ -35,8 +35,7 @@ class StateRecorder
 		StateRecorder(const char* fileName);
     void setFileName(const char* newFileName);
 
-		void writeObjectsToFile(World* world);
-		void writeToFile(ofstream& file, World* world);
+		void writeWorldToFile(World* world);
 
 	private:
 		char _fileName[256];		

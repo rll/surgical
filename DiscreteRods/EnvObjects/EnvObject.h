@@ -56,7 +56,7 @@ public:
   virtual ~EnvObject() {}
 
   virtual void writeToFile(ofstream& file) = 0;
-	EnvObject(ifstream& file);
+	EnvObject(ifstream& file, World* w);
   
   virtual void setTransform(const Vector3d& pos, const Matrix3d& rot)
   { 
@@ -100,7 +100,7 @@ public:
   	state(5) = angX;
   }  
     
-  virtual void applyControl(const VectorXd& u)
+  /*virtual void applyControl(const VectorXd& u)
 	{
 		double max_ang = max( max(abs(u(3)), abs(u(4))), abs(u(5)));
 
@@ -119,7 +119,7 @@ public:
 		{
 		  setTransform(getPosition() + translation, getRotation() * rotation);
 		}
-	}
+	}*/
   
   virtual void draw() = 0;
   

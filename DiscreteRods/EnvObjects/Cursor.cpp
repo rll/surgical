@@ -3,8 +3,6 @@
 #include "World.h"
 #include "../ThreadConstrained.h"
 
-//TODO limited displacement
-
 Cursor::Cursor(const Vector3d& pos, const Matrix3d& rot, World* w, EndEffector* ee)
 	: position(pos)
 	, rotation(rot)
@@ -35,20 +33,17 @@ Cursor::Cursor(const Cursor& rhs, World* w)
 Cursor::~Cursor()
 {}
 
-void Cursor::setTransform(const Vector3d& pos, const Matrix3d& rot)
+void Cursor::setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_displacement)
 {
 	position = pos;
 	rotation = rot;
 	if (isAttached()) {
-		end_eff->setTransform(position - EndEffector::grab_offset * rotation.col(0), rotation);
+		end_eff->setTransform(position - EndEffector::grab_offset * rotation.col(0), rotation, limit_displacement);
 	}
 }
 
 void Cursor::draw()
 {
-	//TODO
-	//should get the state of the world and draw a cylinder for it
-	
 	const Vector3d end_pos = position - height * rotation.col(0);
 	
 	const Vector3d before_mid_point = position + (2.0/6.0)*(end_pos - position);
@@ -98,6 +93,15 @@ void Cursor::attach()
   				open = false;
   				assert(!ee->isOpen());
   			}
+  		}
+			//to update the open/close feature display of the end effector
+			if (isOpen() != ee->isOpen()) {
+				if (isOpen()) {
+					ee->setOpen();
+				} else {
+					ee->setClose();
+				}
+				ee->setTransform(tip_pos, rotation);
 			}
 			return;
 		}

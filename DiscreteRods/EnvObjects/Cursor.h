@@ -17,7 +17,7 @@ class Cursor
 		Cursor(const Cursor& rhs, World* w);
 		~Cursor();
 
-		void setTransform(const Vector3d& pos, const Matrix3d& rot);
+		void setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_displacement = false);
 
 		void draw();		
 		

@@ -15,7 +15,8 @@ void TrajectoryReader::setFileName(const char* fileName)
  sprintf(_fileName, "%s.txt", fileName);
 }
 
-bool TrajectoryReader::readStatesFromFile(vector<World*>& worlds)
+//the contents of worlds should be properly formatted, i.e. if the world object has already been deleted, then it should be NULL
+bool TrajectoryReader::readWorldsFromFile(vector<World*>& worlds)
 {
   std::cout << "filename: " << _fileName << std::endl;
   ifstream file;
@@ -27,26 +28,22 @@ bool TrajectoryReader::readStatesFromFile(vector<World*>& worlds)
   }
   
   int state;
-  bool success = true;
   for (int i=0; i<worlds.size(); i++) {
-  	delete worlds[i];
-  	worlds[i] = NULL;
+  	if (worlds[i] != NULL) {
+  		delete worlds[i];
+  		worlds[i] = NULL;
+  	}
   }
   worlds.clear();
   
   while (!file.eof()) {
     file >> state;
     if (state == STATE) {
-      World* world = new World();
-      StateReader state_reader(_fileName);
-      success = state_reader.readFromFile(file, world) && success;
-      if (!success)
-        break;
-      worlds.push_back(world);
+      worlds.push_back(new World(file));
     } else {
       break;
     }
   }
   
-  return success;
+  return true;
 }

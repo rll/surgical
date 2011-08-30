@@ -3,22 +3,22 @@
 #include "../ThreadConstrained.h"
 
 EndEffector::EndEffector(const Vector3d& pos, const Matrix3d& rot, World* w, ThreadConstrained* t, int constrained_vertex_num)
-	: EnvObject(0.7, 0.7, 0.7, END_EFFECTOR)
+	: EnvObject(default_color0, default_color1, default_color2, END_EFFECTOR)
 	, thread(t)
 	, constraint(constrained_vertex_num)
-	, backup_thread_ind(-1)
 	, world(w)
 	, open(false)
 {
 	assert(((thread == NULL) && (constrained_vertex_num == -1)) || ((thread != NULL) && (constrained_vertex_num != -1)));
-	if (thread == NULL) {
+	/*if (thread == NULL) {
 		constraint_ind = -1;
 	} else {
 		vector<int> constrained_vertices_nums;
 		thread->getConstrainedVerticesNums(constrained_vertices_nums);
 		constraint_ind = find(constrained_vertices_nums, constraint);
 		assert(constraint_ind != -1);
-	}
+	}*/
+	updateConstraintIndex();
 	
 	Intersection_Object* short_handle = new Intersection_Object();
 	short_handle->_radius = short_handle_r;
@@ -141,39 +141,32 @@ EndEffector::~EndEffector()
 
 void EndEffector::writeToFile(ofstream& file)
 {
+	assert(type == END_EFFECTOR);
 	file << type << " ";
 	for (int i=0; i<3; i++)
 		file << position(i) << " ";
 	for (int r=0; r < 3; r++)
-  {
     for (int c=0; c < 3; c++)
-    {
       file << rotation(r,c) << " ";
-    }
-  }
-  file << constraint << " " << constraint_ind << " " << world->threadIndex(thread) << " " << open << " ";
+  file << constraint << " " << world->threadIndex(thread) << " " << open << " ";
   file << "\n";
 }
 
-//linkPointersFromInd(World* world) should be called after calling this
 EndEffector::EndEffector(ifstream& file, World* w)
-	: EnvObject(0.7, 0.7, 0.7, END_EFFECTOR)
+	: EnvObject(default_color0, default_color1, default_color2, END_EFFECTOR)
 	, thread(NULL)
-	, world(NULL)
+	, world(world)
 {
 	for (int i=0; i<3; i++)
 		file >> position(i);
 	for (int r=0; r < 3; r++)
-  {
     for (int c=0; c < 3; c++)
-    {
       file >> rotation(r,c);
-    }
-  }
   
   int world_thread_ind;
-  file >> constraint >> constraint_ind >> world_thread_ind >> open;
+  file >> constraint >> world_thread_ind >> open;
  	thread = world->threadAtIndex(world_thread_ind);
+ 	updateConstraintIndex();
 	assert(((thread == NULL) && (constraint == -1) && (constraint_ind == -1)) || 
 				 ((thread != NULL) && (constraint != -1) && (constraint_ind != -1)));
 
@@ -322,7 +315,7 @@ void EndEffector::backup()
 	backup_open = open;
 }
 
-// caller is responsible for having backedup before restoring. the world should change between backup and restore
+// caller is responsible for having backedup before restoring
 void EndEffector::restore()
 {
 	setTransform(backup_position, backup_rotation);
