@@ -24,17 +24,22 @@ class EndEffector : public EnvObject
 		bool backup_open;
 
 		//need to be backed up
-		// constraint
 		// position
-		// rotations
-		// backup_thread_ind = world->threadIndex(thread);
+		// rotation
+		// constraint (constraint_ind doesn't need to be backup because it can be recomputed from constraint)
+		// thread_ind (backup_thread_ind = world->threadIndex(thread)) This is equivalent to backing up the thread pointer
 		// open
 		
-		// thread = world->threadAtIndex(thread_ind);
-
+		//need to be restored
+		//position
+		//rotation
+		//constraint
+		//constraint_ind (updateConstraintIndex())
+		//thread (thread = world->threadAtIndex(backup_thread_ind);
+		//open
+	
 	public:		
 		EndEffector(const Vector3d& pos, const Matrix3d& rot, World* w, ThreadConstrained* t = NULL, int constrained_vertex_num = -1);
-		//EndEffector(const EndEffector& rhs, ThreadConstrained* t = NULL, int constrained_vertex_num = -1);
 		EndEffector(const EndEffector& rhs, World* w);
 		~EndEffector();
 		
@@ -67,6 +72,7 @@ class EndEffector : public EnvObject
   	double capsuleRepulsionEnergy(const Vector3d& start, const Vector3d& end, const double radius);
   	void capsuleRepulsionEnergyGradient(const Vector3d& start, const Vector3d& end, const double radius, Vector3d& gradient);
 	
+		static const double default_color0 = 0.7, default_color1 = 0.7, default_color2 = 0.7;
 		static const double pieces = 3.0; //4.0;
 		static const double h = 9.0/3.0; //9.0/4.0; // (end-start)/pieces
 		static const double start = -3.0;

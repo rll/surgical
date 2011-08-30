@@ -36,10 +36,10 @@
 #include "EnvObjects/InfinitePlane.h"
 #include "EnvObjects/TexturedSphere.h"
 
-//TODO//#include "StateRecorder.h"
-//TODO//#include "StateReader.h"
-//TODO//#include "TrajectoryRecorder.h"
-//TODO//#include "TrajectoryReader.h"
+#include "StateRecorder.h"
+#include "StateReader.h"
+#include "TrajectoryRecorder.h"
+#include "TrajectoryReader.h"
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
@@ -50,7 +50,7 @@ void displayTextInScreen(const char* textline, ...);
 void glutMenu(int ID);
 void initGL();
 
-//#define VIEW3D
+#define VIEW3D
 
 float lastx_L=0;
 float lasty_L=0;
@@ -78,7 +78,8 @@ double zero_angle;
 
 // interactive variables
 bool limit_displacement = false;
-bool haptics = false;
+bool haptics = true;
+bool examine_mode = false;
 
 //IO
 Haptic *haptic0, *haptic1;
@@ -88,7 +89,7 @@ Mouse *mouse0, *mouse1;
 World *world;
 
 //For recording and playing back trajectories
-//TODO//TrajectoryRecorder trajectory_recorder;
+TrajectoryRecorder trajectory_recorder;
 vector<World*> worlds;
 int world_ind = 0;
 
@@ -179,7 +180,7 @@ void processNormalKeys(unsigned char key, int x, int y)
     if (!world->cursorAtIndex(1)->isAttached())
     	moveMouseToClosestEE(mouse1);
 		glutIgnoreKeyRepeat(1);
-	/*} else if(key == 's') {
+	} else if(key == 's') {
     cout << "Saving...\n";
     cout << "Please enter destination file name (without extension): ";
     char *dstFileName = new char[256];
@@ -187,7 +188,7 @@ void processNormalKeys(unsigned char key, int x, int y)
     char *fullPath = new char[256];
     sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
 		StateRecorder state_recorder(fullPath);
-    state_recorder.writeObjectsToFile(world);
+    state_recorder.writeWorldToFile(world);
   } else if((key == 'a') || (key >= '0' && key <= '9')) {
   	cout << "Loading...\n";
   	char *fullPath = new char[256];
@@ -197,25 +198,36 @@ void processNormalKeys(unsigned char key, int x, int y)
     	cin >> dstFileName;
     	sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
   	} else {
-	    sprintf(fullPath, "%s%s%c", "environmentFiles/", "o", key);
+	    sprintf(fullPath, "%s%s%c", "environmentFiles/", "s", key);
 	  }
-    //TODO don't forget to unattach control
     StateReader state_reader(fullPath);
-    if (state_reader.readObjectsFromFile(world)) {
+    if (state_reader.readWorldFromFile(world)) {
 			cout << "State loading was sucessful." << endl;
+		} else {
+			//TODO safely handle this case
+			cout << "State loading was unsucessful. Finishing program because this case is not safely handled (in terms of pointers)." << endl;
+			assert(0);
 		}
 	} else if(key == 'c') {
-		cout << "Starting trajectory and saving...\n";
-    cout << "Please enter destination file name (without extension): ";
-    char *dstFileName = new char[256];
-    cin >> dstFileName;
-    char *fullPath = new char[256];
-    sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
-		trajectory_recorder.setFileName(fullPath);
-		trajectory_recorder.start();
+		if (trajectory_recorder.hasStarted()) {
+			cout << "Trajectory was already started. Stop it first before starting to save a new trajectory." << endl;
+		} else {
+			cout << "Starting trajectory and saving...\n";
+		  cout << "Please enter destination file name (without extension): ";
+		  char *dstFileName = new char[256];
+		  cin >> dstFileName;
+		  char *fullPath = new char[256];
+		  sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
+			trajectory_recorder.setFileName(fullPath);
+			trajectory_recorder.start();
+		}
 	} else if(key == 'x') {
-		cout << "Finished saving trajectory.\n";
-		trajectory_recorder.stop();
+		if (!trajectory_recorder.hasStarted()) {
+			cout << "Trajectory have not been started. Start it first before stopping it." << endl;
+		} else {
+			cout << "Finished saving trajectory.\n";
+			trajectory_recorder.stop();
+		}
 	} else if((key == 'z') || 
 						(key == '!') || (key == '@') || (key == '#') || (key == '$') || (key == '%') ||
 						(key == '^') || (key == '&') || (key == '*') || (key == '(') || (key == ')')) {
@@ -241,28 +253,33 @@ void processNormalKeys(unsigned char key, int x, int y)
 	    sprintf(fullPath, "%s%s%c", "environmentFiles/", "t", map_key);
 	  }
   	TrajectoryReader trajectory_reader(fullPath);
-  	//TODO don't forget to unattach control
-  	trajectory_reader.readStatesFromFile(worlds);
-  	cout << "worlds size " << worlds.size() << endl;
-  	world_ind = 0;
-  	world = worlds[world_ind];*/
+  	if (trajectory_reader.readWorldsFromFile(worlds)) {
+			cout << "Trajectory loading was sucessful. " << worlds.size() << " worlds were loaded." << endl;
+			world_ind = 0;
+  		world = worlds[world_ind];
+		} else {
+			//TODO safely handle this case
+			cout << "Trajectory loading was unsucessful. Finishing program because this case is not safely handled (in terms of pointers)." << endl;
+			assert(0);
+		}
 	} else if(key == '[') {
 		if (worlds.size() > 0) {
 			world_ind = max(0, world_ind-1);
 			world = worlds[world_ind];
 			cout << "world " << world_ind << " / " << worlds.size() << endl;
-		} else { cout << "There is no previous state. worlds is empty." << endl; }
+		} else { 
+			cout << "There is no previous state. worlds is empty." << endl;
+		}
 	} else if(key == ']') {
 		if (worlds.size() > 0) {
 			world_ind = min((int) worlds.size()-1, world_ind+1);
 			world = worlds[world_ind];
 			cout << "world " << world_ind << " / " << worlds.size() << endl;
-		} else { cout << "There is no next state. worlds is empty." << endl; }
+		} else {
+			cout << "There is no next state. worlds is empty." << endl;
+		}
 	} else if(key == 'l') {
 		limit_displacement = !limit_displacement;
-  } else if(key == 'e') {
-  	//for (int thread_ind=0; thread_ind<threads.size(); thread_ind++)
-  	//	threads[thread_ind]->toggleExamineMode();
   } else if(key == 'h') {
   	haptics = !haptics;
   	if (haptics) {
@@ -272,6 +289,12 @@ void processNormalKeys(unsigned char key, int x, int y)
   		mouse0->setTransform(haptic0);
   		mouse1->setTransform(haptic1);
   	}
+  } else if(key == 'e') {
+  	examine_mode = !examine_mode;
+  } else if(key == 'w') {
+  	rotate_frame[0] = rotate_frame[1] = 0.0;
+		translate_frame[0] = translate_frame[1] = 0.0;
+		translate_frame[2] = -110.0;
   } else if(key == 'g') {
   	vector<VectorXd> states;
   	world->getStates(states);
@@ -407,7 +430,8 @@ void drawStuff()
   glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
 #ifdef VIEW3D
 	glTranslatef(0.0, 0.0, +eye_focus_depth);
-  drawSphere(Vector3d::Zero(), 1, 0.8, 0.8, 0.8);
+	glColor3f(0.8, 0.8, 0.8);
+  drawSphere(Vector3d::Zero(), 1);
 	// (-translate_frame[2]) is distance from camera to sphere center
 	// (-translate_frame[2] - eye_focus_depth) is distance from camera to focus point
 	glRotatef (+atan(eye_separation/(2.0*(-translate_frame[2]-eye_focus_depth))) * 180.0/M_PI, 0.0, 1.0, 0.0);
@@ -418,7 +442,7 @@ void drawStuff()
   glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
 	glGetDoublev(GL_PROJECTION_MATRIX, projection);
 	glGetIntegerv(GL_VIEWPORT, viewport);
-  world->draw();
+  world->draw(examine_mode);
   glPopMatrix();
 #ifdef VIEW3D
   displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
@@ -432,12 +456,13 @@ void drawStuff()
 	/* set up some matrices so that the object spins with the mouse */
 	glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
 	glTranslatef(0.0, 0.0, +eye_focus_depth);
-  drawSphere(Vector3d::Zero(), 1, 0.8, 0.8, 0.8);
+	glColor3f(0.8, 0.8, 0.8);
+  drawSphere(Vector3d::Zero(), 1);
 	glRotatef (-atan(eye_separation/(-2.0*translate_frame[2]-eye_focus_depth)) * 180.0/M_PI, 0.0, 1.0, 0.0);
 	glTranslatef(0.0, 0.0, -eye_focus_depth);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
-  glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
-	world->draw();
+  glRotatef (rotate_frame[0], 0.0, 1.0, 0.0);
+	world->draw(examine_mode);
 	glPopMatrix();
 	displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
 	glutSwapBuffers ();
@@ -551,7 +576,10 @@ void processInput(ControlBase* control0, ControlBase* control1)
 	controls.push_back(control0);
 	controls.push_back(control1);
 	
-	world->applyControl(controls);
+	world->setTransformFromController(controls, limit_displacement);
+	
+	if (trajectory_recorder.hasStarted())
+		trajectory_recorder.writeWorldToFile(world);
 }
 
 void moveMouseToClosestEE(Mouse* mouse) {

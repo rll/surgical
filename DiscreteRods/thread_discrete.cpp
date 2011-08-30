@@ -937,7 +937,7 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 	
 	//if (opt_iter!=-1)
 		//std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
-	
+
 	return (opt_iter != num_opt_iters);
 } // end minimize_energy
 
@@ -1050,6 +1050,15 @@ void Thread::fix_intersections() {
 
 			_thread_pieces[ind_piece]->offset_vertex(dir*dist); 
 			_thread_pieces[ind_piece + 1]->offset_vertex(dir*dist);
+			
+			//glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			//glPushMatrix();
+			//glTranslatef (0.0, 0.0, -110.0);
+			//drawArrow(_thread_pieces[ind_piece]->vertex(), 100.0*dir*dist, 0, 1, 0);
+			//drawArrow(_thread_pieces[ind_piece + 1]->vertex(), 100.0*dir*dist, 0, 1, 0);
+			//glPopMatrix();
+			//glutSwapBuffers ();
+			//glutPostRedisplay ();
 		}
 	}
 }
@@ -1110,7 +1119,7 @@ bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersection
   }
   
   //if (found || obj_intersection)
-  //	cout << "intersections. obj_intersection = " << obj_intersection << endl;
+  	//cout << "intersections. obj_intersection = " << obj_intersection << endl;
 
   return found;
 }
