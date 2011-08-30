@@ -1,14 +1,20 @@
-#define NUM_ITERS_SQP 2
-#define SQP_BREAK_THRESHOLD 2
+#define NUM_ITERS_SQP_PLANNER 1
+#define NUM_ITERS_SQP_SMOOTHER 1
+#define SQP_BREAK_THRESHOLD 3.5
 
 #include "../MotionPlanning/worldSQP.h"
 
 /*
  * Use SQP solver given traj_in. Puts results in traj_out and control_out
  */
-void solveSQP(vector<World*>& traj_in, vector<World*>& traj_out, vector<VectorXd>& control_out, vector<vector<World*> >& sqp_debug_data, const char* namestring)
+void solveSQP(vector<World*>& traj_in, vector<World*>& traj_out, vector<VectorXd>& control_out, vector<vector<World*> >& sqp_debug_data, const char* namestring, bool planner = true)
 {
-  int num_iters = NUM_ITERS_SQP; 
+  int num_iters;
+  if (planner) {
+    num_iters = NUM_ITERS_SQP_PLANNER;
+  } else {
+    num_iters = NUM_ITERS_SQP_SMOOTHER;
+  }
 
   // Wrap controls and put threads in traj_out as copies 
   traj_out.resize(traj_in.size());
@@ -25,10 +31,10 @@ void solveSQP(vector<World*>& traj_in, vector<World*>& traj_out, vector<VectorXd
 
 };
 
-void solveSQP(vector<World*>& traj_in, vector<World*>& traj_out, vector<VectorXd>& control_out, const char* namestring)
+void solveSQP(vector<World*>& traj_in, vector<World*>& traj_out, vector<VectorXd>& control_out, const char* namestring, bool planner = true)
 {
   vector<vector<World*> > sqp_debug_data;
-  solveSQP(traj_in, traj_out, control_out, sqp_debug_data, namestring);
+  solveSQP(traj_in, traj_out, control_out, sqp_debug_data, namestring, planner);
 };
 
 
