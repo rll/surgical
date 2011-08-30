@@ -74,11 +74,19 @@ class World
 		//if the control doesn't have an ee attachment, world should solve that; i.e. find the closest ee for the control.
 		//cursors are used as a handle for controls and the objects in the world
 		// for each control, there is 3 dof for translation, 3 for rotation, 2 for event
-		void applyControl(const vector<ControlBase*>& controls); //applies controli to handlei
+		void setTransform(const vector<ControlBase*>& controls); //applies controli to handle i 
 		void applyRelativeControl(const VectorXd& relative_control);
 		void setThreadConstraintsFromEndEffs();
+    void applyRelativeControlJacobian(const VectorXd& relative_control); 
 		
-		void getStates(vector<VectorXd>& states);
+		//state representation
+    void getStates(vector<VectorXd>& states);
+    void printStates();
+
+    // Jacobian
+    void getStateForJacobian(VectorXd& world_state); 
+    void computeJacobian(MatrixXd& J); 
+    
 		
 		//backup
 		void backup();

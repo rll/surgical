@@ -40,7 +40,8 @@ void Cursor::setTransform(const Vector3d& pos, const Matrix3d& rot)
 	position = pos;
 	rotation = rot;
 	if (isAttached()) {
-		end_eff->setTransform(position - EndEffector::grab_offset * rotation.col(0), rotation);
+		//end_eff->setTransform(position - EndEffector::grab_offset * rotation.col(0), rotation);
+    end_eff->setTransform(position, rotation);
 	}
 }
 

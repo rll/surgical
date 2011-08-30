@@ -312,7 +312,7 @@ void World::draw()
 		objs[i]->draw();
 }
 
-void World::applyControl(const vector<ControlBase*>& controls)
+void World::setTransform(const vector<ControlBase*>& controls)
 {
 	assert(cursors.size() == controls.size());
 	for (int i = 0; i < cursors.size(); i++) {
@@ -333,7 +333,7 @@ void World::applyRelativeControl(const VectorXd& relative_control)
 		Cursor* cursor = (dynamic_cast<Cursor*>(cursors[i]));
 		Matrix3d rotation;
 		rotation_from_euler_angles(rotation, relative_control(8*i+3), relative_control(8*i+4), relative_control(8*i+5));
-		cursor->setTransform(cursor->position + relative_control.segment(8*i+0, 8*i+3), cursor->rotation * rotation);
+		cursor->setTransform(cursor->position + relative_control.segment(8*i+0, 3), cursor->rotation * rotation);
 		
 		if (relative_control(8*i+6))
 			cursor->openClose();
@@ -341,6 +341,18 @@ void World::applyRelativeControl(const VectorXd& relative_control)
 			cursor->attachDettach();
 	}
 	setThreadConstraintsFromEndEffs();
+}
+
+void World::applyRelativeControlJacobian(const VectorXd& relative_control) 
+{
+  assert(cursors.size()*6 == relative_control.size());
+  VectorXd wrapper_control(16);
+  wrapper_control.setZero(); 
+  wrapper_control.segment(0, 6) = relative_control.segment(0,6);
+  wrapper_control.segment(8, 6) = relative_control.segment(6,6);
+
+  applyRelativeControl(wrapper_control);
+
 }
 
 void World::setThreadConstraintsFromEndEffs()
@@ -394,6 +406,90 @@ void World::getStates(vector<VectorXd>& states)
 		objs[i]->getState(state);
 		states.push_back(state);
 	}
+}
+
+void World::getStateForJacobian(VectorXd& world_state) { 
+  vector<VectorXd> states;
+  int state_size = 0; 
+  for (int i = 0; i < threads.size(); i++) { 
+    VectorXd state;
+    threads[i]->getState(state);
+    states.push_back(state); 
+    state_size += state.size();  
+  }
+ 
+  
+  /*for (int i = 0; i < cursors.size(); i++) { 
+    if (cursors[i]->isAttached()) {
+      VectorXd state;
+      if (!cursors[i]->end_eff->isAttached()) {
+        cout << "WARNING: End Effector is not attached to a thread" << endl;
+      }
+      cursors[i]->end_eff->getState(state);
+      //cursors[i]->getState(state); 
+      states.push_back(state); 
+      state_size += state.size();
+    }
+  }*/
+  
+  
+  //flatten vector<VectorXd> into one long VectorXd
+  world_state.resize(state_size);
+  int start_ind = 0;
+  for (int i = 0; i < states.size(); i++) { 
+    world_state.segment(start_ind, states[i].size()) = states[i];
+    start_ind += states[i].size(); 
+  }
+
+}
+
+void World::computeJacobian(MatrixXd& J) { 
+  VectorXd world_state;
+  getStateForJacobian(world_state);
+  int size_each_state = world_state.size();
+  int size_each_control = 12; 
+  J.resize(world_state.size(), size_each_control);
+  J.setZero();
+  double eps = 1e-1;
+   
+  #pragma omp parallel for
+  for (int i = 0 ; i < 12; i++) { 
+    VectorXd du(12);
+    du.setZero(); 
+    du(i) = eps;
+    World* world_copy = new World(*this); 
+    world_copy->applyRelativeControlJacobian(du); 
+    VectorXd new_state;
+    world_copy->getStateForJacobian(new_state);
+    J.block(0,i, size_each_state, 1) = new_state; 
+    delete world_copy;
+
+    du(i) = -eps;
+    world_copy = new World(*this); 
+    world_copy->applyRelativeControlJacobian(du); 
+    world_copy->getStateForJacobian(new_state);
+    J.block(0,i, size_each_state, 1) -= new_state; 
+    delete world_copy;
+  }
+  
+  J /= (2 * eps); 
+  //J /= eps; 
+
+}
+
+
+void World::printStates() { 
+  cout << endl << endl << endl << endl << endl << endl << endl << endl;
+  cout << endl << endl << endl << endl << endl << endl << endl << endl;
+  cout << endl << endl << endl << endl << endl << endl << endl << endl;
+  cout << endl << endl << endl << endl << endl << endl << endl << endl;
+  cout << endl << endl << endl << endl << endl << endl << endl << endl;
+  cout << endl << endl << endl << endl << endl << endl << endl << endl;
+  cout << endl << endl << endl << endl << endl << endl << endl << endl;
+  VectorXd world_state;
+  getStateForJacobian(world_state);
+  if (world_state.size() > 0) 
+    cout << world_state.transpose() << endl; 
 }
 
 void World::backup()
