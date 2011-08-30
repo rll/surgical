@@ -50,7 +50,7 @@ void displayTextInScreen(const char* textline, ...);
 void glutMenu(int ID);
 void initGL();
 
-#define VIEW3D
+//#define VIEW3D
 
 float lastx_L=0;
 float lasty_L=0;
@@ -78,7 +78,8 @@ double zero_angle;
 
 // interactive variables
 bool limit_displacement = false;
-bool haptics = true;
+bool haptics = false;
+
 bool examine_mode = false;
 
 //IO
