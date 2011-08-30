@@ -1,12 +1,12 @@
-#ifdef NEVERDEFINED
 #include "TexturedSphere.h"
 #include "../threadpiece_discrete.h"
 
 //textured sphere based on http://www.mfwweb.com/OpenGL/Loading_Textures/
 //Image should be saved as BMP 24 bits R8 G8 B8, RGB mode
-TexturedSphere::TexturedSphere(const Vector3d& pos, double r, string filename)
+TexturedSphere::TexturedSphere(const Vector3d& pos, double r, string filename, World* w)
 	: EnvObject(pos, Matrix3d::Identity(), 0.6, 0.6, 0.6, TEXTURED_SPHERE)
 	, radius(r)
+	, world(w)
 	, file_name(filename)
 {
 	earth = 0;
@@ -17,13 +17,13 @@ TexturedSphere::TexturedSphere(const Vector3d& pos, double r, string filename)
   	earth = gluNewQuadric();
 }
 
-TexturedSphere::TexturedSphere(const TexturedSphere& rhs)
+TexturedSphere::TexturedSphere(const TexturedSphere& rhs, World* w)
 	: EnvObject(rhs.position, rhs.rotation, rhs.color0, rhs.color1, rhs.color2, rhs.type)
 	, radius(rhs.radius)
+	, world(w)
 	, file_name(rhs.file_name)
 {
-	if (type != TEXTURED_SPHERE)
-		cerr << "it is not textrures sphere" << endl; //TODO
+	assert(type == TEXTURED_SPHERE);
 	earth = 0;
 	ilInit();
   if (! LoadImageDevIL ((char*) file_name.c_str(), &texture) )
@@ -45,6 +45,7 @@ TexturedSphere::~TexturedSphere()
 
 void TexturedSphere::writeToFile(ofstream& file)
 {
+	assert(type == TEXTURED_SPHERE);
 	file << type << " ";
 	for (int i=0; i<3; i++)
 		file << position(i) << " ";
@@ -54,11 +55,11 @@ void TexturedSphere::writeToFile(ofstream& file)
   file << "\n";
 }
 
-TexturedSphere::TexturedSphere(ifstream& file)
+TexturedSphere::TexturedSphere(ifstream& file, World* w)
+	: EnvObject(0.6, 0.6, 0.6, TEXTURED_SPHERE)
+	, world(w)
 {
 	rotation = Matrix3d::Identity();
-	color0 = color1 = color2 = 0.6;
-	type = TEXTURED_SPHERE;
   
 	for (int i=0; i<3; i++)
 		file >> position(i);
@@ -77,19 +78,18 @@ void TexturedSphere::draw()
 {
 	if (!earth) {
 		glDisable(GL_CULL_FACE);
-		drawSphere(position, radius, color0, color1, color2);
+		glColor3f(color0, color1, color2);
+		drawSphere(position, radius);
 		glEnable(GL_CULL_FACE);
 	} else {	
 		glPushMatrix();
 		glEnable(GL_COLOR_MATERIAL);
-		//glColor3f(0.7, 0.7, 0.7);
 		glColor3f(1.0, 1.0, 1.0);
-	
-		double transform[16] = {-0.5,  0, 0.866,     0,
-														0.866, 0,   0.5,     0,
-														0,     1,     0,     0,
-														position(0), position(1), position(2), 1};
 
+		glTranslated(position(0), position(1), position(2));
+		glRotated(240, 0, 1, 0);
+		glRotated(-90, 1, 0, 0);
+		
 		// //Equivalent to the following
 		// Matrix3d rotation = (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d(1.0,0.0,0.0));
 		// rotation = AngleAxisd(240.0*M_PI/180.0, Vector3d(0.0,1.0,0.0)) * rotation;
@@ -98,8 +98,6 @@ void TexturedSphere::draw()
 		// 												rotation(0,1) , rotation(1,1) , rotation(2,1) , 0 ,
 		// 												rotation(0,2) , rotation(1,2) , rotation(2,2) , 0 ,
 		// 												position(0), position(1), position(2), 1};
-
-		glMultMatrixd(transform);
 		
 		glDisable(GL_CULL_FACE);
 		glEnable (GL_TEXTURE_2D);
@@ -118,6 +116,20 @@ void TexturedSphere::draw()
 		
 		glPopMatrix();
   }
+}
+
+void TexturedSphere::backup()
+{
+	backup_position = position;
+	backup_radius = radius;
+}
+
+// caller is responsible for having backedup before restoring
+void TexturedSphere::restore()
+{
+	position = backup_position;
+	rotation = Matrix3d::Identity();
+	radius = backup_radius;
 }
 
 ILuint TexturedSphere::LoadImageDevIL (char *szFileName, struct TextureHandle *T)
@@ -144,5 +156,3 @@ ILuint TexturedSphere::LoadImageDevIL (char *szFileName, struct TextureHandle *T
     //printf("%s %d %d %d\n",szFileName,T->id,T->w,T->h);
     return 1; // success
 }
-
-#endif

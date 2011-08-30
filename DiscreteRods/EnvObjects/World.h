@@ -45,8 +45,11 @@ class World
 	public:
 		World();
 		World(const World& rhs);
-    World& operator=(const World& rhs);
 		~World();
+
+		//saving and loading from and to file
+		void writeToFile(ofstream& file);
+		World(ifstream& file);
 
 		//manipulate threads and objects in environment
 		//void addThread(ThreadConstrained* thread);
@@ -67,15 +70,15 @@ class World
 		void initializeThreadsInEnvironment();
 		EndEffector* closestEndEffector(Vector3d tip_pos);
 	
-		void draw();
+		void draw(bool examine_mode = false);
 
 		//applying control
 		//the controls should know to whom they are applying control.
 		//if the control doesn't have an ee attachment, world should solve that; i.e. find the closest ee for the control.
 		//cursors are used as a handle for controls and the objects in the world
 		// for each control, there is 3 dof for translation, 3 for rotation, 2 for event
-		void setTransform(const vector<ControlBase*>& controls); //applies controli to handle i 
-		void applyRelativeControl(const VectorXd& relative_control);
+		void setTransformFromController(const vector<ControlBase*>& controls, bool limit_displacement = false); //applies controli to handlei
+		void applyRelativeControl(const VectorXd& relative_control, bool limit_displacement = false);
 		void setThreadConstraintsFromEndEffs();
     void applyRelativeControlJacobian(const VectorXd& relative_control); 
 		
@@ -103,9 +106,9 @@ class World
 		void initRestingThread();
 		
 	private:
+		vector<Cursor*> cursors; //control handler
 		vector<ThreadConstrained*> threads;
 		vector<EnvObject*> objs;
-		vector<Cursor*> cursors; //control handler
 };
 
 #endif

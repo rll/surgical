@@ -29,13 +29,13 @@ PROFILER = -L/usr/lib/ -lprofiler
 CC = g++ $(OPT_COMP) $(COMPILEFLAG) $(HOSTNAME) $(FOPENMP) $(PROFILER)
 LD = g++ $(OPT_COMP) $(LDFLAG) $(HOSTNAME) $(FOPENMP) $(PROFILER)
 DEBUG = -ggdb
-#DEBUG =
+#NDEBUG = -DNDEBUG
 ISOTROPIC=-DISOTROPIC
 
 target: testThreadDiscrete_pickUp
 
-testThreadDiscrete_pickUp: testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o Mouse.o Haptic.o World.o Capsule.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o thread_socket_interface.o UDPSocket.o Socket.o worldSQP.o
-	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete_pickUp testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o Mouse.o Haptic.o World.o Capsule.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o thread_socket_interface.o UDPSocket.o Socket.o worldSQP.o $(LIBS) $(PROFILER)
+testThreadDiscrete_pickUp: testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o Mouse.o Haptic.o World.o Capsule.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o thread_socket_interface.o UDPSocket.o Socket.o StateRecorder.o StateReader.o TrajectoryRecorder.o TrajectoryReader.o worldSQP.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) -o testThreadDiscrete_pickUp testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o Mouse.o Haptic.o World.o Capsule.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o thread_socket_interface.o UDPSocket.o Socket.o StateRecorder.o StateReader.o TrajectoryRecorder.o TrajectoryReader.o worldSQP.o $(LIBS) $(PROFILER)
 
 recordThreadVideo: recordThreadVideo.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o trajectory_reader.o
 	$(LD) $(INCLUDES) $(VISION_INCLUDES) $(DEBUG) -o recordThreadVideo recordThreadVideo.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o trajectory_reader.o $(LIBS) $(VISION_LIBS)
@@ -110,17 +110,17 @@ imageloader.o: $(UTILS_DIR)/imageloader.cpp
 collisionUtils.o: $(COLLISIONS_DIR)/collisionUtils.cpp
 	$(CC) $(INCLUDES) $(DEBUG) -c $(COLLISIONS_DIR)/collisionUtils.cpp $(PROFILER)
 	
-#StateRecorder.o: StateRecorder.cpp
-#	$(CC) $(INCLUDES) $(DEBUG) -c StateRecorder.cpp $(PROFILER)
-	
-#StateReader.o: StateReader.cpp
-#	$(CC) $(INCLUDES) $(DEBUG) -c StateReader.cpp $(PROFILER)
+StateRecorder.o: StateRecorder.cpp
+	$(CC) $(INCLUDES) $(DEBUG) -c StateRecorder.cpp $(PROFILER)
 
-#TrajectoryRecorder.o: TrajectoryRecorder.cpp
-#	$(CC) $(INCLUDES) $(DEBUG) -c TrajectoryRecorder.cpp $(PROFILER)
+StateReader.o: StateReader.cpp
+	$(CC) $(INCLUDES) $(DEBUG) -c StateReader.cpp $(PROFILER)
 
-#TrajectoryReader.o: TrajectoryReader.cpp
-#	$(CC) $(INCLUDES) $(DEBUG) -c TrajectoryReader.cpp $(PROFILER)
+TrajectoryRecorder.o: TrajectoryRecorder.cpp
+	$(CC) $(INCLUDES) $(DEBUG) -c TrajectoryRecorder.cpp $(PROFILER)
+
+TrajectoryReader.o: TrajectoryReader.cpp
+	$(CC) $(INCLUDES) $(DEBUG) -c TrajectoryReader.cpp $(PROFILER)
 
 
 thread_discrete_noniso.o: thread_discrete.cpp thread_discrete.h

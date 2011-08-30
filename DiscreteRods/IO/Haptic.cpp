@@ -30,7 +30,6 @@ void Haptic::setHapticButton(bool bttn, button_type bttn_type)
 bool Haptic::hasButtonPressedAndReset(button_type bttn_type)
 {
 	bool result = (last_haptic_button[bttn_type] && !haptic_button[bttn_type]);
-	cout << result << endl;
 	if (result) 
 		last_haptic_button[bttn_type] = haptic_button[bttn_type] = false;
 	return result;
