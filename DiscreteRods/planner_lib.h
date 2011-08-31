@@ -3,6 +3,8 @@
 #define SQP_BREAK_THRESHOLD 3.5
 
 #include "../MotionPlanning/worldSQP.h"
+#include <iostream>
+
 
 /*
  * Use SQP solver given traj_in. Puts results in traj_out and control_out
@@ -89,13 +91,33 @@ void getTrajectoryStatistics(vector<World*>& worlds) {
   // sensitivity to control?
   // topological? 
 
+  ofstream file;
+  file.open("traj_stats.txt"); 
+  Thread* lastThread = NULL; 
+
   for (int i = 0; i < worlds.size(); i++) { 
     vector<ThreadConstrained*> world_threads;
     worlds[i]->getThreads(world_threads); // not copies, so don't mess with it
-    for (int j = 0; j < world_threads.size(); j++) {
+    //for (int j = 0; j < world_threads.size(); j++) {
+    for (int j = 0; j < 1; j++) {
       vector<Thread*> threads;
-      world_threads[j]->getThreads(threads); 
-      cout << threads.front()->calculate_energy() << endl; //energy 
+      world_threads[j]->getThreads(threads);
+      Thread* thread = threads.front();
+
+      if (lastThread) {
+        VectorXd lastThreadState, currentThreadState;
+        lastThread->getState(lastThreadState);
+        thread->getState(currentThreadState); 
+        file << thread->calculate_energy() << " "; //energy
+        file << thread->end_angle() << " "; // twist
+        file << (lastThreadState-currentThreadState).norm() << " "; //vel
+      }
+
+      lastThread = thread; 
+
+      file << endl; 
     }
   }
+
+  file.close();
 }

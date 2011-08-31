@@ -319,7 +319,9 @@ void processNormalKeys(unsigned char key, int x, int y)
     cout << "Changing smoothing enabled clears worlds" << endl;
     for (int i = 0; i < worlds.size(); i++) delete worlds[i];
     worlds.clear(); 
-    smoothingEnabled = !smoothingEnabled; 
+    //smoothingEnabled = !smoothingEnabled;
+  } else if (key == 'v') { 
+    getTrajectoryStatistics(worlds);
   } else if (key == '<') { 
     drawInd = max(0, drawInd - 1);
   } else if (key == '>') { 
@@ -732,7 +734,7 @@ void sqpPlanner() {
     cout << "Initial SQP score: " <<
       cost_metric(initial_world, goal_world) << endl; 
 
-    while (cost_metric(initial_world, goal_world) > 2 && !interruptEnabled) {
+    while (cost_metric(initial_world, goal_world) > SQP_BREAK_THRESHOLD && !interruptEnabled) {
       // Generate initial trajectory
       vector<World*> initialization_worlds;
       
