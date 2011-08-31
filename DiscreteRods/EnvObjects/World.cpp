@@ -13,9 +13,9 @@
 World::World()
 {
 	//any of these pushes two threads into threads.
-	initThread();
+	//initThread();
   //initLongerThread();
-  //initRestingThread();
+  initRestingThread();
 	
 	//setting up control handles
 	cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));
@@ -109,6 +109,9 @@ void World::writeToFile(ofstream& file)
   
   for (int i = 0; i < objs.size(); i++)
     objs[i]->writeToFile(file);
+    
+  for (int i = 0; i < cursors.size(); i++)
+    cursors[i]->writeToFile(file);
   
   file << NO_OBJECT << " ";
   file << "\n";
@@ -117,8 +120,8 @@ void World::writeToFile(ofstream& file)
 World::World(ifstream& file)
 {
   //setting up control handles
-	cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));
-	cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));	
+	//cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));
+	//cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));	
   
   int type;
   
@@ -146,6 +149,11 @@ World::World(ifstream& file)
           objs.push_back(new TexturedSphere(file, this));
           break;
         }
+      case CURSOR:
+      	{
+      		cursors.push_back(new Cursor(file, this));
+          break;
+      	}
     }
     if (type == NO_OBJECT) { break; }
   }
@@ -230,13 +238,16 @@ int World::envObjIndex(EnvObject* env_obj)
 {
 	int i;
 	for (i=0; i<objs.size() && objs[i]!=env_obj; i++) {}
-	assert(i!=objs.size());
+	if (i == objs.size())
+		return -1;
 	return i;
 }
 
 EnvObject* World::envObjAtIndex(int env_obj_ind)
 {
-	assert(env_obj_ind >= 0 && env_obj_ind < objs.size());
+	assert((env_obj_ind >= -1) && (env_obj_ind < (int)objs.size()));
+	if (env_obj_ind == -1)
+		return NULL;
 	return objs[env_obj_ind];
 }
 
@@ -355,11 +366,11 @@ void World::applyRelativeControl(const vector<Control*>& controls, bool limit_di
 		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement);
 		
 		if (controls[i]->getButton(UP))
-			cursor->openClose();
+			cursor->openClose(limit_displacement);
 		if (controls[i]->getButton(DOWN))
-			cursor->attachDettach();
+			cursor->attachDettach(limit_displacement);
 		
-		controls[i]->setNoMotion();
+		//controls[i]->setNoMotion();
 	}
 	setThreadConstraintsFromEndEffs();
 }
