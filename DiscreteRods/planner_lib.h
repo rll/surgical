@@ -4,7 +4,7 @@
 
 #include "../MotionPlanning/worldSQP.h"
 #include <iostream>
-
+#include <sys/time.h>
 
 /*
  * Use SQP solver given traj_in. Puts results in traj_out and control_out
@@ -121,3 +121,27 @@ void getTrajectoryStatistics(vector<World*>& worlds) {
 
   file.close();
 }
+
+
+class Timer {
+  public: 
+    Timer() {
+      gettimeofday(&start_tv, NULL); 
+    }
+    void restart() {
+      gettimeofday(&start_tv, NULL);
+    }
+    double elapsed() {
+      gettimeofday(&tv, NULL); 
+      return  (tv.tv_sec - start_tv.tv_sec) +
+        (tv.tv_usec - start_tv.tv_usec) / 1000000.0;
+    }
+
+  private:
+    struct timeval tv;
+    struct timeval start_tv;
+
+};
+
+
+

@@ -104,7 +104,8 @@ World* goal_world = NULL;
 bool drawStartWorld = false;
 bool drawGoalWorld = false; 
 bool interruptEnabled = false;
-bool smoothingEnabled = false; 
+bool smoothingEnabled = false;
+Timer* interruptTimer; 
 
 //For recording and playing back trajectories
 TrajectoryRecorder trajectory_recorder;
@@ -114,7 +115,7 @@ int world_ind = 0;
 vector<Control*> controls;
 int control_ind = 0;
 
-bool absoluteControl = true;
+bool absoluteControl = false;
 
 void processLeft(int x, int y)
 {
@@ -651,6 +652,8 @@ int main (int argc, char * argv[])
 
   drawWorlds.push_back(world);
   worlds.push_back(new World(*world));
+  interruptTimer = new Timer();
+  interruptTimer->restart();
   glutMainLoop ();
 }
 
@@ -778,10 +781,13 @@ void glutMenu(int ID) {
   }
 }
 
-void interruptHandler(int sig) { 
-  cout << "Signal " << sig << "caught..." << endl; 
+void interruptHandler(int sig) {
+  cout << "Time since last interrupt: " << interruptTimer->elapsed() << endl; 
+  if (interruptTimer->elapsed() < 0.1) exit(0);
+  cout << "You need to hold ctrl-c to forcefully exit the program!" << endl;
+
+  interruptTimer->restart();
   interruptEnabled = true;
-  exit(0);
 }
 
 void sqpPlanner() { 
