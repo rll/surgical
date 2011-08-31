@@ -5,7 +5,7 @@
 #define ROTATE_TAN_CONST 0.2
 
 Mouse::Mouse()
-	: ControlBase()
+	: ControllerBase()
 	, key_pressed(NONE)
 	, move(0.0, 0.0)
 {
@@ -17,6 +17,11 @@ Mouse::~Mouse() {}
 void Mouse::setPressButton(bool bttn, button_type bttn_type)
 {
 	button_state[bttn_type] = bttn;
+}
+
+bool Mouse::hasButtonPressed(button_type bttn_type)
+{
+	return  button_state[bttn_type];
 }
 
 bool Mouse::hasButtonPressedAndReset(button_type bttn_type)

@@ -18,6 +18,8 @@ class Cursor
 		~Cursor();
 
 		void setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_displacement = false);
+		const Vector3d& getPosition() const;
+		const Matrix3d& getRotation() const;
 
 		void draw();		
 		

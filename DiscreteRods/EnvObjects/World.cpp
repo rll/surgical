@@ -6,7 +6,8 @@
 #include "InfinitePlane.h"
 #include "TexturedSphere.h"
 #include "../thread_discrete.h"
-#include "../IO/ControlBase.h"
+#include "../IO/Control.h"
+#include "../IO/ControllerBase.h"
 #include "../ThreadConstrained.h"
 
 World::World()
@@ -15,7 +16,6 @@ World::World()
 	initThread();
   //initLongerThread();
   //initRestingThread();
-
 	
 	//setting up control handles
 	cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));
@@ -329,16 +329,37 @@ void World::draw(bool examine_mode)
 		objs[i]->draw();
 }
 
-void World::setTransformFromController(const vector<ControlBase*>& controls, bool limit_displacement)
+void World::setTransformFromController(const vector<ControllerBase*>& controllers, bool limit_displacement)
+{
+	assert(cursors.size() == controllers.size());
+	for (int i = 0; i < cursors.size(); i++) {
+		Cursor* cursor = (dynamic_cast<Cursor*>(cursors[i]));
+		cursor->setTransform(controllers[i]->getPosition(), controllers[i]->getRotation(), limit_displacement);
+		if (controllers[i]->hasButtonPressedAndReset(UP))
+			cursor->openClose(limit_displacement);
+		if (controllers[i]->hasButtonPressedAndReset(DOWN))
+			cursor->attachDettach(limit_displacement);
+	}
+	setThreadConstraintsFromEndEffs();
+}
+
+void World::applyRelativeControl(const vector<Control*>& controls, bool limit_displacement)
 {
 	assert(cursors.size() == controls.size());
 	for (int i = 0; i < cursors.size(); i++) {
 		Cursor* cursor = (dynamic_cast<Cursor*>(cursors[i]));
-		cursor->setTransform(controls[i]->getPosition() + EndEffector::grab_offset * controls[i]->getRotation().col(0), controls[i]->getRotation(), limit_displacement);
-		if (controls[i]->hasButtonPressedAndReset(UP))
-			cursor->openClose(limit_displacement);
-		if (controls[i]->hasButtonPressedAndReset(DOWN))
-			cursor->attachDettach(limit_displacement);
+		Matrix3d rotate(controls[i]->getRotate());		
+		//const Matrix3d cursor_rot = cursor->rotation * rotate;
+		const Matrix3d cursor_rot = controls[i]->rotation * rotate;
+		const Vector3d cursor_pos = cursor->position + controls[i]->getTranslate() + EndEffector::grab_offset * cursor_rot.col(0);
+		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement);
+		
+		if (controls[i]->getButton(UP))
+			cursor->openClose();
+		if (controls[i]->getButton(DOWN))
+			cursor->attachDettach();
+		
+		controls[i]->setNoMotion();
 	}
 	setThreadConstraintsFromEndEffs();
 }

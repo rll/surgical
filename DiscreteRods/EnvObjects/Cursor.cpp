@@ -52,6 +52,16 @@ void Cursor::setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_d
 	}
 }
 
+const Vector3d& Cursor::getPosition() const
+{
+	return position;
+}
+
+const Matrix3d& Cursor::getRotation() const
+{
+	return rotation;
+}
+
 void Cursor::draw()
 {
 	const Vector3d end_pos = position - height * rotation.col(0);
