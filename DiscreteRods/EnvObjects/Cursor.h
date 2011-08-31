@@ -16,6 +16,10 @@ class Cursor
 		Cursor(const Vector3d& pos, const Matrix3d& rot, World* w = NULL, EndEffector* ee = NULL);
 		Cursor(const Cursor& rhs, World* w);
 		~Cursor();
+		
+		//saving and loading from and to file
+		void writeToFile(ofstream& file);
+		Cursor(ifstream& file, World* w);
 
 		void setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_displacement = false);
 		const Vector3d& getPosition() const;
@@ -55,6 +59,7 @@ class Cursor
 		World* world; //TODO ensure it is initialized properly
 		EndEffector* end_eff;
 		bool open;
+		object_type type;
 };
 
 #endif
