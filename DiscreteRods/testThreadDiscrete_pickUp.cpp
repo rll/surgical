@@ -383,8 +383,10 @@ void processNormalKeys(unsigned char key, int x, int y)
   } else if (key == 'G') {
     vector<World*> traj_to_smooth;
     vector<World*> completeOpenLoopTrajectory;
-    completeOpenLoopTrajectory.push_back(new World(*worlds.front()));
-    for (int i = 0; i < 15; i++) {
+    //completeOpenLoopTrajectory.push_back(new World(*worlds.front()));
+    completeOpenLoopTrajectory.push_back(worlds[200]);
+    for (int i = 10; i < 25; i++) {
+      cout << "Running set: " << i << endl; 
       traj_to_smooth.clear();
       traj_to_smooth.push_back(completeOpenLoopTrajectory.back());
       for (int j = 0; j < 20; j++) { 
@@ -393,7 +395,7 @@ void processNormalKeys(unsigned char key, int x, int y)
       vector<World*> smooth_traj; 
       sqpSmoother(traj_to_smooth, smooth_traj);
       for (int j = 0; j < smooth_traj.size(); j++) { 
-        completeOpenLoopTrajectory.push_back(new World(*smooth_traj[i]));
+        completeOpenLoopTrajectory.push_back(new World(*smooth_traj[j]));
       }
     }
     setVisualizationData(completeOpenLoopTrajectory);

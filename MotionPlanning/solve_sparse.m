@@ -28,8 +28,8 @@ goal_state = b(end-size_each_state+1: end);
 
 %num_points = (size_each_state-1)/3;
 
-translation_control_constraint = 5e-1;
-rotation_control_constraint = 5e-2;
+translation_control_constraint = 2e-1;
+rotation_control_constraint = 2e-2;
 control_weights = zeros(size_each_control*(num_threads-1), 1);
 
 for i = 1:3
