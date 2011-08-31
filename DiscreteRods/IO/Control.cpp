@@ -79,7 +79,6 @@ void Control::writeToFile(ofstream& file)
 		file << translate(i) << " ";
 	file << rotate.w() << " " << rotate.x() << " " << rotate.y() << " " << rotate.z() << " ";
 	file << button[0] << " " << button[1] << " ";		
-	file << "\n";
 }
 
 Control::Control(ifstream& file)

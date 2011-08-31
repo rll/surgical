@@ -8,6 +8,7 @@ Cursor::Cursor(const Vector3d& pos, const Matrix3d& rot, World* w, EndEffector* 
 	, rotation(rot)
 	, world(w)
 	, end_eff(ee)
+	, type(CURSOR)
 {
 	if (isAttached() && ee->isOpen()) {
 		open = false;			//need this in order to satisfy assertion
@@ -23,24 +24,57 @@ Cursor::Cursor(const Cursor& rhs, World* w)
 	, rotation(rhs.rotation)
 	, world(w)
 	, end_eff(rhs.end_eff)
+	, type(CURSOR)
 {
 	if (isAttached()) {
 		end_eff = dynamic_cast<EndEffector*>(world->envObjAtIndex(rhs.world->envObjIndex(rhs.end_eff)));
 		if (end_eff->isOpen()) {
-			open = false;
-			setOpen();
-		} else {
+			//open = false;
+			//setOpen();
 			open = true;
-			setClose();
+		} else {
+			//open = true;
+			//setClose();
+			open = false;
 		}
 	} else {
-		open = true;
-		setClose();
+		//open = true;
+		//setClose();
+		open = false;
 	}
 }
 
 Cursor::~Cursor()
 {}
+
+void Cursor::writeToFile(ofstream& file)
+{
+	assert(type == CURSOR);
+	file << type << " ";
+	for (int i=0; i<3; i++)
+		file << position(i) << " ";
+	for (int r=0; r < 3; r++)
+    for (int c=0; c < 3; c++)
+      file << rotation(r,c) << " ";
+  file << " " << world->envObjIndex(end_eff) << " " << open << " ";
+  file << "\n";
+}
+
+Cursor::Cursor(ifstream& file, World* w)
+	: world(w)
+	, end_eff(NULL)
+	, type(CURSOR)
+{
+	for (int i=0; i<3; i++)
+		file >> position(i);
+	for (int r=0; r < 3; r++)
+    for (int c=0; c < 3; c++)
+      file >> rotation(r,c);
+      
+	int end_eff_ind;
+	file >> end_eff_ind >> open;
+	end_eff = dynamic_cast<EndEffector*>(world->envObjAtIndex(end_eff_ind));
+}
 
 void Cursor::setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_displacement)
 {
