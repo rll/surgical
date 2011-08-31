@@ -40,10 +40,10 @@
 
 #endif
 
-#define DEFAULT_REST_LENGTH 4 	/*default rest length for each threadpiece*/
+#define DEFAULT_REST_LENGTH 3.0	/*default rest length for each threadpiece*/
 #define LENGTH_THRESHHOLD 0.5 	/*we must be this much shorter than the total length */
 #define FIRST_REST_LENGTH 1.2 	/*rest length for the first threadpiece. currently the radius of the end effectors. */
-#define SECOND_REST_LENGTH 2.0 	/*rest length for the second threadpiece*/
+#define SECOND_REST_LENGTH 3.0 	/*rest length for the second threadpiece*/
 
 #define REFINE_THRESHHOLD 145.0			// maximun angle (in degrees) between this piece and its two neighbors before this piece gets split
 																		// increase this for merging to be easier

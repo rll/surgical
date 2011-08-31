@@ -20,6 +20,7 @@
 #include <Eigen/Geometry>
 #include <math.h>
 #include <vector>
+#include <assert.h>
 
 #include "../utils/drawUtils.h"
 #include "../Collisions/intersectionStructs.h"
@@ -35,6 +36,7 @@ class EnvObject
 public:
 
   EnvObject() {}
+  
   EnvObject(Vector3d pos, Matrix3d rot, float c0, float c1, float c2, object_type t) 
     : position(pos)
     , rotation(rot)
@@ -44,23 +46,61 @@ public:
     , type(t)
   {}
   
+  EnvObject(float c0, float c1, float c2, object_type t) 
+    : color0(c0)
+    , color1(c1)
+    , color2(c2)
+    , type(t)
+  {}
+  
   virtual ~EnvObject() {}
 
   virtual void writeToFile(ofstream& file) = 0;
-	EnvObject(ifstream& file);
-	virtual void updateIndFromPointers(World* world) = 0;
-	virtual void linkPointersFromInd(World* world) = 0;
-
-  virtual void recomputeFromTransform(const Vector3d& pos, const Matrix3d& rot) = 0;
+	EnvObject(ifstream& file, World* w);
   
-  void setTransform(const Vector3d& pos, const Matrix3d& rot)
+  virtual void setTransform(const Vector3d& pos, const Matrix3d& rot)
   { 
-    position = pos; 
-    rotation = rot; 
-    recomputeFromTransform(pos, rot);
+    position = pos;
+    rotation = rot;
+  }
+  	
+	void getTransform(Vector3d& pos, Matrix3d& rot)
+  {
+  	pos = position;
+  	rot = rotation;
   }
   
-  virtual void applyControl(const VectorXd& u)
+  const Vector3d& getPosition() const
+  {
+  	return position;
+  }
+
+  const Matrix3d& getRotation() const
+  {
+  	return rotation;
+  }
+
+	void setColor(float c0, float c1, float c2)
+	{ 
+	  color0 = c0;
+	  color1 = c1;
+	  color2 = c2;
+	}
+
+  virtual void getState(VectorXd& state)
+  {
+  	state.resize(6);
+  	double angZ, angY, angX;
+  	euler_angles_from_rotation(rotation, angZ, angY, angX);
+  	for (int i = 0; i < 3; i++) {
+  		state(i) = position(i);
+  	}
+  	state(3) = angZ;
+  	state(4) = angY;
+  	state(5) = angX;
+  }  
+    
+  /*virtual void applyControl(const VectorXd& u)
 	{
 		double max_ang = max( max(abs(u(3)), abs(u(4))), abs(u(5)));
 
@@ -79,56 +119,29 @@ public:
 		{
 		  setTransform(getPosition() + translation, getRotation() * rotation);
 		}
-	}
-  
-	void setColor(float c0, float c1, float c2)
-	{ 
-	  color0 = c0;
-	  color1 = c1;
-	  color2 = c2;
-	}
-	
-	void getTransform(Vector3d& pos, Matrix3d& rot)
-  {
-  	pos = position;
-  	rot = rotation;
-  }
-  
-  const Vector3d& getPosition() const
-  {
-  	return position;
-  }
-
-  const Matrix3d& getRotation() const
-  {
-  	return rotation;
-  }
-  
-  virtual void getState(VectorXd& state)
-  {
-  	state.resize(6);
-  	double angZ, angY, angX;
-  	euler_angles_from_rotation(rotation, angZ, angY, angX);
-  	for (int i = 0; i < 3; i++) {
-  		state(i) = position(i);
-  	}
-  	state(3) = angZ;
-  	state(4) = angY;
-  	state(5) = angX;
-  }
+	}*/
   
   virtual void draw() = 0;
+  
+  object_type getType() { return type; }
+  
+  //backup
+  virtual void backup() = 0;
+  virtual void restore() = 0;
+  
+  //collision
   virtual bool capsuleIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections) = 0;
   virtual double capsuleRepulsionEnergy(const Vector3d& start, const Vector3d& end, const double radius) = 0;
   virtual void capsuleRepulsionEnergyGradient(const Vector3d& start, const Vector3d& end, const double radius, Vector3d& gradient) = 0;
-  
-  object_type getType() { return type; }
   
 protected:
   Vector3d position;
   Matrix3d rotation;
   float color0, color1, color2;
   object_type type;
+  
+  Vector3d backup_position;
+  Matrix3d backup_rotation;
 };
 
 #endif // _EnvObject_h

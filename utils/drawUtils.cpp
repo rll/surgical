@@ -1,13 +1,12 @@
 #include "drawUtils.h"
 
-void drawCylinder(Vector3d pos, Matrix3d rot, double h, double r, float color0, float color1, float color2) {
+void drawCylinder(Vector3d pos, Matrix3d rot, double h, double r) {
 	glPushMatrix();
 	double transform[16] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
 													 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
 													 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
 													 pos(0)   , pos(1)   , pos(2)   , 1 };
 	glMultMatrixd(transform);
-	glColor3f(color0, color1, color2);
 	double cylinder[4][3] = { {-h-1.0, 0.0, 0.0} , {-h, 0.0, 0.0} , {0.0, 0.0, 0.0} ,
 															 {1.0, 0.0, 0.0} };
 	glePolyCylinder(4, cylinder, NULL, r);
@@ -40,10 +39,9 @@ void drawCylinder(Vector3d pos, Matrix3d rot, double h, double r, float color0, 
   glPopMatrix();
 }*/
 
-void drawCylinder(Vector3d start_pos, Vector3d end_pos, double r, float color0, float color1, float color2)
+void drawCylinder(Vector3d start_pos, Vector3d end_pos, double r)
 {
 	glPushMatrix();	
-	glColor3f(color0, color1, color2);
   Vector3d vector_array[4];
   double point_array[4][3];
 
@@ -152,18 +150,12 @@ void drawGrip(Vector3d pos, Matrix3d rot, double radius, double degrees, float c
 	glPopMatrix();
 }
 
-void drawSphere(Vector3d position, float radius, float color0, float color1, float color2) {
+void drawSphere(Vector3d position, float radius) {
 	glPushMatrix();
-	double transform[16] = {1,0,0,0,
-													0,1,0,0,
-													0,0,1,0,
-													position(0), position(1), position(2), 1};
-	glMultMatrixd(transform);
+	glTranslated(position(0), position(1), position(2));
 	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	//glEnable(GL_COLOR_MATERIAL);
-  glColor3f(color0, color1, color2);
-  //glutSolidSphere(radius, 20, 16);  
-  glutSolidSphere(radius, 80, 64);
+  glutSolidSphere(radius, 20, 16);
   //glFlush ();
   glPopMatrix();
 }
@@ -275,14 +267,13 @@ void drawArrow(Vector3d pos, Vector3d direction, float color0, float color1, flo
 	glPopMatrix();
 }
 
-void drawPlane(Vector3d pos, Vector3d normal, float side, float color0, float color1, float color2) {
+void drawPlane(Vector3d pos, Vector3d normal, float side) {
 	Matrix3d rot;
 	rotation_from_tangent(normal.normalized(), rot);
 	Vector3d x = rot.col(1);
 	Vector3d y = rot.col(2);
 
 	glPushMatrix();	
-	glColor3f(color0, color1, color2);
 
 	glBegin(GL_QUADS);
 	glVertex3f(pos(0) + side*(x(0)+y(0)), pos(1) + side*(x(1)+y(1)), pos(2) + side*(x(2)+y(2)));

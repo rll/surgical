@@ -21,8 +21,8 @@
 #include <math.h>
 
 #include "EnvObjects/World.h"
-#include "StateRecorder.h"
 #include "TrajectoryReader.h"
+#include "IO/Control.h"
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
@@ -36,7 +36,8 @@ class TrajectoryRecorder
 
 		void start();
 		void stop();
-		void writeStateToFile(World* world);
+		void writeWorldToFile(World* world);
+		void writeControlToFile(Control* control0, Control* control1);
 		bool hasStarted() { return started; }
 
 	private:

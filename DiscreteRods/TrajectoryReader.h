@@ -21,10 +21,10 @@
 #include <math.h>
 
 #include "EnvObjects/World.h"
-#include "StateReader.h"
+#include "IO/Control.h"
 
 #define TRAJECTORY_BASE_NAME "environmentFiles"
-enum state_type { NO_STATE, STATE };
+enum state_type { NO_STATE, STATE, CONTROL };
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
@@ -37,7 +37,8 @@ class TrajectoryReader
 		TrajectoryReader(const char* fileName);
 		void setFileName(const char* fileName);
 		
-		bool readStatesFromFile(vector<World*>& worlds);
+		bool readWorldsFromFile(vector<World*>& worlds);
+		bool readControlsFromFile(vector<Control*>& controls);
 	
 	private:
 		char _fileName[256];
