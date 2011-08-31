@@ -42,8 +42,7 @@ class StateReader
 		StateReader(const char* fileName);
 		void setFileName(const char* fileName);
 		
-		bool readObjectsFromFile(World* world);
-		bool readFromFile(ifstream& file, World* world);
+		bool readWorldFromFile(World* world);
 	
 	private:
 		char _fileName[256];

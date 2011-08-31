@@ -40,9 +40,16 @@ void TrajectoryRecorder::stop()
 	started = false;
 }
 
-void TrajectoryRecorder::writeStateToFile(World* world)
+void TrajectoryRecorder::writeWorldToFile(World* world)
 {
   file << STATE << " ";
-  StateRecorder state_recorder(_fileName);
-  state_recorder.writeToFile(file, world);
+  world->writeToFile(file);
+}
+
+void TrajectoryRecorder::writeControlToFile(Control* control0, Control* control1)
+{
+  file << CONTROL << " ";
+  control0->writeToFile(file);
+  file << CONTROL << " ";
+  control1->writeToFile(file);
 }

@@ -5,7 +5,6 @@
 
 #include "threadutils_discrete.h"
 #include "Collisions/collisionUtils.h"
-#include "EnvObjects/World.h"
 
 using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN
@@ -15,7 +14,7 @@ static Matrix2d B = Matrix2d::Identity()*BEND_COEFF;
 static double TWIST_COEFF = BEND_COEFF*3.00;
 static double STRETCH_COEFF = 0.1 * BEND_COEFF;
 static double GRAV_COEFF = BEND_COEFF*1e-4;
-static double REPULSION_COEFF = 1 * BEND_COEFF;
+static double REPULSION_COEFF = 0.0 * BEND_COEFF;
 
 static Matrix2d J = Matrix2d(Eigen::Rotation2Dd(M_PI/2.0));
 static Matrix2d JB = J*B;

@@ -28,18 +28,24 @@ goal_state = b(end-size_each_state+1: end);
 
 %num_points = (size_each_state-1)/3;
 
-weighted_state_diff_constraint = 0.1;
-control_constraint = 5e-2;
+translation_control_constraint = 5e-1;
+rotation_control_constraint = 5e-2;
+control_weights = zeros(size_each_control*(num_threads-1), 1);
+
+for i = 1:3
+  control_weights(i+0:6:end, 1) = 1;
+  control_weights(i+3:6:end, 1) = 10;
+end
 
 %min_control = 0.1;
 %consecutive_state_diff_constraint = 10;
 
-consectuve_state_diff_weight = zeros(100,1);
+%consectuve_state_diff_weight = zeros(100,1);
 
-cvx_solve sdpt3
+cvx_solver sdpt3
 cvx_begin
     variable x(A_n)
-    variable u((num_threads-1))
+    %variable u((num_threads-1))
     %variable consecutive_state_diff(num_threads)
     %variable edge_violations((num_threads-2)*num_points)
     variable consecutive_control_diff((num_threads-2)*size_each_control)
@@ -48,10 +54,10 @@ cvx_begin
     %minimize (square_pos(norm(A*x - b)) + 2*sum(sum(reshape(x((num_threads-2)*size_each_state+1:end), num_threads-1, size_each_control).^2,2)));
   
     %minimize(norm(A*x-b))
-    %minimize(norm(A*x-b))
+    minimize(norm(A*x-b) + 0.001 * norm(control_weights.*u_block,1) + 0.01*norm(consecutive_control_diff,2))
 
-    %minimize(norm(forward_scores) + 0.0001 * norm(u_block,1))
-    minimize(norm(forward_scores) + 0.05 * norm(u_block,1))
+    %minimize(norm(forward_scores) + 0.001*norm(u_block,1) + 0.1*norm(consecutive_control_diff, 2))
+    %minimize(norm(forward_scores))
 
 
 
@@ -100,11 +106,11 @@ cvx_begin
       %for thread_num=1:num_threads-1
        % norm( x(size_each_state*(num_threads-2) + (thread_num-1)*size_each_control +1 : size_each_state*(num_threads-2) + (thread_num)*size_each_control)) < control_diff_constraint;
       %end
-      for thread_num=1:num_threads-1
-        u(thread_num) >= norm( x(size_each_state*(num_threads-2) + (thread_num-1)*size_each_control +1 : size_each_state*(num_threads-2) + (thread_num)*size_each_control));
+      %for thread_num=1:num_threads-1
+      %  u(thread_num) >= norm( x(size_each_state*(num_threads-2) + (thread_num-1)*size_each_control +1 : size_each_state*(num_threads-2) + (thread_num)*size_each_control));
         %abs(x(size_each_state*(num_threads-2) + (thread_num-1)*size_each_control +4 : size_each_state*(num_threads-2) + (thread_num-1)*size_each_control + 6)) < 1e-2;
         %abs(x(size_each_state*(num_threads-2) + (thread_num-1)*size_each_control +10 : size_each_state*(num_threads-2) + (thread_num-1)*size_each_control + 12)) < 1e-2;
-      end
+      %end
       %u(1:end) < control_constraint;
 
       for thread_num=1:num_threads-2
@@ -115,7 +121,10 @@ cvx_begin
       %for thread_num=1:num_threads-1
       %  u_block(6+(thread_num-1)*size_each_control + 1 : thread_num*size_each_control) == 0; 
       %end
-      abs(u_block(1:end)) < control_constraint; 
+      for i = 1:3
+        abs(u_block(i+0:6:end)) < translation_control_constraint;
+        abs(u_block(i+3:6:end)) < rotation_control_constraint;
+      end
       %abs(x(size_each_state*(num_threads-2)+1:end)) < control_constraint;
       %u(1:end) > min_control;
 

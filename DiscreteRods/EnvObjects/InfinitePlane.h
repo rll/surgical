@@ -9,26 +9,45 @@
 class InfinitePlane : public EnvObject
 {
 	public:
-		InfinitePlane(const Vector3d& pos, const Vector3d& norm, float c0, float c1, float c2);
-		InfinitePlane(const Vector3d& pos, const Vector3d& norm, string filename);
+		InfinitePlane(const Vector3d& pos, const Vector3d& norm, float c0, float c1, float c2, World* w);
+		InfinitePlane(const Vector3d& pos, const Vector3d& norm, string filename, World* w);
+		InfinitePlane(const InfinitePlane& rhs, World* w);
 		~InfinitePlane();
 		
-		// For saving and loading objects to and from files
+		//saving and loading from and to file
 		void writeToFile(ofstream& file);
-		InfinitePlane(ifstream& file);
-		void updateIndFromPointers(World* world) {}
-		void linkPointersFromInd(World* world) {}
+		InfinitePlane(ifstream& file, World* w);
 		
-		void recomputeFromTransform(const Vector3d& pos, const Matrix3d& rot);
+		void setTransform(const Vector3d& pos, const Matrix3d& rot);
+		
 		void draw();
+		
+		//backup
+		void backup();
+		void restore();
+		
+		//collision
 		bool capsuleIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections);
   	double capsuleRepulsionEnergy(const Vector3d& start, const Vector3d& end, const double radius);
   	void capsuleRepulsionEnergyGradient(const Vector3d& start, const Vector3d& end, const double radius, Vector3d& gradient);
 	
 	protected:
 		Vector3d normal;
-		double side;
+		World* world;
+		static const double side = 100.0;
 		string file_name;
+		
+		//backup
+		Vector3d backup_normal;
+		
+		//needs to be backup
+		//position
+		//normal
+		
+		//needs to be restored
+		//position
+		//rotation
+		//normal
 		
 		struct TextureHandle {
 			ILubyte *p;  /* pointer to image data loaded into memory */

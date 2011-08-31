@@ -1,3 +1,4 @@
+#ifdef NEVERDEFINED
 #ifndef _Capsule_h
 #define _Capsule_h
 
@@ -26,4 +27,5 @@ class Capsule : public EnvObject
 		double height, radius;
 };
 
+#endif
 #endif
