@@ -45,3 +45,11 @@ void TrajectoryRecorder::writeWorldToFile(World* world)
   file << STATE << " ";
   world->writeToFile(file);
 }
+
+void TrajectoryRecorder::writeControlToFile(Control* control0, Control* control1)
+{
+  file << CONTROL << " ";
+  control0->writeToFile(file);
+  file << CONTROL << " ";
+  control1->writeToFile(file);
+}

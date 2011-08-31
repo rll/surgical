@@ -49,3 +49,37 @@ bool TrajectoryReader::readWorldsFromFile(vector<World*>& worlds)
   
   return true;
 }
+
+bool TrajectoryReader::readControlsFromFile(vector<Control*>& controls)
+{
+  std::cout << "filename: " << _fileName << std::endl;
+  ifstream file;
+  file.open(_fileName);
+  
+  if (file.fail()) {
+  	cout << "Failed to open file. Controls were not read from file." << endl;
+  	return false;
+  }
+  
+  int type;
+  for (int i=0; i<controls.size(); i++) {
+  	if (controls[i] != NULL) {
+  		delete controls[i];
+  		controls[i] = NULL;
+  	}
+  }
+  controls.clear();
+  
+  while (!file.eof()) {
+    file >> type;
+    if (type == CONTROL) {
+      controls.push_back(new Control(file));
+    } else {
+      break;
+    }
+  }
+  
+  file.close();
+  
+  return true;
+}
