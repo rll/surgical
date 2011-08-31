@@ -366,6 +366,10 @@ void processNormalKeys(unsigned char key, int x, int y)
     //smoothingEnabled = !smoothingEnabled;
   } else if (key == 'v') { 
     getTrajectoryStatistics(worlds);
+    drawWorlds.clear(); 
+    getWaypoints(worlds, drawWorlds);
+    cout << "number of waypoints = " << drawWorlds.size() << endl; 
+    drawInd = 0;
   } else if (key == '<') { 
     drawInd = max(0, drawInd - 1);
   } else if (key == '>') { 

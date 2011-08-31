@@ -122,6 +122,32 @@ void getTrajectoryStatistics(vector<World*>& worlds) {
   file.close();
 }
 
+void getWaypoints(vector<World*>& worlds, vector<World*>& waypoints) { 
+  double energy_change_eps = 0.005; 
+  Thread* lastThread = NULL;
+  Thread* lastWaypoint = NULL;
+
+  for (int i = 0; i < worlds.size(); i++) { 
+    vector<ThreadConstrained*> world_threads;
+    worlds[i]->getThreads(world_threads);
+    for (int j = 0; j < 1; j++) { 
+      vector<Thread*> threads;
+      world_threads[j]->getThreads(threads);
+      Thread* thread = threads.front(); 
+      if (lastThread) {
+        cout << thread->calculate_energy() - lastThread->calculate_energy() << endl; 
+        if (abs(thread->calculate_energy() - lastThread->calculate_energy()) > energy_change_eps) {
+          waypoints.push_back(new World(*worlds[i]));
+        }
+
+      }
+      lastThread = thread;
+
+    }
+  }
+
+}
+
 
 class Timer {
   public: 
