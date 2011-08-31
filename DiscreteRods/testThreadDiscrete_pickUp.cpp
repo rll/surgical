@@ -21,9 +21,10 @@
 #include <Eigen/Geometry>
 #include <math.h>
 
-#include "IO/ControlBase.h"
+#include "IO/ControllerBase.h"
 #include "IO/Mouse.h"
 #include "IO/Haptic.h"
+#include "IO/Control.h"
 #include "thread_socket_interface.h"
 
 #include "thread_discrete.h"
@@ -44,13 +45,13 @@
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
-void processInput(ControlBase* control0, ControlBase* control1);
+void processInput(ControllerBase* controller0, ControllerBase* controller1);
 void moveMouseToClosestEE(Mouse* mouse);
 void displayTextInScreen(const char* textline, ...);
 void glutMenu(int ID);
 void initGL();
 
-#define VIEW3D
+//#define VIEW3D
 
 float lastx_L=0;
 float lasty_L=0;
@@ -78,12 +79,13 @@ double zero_angle;
 
 // interactive variables
 bool limit_displacement = false;
-bool haptics = true;
+bool haptics = false;
 bool examine_mode = false;
 
 //IO
 Haptic *haptic0, *haptic1;
 Mouse *mouse0, *mouse1;
+Control *control0, *control1;
 
 //Environment
 World *world;
@@ -92,6 +94,11 @@ World *world;
 TrajectoryRecorder trajectory_recorder;
 vector<World*> worlds;
 int world_ind = 0;
+
+vector<Control*> controls;
+int control_ind = 0;
+
+bool worldOrControl = false;
 
 void processLeft(int x, int y)
 {
@@ -220,6 +227,10 @@ void processNormalKeys(unsigned char key, int x, int y)
 		  sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
 			trajectory_recorder.setFileName(fullPath);
 			trajectory_recorder.start();
+			if (worldOrControl) {
+				control0->setInitialTransform(world->cursorAtIndex(0)->getPosition(), world->cursorAtIndex(0)->getRotation());
+				control1->setInitialTransform(world->cursorAtIndex(1)->getPosition(), world->cursorAtIndex(1)->getRotation());
+			}
 		}
 	} else if(key == 'x') {
 		if (!trajectory_recorder.hasStarted()) {
@@ -250,17 +261,36 @@ void processNormalKeys(unsigned char key, int x, int y)
     	cin >> dstFileName;
     	sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
   	} else {
-	    sprintf(fullPath, "%s%s%c", "environmentFiles/", "t", map_key);
+	    sprintf(fullPath, "%s%s%c", "environmentFiles/", "c", map_key);
 	  }
   	TrajectoryReader trajectory_reader(fullPath);
-  	if (trajectory_reader.readWorldsFromFile(worlds)) {
-			cout << "Trajectory loading was sucessful. " << worlds.size() << " worlds were loaded." << endl;
-			world_ind = 0;
-  		world = worlds[world_ind];
+  	if (worldOrControl) {
+			if (trajectory_reader.readWorldsFromFile(worlds)) {
+				cout << "Trajectory loading was sucessful. " << worlds.size() << " worlds were loaded." << endl;
+				world_ind = 0;
+				world = worlds[world_ind];
+			} else {
+				//TODO safely handle this case
+				cout << "Trajectory loading was unsucessful. Finishing program because this case is not safely handled (in terms of pointers)." << endl;
+				assert(0);
+			}
 		} else {
-			//TODO safely handle this case
-			cout << "Trajectory loading was unsucessful. Finishing program because this case is not safely handled (in terms of pointers)." << endl;
-			assert(0);
+			if (trajectory_reader.readControlsFromFile(controls)) {
+				cout << "Trajectory loading was sucessful. " << controls.size() << " controls were loaded." << endl;
+				control_ind = 0;
+				control0 = controls[control_ind];
+				control1 = controls[control_ind+1];
+				
+				haptic0->setTransform(control0->getPosition(), control0->getRotation());
+				haptic1->setTransform(control1->getPosition(), control1->getRotation());
+				
+				vector<Control*> controls;
+				controls.push_back(control0);
+				controls.push_back(control1);	
+				world->applyRelativeControl(controls, limit_displacement);
+			} else {
+				assert(0);
+			}
 		}
 	} else if(key == '[') {
 		if (worlds.size() > 0) {
@@ -277,6 +307,20 @@ void processNormalKeys(unsigned char key, int x, int y)
 			cout << "world " << world_ind << " / " << worlds.size() << endl;
 		} else {
 			cout << "There is no next state. worlds is empty." << endl;
+		}
+	} else if(key == '.') {
+		if (controls.size() > 0) {
+			control_ind = min((int) controls.size()-1, control_ind+2);
+			control0 = controls[control_ind];
+			control1 = controls[control_ind+1];
+			cout << "control " << control_ind << " / " << controls.size() << endl;
+			
+			vector<Control*> controls;
+			controls.push_back(control0);
+			controls.push_back(control1);	
+			world->applyRelativeControl(controls, limit_displacement);
+		} else {
+			cout << "There is no next control. controls is empty." << endl;
 		}
 	} else if(key == 'l') {
 		limit_displacement = !limit_displacement;
@@ -558,6 +602,11 @@ int main (int argc, char * argv[])
 	
 	//Environment
 	world = new World();
+	
+	//control0 = new Control(Vector3d::Zero(), Matrix3d::Identity());
+	//control1 = new Control(Vector3d::Zero(), Matrix3d::Identity());
+	control0 = new Control(world->cursorAtIndex(0)->getPosition(), world->cursorAtIndex(0)->getRotation());	
+	control1 = new Control(world->cursorAtIndex(1)->getPosition(), world->cursorAtIndex(1)->getRotation());	
 
 	glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
 	glGetDoublev(GL_PROJECTION_MATRIX, projection);
@@ -570,16 +619,30 @@ int main (int argc, char * argv[])
   glutMainLoop ();
 }
 
-void processInput(ControlBase* control0, ControlBase* control1)
+void processInput(ControllerBase* controller0, ControllerBase* controller1)
 {	
-	vector<ControlBase*> controls;
-	controls.push_back(control0);
-	controls.push_back(control1);
+	if (worldOrControl) {
+		vector<ControllerBase*> controllers;
+		controllers.push_back(controller0);
+		controllers.push_back(controller1);
 	
-	world->setTransformFromController(controls, limit_displacement);
+		world->setTransformFromController(controllers, limit_displacement);
+		
+		if (trajectory_recorder.hasStarted())
+			trajectory_recorder.writeWorldToFile(world);
+	} else {
+		control0->setControl(controller0);
+		control1->setControl(controller1);
 	
-	if (trajectory_recorder.hasStarted())
-		trajectory_recorder.writeWorldToFile(world);
+		if (trajectory_recorder.hasStarted())
+			trajectory_recorder.writeControlToFile(control0, control1);
+	
+		vector<Control*> controls;
+		controls.push_back(control0);
+		controls.push_back(control1);
+	
+		world->applyRelativeControl(controls, limit_displacement);
+	}
 }
 
 void moveMouseToClosestEE(Mouse* mouse) {
