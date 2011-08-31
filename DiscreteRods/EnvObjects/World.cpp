@@ -503,13 +503,15 @@ void World::computeJacobian(MatrixXd& J) {
   int size_each_control = 12; 
   J.resize(world_state.size(), size_each_control);
   J.setZero();
-  double eps = 1e-1;
+  double eps = 5e-1;
    
   #pragma omp parallel for
   for (int i = 0 ; i < 12; i++) { 
     VectorXd du(12);
     du.setZero(); 
     du(i) = eps;
+    if (i >= 3 && i <= 5) du(i) = 0.1 * eps; 
+    if (i >= 9 && i <= 11) du(i) = 0.1 * eps; 
     World* world_copy = new World(*this); 
     world_copy->applyRelativeControlJacobian(du); 
     VectorXd new_state;
@@ -518,6 +520,8 @@ void World::computeJacobian(MatrixXd& J) {
     delete world_copy;
 
     du(i) = -eps;
+    if (i >= 3 && i <= 5) du(i) = 0.1 * -eps; 
+    if (i >= 9 && i <= 11) du(i) = 0.1 * -eps; 
     world_copy = new World(*this); 
     world_copy->applyRelativeControlJacobian(du); 
     world_copy->getStateForJacobian(new_state);

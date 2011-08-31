@@ -54,7 +54,7 @@ void displayTextInScreen(const char* textline, ...);
 void glutMenu(int ID);
 void initGL();
 void interruptHandler(int sig);
-void sqpSmoother(vector<World*>& trajectory_to_smooth);
+void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_trajectory);
 void sqpPlanner();
 
 void bitmap_output(int x, int y, char *string, void *font)
@@ -96,7 +96,7 @@ double zero_angle;
 
 // interactive variables
 bool limit_displacement = false;
-bool haptics = true;
+bool haptics = false;
 bool examine_mode = false;
 
 //IO
@@ -323,12 +323,12 @@ void processNormalKeys(unsigned char key, int x, int y)
 				assert(0);
 			}
 		} else {
-			vector<World*> temp_worlds;
-			if (trajectory_reader_world.readWorldsFromFile(temp_worlds)) {
-				cout << "Trajectory loading was sucessful. " << temp_worlds.size() << " worlds were loaded." << endl;
-				start_world = temp_worlds[0]; //TODO initial condition
+			if (trajectory_reader_world.readWorldsFromFile(worlds)) {
+				cout << "Trajectory loading was sucessful. " << worlds.size() << " worlds were loaded." << endl;
+				start_world = worlds[0]; //TODO initial condition
+        setVisualizationData(worlds);
 			}
-
+      /*
 			vector<vector<Control*> > controls;
 			if (trajectory_reader.readControlsFromFile(controls)) {
 				cout << "Trajectory loading was sucessful. " << controls.size() << " controls were loaded." << endl;
@@ -340,6 +340,7 @@ void processNormalKeys(unsigned char key, int x, int y)
 			} else {
 				assert(0);
 			}
+      */
 			
 			
 			
@@ -380,9 +381,22 @@ void processNormalKeys(unsigned char key, int x, int y)
   } else if(key == 'g') {
     sqpPlanner();
   } else if (key == 'G') {
-    cout << "Changing smoothing enabled clears worlds" << endl;
-    for (int i = 0; i < worlds.size(); i++) delete worlds[i];
-    worlds.clear(); 
+    vector<World*> traj_to_smooth;
+    vector<World*> completeOpenLoopTrajectory;
+    completeOpenLoopTrajectory.push_back(new World(*worlds.front()));
+    for (int i = 0; i < 15; i++) {
+      traj_to_smooth.clear();
+      traj_to_smooth.push_back(completeOpenLoopTrajectory.back());
+      for (int j = 0; j < 20; j++) { 
+        traj_to_smooth.push_back(new World(*worlds[i*20+j]));
+      }
+      vector<World*> smooth_traj; 
+      sqpSmoother(traj_to_smooth, smooth_traj);
+      for (int j = 0; j < smooth_traj.size(); j++) { 
+        completeOpenLoopTrajectory.push_back(new World(*smooth_traj[i]));
+      }
+    }
+    setVisualizationData(completeOpenLoopTrajectory);
     //smoothingEnabled = !smoothingEnabled;
   } else if (key == 'v') { 
     getTrajectoryStatistics(worlds);
@@ -391,9 +405,9 @@ void processNormalKeys(unsigned char key, int x, int y)
     cout << "number of waypoints = " << drawWorlds.size() << endl; 
     drawInd = 0;
   } else if (key == '<') { 
-    drawInd = max(0, drawInd - 1);
+    drawInd = max(0, drawInd - 2);
   } else if (key == '>') { 
-    drawInd = min((int) drawWorlds.size()-1, drawInd + 1);
+    drawInd = min((int) drawWorlds.size()-1, drawInd + 2);
     cout << drawInd << endl; 
   } else if (key == ',') {
     drawStartWorld = !drawStartWorld;
@@ -704,7 +718,6 @@ int main (int argc, char * argv[])
 		processInput(mouse0, mouse1);
 
   
-  worlds.push_back(new World(*world));
   interruptTimer = new Timer();
   interruptTimer->restart();
   glutMainLoop ();
@@ -739,13 +752,6 @@ void processInput(ControllerBase* controller0, ControllerBase* controller1)
 		world->applyRelativeControl(controls, limit_displacement);
 		
 	}
-
-  //worlds.push_back(new World(*world));
-  if (worlds.size() > 10 && smoothingEnabled) { 
-    sqpSmoother(worlds);
-    worlds.clear();
-    worlds.push_back(drawWorlds.back());
-  }
 }
 
 void moveMouseToClosestEE(Mouse* mouse) {
@@ -892,16 +898,15 @@ void sqpPlanner() {
     
     //for smoothing, put objective in there
     completeOpenLoopTrajectory.push_back(new World(*goal_world));
-    sqpSmoother(completeOpenLoopTrajectory);
     //drawWorlds.clear();
     //drawWorlds = worlds;
     //drawWorlds = openLoopWorlds;
     setVisualizationData(completeOpenLoopTrajectory);
 }
 
-void sqpSmoother(vector<World*>& trajectory_to_smooth) {
+void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_trajectory) {
 
-  getTrajectoryStatistics(trajectory_to_smooth);
+  //getTrajectoryStatistics(trajectory_to_smooth);
 
   if (trajectory_to_smooth.size() == 0) return;
   cout << "Smoothing over " << trajectory_to_smooth.size() << " worlds" << endl; 
@@ -912,8 +917,8 @@ void sqpSmoother(vector<World*>& trajectory_to_smooth) {
   string namestring = "world_sqp_debug";
   solveSQP(trajectory_to_smooth, sqpWorlds, sqpControls, namestring.c_str(), false);
 
-  vector<World*> openLoopWorlds;
-  openLoopController(trajectory_to_smooth, sqpControls, openLoopWorlds);
+  smooth_trajectory.clear();
+  openLoopController(trajectory_to_smooth, sqpControls, smooth_trajectory);
 
-  setVisualizationData(openLoopWorlds);
+  //setVisualizationData(openLoopWorlds);
 }
