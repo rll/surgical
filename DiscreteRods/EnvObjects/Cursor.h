@@ -32,6 +32,19 @@ class Cursor
 		void setOpen(bool limit_displacement = false);
 		void setClose(bool limit_displacement = false);		
 		bool isOpen() { return open; }
+
+    void getState(VectorXd& state)
+    {
+      state.resize(6);
+      double angZ, angY, angX;
+      euler_angles_from_rotation(rotation, angZ, angY, angX);
+      for (int i = 0; i < 3; i++) {
+        state(i) = position(i);
+      }
+      state(3) = angZ;
+      state(4) = angY;
+      state(5) = angX;
+    }  
 		
 		static const double height = 3.0;
 		static const double radius = 2.0;

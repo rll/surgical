@@ -83,8 +83,16 @@ class World
 		void applyRelativeControl(const vector<Control*>& controls, bool limit_displacement = false);
 		void applyRelativeControl(const VectorXd& relative_control, bool limit_displacement = false);
 		void setThreadConstraintsFromEndEffs();
+    void applyRelativeControlJacobian(const VectorXd& relative_control); 
 		
-		void getStates(vector<VectorXd>& states);
+		//state representation
+    void getStates(vector<VectorXd>& states);
+    void printStates();
+
+    // Jacobian
+    void getStateForJacobian(VectorXd& world_state); 
+    void computeJacobian(MatrixXd& J); 
+    
 		
 		//backup
 		void backup();

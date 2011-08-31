@@ -1,7 +1,7 @@
 #include "checkerboard_data_vis.h"
 #include <iostream>
 #include <fstream>
-#include "../master-slave/slaves/messaging.h"
+#include "../legacy/master-slave/slaves/messaging.h"
 
 #define CALIB_FILE_NAME_SLAVE1 "calib_data_slave1.txt"
 #define CALIB_FILE_NAME_SLAVE2 "calib_data_slave2.txt"

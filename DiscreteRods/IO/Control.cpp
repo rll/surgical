@@ -14,8 +14,8 @@ void Control::setControl(ControllerBase* controller)
   rotate = Quaterniond(controller->getRotation().transpose() * rotation);
   position = controller->getPosition();
   rotation = controller->getRotation();
-  button[UP] = controller->hasButtonPressed(UP);
-  button[DOWN] = controller->hasButtonPressed(DOWN);
+  button[UP] = controller->hasButtonPressedAndReset(UP);
+  button[DOWN] = controller->hasButtonPressedAndReset(DOWN);
 }
 
 void Control::setInitialTransform(const Vector3d& pos, const Matrix3d& rot)

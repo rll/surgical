@@ -14,6 +14,7 @@
 #include <iostream>
 #include <fstream>
 #include <stdarg.h>
+#include <signal.h>
 
 #include <boost/algorithm/string.hpp>
 
@@ -37,6 +38,8 @@
 #include "EnvObjects/InfinitePlane.h"
 #include "EnvObjects/TexturedSphere.h"
 
+#include "planner_lib.h"
+
 #include "StateRecorder.h"
 #include "StateReader.h"
 #include "TrajectoryRecorder.h"
@@ -50,7 +53,9 @@ void moveMouseToClosestEE(Mouse* mouse);
 void displayTextInScreen(const char* textline, ...);
 void glutMenu(int ID);
 void initGL();
-
+void interruptHandler(int sig);
+void sqpSmoother(vector<World*>& trajectory_to_smooth);
+void sqpPlanner();
 //#define VIEW3D
 
 float lastx_L=0;
@@ -90,6 +95,18 @@ Control *control0, *control1;
 //Environment
 World *world;
 
+//drawing SQP results
+vector<World*> drawWorlds;
+int drawInd = 0; 
+
+World* start_world = NULL;
+World* goal_world = NULL;
+bool drawStartWorld = false;
+bool drawGoalWorld = false; 
+bool interruptEnabled = false;
+bool smoothingEnabled = false;
+Timer* interruptTimer; 
+
 //For recording and playing back trajectories
 TrajectoryRecorder trajectory_recorder;
 vector<World*> worlds;
@@ -98,7 +115,7 @@ int world_ind = 0;
 vector<Control*> controls;
 int control_ind = 0;
 
-bool worldOrControl = false;
+bool absoluteControl = false;
 
 void processLeft(int x, int y)
 {
@@ -106,7 +123,8 @@ void processLeft(int x, int y)
 		mouse0->add2DMove(x-lastx_L, lasty_L-y);
 	} else if (mouse1->getKeyPressed() != NONE) {
 		mouse1->add2DMove(x-lastx_L, lasty_L-y);
-	} else if (glutGetModifiers() & GLUT_ACTIVE_CTRL){
+	} else if (/*glutGetModifiers()*/ false &  GLUT_ACTIVE_CTRL){
+
 		translate_frame[0] += 0.1*(x-lastx_L);
 		translate_frame[1] += 0.1*(lasty_L-y);
 	} else {
@@ -227,7 +245,7 @@ void processNormalKeys(unsigned char key, int x, int y)
 		  sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
 			trajectory_recorder.setFileName(fullPath);
 			trajectory_recorder.start();
-			if (worldOrControl) {
+			if (absoluteControl) {
 				control0->setInitialTransform(world->cursorAtIndex(0)->getPosition(), world->cursorAtIndex(0)->getRotation());
 				control1->setInitialTransform(world->cursorAtIndex(1)->getPosition(), world->cursorAtIndex(1)->getRotation());
 			}
@@ -264,7 +282,7 @@ void processNormalKeys(unsigned char key, int x, int y)
 	    sprintf(fullPath, "%s%s%c", "environmentFiles/", "c", map_key);
 	  }
   	TrajectoryReader trajectory_reader(fullPath);
-  	if (worldOrControl) {
+  	if (absoluteControl) {
 			if (trajectory_reader.readWorldsFromFile(worlds)) {
 				cout << "Trajectory loading was sucessful. " << worlds.size() << " worlds were loaded." << endl;
 				world_ind = 0;
@@ -308,7 +326,7 @@ void processNormalKeys(unsigned char key, int x, int y)
 		} else {
 			cout << "There is no next state. worlds is empty." << endl;
 		}
-	} else if(key == '.') {
+	} else if(key == '}') {
 		if (controls.size() > 0) {
 			control_ind = min((int) controls.size()-1, control_ind+2);
 			control0 = controls[control_ind];
@@ -340,31 +358,39 @@ void processNormalKeys(unsigned char key, int x, int y)
 		translate_frame[0] = translate_frame[1] = 0.0;
 		translate_frame[2] = -110.0;
   } else if(key == 'g') {
-  	vector<VectorXd> states;
-  	world->getStates(states);
-  	cout << states[4](0) << " " << states[4](1) << " " << states[4](2) << " " << endl;
+    sqpPlanner();
+  } else if (key == 'G') {
+    cout << "Changing smoothing enabled clears worlds" << endl;
+    for (int i = 0; i < worlds.size(); i++) delete worlds[i];
+    worlds.clear(); 
+    //smoothingEnabled = !smoothingEnabled;
+  } else if (key == 'v') { 
+    getTrajectoryStatistics(worlds);
+  } else if (key == '<') { 
+    drawInd = max(0, drawInd - 1);
+  } else if (key == '>') { 
+    drawInd = min((int) drawWorlds.size()-1, drawInd + 1);
+  } else if (key == ',') {
+    drawStartWorld = !drawStartWorld;
+  } else if (key == '.') { 
+    drawGoalWorld = !drawGoalWorld;
+  } else if (key == 'b') { 
+    start_world = new World(*world);
+  } else if (key == 'n') { 
+    goal_world = new World(*world);
+  } else if (key == 'c') {
+    cout << "Deleting " << worlds.size() << " worlds" << endl;  
+    for (int i = 0; i < worlds.size(); i++) delete worlds[i];
+    worlds.clear();
   } else if(key == 'd') {
   	cout << "saving to backup" << endl;
   	world->backup();
   } else if(key == 'f') {
   	cout << "restoring from backup" << endl;
   	world->restore();
-  } else if(key == 'b') {
-  	cout << "copying world" << endl;
-  	World* world_temp = new World(*world);
-  	delete world;
-  	world = world_temp;
-  } else if(key == 'n') {
-  	vector<VectorXd> v;
-  	world->getStates(v);
-  	cout << "start" << endl;
-  	for(int i=0; i<v.size(); i++) {
-  		cout << v[i] << endl << endl;
-  	}
-  	cout << "end" << endl;
-
+  }
 #ifdef VIEW3D
-  } else if(key == '=') {
+  else if(key == '=') {
   	eye_separation += 0.5;
   } else if(key == '-') {
   	if (eye_separation > 0.5)
@@ -374,8 +400,9 @@ void processNormalKeys(unsigned char key, int x, int y)
   		eye_focus_depth += 1.0;
   } else if(key == '_') {
 	 	eye_focus_depth -= 1.0;
+  }
 #endif
-  }	else if (key == 'q' || key == 27) {
+	else if (key == 'q' || key == 27) {
     exit(0);
   }
   glutPostRedisplay ();
@@ -486,7 +513,10 @@ void drawStuff()
   glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
 	glGetDoublev(GL_PROJECTION_MATRIX, projection);
 	glGetIntegerv(GL_VIEWPORT, viewport);
+  drawWorlds[drawInd]->draw(examine_mode);
   world->draw(examine_mode);
+  if (start_world && drawStartWorld) start_world->draw();
+  if (goal_world && drawGoalWorld) goal_world->draw(); 
   glPopMatrix();
 #ifdef VIEW3D
   displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
@@ -573,7 +603,7 @@ int main (int argc, char * argv[])
 	window_width = 900;
 	window_height = 900;
 	glutCreateWindow ("Thread");
-	glutPositionWindow(0,0);
+	glutPositionWindow(1680-900, 0);
 #endif
 	glutDisplayFunc (drawStuff);
 	glutMotionFunc (mouseMotion);
@@ -581,8 +611,9 @@ int main (int argc, char * argv[])
   glutKeyboardFunc(processNormalKeys);
   glutKeyboardUpFunc(processKeyUp);
   glutSpecialFunc(processSpecialKeys);
-	glutIdleFunc(processHapticDevice);
-		
+  //glutIdleFunc(processHapticDevice);
+ 
+	
 	/* create popup menu */
 	glutCreateMenu (glutMenu);
 	glutAddMenuEntry ("Exit", 0);
@@ -612,16 +643,24 @@ int main (int argc, char * argv[])
 	glGetDoublev(GL_PROJECTION_MATRIX, projection);
 	glGetIntegerv(GL_VIEWPORT, viewport);
 	
+  signal(SIGINT, &interruptHandler);
+
 	if (haptics)
 		processInput(haptic0, haptic1);
 	else
 		processInput(mouse0, mouse1);
+
+  drawWorlds.push_back(world);
+  worlds.push_back(new World(*world));
+  interruptTimer = new Timer();
+  interruptTimer->restart();
   glutMainLoop ();
 }
 
 void processInput(ControllerBase* controller0, ControllerBase* controller1)
 {	
-	if (worldOrControl) {
+	
+  if (absoluteControl) {
 		vector<ControllerBase*> controllers;
 		controllers.push_back(controller0);
 		controllers.push_back(controller1);
@@ -643,6 +682,14 @@ void processInput(ControllerBase* controller0, ControllerBase* controller1)
 	
 		world->applyRelativeControl(controls, limit_displacement);
 	}
+
+  worlds.push_back(new World(*world));
+  if (worlds.size() > 10 && smoothingEnabled) { 
+    sqpSmoother(worlds);
+    worlds.clear();
+    worlds.push_back(drawWorlds.back());
+  }
+
 }
 
 void moveMouseToClosestEE(Mouse* mouse) {
@@ -732,4 +779,86 @@ void glutMenu(int ID) {
       exit(0);
       break;
   }
+}
+
+void interruptHandler(int sig) {
+  cout << "Time since last interrupt: " << interruptTimer->elapsed() << endl; 
+  if (interruptTimer->elapsed() < 0.1) exit(0);
+  cout << "You need to hold ctrl-c to forcefully exit the program!" << endl;
+
+  interruptTimer->restart();
+  interruptEnabled = true;
+}
+
+void sqpPlanner() { 
+
+    int num_worlds = 5;
+    string namestring = "world_sqp_debug";
+    VectorXd du(12);
+    double norm = 1e-1;
+    if (!start_world || !goal_world) return;  
+
+    World* initial_world = new World(*start_world);
+    vector<World*> completeOpenLoopTrajectory;
+    cout << "Planning over " << num_worlds << " worlds" << endl;
+    cout << "Initial SQP score: " <<
+      cost_metric(initial_world, goal_world) << endl; 
+
+    while (cost_metric(initial_world, goal_world) > SQP_BREAK_THRESHOLD && !interruptEnabled) {
+      // Generate initial trajectory
+      vector<World*> initialization_worlds;
+      
+      initialization_worlds.push_back(new World(*initial_world)); 
+      for (int i = 0; i < num_worlds-2; i++) {
+        if (i % 1 == 0) {
+          sample_on_sphere(du, norm); 
+        }
+        initial_world->applyRelativeControlJacobian(du);
+        initialization_worlds.push_back(new World(*initial_world));
+      }
+
+      initialization_worlds.push_back(new World(*goal_world));
+
+      vector<World*> sqpWorlds;
+      vector<VectorXd> sqpControls;
+
+      cout << "calling SQP solver" << endl; 
+      solveSQP(initialization_worlds, sqpWorlds, sqpControls, namestring.c_str());
+
+      vector<World*> openLoopWorlds;
+      openLoopController(initialization_worlds, sqpControls, openLoopWorlds);
+
+      for (int i = 0; i < openLoopWorlds.size(); i++) {
+        completeOpenLoopTrajectory.push_back(new World(*openLoopWorlds[i]));
+      }
+      initial_world = new World(*openLoopWorlds.back());
+    }
+    
+    //for smoothing, put objective in there
+    completeOpenLoopTrajectory.push_back(new World(*goal_world));
+    sqpSmoother(completeOpenLoopTrajectory);
+    //drawWorlds.clear();
+    //drawWorlds = worlds;
+    //drawWorlds = openLoopWorlds;
+    drawWorlds = completeOpenLoopTrajectory;
+
+}
+
+void sqpSmoother(vector<World*>& trajectory_to_smooth) {
+
+  getTrajectoryStatistics(trajectory_to_smooth);
+
+  if (trajectory_to_smooth.size() == 0) return;
+  cout << "Smoothing over " << trajectory_to_smooth.size() << " worlds" << endl; 
+
+  vector<World*> sqpWorlds;
+  vector<VectorXd> sqpControls;
+
+  string namestring = "world_sqp_debug";
+  solveSQP(trajectory_to_smooth, sqpWorlds, sqpControls, namestring.c_str(), false);
+
+  vector<World*> openLoopWorlds;
+  openLoopController(trajectory_to_smooth, sqpControls, openLoopWorlds);
+
+  drawWorlds = openLoopWorlds;
 }

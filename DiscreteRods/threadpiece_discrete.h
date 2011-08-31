@@ -9,12 +9,12 @@
 using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN
 
-static double BEND_COEFF = 1.00;
+static double BEND_COEFF = 1;
 static Matrix2d B = Matrix2d::Identity()*BEND_COEFF;
 static double TWIST_COEFF = BEND_COEFF*3.00;
 static double STRETCH_COEFF = 0.1 * BEND_COEFF;
 static double GRAV_COEFF = BEND_COEFF*1e-4;
-static double REPULSION_COEFF = 0.0;//100.0; //0.1 * BEND_COEFF;
+static double REPULSION_COEFF = 0.0 * BEND_COEFF;
 
 static Matrix2d J = Matrix2d(Eigen::Rotation2Dd(M_PI/2.0));
 static Matrix2d JB = J*B;
@@ -139,6 +139,13 @@ class ThreadPiece
 
     Thread* _my_thread;
 
+
+		Matrix3d skew_i;
+		Matrix3d skew_i_im1;
+		Matrix3d del_kb_i_im1;
+		Matrix3d del_kb_i_ip1;
+		Vector3d del_psi_i_im1;
+		Vector3d del_psi_i_ip1;
 
     //void calculateBinormal(const double rest_length_prev, const Vector3d& edge_prev, 
 		//											 const double rest_length_after, const Vector3d& edge_after, Vector3d& binormal);
