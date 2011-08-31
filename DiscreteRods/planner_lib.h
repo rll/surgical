@@ -3,8 +3,10 @@
 #define SQP_BREAK_THRESHOLD 3.5
 
 #include "../MotionPlanning/worldSQP.h"
+#include "IO/Control.h"
 #include <iostream>
 #include <sys/time.h>
+#include <boost/progress.hpp>
 
 /*
  * Use SQP solver given traj_in. Puts results in traj_out and control_out
@@ -62,6 +64,17 @@ void openLoopController(vector<World*> traj_in, vector<VectorXd>& controls_in, v
   for (int i = 0; i < controls_in.size(); i++) {
     traj_out.push_back(new World(*world));
     world->applyRelativeControlJacobian(controls_in[i]);
+  }
+  traj_out.push_back(new World(*world));
+}
+
+void openLoopController(vector<World*> traj_in, vector<vector<Control*> >& controls_in, vector<World*>& traj_out) {
+  World* world = new World(*traj_in[0]);
+  boost::progress_display progress(controls_in.size());
+  for (int i = 0; i < controls_in.size(); i++) {
+    traj_out.push_back(new World(*world));
+    world->applyRelativeControl(controls_in[i], true);
+    ++progress; 
   }
   traj_out.push_back(new World(*world));
 }
