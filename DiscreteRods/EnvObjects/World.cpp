@@ -22,10 +22,10 @@ World::World()
 	cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));	
 	
 	//setting up objects in environment
-	InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), "../utils/textures/checkerBoardSquare32.bmp", this);
-	//InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), 0.6, 0.6, 0.6, this);
+	//InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), "../utils/textures/checkerBoardSquare32.bmp", this);
+	InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), 0.6, 0.6, 0.6, this);
 	objs.push_back(plane);
-	objs.push_back(new TexturedSphere(Vector3d::Zero(), 150.0, "../utils/textures/checkerBoardRect16.bmp", this));
+	//objs.push_back(new TexturedSphere(Vector3d::Zero(), 150.0, "../utils/textures/checkerBoardRect16.bmp", this));
 	
 	//setting up end effectors
 	vector<Vector3d> positions;
@@ -373,7 +373,9 @@ void World::applyRelativeControl(const VectorXd& relative_control, bool limit_di
 		Matrix3d rotation;
 		rotation_from_euler_angles(rotation, relative_control(8*i+3), relative_control(8*i+4), relative_control(8*i+5));
 		const Matrix3d cursor_rot = cursor->rotation * rotation;
-		const Vector3d cursor_pos = cursor->position + relative_control.segment(8*i+0, 8*i+3) + EndEffector::grab_offset * cursor_rot.col(0);
+		const Vector3d cursor_pos = cursor->position + relative_control.segment(8*i+0, 3) + EndEffector::grab_offset * cursor_rot.col(0);
+    //const Vector3d cursor_pos = cursor->position + relative_control.segment(8*i+0,3);
+
 		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement);
 		
 		if (relative_control(8*i+6))
@@ -382,6 +384,18 @@ void World::applyRelativeControl(const VectorXd& relative_control, bool limit_di
 			cursor->attachDettach();
 	}
 	setThreadConstraintsFromEndEffs();
+}
+
+void World::applyRelativeControlJacobian(const VectorXd& relative_control) 
+{
+  assert(cursors.size()*6 == relative_control.size());
+  VectorXd wrapper_control(16);
+  wrapper_control.setZero(); 
+  wrapper_control.segment(0, 6) = relative_control.segment(0,6);
+  wrapper_control.segment(8, 6) = relative_control.segment(6,6);
+
+  applyRelativeControl(wrapper_control);
+
 }
 
 void World::setThreadConstraintsFromEndEffs()
@@ -418,8 +432,6 @@ void World::setThreadConstraintsFromEndEffs()
 			ee->setTransform(positionConstraints[ee->constraint_ind], rotationConstraints[ee->constraint_ind], false);
 		}
 
-		//threads[thread_ind]->adapt_links();
-		threads[thread_ind]->minimize_energy();
 	}
 }
 
@@ -436,6 +448,90 @@ void World::getStates(vector<VectorXd>& states)
 		objs[i]->getState(state);
 		states.push_back(state);
 	}
+}
+
+void World::getStateForJacobian(VectorXd& world_state) { 
+  vector<VectorXd> states;
+  int state_size = 0; 
+  for (int i = 0; i < threads.size(); i++) { 
+    VectorXd state;
+    threads[i]->getState(state);
+    states.push_back(state); 
+    state_size += state.size();  
+  }
+ 
+  
+  /*for (int i = 0; i < cursors.size(); i++) { 
+    if (cursors[i]->isAttached()) {
+      VectorXd state;
+      if (!cursors[i]->end_eff->isAttached()) {
+        cout << "WARNING: End Effector is not attached to a thread" << endl;
+      }
+      cursors[i]->end_eff->getState(state);
+      //cursors[i]->getState(state); 
+      states.push_back(state); 
+      state_size += state.size();
+    }
+  }*/
+  
+  
+  //flatten vector<VectorXd> into one long VectorXd
+  world_state.resize(state_size);
+  int start_ind = 0;
+  for (int i = 0; i < states.size(); i++) { 
+    world_state.segment(start_ind, states[i].size()) = states[i];
+    start_ind += states[i].size(); 
+  }
+
+}
+
+void World::computeJacobian(MatrixXd& J) { 
+  VectorXd world_state;
+  getStateForJacobian(world_state);
+  int size_each_state = world_state.size();
+  int size_each_control = 12; 
+  J.resize(world_state.size(), size_each_control);
+  J.setZero();
+  double eps = 1e-1;
+   
+  #pragma omp parallel for
+  for (int i = 0 ; i < 12; i++) { 
+    VectorXd du(12);
+    du.setZero(); 
+    du(i) = eps;
+    World* world_copy = new World(*this); 
+    world_copy->applyRelativeControlJacobian(du); 
+    VectorXd new_state;
+    world_copy->getStateForJacobian(new_state);
+    J.block(0,i, size_each_state, 1) = new_state; 
+    delete world_copy;
+
+    du(i) = -eps;
+    world_copy = new World(*this); 
+    world_copy->applyRelativeControlJacobian(du); 
+    world_copy->getStateForJacobian(new_state);
+    J.block(0,i, size_each_state, 1) -= new_state; 
+    delete world_copy;
+  }
+  
+  J /= (2 * eps); 
+  //J /= eps; 
+
+}
+
+
+void World::printStates() { 
+  cout << endl << endl << endl << endl << endl << endl << endl << endl;
+  cout << endl << endl << endl << endl << endl << endl << endl << endl;
+  cout << endl << endl << endl << endl << endl << endl << endl << endl;
+  cout << endl << endl << endl << endl << endl << endl << endl << endl;
+  cout << endl << endl << endl << endl << endl << endl << endl << endl;
+  cout << endl << endl << endl << endl << endl << endl << endl << endl;
+  cout << endl << endl << endl << endl << endl << endl << endl << endl;
+  VectorXd world_state;
+  getStateForJacobian(world_state);
+  if (world_state.size() > 0) 
+    cout << world_state.transpose() << endl; 
 }
 
 void World::backup()

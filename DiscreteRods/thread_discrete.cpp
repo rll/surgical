@@ -735,6 +735,100 @@ double Thread::calculate_energy()
 #endif
 }
 
+void Thread::dynamic_step_until_convergence(double step_size, double mass, int max_steps) {
+  VectorXd last_position;
+  VectorXd current_position;
+
+  int current_step = 0; 
+  do {
+    toVector(&last_position);
+    //dynamic_step(step_size, mass, 1);
+    minimize_energy();
+    toVector(&current_position); 
+    current_step += 1;
+    //current_step += max_steps;
+
+  } while ((last_position - current_position).norm() > 1e-4 && current_step < max_steps);
+
+  
+  if ((last_position - current_position).norm() > 1e-4) {
+    cout << "WARNING: Did not converge in " << current_step << " steps. Current norm = " << (last_position - current_position).norm() << endl;
+    minimize_energy();
+  }
+
+  //cout << (last_position - current_position).norm() << endl; ;
+  //cout << current_step << endl; 
+
+}
+
+
+void Thread::dynamic_step(double step_size, double mass, int steps) { 
+  vector<Vector3d> vertex_gradients(num_pieces());
+  vector<Vector3d> position_offsets(num_pieces());
+  vector<Vector3d> velocity(num_pieces());
+
+  bool initialize_velocity = false; 
+  if (last_velocity.size() == 0)  {
+    initialize_velocity = true; 
+    last_velocity.resize(num_pieces());
+  }
+
+    
+  for (int t = 0; t < steps; t++) { 
+    for (int i = 0; i < vertex_gradients.size(); i++) {
+      velocity[i].setZero();
+      if (initialize_velocity) { 
+        last_velocity[i].setZero();
+        initialize_velocity = false; 
+      }
+      vertex_gradients[i].setZero();
+      position_offsets[i].setZero();
+    }
+    calculate_gradient_vertices(vertex_gradients);
+
+    for (int i = 0; i < velocity.size(); i++) { 
+      last_velocity[i] = 0.10*last_velocity[i] + (-vertex_gradients[i] / mass) * step_size;
+      velocity[i] = last_velocity[i];
+      position_offsets[i] = velocity[i] * step_size;  
+    }
+
+    //
+    double max_move = 0;
+    bool move_too_far = false;
+    for(int i = 2; i < position_offsets.size() - 2; i++) {
+      if(position_offsets[i].norm() > MAX_MOVEMENT_VERTICES) {
+        move_too_far = true;
+        if(position_offsets[i].norm() > max_move) 
+          max_move = position_offsets[i].norm();
+          //cout << "Max move = " << max_move << endl;
+      }
+    }
+    if(move_too_far) {
+      for(int i = 2; i < position_offsets.size()-2; i++) {
+        position_offsets[i] = position_offsets[i] * MAX_MOVEMENT_VERTICES / 2;
+      }
+    }
+    apply_vertex_offsets(position_offsets);
+
+    /*if (COLLISION_CHECKING) {
+      bool project_length_constraint_pass = true;
+      vector<Self_Intersection> self_intersections;
+      vector<Thread_Intersection> thread_intersections;
+      vector<Intersection> intersections;
+      int intersection_iters = 0; 
+      while(check_for_intersection(self_intersections, thread_intersections, intersections) && project_length_constraint_pass) {
+        fix_intersections();
+        //project_length_constraint_pass &= project_length_constraint();
+        intersection_iters++;
+        //cout << "fixing for " << intersection_iters << " iterations." << endl;
+      }
+    }*/
+    minimize_energy_twist_angles();
+    project_length_constraint();
+  }
+}
+
+
 double Thread::calculate_energy_inefficient()
 {
   double energy = 0.0;
@@ -863,7 +957,7 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
     next_energy = calculate_energy();
 
 
-    //std::cout << "curr energy: " << curr_energy << "   next energy: " << next_energy << "  before projection: " << energy_before_projection << "  last step: " << step_in_grad_dir_vertices <<  std::endl;
+   //std::cout << "curr energy: " << curr_energy << "   next energy: " << next_energy << "  before projection: " << energy_before_projection << "  last step: " << step_in_grad_dir_vertices <<  std::endl;
 
     recalc_vertex_grad = true;
     if (next_energy + energy_error_for_convergence > curr_energy)
@@ -919,7 +1013,7 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
   next_energy = calculate_energy();
 
   if (!project_length_constraint_pass && COLLISION_CHECKING) {
-    //cout << "reverting thread to prior state" << endl; 
+    cout << "reverting thread to prior state" << endl; 
     restore_thread_pieces_and_resize(_thread_pieces_collision_backup);
     restore_constraints(_start_pos_backup, _start_rot_backup, _end_pos_backup, _end_rot_backup);
     for (int i=0; i<threads_in_env.size(); i++) {
@@ -941,45 +1035,6 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 	return (opt_iter != num_opt_iters);
 } // end minimize_energy
 
-void Thread::dynamic_step(double step_size, double mass, int steps) {
-  vector<Vector3d> vertex_gradients(num_pieces());
-  vector<Vector3d> position_offsets(num_pieces());
-  vector<Vector3d> velocity(num_pieces());
-
-  for (int t = 0; t < steps; t++) {
-    for (int i = 0; i < vertex_gradients.size(); i++) {
-      vertex_gradients[i].setZero();
-      position_offsets[i].setZero();
-    }
-    calculate_gradient_vertices(vertex_gradients);
-		for (int i = 0; i < velocity.size(); i++) {
-	   	velocity[i] = -(vertex_gradients[i] / mass) * step_size;
-	    position_offsets[i] = velocity[i] * step_size;
-	  }
-    //TODO: make position_offset <= MAX_MOVEMENT_VERTICES 
-    
-    double max_move = 0;
-    bool move_too_far = false;
-    for(int i = 2; i < position_offsets.size() - 2; i++) {
-        if(position_offsets[i].norm() > MAX_MOVEMENT_VERTICES) {
-         	move_too_far = true;
-          if(position_offsets[i].norm() > max_move) max_move = position_offsets[i].norm();
-          }
-    }
-    
-    if(move_too_far) {
-        for(int i = 2; i < position_offsets.size()-2; i++) {
-           position_offsets[i] = position_offsets[i] * MAX_MOVEMENT_VERTICES / max_move;
-        }
-    }
-
-    
-    apply_vertex_offsets(position_offsets);    //TODO: collision checking (see minimize_energy)
-    project_length_constraint();
-    minimize_energy_twist_angles();
-  }
-  adapt_links();
-}
 
 void Thread::fix_intersections() {
 	vector<Self_Intersection> self_intersections;
@@ -1855,7 +1910,7 @@ void Thread::calculate_gradient_vertices_vectorized(VectorXd* gradient) {
 
 void Thread::calculate_gradient_vertices(vector<Vector3d>& vertex_gradients)
 {
-  //#pragma omp parallel for num_threads(NUM_THREADS_PARALLEL_FOR)
+  //#pragma omp parallel for num_threads(NUM_CPU_THREADS)
   for (int piece_ind = 2; piece_ind < _thread_pieces.size()-2; piece_ind++)
   {
     //_thread_pieces[piece_ind]->gradient_vertex_numeric(vertex_gradients[piece_ind]);
@@ -2128,7 +2183,7 @@ void Thread::calculate_gradient_twist(vector<double>& angle_twist_gradients)
     edge_before = _thread_pieces[_thread_pieces.size()-3]->vertex() - _thread_pieces[_thread_pieces.size()-4].vertex();
     edge_before_norm = edge_before.norm();
     edge_after = _thread_pieces[_thread_pieces.size()-3]->vertex() - _thread_pieces[_thread_pieces.size()-2]->vertex();
-    edge_after_norm = edge_after.norm();
+    edge_after_norm = edge_after.norm();;
     vertex_offsets[_thread_pieces.size()-3] = 0.5*(edge_before/edge_before_norm)*(_rest_length-edge_before_norm) + (edge_after/edge_after_norm) * (_rest_length-edge_after_norm);
 
     //projected_enough &= abs(edge_after_norm-_rest_length) < max_norm_to_break;
@@ -2169,6 +2224,7 @@ void Thread::calculate_gradient_twist(vector<double>& angle_twist_gradients)
 //this function might introduce intersections. fix_intersections should be called (with caution) afterwards. 
 bool Thread::project_length_constraint(int recursive_depth)
 {
+
   if (recursive_depth <= 0) {
     //cout << "project length constraint recursively called too much!" << endl;
     return false; 
@@ -2235,7 +2291,7 @@ bool Thread::project_length_constraint(int recursive_depth)
     // VectorXd dy = -gradC.transpose()*dl;
 
     //gradC*gradC.transpose();
-    (gradC*gradC.transpose()).llt().solveInPlace(C);
+    (gradC*gradC.transpose()).ldlt().solveInPlace(C);
     dy = -gradC.transpose()*C;
 
     for(int i = 2; i < N-2; i++) {
@@ -2865,7 +2921,7 @@ void Thread::set_start_constraint_nearEnd(Vector3d& start_pos, Matrix3d& start_r
   Vector3d start_pos_movement = start_pos - this->start_pos();
   start_pos += (vertex_at_ind(1) - this->start_pos()) - (start_rot.col(0)*start_rest_length());
   set_start_constraint(start_pos, start_rot);
-  minimize_energy();
+  //minimize_energy();
 }
 
 void Thread::set_end_constraint_nearEnd(Vector3d& end_pos, Matrix3d& end_rot)
@@ -2873,7 +2929,7 @@ void Thread::set_end_constraint_nearEnd(Vector3d& end_pos, Matrix3d& end_rot)
   Vector3d end_pos_movement = end_pos - this->end_pos();
   end_pos += (vertex_at_ind(_thread_pieces.size()-2) - this->end_pos()) + (end_rot.col(0)*end_rest_length());
   set_end_constraint(end_pos, end_rot);
-  minimize_energy();
+  //minimize_energy();
 }
 
 void Thread::set_constraints_nearEnds(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot)
@@ -2995,7 +3051,7 @@ void Thread::apply_motion(Frame_Motion& motion)
   Matrix3d end_rot = this->end_rot();
   motion.applyMotion(end_pos, end_rot);
   set_end_constraint(end_pos, end_rot);
-  minimize_energy();
+  //minimize_energy();
 }
 
 //applies motion to start and end
@@ -3007,8 +3063,9 @@ void Thread::apply_motion(Two_Motions& motion)
   Matrix3d end_rot = this->end_rot();
   motion._start.applyMotion(start_pos, start_rot);
   motion._end.applyMotion(end_pos, end_rot);
+
   set_constraints(start_pos, start_rot, end_pos, end_rot);
-  minimize_energy();
+  //minimize_energy();
 }
 
 //applies motion to END
@@ -3021,8 +3078,8 @@ void Thread::apply_motion_nearEnds(Frame_Motion& motion, bool mini_energy)
   end_pos += (vertex_at_ind(_thread_pieces.size()-2)+motion._pos_movement) - (end_pos-end_rot.col(0).normalized()*end_rest_length());
   set_end_constraint(end_pos, end_rot);
   unviolate_total_length_constraint();
-  if (mini_energy)
-    minimize_energy();
+  //if (mini_energy)
+  //  minimize_energy();
 }
 
 void Thread::apply_motion_nearEnds(Two_Motions& motion, bool mini_energy)
@@ -3073,8 +3130,8 @@ void Thread::apply_motion_nearEnds(Two_Motions& motion, bool mini_energy)
 
 
   set_constraints(start_pos, start_rot, end_pos, end_rot);
-  if (mini_energy)
-    minimize_energy();
+  //if (mini_energy)
+  //  minimize_energy();
 
 
 }

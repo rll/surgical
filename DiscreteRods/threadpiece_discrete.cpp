@@ -242,13 +242,6 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
 #ifdef ISOTROPIC
 	double beta_angle_diff_over_L = TWIST_COEFF*(_my_thread->end_angle() - _my_thread->start_angle())/(_my_thread->total_length() - ((_my_thread->start_rest_length()+_my_thread->end_rest_length())/2.0));
 
-		Matrix3d skew_i;
-		Matrix3d skew_i_im1;
-		Matrix3d del_kb_i_im1;
-		Matrix3d del_kb_i_ip1;
-		Vector3d del_psi_i_im1;
-		Vector3d del_psi_i_ip1;
-
 	skew_i.setZero();
 	skew_i_im1.setZero();
 

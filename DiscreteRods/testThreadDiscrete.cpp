@@ -94,7 +94,6 @@ bool few_minimization_steps = false;
 double currentTime = 0;
 
 int main_window = 0;
-int side_window = 0; 
 
 double offset_3d = 10.0;
 
@@ -580,54 +579,6 @@ int main (int argc, char * argv[])
 		radii[i]=THREAD_RADII;
 	}
 
-	side_window = glutCreateWindow ("Thread2");
-  glutPositionWindow(1680/2, 0);
-	/*
-	glutDisplayFunc (DrawStuffController);
-	glutMotionFunc (MouseMotion);
-  glutMouseFunc (processMouse);
-  glutKeyboardFunc(processNormalKeys);
-  glutKeyboardUpFunc(processKeyUp);
-	glutIdleFunc(idle);
-	*/
-
-	/* create popup menu */
-	glutCreateMenu (JoinStyle);
-	glutAddMenuEntry ("Exit", 99);
-	glutAttachMenu (GLUT_MIDDLE_BUTTON);
-
-	/* initialize GL */
-	glClearDepth (1.0);
-	glEnable (GL_DEPTH_TEST);
-	glClearColor (0.0, 0.0, 0.0, 0.0);
-	glShadeModel (GL_SMOOTH);
-
-	glMatrixMode (GL_PROJECTION);
-	/* roughly, measured in centimeters */
-	glFrustum (-30.0, 30.0, -30.0, 30.0, 50.0, 500.0);
-	glMatrixMode(GL_MODELVIEW);
-
-
-	/* initialize lighting */
-	glLightfv (GL_LIGHT0, GL_POSITION, lightOnePosition);
-	glLightfv (GL_LIGHT0, GL_DIFFUSE, lightOneColor);
-	glEnable (GL_LIGHT0);
-	glLightfv (GL_LIGHT1, GL_POSITION, lightTwoPosition);
-	glLightfv (GL_LIGHT1, GL_DIFFUSE, lightTwoColor);
-	glEnable (GL_LIGHT1);
-	glLightfv (GL_LIGHT2, GL_POSITION, lightThreePosition);
-	glLightfv (GL_LIGHT2, GL_DIFFUSE, lightThreeColor);
-	glEnable (GL_LIGHT2);
-	glLightfv (GL_LIGHT3, GL_POSITION, lightFourPosition);
-	glLightfv (GL_LIGHT3, GL_DIFFUSE, lightFourColor);
-	glEnable (GL_LIGHT3);
-	glEnable (GL_LIGHTING);
-	glColorMaterial (GL_FRONT_AND_BACK, GL_DIFFUSE);
-	glEnable (GL_COLOR_MATERIAL);
-
-	InitStuff ();
-
-
   glutMainLoop ();
 	//   return 0;             /* ANSI C requires main to return int. */
 }
@@ -654,7 +605,8 @@ void idle() {
   double M =  10;
   double steps = 500;
   currentTime += dt;
-  thread->dynamic_step(dt, M, steps);
+  //thread->dynamic_step(dt, M, steps);
+  thread->dynamic_step_until_convergence(dt, M, steps);
   glutPostRedisplay();
 }
 
@@ -662,11 +614,7 @@ void idle() {
 void DrawStuff (void)
 {
   offset_3d = 10.0;
-  glutSetWindow(main_window);
   IdleAndDrawLeft();
-  glutSetWindow(side_window);
-  DrawRight();
-  glutSetWindow(main_window);
 }
 
 /* draw the helix shape */
@@ -1205,12 +1153,12 @@ void updateThreadPoints()
 
 void initThread()
 {
-  int numInit = 5;//(3*3)/DEFAULT_REST_LENGTH;
+  int numInit = 20;//(3*3)/DEFAULT_REST_LENGTH;
   double noise_factor = 0.0;
 
-	double end_length = 5.0; //DEFAULT_REST_LENGTH;
-	double start = 5.0; //DEFAULT_REST_LENGTH;//8.0;
-	double end = 5.0; //DEFAULT_REST_LENGTH;//1.0;
+	double end_length = DEFAULT_REST_LENGTH;
+	double start = DEFAULT_REST_LENGTH; //DEFAULT_REST_LENGTH;//8.0;
+	double end = DEFAULT_REST_LENGTH; //DEFAULT_REST_LENGTH;//1.0;
 	double m = (start-end)/(numInit-1);
 
   vector<Vector3d> vertices;
@@ -1222,7 +1170,7 @@ void initThread()
 
   vertices.push_back(Vector3d::Zero());
   angles.push_back(0.0);
-  lengths.push_back(end_length/4.0);
+  lengths.push_back(end_length);
   //push back unitx so first tangent matches start_frame
   vertices.push_back(Vector3d::UnitX()*lengths.back());
   angles.push_back(0.0);
@@ -1276,12 +1224,12 @@ void initThread()
 	
 	vertices.push_back(vertices.back()+Vector3d::UnitX()*lengths.back());
   angles.push_back(0.0);
-	lengths.push_back(end_length/4.0);
+	lengths.push_back(end_length);
 	
   //push back unitx so last tangent matches end_frame
   vertices.push_back(vertices.back()+Vector3d::UnitX()*lengths.back());
   angles.push_back(0.0);
-	lengths.push_back(end_length/4.0);
+	lengths.push_back(end_length);
 	
   //angles.resize(vertices.size());
 
