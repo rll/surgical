@@ -44,10 +44,11 @@ Cursor::~Cursor()
 
 void Cursor::setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_displacement)
 {
-	position = pos;
+	position = pos - EndEffector::grab_offset * rot.col(0) ;
 	rotation = rot;
 	if (isAttached()) {
 		end_eff->setTransform(position - EndEffector::grab_offset * rotation.col(0), rotation, limit_displacement);
+    //end_eff->setTransform(position, rotation, limit_displacement);
 	}
 }
 

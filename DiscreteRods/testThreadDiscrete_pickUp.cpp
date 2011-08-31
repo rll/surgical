@@ -714,7 +714,8 @@ void glutMenu(int ID) {
 
 void interruptHandler(int sig) { 
   cout << "Signal " << sig << "caught..." << endl; 
-  interruptEnabled = true; 
+  interruptEnabled = true;
+  exit(0);
 }
 
 void sqpPlanner() { 
@@ -727,14 +728,16 @@ void sqpPlanner() {
 
     World* initial_world = new World(*start_world);
     vector<World*> completeOpenLoopTrajectory;
-    cout << "Planning over " << num_worlds << " worlds" << endl; 
+    cout << "Planning over " << num_worlds << " worlds" << endl;
+    cout << "Initial SQP score: " <<
+      cost_metric(initial_world, goal_world) << endl; 
 
     while (cost_metric(initial_world, goal_world) > 2 && !interruptEnabled) {
       // Generate initial trajectory
       vector<World*> initialization_worlds;
       
       initialization_worlds.push_back(new World(*initial_world)); 
-      for (int i = 0; i < num_worlds; i++) {
+      for (int i = 0; i < num_worlds-2; i++) {
         if (i % 1 == 0) {
           sample_on_sphere(du, norm); 
         }

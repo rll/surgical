@@ -334,16 +334,13 @@ void World::setTransformFromController(const vector<ControlBase*>& controls, boo
 	assert(cursors.size() == controls.size());
 	for (int i = 0; i < cursors.size(); i++) {
 		Cursor* cursor = (dynamic_cast<Cursor*>(cursors[i]));
-		cursor->setTransform(controls[i]->getPosition(), controls[i]->getRotation(), limit_displacement);
+		cursor->setTransform(controls[i]->getPosition() + EndEffector::grab_offset * controls[i]->getRotation().col(0), controls[i]->getRotation(), limit_displacement);
 		if (controls[i]->hasButtonPressedAndReset(UP))
 			cursor->openClose(limit_displacement);
 		if (controls[i]->hasButtonPressedAndReset(DOWN))
 			cursor->attachDettach(limit_displacement);
 	}
 	setThreadConstraintsFromEndEffs();
-	for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
-		threads[thread_ind]->minimize_energy();
-	}
 }
 
 //The control is effectively applied to the tip of the end effector
@@ -356,6 +353,8 @@ void World::applyRelativeControl(const VectorXd& relative_control, bool limit_di
 		rotation_from_euler_angles(rotation, relative_control(8*i+3), relative_control(8*i+4), relative_control(8*i+5));
 		const Matrix3d cursor_rot = cursor->rotation * rotation;
 		const Vector3d cursor_pos = cursor->position + relative_control.segment(8*i+0, 3) + EndEffector::grab_offset * cursor_rot.col(0);
+    //const Vector3d cursor_pos = cursor->position + relative_control.segment(8*i+0,3);
+
 		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement);
 		
 		if (relative_control(8*i+6))
@@ -364,9 +363,6 @@ void World::applyRelativeControl(const VectorXd& relative_control, bool limit_di
 			cursor->attachDettach();
 	}
 	setThreadConstraintsFromEndEffs();
-	for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
-		threads[thread_ind]->minimize_energy();
-	}
 }
 
 void World::applyRelativeControlJacobian(const VectorXd& relative_control) 
@@ -415,8 +411,6 @@ void World::setThreadConstraintsFromEndEffs()
 			ee->setTransform(positionConstraints[ee->constraint_ind], rotationConstraints[ee->constraint_ind], false);
 		}
 
-		//threads[thread_ind]->adapt_links();
-		threads[thread_ind]->minimize_energy();
 	}
 }
 

@@ -79,7 +79,7 @@ class EndEffector : public EnvObject
 		static const double handle_r = 1.2;
 		static const double short_handle_r = 1.6; // corresponds to the capsule where the cursor can get attached
 		static const double end = 6.0; // pieces*h + start;
-		static const double grab_offset = 12.0;
+		static const double grab_offset = 0.0; //12.0;
 };
 
 #endif
