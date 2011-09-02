@@ -2,9 +2,14 @@
 #include "../TrajectoryReader.h"
 
 Control::Control(Vector3d start_position, Matrix3d start_rotation)
-  : translate(0.0, 0.0, 0.0)
+  : position(start_position)
+  , rotation(start_rotation)
+  , translate(0.0, 0.0, 0.0)
 	, rotate(Matrix3d::Identity())
-{}
+{
+	button[0] = false;
+	button[1] = false;
+}
 
 Control::~Control() {}
 
@@ -16,6 +21,16 @@ void Control::setControl(ControllerBase* controller)
   rotation = controller->getRotation();
   button[UP] = controller->hasButtonPressedAndReset(UP);
   button[DOWN] = controller->hasButtonPressedAndReset(DOWN);
+}
+
+void Control::setTranslate(const Vector3d& t)
+{
+	translate = t;
+}
+
+void Control::setRotate(const Matrix3d& r)
+{
+	rotate = r;
 }
 
 void Control::setInitialTransform(const Vector3d& pos, const Matrix3d& rot)
