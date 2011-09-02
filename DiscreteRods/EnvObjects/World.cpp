@@ -5,6 +5,7 @@
 #include "EndEffector.h"
 #include "InfinitePlane.h"
 #include "TexturedSphere.h"
+#include "Box.h"
 #include "../thread_discrete.h"
 #include "../IO/Control.h"
 #include "../IO/ControllerBase.h"
@@ -360,8 +361,7 @@ void World::applyRelativeControl(const vector<Control*>& controls, bool limit_di
 	for (int i = 0; i < cursors.size(); i++) {
 		Cursor* cursor = (dynamic_cast<Cursor*>(cursors[i]));
 		Matrix3d rotate(controls[i]->getRotate());		
-		//const Matrix3d cursor_rot = cursor->rotation * rotate;
-		const Matrix3d cursor_rot = controls[i]->rotation * rotate;
+		const Matrix3d cursor_rot = cursor->rotation * rotate;
 		const Vector3d cursor_pos = cursor->position + controls[i]->getTranslate() + EndEffector::grab_offset * cursor_rot.col(0);
 		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement);
 		
@@ -591,6 +591,166 @@ void World::capsuleObjectRepulsionEnergyGradient(const Vector3d& start, const Ve
 	}
 }
 
+#if 0
+
+const int maxNumObjects = 4;
+const int numObjects = 2;
+
+GL_Simplex1to4 simplex;
+
+btCollisionObject	objects[maxNumObjects];
+btCollisionWorld*	collisionWorld = 0;
+
+GLDebugDrawer debugDrawer;
+
+
+void	CollisionInterfaceDemo::initPhysics()
+{
+			
+//init
+	btMatrix3x3 basisA;
+	basisA.setIdentity();
+
+	btMatrix3x3 basisB;
+	basisB.setIdentity();
+
+	objects[0].getWorldTransform().setBasis(basisA);
+	objects[1].getWorldTransform().setBasis(basisB);
+
+	btCapsuleShape* capsuleA = new btCapsuleShape(btScalar(1), btScalar(4));
+	capsuleA->setMargin(0.f);
+	
+	btCapsuleShape* capsuleB = new btCapsuleShape(btScalar(1), btScalar(4));
+	capsuleB->setMargin(0.f);
+	
+	objects[0].setCollisionShape(capsuleA);
+	objects[1].setCollisionShape(capsuleB);
+
+	btDefaultCollisionConfiguration* collisionConfiguration = new btDefaultCollisionConfiguration();
+	btCollisionDispatcher* dispatcher = new btCollisionDispatcher(collisionConfiguration);
+	btVector3	worldAabbMin(-1000,-1000,-1000);
+	btVector3	worldAabbMax(1000,1000,1000);
+
+	btAxisSweep3*	broadphase = new btAxisSweep3(worldAabbMin,worldAabbMax);
+	
+	//SimpleBroadphase is a brute force alternative, performing N^2 aabb overlap tests
+	//SimpleBroadphase*	broadphase = new btSimpleBroadphase;
+
+	collisionWorld = new btCollisionWorld(dispatcher,broadphase,collisionConfiguration);
+
+	collisionWorld->addCollisionObject(&objects[0]);
+	collisionWorld->addCollisionObject(&objects[1]);
+
+
+
+//in every iter
+	btVector3	worldBoundsMin,worldBoundsMax;
+	collisionWorld->getBroadphase()->getBroadphaseAabb(worldBoundsMin,worldBoundsMax);
+	
+	if (collisionWorld)
+		collisionWorld->performDiscreteCollisionDetection();
+
+	
+	//Assume collisionWorld->stepSimulation or collisionWorld->performDiscreteCollisionDetection has been called
+	int numManifolds = collisionWorld->getDispatcher()->getNumManifolds();
+	for (i=0;i<numManifolds;i++)
+	{
+		btPersistentManifold* contactManifold = collisionWorld->getDispatcher()->getManifoldByIndexInternal(i);
+		btCollisionObject* obA = static_cast<btCollisionObject*>(contactManifold->getBody0());
+		btCollisionObject* obB = static_cast<btCollisionObject*>(contactManifold->getBody1());
+	
+		int numContacts = contactManifold->getNumContacts();
+		for (int j=0;j<numContacts;j++)
+		{
+			btManifoldPoint& pt = contactManifold->getContactPoint(j);
+
+			if (pt.getDistance()<0.f)
+			{
+				const btVector3& ptA = pt.getPositionWorldOnA();
+				const btVector3& ptB = pt.getPositionWorldOnB();
+				const btVector3& normalOnB = pt.m_normalWorldOnB;
+			}
+
+			glBegin(GL_LINES);
+			glColor3f(0, 0, 0);
+			
+			btVector3 ptA = pt.getPositionWorldOnA();
+			btVector3 ptB = pt.getPositionWorldOnB();
+
+			glVertex3d(ptA.x(),ptA.y(),ptA.z());
+			glVertex3d(ptB.x(),ptB.y(),ptB.z());
+			glEnd();
+		}
+
+		//you can un-comment out this line, and then all points are removed
+		//contactManifold->clearManifold();	
+	}
+
+	//for update transform
+	if ((objects[1].getWorldTransform().getOrigin()).y() > -2)
+			objects[1].getWorldTransform().setOrigin(objects[1].getWorldTransform().getOrigin()+btVector3(0,-0.0005*timeInSeconds,0));
+
+bool World::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Thread_Intersection>& thread_intersections, vector<Intersection>& intersections)
+{   	
+  double found = false; // count of number of intersections
+  Vector3d direction;
+  self_intersections.clear();
+  thread_intersections.clear();
+  intersections.clear();
+
+  //self intersections
+  for(int i = 0; i < _thread_pieces.size() - 3; i++) {
+    //+2 so you don't check the adjacent piece - bug?
+    for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
+      //skip if both ends, since these are constraints
+      if(i == 0 && j == _thread_pieces.size() - 2) 
+        continue;
+      double intersection_dist = self_intersection(i,j,THREAD_RADIUS,direction);
+      if(intersection_dist < 0) {
+        found = true;
+
+        self_intersections.push_back(Self_Intersection(i,j,-intersection_dist,direction));
+      }
+    }
+  }
+	
+	//intersections between threads
+	for (int k=0; k < threads_in_env.size(); k++) {
+		//if (this == threads_in_env[k]) //check
+			//continue;
+		for(int i = 0; i < _thread_pieces.size()-1; i++) {
+	    for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
+	      //skip if both ends, since these are constraints
+	      if((i==0 && j==0) ||
+	      	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
+	      	 (i==_thread_pieces.size()-2 && j==0) ||
+	      	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
+	        continue;
+	      double intersection_dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
+	      if(intersection_dist < 0) {
+	        found = true;
+	        thread_intersections.push_back(Thread_Intersection(i,j,k,-intersection_dist,direction));
+	      }
+	    }
+	  }
+	}
+	bool obj_intersection = false;
+	//object intersections
+  if (world != NULL) {
+		for(int i = 2; i < _thread_pieces.size() - 3; i++) {
+			//found = world->capsuleObjectIntersection(i, _thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS, intersections) || found;
+			bool temp_obj_intersection = world->capsuleObjectIntersection(i, _thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS, intersections);
+			if (temp_obj_intersection) obj_intersection = true;
+			found = temp_obj_intersection || found;
+		}
+  }
+  
+  //if (found || obj_intersection)
+  	//cout << "intersections. obj_intersection = " << obj_intersection << endl;
+
+  return found;
+}
+#endif
 void World::initThread()
 {
   int numInit = 6;
