@@ -361,7 +361,8 @@ void processNormalKeys(unsigned char key, int x, int y)
 		
 		
 		vector<World*> vis_data;
-		for (int p = 0; p < dof_perts.size(); p++)
+		//for (int p = 0; p < dof_perts.size(); p++)
+    for (int p = 0; p < 1; p++) 
 		{
 			char *icc_traj_pert_path = new char[256];
   		sprintf(icc_traj_pert_path, "%s%s%s%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f", "environmentFiles/icc_traj/traj_", dstFileName, "_dof_",
@@ -458,7 +459,7 @@ void processNormalKeys(unsigned char key, int x, int y)
 			vector<Control*> ctrls;
 			ctrls.push_back(&ctrl0);
 			ctrls.push_back(&ctrl1);
-			temp_worlds[0]->applyRelativeControl(ctrls, false);
+			//temp_worlds[0]->applyRelativeControl(ctrls, false);
 			
 			cout << "Saving initial condition state in " << ic_pert_path << endl;
 			StateRecorder ic_state_recorder(ic_pert_path);
@@ -485,8 +486,11 @@ void processNormalKeys(unsigned char key, int x, int y)
 				cout << "Trajectory loading was sucessful. " << controls.size() << " controls were loaded." << endl;
 				vector<World*> traj_in;
 				traj_in.push_back(new World(*temp_worlds[0]));
-				vector<World*> traj_out; 			
-				openLoopController(traj_in, controls, traj_out);
+				vector<World*> traj_out; 
+        openLoopController(new World(*temp_worlds[0]), temp_worlds, controls, traj_out);
+        //closedLoopSQPController(new World(*temp_worlds[0]), temp_worlds,
+         //   controls, traj_out);
+				//openLoopController(traj_in, controls, traj_out);
 				setVisualizationData(traj_out);
 			
 				TrajectoryRecorder rec(icc_traj_pert_path); //TODO output world trajectory file generated from control trajectory

@@ -97,6 +97,22 @@ void openLoopController(vector<World*> traj_in, vector<vector<Control*> >& contr
   traj_out.push_back(new World(*world));
 }
 
+void openLoopController(World* start, vector<World*> follow_traj, vector<vector<Control*> >& controls_in, vector<World*>& traj_out) { 
+  World* world = new World(*start);
+  boost::progress_display progress(controls_in.size());
+
+  for (int i = 0; i < controls_in.size(); i++) {
+    traj_out.push_back(new World(*world));
+    cout << cost_metric(world, follow_traj[i]) << endl;
+    world->applyRelativeControl(controls_in[i], true);
+    ++progress; 
+
+  }
+  traj_out.push_back(new World(*world));
+  cout << cost_metric(world, follow_traj.back()) << endl; 
+
+}
+
 void closedLoopSQPController(World* start, vector<World*> follow_traj, vector<vector<Control*> >& controls_in, vector<World*>& traj_out) {
 
   //TODO: FIX NAMESTRING
@@ -105,11 +121,13 @@ void closedLoopSQPController(World* start, vector<World*> follow_traj, vector<ve
   double sqp_init_norm = 1e-1;
   World* start_copy = new World(*start);
   traj_out.push_back(new World(*start_copy));
+  boost::progress_display progress(controls_in.size());
   for (int i = 0; i < follow_traj.size() - 1; i++) {
 
     start_copy->applyRelativeControl(controls_in[i], true);
-
-    if (cost_metric(start_copy, follow_traj[i+1]) > SQP_BREAK_THRESHOLD) {
+    cout << cost_metric(start_copy, follow_traj[i+1]) << endl; 
+    if (cost_metric(start_copy, follow_traj[i+1]) > SQP_BREAK_THRESHOLD
+        && false) {
       World* initial_world = new World(*start_copy);
       vector<World*> initialization_worlds;
       initialization_worlds.push_back(new World(*initial_world));
@@ -127,10 +145,14 @@ void closedLoopSQPController(World* start, vector<World*> follow_traj, vector<ve
       openLoopController(initialization_worlds, sqpControls, openLoopWorlds);
       
       start_copy = new World(*openLoopWorlds.back());
+      for (int i = 0; i < openLoopWorlds.size()-1; i++) {
+        traj_out.push_back(new World(*openLoopWorlds[i]));
+      }
 
     }
 
     traj_out.push_back(new World(*start_copy));
+    ++progress; 
 
   }
 }

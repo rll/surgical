@@ -471,7 +471,7 @@ void World::getStateForJacobian(VectorXd& world_state) {
     state_size += state.size();  
   }
  
-  /* 
+  
   for (int i = 0; i < cursors.size(); i++) { 
     if (cursors[i]->isAttached()) {
       VectorXd state;
@@ -484,7 +484,7 @@ void World::getStateForJacobian(VectorXd& world_state) {
       state_size += state.size();
     }
   } 
-  */
+  
   
   //flatten vector<VectorXd> into one long VectorXd
   world_state.resize(state_size);
