@@ -63,5 +63,20 @@ struct Intersection_Object
   Intersection_Object(const Intersection_Object& cpy)
     : _radius(cpy._radius), _start_pos(cpy._start_pos), _end_pos(cpy._end_pos), _direction(cpy._direction) {}
 };
+/*
+struct IntersectionThreadPiece
+{   
+
+  material_frame()
+  edge_norm()
+	vertex()
+  
+  btMatrix3x3(material_frame(0,0), material_frame(0,1), material_frame(0,1), material_frame(1,0), material_frame(1,1), material_frame(1,1), material_frame(2,0), material_frame(2,1), material_frame(2,1))
+  
+  int piece_ind;
+  thread_piece* piece;
+  thread* thread;
+  CollisionObject* col_obj;
+}*/
 
 #endif

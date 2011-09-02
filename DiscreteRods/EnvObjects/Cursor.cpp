@@ -114,6 +114,8 @@ void Cursor::draw()
 	drawSphere(position, radius);
 	glColor3f(open?0.0:0.5, open?0.5:0.0, 0.0);
 	drawSphere(end_pos, radius);
+	
+	drawAxes(position, rotation);
 }
 
 inline bool closeEnough(const Vector3d& my_pos, const Matrix3d& my_rot, const Vector3d& pos, const Matrix3d& rot)

@@ -21,13 +21,6 @@
 #include <math.h>
 
 #include "EnvObjects/World.h"
-#include "ThreadConstrained.h"
-#include "EnvObjects/EnvObject.h"
-#include "EnvObjects/Capsule.h"
-#include "EnvObjects/Cursor.h"
-#include "EnvObjects/EndEffector.h"
-#include "EnvObjects/InfinitePlane.h"
-#include "EnvObjects/TexturedSphere.h"
 
 #define STATE_BASE_NAME "environmentFiles"
 
