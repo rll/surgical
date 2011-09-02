@@ -8,6 +8,24 @@
 #include <sys/time.h>
 #include <boost/progress.hpp>
 
+
+
+double l2PointsDifference(VectorXd& a, VectorXd& b) {
+  return (a-b).norm();
+}
+
+double l2PointsDifference(World* a, World* b) { 
+  VectorXd state_a, state_b;
+  a->getStateForJacobian(state_a);
+  b->getStateForJacobian(state_b);
+  return l2PointsDifference(state_a, state_b); 
+}
+
+
+double cost_metric(World* a, World* b) { 
+  return l2PointsDifference(a,b);
+}
+
 /*
  * Use SQP solver given traj_in. Puts results in traj_out and control_out
  */
@@ -79,22 +97,43 @@ void openLoopController(vector<World*> traj_in, vector<vector<Control*> >& contr
   traj_out.push_back(new World(*world));
 }
 
-double l2PointsDifference(VectorXd& a, VectorXd& b) {
-  return (a-b).norm();
+void closedLoopSQPController(World* start, vector<World*> follow_traj, vector<vector<Control*> >& controls_in, vector<World*>& traj_out) {
+
+  //TODO: FIX NAMESTRING
+  //want to minimize actual_i - follow_traj[i]
+  int num_sqp_worlds = 10;
+  double sqp_init_norm = 1e-1;
+  World* start_copy = new World(*start);
+  traj_out.push_back(new World(*start_copy));
+  for (int i = 0; i < follow_traj.size() - 1; i++) {
+
+    start_copy->applyRelativeControl(controls_in[i], true);
+
+    if (cost_metric(start_copy, follow_traj[i+1]) > SQP_BREAK_THRESHOLD) {
+      World* initial_world = new World(*start_copy);
+      vector<World*> initialization_worlds;
+      initialization_worlds.push_back(new World(*initial_world));
+      for (int j = 0; j < num_sqp_worlds - 2; j++) {
+        VectorXd du(12);
+        sample_on_sphere(du, sqp_init_norm); 
+        initial_world->applyRelativeControlJacobian(du);
+        initialization_worlds.push_back(new World(*initial_world));
+      }
+      initialization_worlds.push_back(new World(*follow_traj[i+1]));
+      vector<World*> sqpWorlds;
+      vector<VectorXd> sqpControls;
+      solveSQP(initialization_worlds, sqpWorlds, sqpControls, "sqp");
+      vector<World*> openLoopWorlds;
+      openLoopController(initialization_worlds, sqpControls, openLoopWorlds);
+      
+      start_copy = new World(*openLoopWorlds.back());
+
+    }
+
+    traj_out.push_back(new World(*start_copy));
+
+  }
 }
-
-double l2PointsDifference(World* a, World* b) { 
-  VectorXd state_a, state_b;
-  a->getStateForJacobian(state_a);
-  b->getStateForJacobian(state_b);
-  return l2PointsDifference(state_a, state_b); 
-}
-
-
-double cost_metric(World* a, World* b) { 
-  return l2PointsDifference(a,b);
-}
-
 void getTrajectoryStatistics(vector<World*>& worlds) {
   // curvature
   // energy
@@ -136,7 +175,7 @@ void getTrajectoryStatistics(vector<World*>& worlds) {
 }
 
 void getWaypoints(vector<World*>& worlds, vector<World*>& waypoints) { 
-  double energy_change_eps = 0.005; 
+  double energy_change_eps = 0.0029; 
   Thread* lastThread = NULL;
   Thread* lastWaypoint = NULL;
 
@@ -148,7 +187,6 @@ void getWaypoints(vector<World*>& worlds, vector<World*>& waypoints) {
       world_threads[j]->getThreads(threads);
       Thread* thread = threads.front(); 
       if (lastThread) {
-        cout << thread->calculate_energy() - lastThread->calculate_energy() << endl; 
         if (abs(thread->calculate_energy() - lastThread->calculate_energy()) > energy_change_eps) {
           waypoints.push_back(new World(*worlds[i]));
         }

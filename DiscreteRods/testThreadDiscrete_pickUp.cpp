@@ -55,7 +55,7 @@ void glutMenu(int ID);
 void initGL();
 void interruptHandler(int sig);
 void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_trajectory);
-void sqpPlanner();
+void sqpPlanner(World* start, World* goal, vector<World*>& trajectory);
 
 void bitmap_output(int x, int y, char *string, void *font)
 {
@@ -379,7 +379,9 @@ void processNormalKeys(unsigned char key, int x, int y)
 		translate_frame[0] = translate_frame[1] = 0.0;
 		translate_frame[2] = -110.0;
   } else if(key == 'g') {
-    sqpPlanner();
+    vector<World*> plan; 
+    sqpPlanner(start_world, goal_world, plan);
+    setVisualizationData(plan);
   } else if (key == 'G') {
     vector<World*> traj_to_smooth;
     vector<World*> completeOpenLoopTrajectory;
@@ -402,10 +404,23 @@ void processNormalKeys(unsigned char key, int x, int y)
     //smoothingEnabled = !smoothingEnabled;
   } else if (key == 'v') { 
     getTrajectoryStatistics(worlds);
-    drawWorlds.clear(); 
-    getWaypoints(worlds, drawWorlds);
+    //drawWorlds.clear(); 
+    vector<World*> temp_worlds;
+    getWaypoints(worlds, temp_worlds);
+    setVisualizationData(temp_worlds);
     cout << "number of waypoints = " << drawWorlds.size() << endl; 
-    drawInd = 0;
+  } else if (key == 'V') {
+    vector<World*> waypoints;
+    getWaypoints(worlds, waypoints);
+    vector<World*> completeOpenLoopTrajectory;
+    completeOpenLoopTrajectory.push_back(worlds[0]);
+    for (int i = 0; i < 10; i++) {
+      World* start = completeOpenLoopTrajectory.back();
+      World* goal = waypoints[i];
+      sqpPlanner(start, goal, completeOpenLoopTrajectory);
+    }
+    setVisualizationData(completeOpenLoopTrajectory);
+
   } else if (key == '<') { 
     drawInd = max(0, drawInd - 2);
   } else if (key == '>') { 
@@ -854,21 +869,20 @@ void interruptHandler(int sig) {
   interruptEnabled = true;
 }
 
-void sqpPlanner() { 
+void sqpPlanner(World* start, World* goal, vector<World*>& completeOpenLoopTrajectory) { 
 
     int num_worlds = 5;
     string namestring = "world_sqp_debug";
     VectorXd du(12);
     double norm = 1e-1;
-    if (!start_world || !goal_world) return;  
+    if (!start || !goal) return;  
 
-    World* initial_world = new World(*start_world);
-    vector<World*> completeOpenLoopTrajectory;
+    World* initial_world = new World(*start);
     cout << "Planning over " << num_worlds << " worlds" << endl;
     cout << "Initial SQP score: " <<
-      cost_metric(initial_world, goal_world) << endl; 
+      cost_metric(initial_world, goal) << endl; 
 
-    while (cost_metric(initial_world, goal_world) > SQP_BREAK_THRESHOLD && !interruptEnabled) {
+    while (cost_metric(initial_world, goal) > SQP_BREAK_THRESHOLD && !interruptEnabled) {
       // Generate initial trajectory
       vector<World*> initialization_worlds;
       
@@ -881,7 +895,7 @@ void sqpPlanner() {
         initialization_worlds.push_back(new World(*initial_world));
       }
 
-      initialization_worlds.push_back(new World(*goal_world));
+      initialization_worlds.push_back(new World(*goal));
 
       vector<World*> sqpWorlds;
       vector<VectorXd> sqpControls;
@@ -899,11 +913,11 @@ void sqpPlanner() {
     }
     
     //for smoothing, put objective in there
-    completeOpenLoopTrajectory.push_back(new World(*goal_world));
+    //completeOpenLoopTrajectory.push_back(new World(*goal_world));
     //drawWorlds.clear();
     //drawWorlds = worlds;
     //drawWorlds = openLoopWorlds;
-    setVisualizationData(completeOpenLoopTrajectory);
+    //setVisualizationData(completeOpenLoopTrajectory);
 }
 
 void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_trajectory) {
