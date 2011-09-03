@@ -1,4 +1,5 @@
 #include "EndEffector.h"
+#include "World.h"
 #include "../threadpiece_discrete.h" //TODO for repulsion coefficient. should be removed if collision is checked in world.
 #include "../ThreadConstrained.h"
 
@@ -100,7 +101,7 @@ EndEffector::EndEffector(const EndEffector& rhs, World* w)
 		constraint_ind = -1;
 	} else {
 		assert(constraint != -1);
-		thread = world->threadAtIndex(rhs.world->threadIndex(rhs.thread));
+		thread = world->objectAtIndex<ThreadConstrained>(rhs.world->objectIndex<ThreadConstrained>(rhs.thread));
 		vector<int> constrained_vertices_nums;
 		thread->getConstrainedVerticesNums(constrained_vertices_nums);
 		constraint_ind = find(constrained_vertices_nums, constraint);
@@ -148,7 +149,7 @@ void EndEffector::writeToFile(ofstream& file)
 	for (int r=0; r < 3; r++)
     for (int c=0; c < 3; c++)
       file << rotation(r,c) << " ";
-  file << constraint << " " << world->threadIndex(thread) << " " << open << " ";
+  file << constraint << " " << world->objectIndex<ThreadConstrained>(thread) << " " << open << " ";
   file << "\n";
 }
 
@@ -165,7 +166,7 @@ EndEffector::EndEffector(ifstream& file, World* w)
   
   int world_thread_ind;
   file >> constraint >> world_thread_ind >> open;
- 	thread = world->threadAtIndex(world_thread_ind);
+ 	thread = world->objectAtIndex<ThreadConstrained>(world_thread_ind);
  	updateConstraintIndex();
 	assert(((thread == NULL) && (constraint == -1) && (constraint_ind == -1)) || 
 				 ((thread != NULL) && (constraint != -1) && (constraint_ind != -1)));
@@ -318,7 +319,7 @@ void EndEffector::backup()
 	backup_position = position;
 	backup_rotation = rotation;
 	backup_constraint = constraint;
-	backup_thread_ind = world->threadIndex(thread);
+	backup_thread_ind = world->objectIndex<ThreadConstrained>(thread);
 	backup_open = open;
 }
 
@@ -327,7 +328,7 @@ void EndEffector::restore()
 {
 	setTransform(backup_position, backup_rotation);
 	constraint = backup_constraint;
-	thread = world->threadAtIndex(backup_thread_ind);
+	thread = world->objectAtIndex<ThreadConstrained>(backup_thread_ind);
 	updateConstraintIndex();
 	open = backup_open;
 }

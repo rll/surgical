@@ -589,10 +589,8 @@ void ThreadConstrained::adapt_links() {
 }
 
 void ThreadConstrained::updateConstraints (vector<Vector3d> poss, vector<Matrix3d> rots) {
-	if (poss.size() != rots.size())
-		cout << "Internal Error: setConstraints: different number of positions and rotations" << endl;
-	if (poss.size() != threads.size()+1)
-		cout << "Internal Error: setConstraints: not the right number of transforms for current threads. addConstraint or removeConstraint first." << endl;
+	assert(poss.size() == rots.size()); // different number of positions and rotations
+	assert(poss.size() == (threads.size()+1)); //	not the right number of transforms for current threads. addConstraint or removeConstraint first.
 	
 	//the following loop is to synchronize the end positions of two threads held by the same end-effector
 	bool wrong_positions = true;
@@ -625,7 +623,12 @@ void ThreadConstrained::updateConstraints (vector<Vector3d> poss, vector<Matrix3
 	  threads[i]->set_constraints_check(new_start_pos, new_start_rot, new_end_pos, new_end_rot);
 	}
 }
+/*
+void ThreadConstrained::fixConstraints()
+{
 
+}
+*/
 void ThreadConstrained::applyMotionAtConstraints(vector<Vector3d> translations, vector<Matrix3d> rotations)
 {
 	vector<Vector3d> new_positions(constrained_vertices_nums.size());

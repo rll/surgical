@@ -123,7 +123,7 @@ class Thread
     void set_start_constraint_nearEnd(Vector3d& start_pos, Matrix3d& start_rot);
     void set_end_constraint_nearEnd(Vector3d& end_pos, Matrix3d& end_rot);
     void set_constraints_nearEnds(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot);
-    void set_constraints_check(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot);
+    void set_constraints_check(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot, bool minimize = true);
     bool check_fix_positions(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot);
     void set_start_constraint(const Vector3d& start_pos, const Matrix3d& start_rot, bool backup=true);
     void set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot, bool backup=true);

@@ -2968,7 +2968,7 @@ void Thread::set_constraints_nearEnds(Vector3d& start_pos, Matrix3d& start_rot, 
 }
 
 // same as set_constraints_nearEnds except that the constraints is set at the end and not at the near end.
-void Thread::set_constraints_check(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot)
+void Thread::set_constraints_check(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot, bool minimize)
 {
   Vector3d start_pos_movement = start_pos - this->start_pos();
   Vector3d end_pos_movement = end_pos - this->end_pos();
@@ -2995,7 +2995,8 @@ void Thread::set_constraints_check(Vector3d& start_pos, Matrix3d& start_rot, Vec
     unviolate_total_length_constraint();
   }
   set_constraints(start_pos, start_rot, end_pos, end_rot);
-  minimize_energy();
+  if (minimize)
+  	minimize_energy();
 }
 
 bool Thread::check_fix_positions(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot)

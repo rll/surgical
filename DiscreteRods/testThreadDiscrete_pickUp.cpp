@@ -204,13 +204,13 @@ void processNormalKeys(unsigned char key, int x, int y)
  	else if (key == 'u') {
 		glutIgnoreKeyRepeat(1);
   } else if (key == 'j') {
-    //if (!world->cursorAtIndex(0)->isAttached())
+    //if (!world->objectAtIndex<Cursor>(0)->isAttached())
    		//moveMouseToClosestEE(mouse0);
 		glutIgnoreKeyRepeat(1);
   } else if (key == 'U') {
 		glutIgnoreKeyRepeat(1);
   } else if (key == 'J') {
-    //if (!world->cursorAtIndex(1)->isAttached())
+    //if (!world->objectAtIndex<Cursor>(1)->isAttached())
     	//moveMouseToClosestEE(mouse1);
 		glutIgnoreKeyRepeat(1);
 	} else if(key == 's') {
@@ -422,7 +422,8 @@ void processNormalKeys(unsigned char key, int x, int y)
 			}
 		}
   	
-		for (int p = 0; p < dof_perts.size(); p++)
+		//for (int p = 0; p < dof_perts.size(); p++)
+		for (int p = 0; p < 1; p++)
 		{
 			//load initial condition from a worlds trajectory
 			vector<World*> temp_worlds;
@@ -445,20 +446,20 @@ void processNormalKeys(unsigned char key, int x, int y)
 			//perturb initial condition
 			Control ctrl0(Vector3d::Zero(), Matrix3d::Identity());
 			ctrl0.setTranslate(Vector3d(dof_perts[p][0],dof_perts[p][1],dof_perts[p][2]));
-			ctrl0.setRotate((Matrix3d) (AngleAxisd(dof_perts[p][3]*2.0*M_PI/180.0, (temp_worlds[0]->cursorAtIndex(0)->getRotation()).col(0))
-											* AngleAxisd(dof_perts[p][4]*2.0*M_PI/180.0, (temp_worlds[0]->cursorAtIndex(0)->getRotation()).col(1))
-											* AngleAxisd(dof_perts[p][5]*2.0*M_PI/180.0, (temp_worlds[0]->cursorAtIndex(0)->getRotation()).col(2))));
+			ctrl0.setRotate((Matrix3d) (AngleAxisd(dof_perts[p][3]*2.0*M_PI/180.0, (temp_worlds[0]->objectAtIndex<Cursor>(0)->getRotation()).col(0))
+											* AngleAxisd(dof_perts[p][4]*2.0*M_PI/180.0, (temp_worlds[0]->objectAtIndex<Cursor>(0)->getRotation()).col(1))
+											* AngleAxisd(dof_perts[p][5]*2.0*M_PI/180.0, (temp_worlds[0]->objectAtIndex<Cursor>(0)->getRotation()).col(2))));
 			
 			Control ctrl1(Vector3d::Zero(), Matrix3d::Identity());
 			ctrl1.setTranslate(Vector3d(dof_perts[p][6],dof_perts[p][7],dof_perts[p][8]));
-			ctrl1.setRotate((Matrix3d) (AngleAxisd(dof_perts[p][9]*2.0*M_PI/180.0, (temp_worlds[0]->cursorAtIndex(1)->getRotation()).col(0))
-											* AngleAxisd(dof_perts[p][10]*2.0*M_PI/180.0, (temp_worlds[0]->cursorAtIndex(1)->getRotation()).col(1))
-											* AngleAxisd(dof_perts[p][11]*2.0*M_PI/180.0, (temp_worlds[0]->cursorAtIndex(1)->getRotation()).col(2))));
+			ctrl1.setRotate((Matrix3d) (AngleAxisd(dof_perts[p][9]*2.0*M_PI/180.0, (temp_worlds[0]->objectAtIndex<Cursor>(1)->getRotation()).col(0))
+											* AngleAxisd(dof_perts[p][10]*2.0*M_PI/180.0, (temp_worlds[0]->objectAtIndex<Cursor>(1)->getRotation()).col(1))
+											* AngleAxisd(dof_perts[p][11]*2.0*M_PI/180.0, (temp_worlds[0]->objectAtIndex<Cursor>(1)->getRotation()).col(2))));
 						
 			vector<Control*> ctrls;
 			ctrls.push_back(&ctrl0);
 			ctrls.push_back(&ctrl1);
-			temp_worlds[0]->applyRelativeControl(ctrls, false);
+			//temp_worlds[0]->applyRelativeControl(ctrls, false);
 			
 			cout << "Saving initial condition state in " << ic_pert_path << endl;
 			StateRecorder ic_state_recorder(ic_pert_path);
@@ -487,10 +488,11 @@ void processNormalKeys(unsigned char key, int x, int y)
 				vector<World*> traj_in;
 				traj_in.push_back(new World(*temp_worlds[0]));
 				vector<World*> traj_out; 			
-				openLoopController(traj_in, controls, traj_out);
+				openLoopController(temp_worlds[0], temp_worlds, controls, traj_out);
 				setVisualizationData(traj_out);
 			
-				TrajectoryRecorder rec(icc_traj_pert_path); //TODO output world trajectory file generated from control trajectory
+				//TrajectoryRecorder rec(icc_traj_pert_path); //TODO output world trajectory file generated from control trajectory
+				TrajectoryRecorder rec("c2_test");
 				rec.start();
 				for (int i=0; i<traj_out.size(); i++) {
 					rec.writeWorldToFile(traj_out[i]);
@@ -825,8 +827,8 @@ int main (int argc, char * argv[])
 	
 	//control0 = new Control(Vector3d::Zero(), Matrix3d::Identity());
 	//control1 = new Control(Vector3d::Zero(), Matrix3d::Identity());
-	control0 = new Control(world->cursorAtIndex(0)->getPosition(), world->cursorAtIndex(0)->getRotation());	
-	control1 = new Control(world->cursorAtIndex(1)->getPosition(), world->cursorAtIndex(1)->getRotation());	
+	control0 = new Control(world->objectAtIndex<Cursor>(0)->getPosition(), world->objectAtIndex<Cursor>(0)->getRotation());	
+	control1 = new Control(world->objectAtIndex<Cursor>(1)->getPosition(), world->objectAtIndex<Cursor>(1)->getRotation());	
 
 	glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
 	glGetDoublev(GL_PROJECTION_MATRIX, projection);
@@ -924,10 +926,10 @@ void processInput(ControllerBase* controller0, ControllerBase* controller1)
 		control1->setControl(controller1);
 		
 		if (haptics) { //TODO fix this hack
-			control0->setTranslate(haptic0->getPosition() - world->cursorAtIndex(0)->getPosition());
-			control0->setRotate(world->cursorAtIndex(0)->getRotation().transpose() * haptic0->getRotation());
-			control1->setTranslate(haptic1->getPosition() - world->cursorAtIndex(1)->getPosition());
-			control1->setRotate(world->cursorAtIndex(1)->getRotation().transpose() * haptic1->getRotation());
+			control0->setTranslate(haptic0->getPosition() - world->objectAtIndex<Cursor>(0)->getPosition());
+			control0->setRotate(world->objectAtIndex<Cursor>(0)->getRotation().transpose() * haptic0->getRotation());
+			control1->setTranslate(haptic1->getPosition() - world->objectAtIndex<Cursor>(1)->getPosition());
+			control1->setRotate(world->objectAtIndex<Cursor>(1)->getRotation().transpose() * haptic1->getRotation());
 		}
 	
 		if (trajectory_recorder_world.hasStarted())
