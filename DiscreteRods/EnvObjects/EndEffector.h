@@ -9,7 +9,7 @@ class EndEffector : public EnvObject
 {
 	friend class World;
 	friend class Cursor;
-	
+
 	protected:
 		ThreadConstrained* thread;		// The thread this end effector is holding. NULL if it isn't holding a thread.
 		int constraint;								// The vertex number of the constraint the end effector is holding. -1 if it isn't holding the thread.
