@@ -1,11 +1,9 @@
 #ifndef _Cursor_h
 #define _Cursor_h
 
-#include "EndEffector.h"
+#include "EnvObject.h"
 
 class EndEffector;
-
-class World;
 
 class Cursor
 {

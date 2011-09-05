@@ -1,6 +1,6 @@
 #define NUM_ITERS_SQP_PLANNER 3
 #define NUM_ITERS_SQP_SMOOTHER 1
-#define SQP_BREAK_THRESHOLD 15
+#define SQP_BREAK_THRESHOLD 3
 
 
 #include "../MotionPlanning/worldSQP.h"
@@ -285,7 +285,7 @@ void getTrajectoryStatistics(vector<World*>& worlds) {
 
   for (int i = 0; i < worlds.size(); i++) { 
     vector<ThreadConstrained*> world_threads;
-    worlds[i]->getThreads(world_threads); // not copies, so don't mess with it
+    worlds[i]->getObjects<ThreadConstrained>(world_threads); // not copies, so don't mess with it
     //for (int j = 0; j < world_threads.size(); j++) {
     for (int j = 0; j < 1; j++) {
       vector<Thread*> threads;
@@ -317,7 +317,8 @@ void getWaypoints(vector<World*>& worlds, vector<World*>& waypoints) {
 
   for (int i = 0; i < worlds.size(); i++) { 
     vector<ThreadConstrained*> world_threads;
-    worlds[i]->getThreads(world_threads);
+    worlds[i]->getObjects<ThreadConstrained>(world_threads);
+    //worlds[i]->getThreads(world_threads);
     for (int j = 0; j < 1; j++) { 
       vector<Thread*> threads;
       world_threads[j]->getThreads(threads);

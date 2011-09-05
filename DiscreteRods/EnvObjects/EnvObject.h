@@ -25,7 +25,9 @@
 #include "../utils/drawUtils.h"
 #include "../Collisions/intersectionStructs.h"
 #include "../Collisions/collisionUtils.h"
-#include "World.h"
+#include "ObjectTypes.h"
+
+class World;
 
 using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN
