@@ -4,6 +4,7 @@
 #include "EnvObject.h"
 
 class ThreadConstrained;
+class Needle;
 
 class EndEffector : public EnvObject
 {
@@ -14,6 +15,7 @@ class EndEffector : public EnvObject
 		ThreadConstrained* thread;		// The thread this end effector is holding. NULL if it isn't holding a thread.
 		int constraint;								// The vertex number of the constraint the end effector is holding. -1 if it isn't holding the thread.
 		int constraint_ind;						// constained_vertices_nums[constrained_ind] is the vertex number of the constraint the end effector is holding. -1 if it isn't holding the thread.
+		Needle* needle;								// The needle this end effector is holding. NULL if it isn't holding a needle.
 		World* world;
 		bool open;
 		vector<Intersection_Object*> i_objs;
@@ -59,9 +61,14 @@ class EndEffector : public EnvObject
 		
 		//thread attachment
 		void attach(ThreadConstrained* t) { thread = t; }
-		void dettach() { thread = NULL; }
-		bool isAttached() { return (thread!=NULL); }
+		void dettachThread() { thread = NULL; }
+		bool isThreadAttached() { return (thread!=NULL); }
 		ThreadConstrained* getThread() { return thread; }
+		//needle attachment
+		void attach(Needle* n) { needle = n; }
+		void dettachNeedle() { needle = NULL; }
+		bool isNeedleAttached() { return (needle!=NULL); }
+		Needle* getNeedle() { return needle; }
 		
 		//backup
 		void backup();

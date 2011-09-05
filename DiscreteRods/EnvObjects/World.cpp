@@ -21,18 +21,22 @@ World::World()
 	
 	//objs.push_back(new Box(plane->getPosition() + Vector3d(0.0, 15.0, 0.0), Matrix3d::Identity(), Vector3d(15,15,15), 0.0, 0.5, 0.7, this));
 	
-	objs.push_back(new Needle(plane->getPosition() + Vector3d(0.0, 15.0, 0.0), Matrix3d::Identity(), 150.0, 5.0, 0.3, 0.3, 0.3, this));
+	objs.push_back(new Needle(plane->getPosition() + Vector3d(0.0, 50.0, 0.0), Matrix3d::Identity(), 120.0, 5.0, 0.3, 0.3, 0.3, this));
 	
 	//setting up end effectors
 	vector<Vector3d> positions;
 	vector<Matrix3d> rotations;
 	threads[0]->getConstrainedTransforms(positions, rotations);
+
+	objs.push_back(new Needle(threads[0]->positionAtConstraint(0), threads[0]->rotationAtConstraint(0), 120.0, 5.0, 0.3, 0.3, 0.3, this, threads[0], 0));
+
+	//objs.push_back(new Needle(threads[0]->positionAtConstraint(1), threads[0]->rotationAtConstraint(1), 120.0, 5.0, 0.3, 0.3, 0.3, this));//, threads[0], 0));
 	
-	objs.push_back(new EndEffector(positions[0], rotations[0], this, threads[0], 0));
-	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 0);
+	objs.push_back(new EndEffector(positions[0], rotations[0], this)); //, threads[0], 0));
+	//assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 0);
 
 	objs.push_back(new EndEffector(positions[1], rotations[1], this, threads[0], threads[0]->numVertices()-1));
-	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
+	//assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
 
 //	threads[1]->getConstrainedTransforms(positions, rotations);
 //	
@@ -340,8 +344,6 @@ void World::applyRelativeControl(const vector<Control*>& controls, bool limit_di
 			cursor->openClose(limit_displacement);
 		if (controls[i]->getButton(DOWN))
 			cursor->attachDettach(limit_displacement);
-		
-		//controls[i]->setNoMotion();
 	}
 }
 

@@ -105,7 +105,7 @@ class ThreadConstrained {
 		void updateConstrainedTransform(int constraint_ind, Vector3d& pos, Matrix3d& rot);
 		void getConstrainedTransform(int constraint_ind, Vector3d& pos, Matrix3d& rot);
 		const Vector3d& positionAtConstraint(int constraint_ind) const;
-		const Matrix3d& rotationAtConstraint(int constraint_ind) const;
+		Matrix3d rotationAtConstraint(int constraint_ind);
 		void applyMotionAtConstraints(vector<Vector3d> translations, vector<Matrix3d> rotations);
 		void applyControl(const VectorXd& u);
 		void getState(VectorXd& state);

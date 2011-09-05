@@ -6,12 +6,14 @@
 
 #include "EnvObject.h"
 
+class ThreadConstrained;
+
 class Needle : public EnvObject
 {
 	public:
-		Needle(const Vector3d& pos, const Matrix3d& rot, double degrees, double r, float c0, float c1, float c2, World* w);
-		Needle(const Vector3d& pos, const Vector3d& start_pos, const Vector3d& end_pos, float c0, float c1, float c2, World* w);
-		Needle(const Vector3d& pos, const Vector3d& center_start, double degrees, const Vector3d& axis, float c0, float c1, float c2, World* w);
+		Needle(const Vector3d& pos, const Matrix3d& rot, double degrees, double r, float c0, float c1, float c2, World* w, ThreadConstrained* t = NULL, int constrained_vertex_num = -1);
+//		Needle(const Vector3d& pos, const Vector3d& start_pos, const Vector3d& end_pos, float c0, float c1, float c2, World* w, ThreadConstrained* t = NULL, int constrained_vertex_num = -1);
+//		Needle(const Vector3d& pos, const Vector3d& center_start, double degrees, const Vector3d& axis, float c0, float c1, float c2, World* w, ThreadConstrained* t = NULL, int constrained_vertex_num = -1);
 		Needle(const Needle& rhs, World* w);
 		~Needle();
 		
@@ -20,14 +22,33 @@ class Needle : public EnvObject
 		Needle(ifstream& file, World* w);
 
 		void setTransform(const Vector3d& pos, const Matrix3d& rot);
+		void updateTransform(Vector3d& pos, Matrix3d& rot);
 		Vector3d getStartPosition();
 		Vector3d getEndPosition();
+		Matrix3d getStartRotation();
+		Matrix3d getEndRotation();
+		void setStartPosition(const Vector3d& pos);
+		void setEndPosition(const Vector3d& pos);
+		void setStartRotation(const Matrix3d& rot);
+		void setEndRotation(const Matrix3d& rot);
 		double getAngle();
 		double getRadius();
 		Vector3d getAxis();
 		void rotateAboutAxis(double degrees);
 		
+		Vector3d nearestPosition(const Vector3d& pos);
+		void updateTransformOffset(const Vector3d& pos, const Matrix3d& rot);
+		
 		void draw();
+		
+		void updateConstraint();
+		void updateConstraintIndex();
+		
+		//thread attachment
+		void attach(ThreadConstrained* t) { thread = t; }
+		void dettachThread() { thread = NULL; }
+		bool isThreadAttached() { return (thread!=NULL); }
+		ThreadConstrained* getThread() { return thread; }
 		
 		//backup
 		void backup();
@@ -41,16 +62,36 @@ class Needle : public EnvObject
 	protected:
 		double angle;
 		double radius;
+		ThreadConstrained* thread;
+		int constraint;
+		int constraint_ind;			
 		World* world;
 		vector<Intersection_Object*> i_objs;
+		Vector3d position_offset;
+		Matrix3d rotation_offset;
+		
+		//backup
+		Vector3d backup_position_offset;
+		Matrix3d backup_rotation_offset;
+		int backup_constraint;
+		int backup_thread_ind;				// -1 if the end effector is not attached to the thread
 
 		//needs to be backup
 		//position
 		//rotation
+		//position_offset
+		//rotation_offset
+		//constraint (constraint_ind doesn't need to be backup because it can be recomputed from constraint)
+		//thread_ind (backup_thread_ind = world->threadIndex(thread)) This is equivalent to backing up the thread pointer
 		
 		//needs to be restored
 		//position
 		//rotation
+		//position_offset
+		//rotation_offset
+		//constraint
+		//constraint_ind (updateConstraintIndex())
+		//thread (thread = world->threadAtIndex(backup_thread_ind);
 };
 
 #endif

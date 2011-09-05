@@ -671,6 +671,25 @@ void ThreadConstrained::getConstrainedTransform(int constraint_ind, Vector3d& po
 	rot = rotationAtConstraint(constraint_ind);
 }
 
+//void ThreadConstrained::getConstrainedTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations) {
+//	int threads_size = threads.size();
+//	positions.resize(threads_size+1);
+//	rotations.resize(threads_size+1);
+//	vector<vector<Vector3d> > points(threads_size);	
+//	int thread_num = 0;
+//	threads[thread_num]->get_thread_data(points[thread_num]);
+//	positions[thread_num] = (points[thread_num]).front();
+//	rotations[thread_num] = (threads[thread_num]->start_rot()) * rot_offset[thread_num].transpose();
+//	for (thread_num=1; thread_num<threads_size; thread_num++) {
+//		threads[thread_num]->get_thread_data(points[thread_num]);
+//		positions[thread_num] = (points[thread_num]).front();
+//		rotations[thread_num] = (threads[thread_num]->start_rot()) * rot_offset[thread_num].transpose();
+//	}
+//	positions[thread_num] = (points[thread_num-1]).back();
+//	rotations[thread_num] = (threads[thread_num-1])->end_rot() * rot_offset[thread_num].transpose();
+//}
+
+
 const Vector3d& ThreadConstrained::positionAtConstraint(int constraint_ind) const
 {
 	if (constrained_vertices_nums[constraint_ind] != num_vertices-1)
@@ -679,12 +698,36 @@ const Vector3d& ThreadConstrained::positionAtConstraint(int constraint_ind) cons
 		return threads[constraint_ind-1]->end_pos();
 }
 
-const Matrix3d& ThreadConstrained::rotationAtConstraint(int constraint_ind) const
+Matrix3d ThreadConstrained::rotationAtConstraint(int constraint_ind)
 {
+	#ifndef NDEBUG
+	vector<Vector3d> positions;
+	vector<Matrix3d> rotations;
+	getConstrainedTransforms(positions, rotations);
+	
+	if (constrained_vertices_nums[constraint_ind] != num_vertices-1) {
+		Matrix3d result = threads[constraint_ind]->start_rot() * rot_offset[constraint_ind].transpose();
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 3; j++) {
+				assert ((result(i,j) - rotations[constraint_ind](i,j)) < 0.00001);
+			}
+		}
+		return result;
+	} else {
+		Matrix3d result = threads[constraint_ind-1]->end_rot() * rot_offset[constraint_ind].transpose();
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 3; j++) {
+				assert ((result(i,j) - rotations[constraint_ind](i,j)) < 0.00001);
+			}
+		}
+		return result;
+	}
+	#else
 	if (constrained_vertices_nums[constraint_ind] != num_vertices-1)
 		return threads[constraint_ind]->start_rot() * rot_offset[constraint_ind].transpose();
 	else
 		return threads[constraint_ind-1]->end_rot() * rot_offset[constraint_ind].transpose();
+	#endif
 }
 
 void ThreadConstrained::applyMotionAtConstraints(vector<Vector3d> translations, vector<Matrix3d> rotations)
@@ -845,6 +888,8 @@ void ThreadConstrained::draw(bool mode) {
 		glColor3f (0.0, 0.5, 0.5);
 		for (int i=0; i<points.size(); i++)
 			drawSphere(points[i], 0.7);
+		drawAxes(positionAtConstraint(0), rotationAtConstraint(0));
+		drawAxes(positionAtConstraint(constrained_vertices_nums.size()-1), rotationAtConstraint(constrained_vertices_nums.size()-1));
 	}
 			
   glPopMatrix ();

@@ -49,9 +49,11 @@ class Cursor
     }  
 		
 		static const double height = 3.0;
-		static const double radius = 2.0;
+		static const double radius = 1.2;
 		
 	protected:
+		void drawColoredCapsule(const Vector3d& start_pos, const Vector3d& end_pos);
+	
 		Vector3d position;
 		Matrix3d rotation;
 		World* world; //TODO ensure it is initialized properly

@@ -1,19 +1,39 @@
 #include "Box.h"
 
-Box::Box(const Vector3d& pos, const Matrix3d& rot, const Vector3d& half_length_xyz, float c0, float c1, float c2, World* w)
+Box::Box(const Vector3d& pos, const Matrix3d& rot, const Vector3d& half_length_xyz, float c0, float c1, float c2, World* w, Needle* n = NULL, ThreadConstrained* t = NULL, int constrained_vertex_num0 = -1, int constrained_vertex_num1 = -1)
 	: EnvObject(pos, rot, c0, c1, c2, BOX)
 	, half_length(half_length_xyz)
+	, thread(t)
+	, constraint0(constrained_vertex_num0)
+	, constraint1(constrained_vertex_num1)
+	, needle(n)
 	, world(w)
 {
+  assert(((thread == NULL) && (constrained_vertex_num0 == -1) && (constrained_vertex_num1 == -1)) || ((thread != NULL) && (constrained_vertex_num0 != -1)));
   setTransform(position, rotation);
 }
 
 Box::Box(const Box& rhs, World* w)
 	: EnvObject(rhs.position, rhs.rotation, rhs.color0, rhs.color1, rhs.color2, rhs.type)
 	, half_length(rhs.half_length)
+	, thread(rhs.thread)
+	, constraint0(rhs.constraint0)
+	, constraint1(rhs.constraint1)
+	, needle(rhs.needle)
 	, world(w)
 {
 	assert(type == BOX);
+	
+	if (thread == NULL) {
+		assert(constraint == -1);
+	} else {
+		assert(constraint != -1);
+		thread = world->objectAtIndex<ThreadConstrained>(rhs.world->objectIndex<ThreadConstrained>(rhs.thread));
+	}
+	if (needle != NULL) {
+		needle world->objectAtIndex<Needle>(rhs.world->objectIndex<Needle>(rhs.needle));
+	}
+	
   setTransform(position, rotation);
 }
 		
@@ -27,9 +47,17 @@ void Box::writeToFile(ofstream& file)
 	for (int r=0; r < 3; r++)
     for (int c=0; c < 3; c++)
       file << rotation(r,c) << " ";
-  file << half_length(0) << " " << half_length(1) << " " << half_length(2) << " " << color0 << " " << color1 << " " << color2 << " ";
+  file << half_length(0) << " " << half_length(1) << " " << half_length(2) << " " << color0 << " " << color1 << " " << color2 << " " << constraint << " " << world->objectIndex<ThreadConstrained>(thread) << " ";
   file << "\n";
 }
+ << radius << " " << color0 << " " << color1 << " " << color2 << " " << constraint << " " << world->objectIndex<ThreadConstrained>(thread) << " ";
+
+		Vector3d half_length;v
+		ThreadConstrained* thread;
+		int constraint0;
+		int constraint1;
+		Needle* needle;
+		World* world;
 
 Box::Box(ifstream& file, World* w)
 {
