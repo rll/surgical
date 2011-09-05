@@ -42,7 +42,6 @@ class WorldSQP
       strcpy(_namestring, str);
     };
 
-
     /*
      * Open loop controller applies controls in controls_in at every time step
      * Assumes start thread is traj_in[0]
@@ -63,9 +62,35 @@ class WorldSQP
       return l2PointsDifference(state_a, state_b); 
     }
 
-    double l2PointsDifference(VectorXd a, VectorXd b) { 
-      return (a - b).norm(); 
+
+    double l2PointsDifference(VectorXd& a, VectorXd& b) {
+      VectorXd diff = a-b;
+
+      double angle_weight = 50;
+
+      for (int i = 0; i < diff.size(); i++) {
+        diff(i) = fabs(diff(i)); 
+      }
+
+      /*for (int i = 0; i < 3; i++) {
+        int ind = diff.size() - 1 - i;
+        if (diff(ind) > angle_weight * M_PI) {
+          diff(ind) = 2 * angle_weight * M_PI - diff(ind);
+          cout << a(ind) << " " << b(ind) << endl; 
+          cout << "Big " << endl;
+        }
+        ind = diff.size() - 1 - 6 - i;
+        if (diff(ind) > angle_weight * M_PI) {
+          diff(ind) = 2 * angle_weight * M_PI - diff(ind); 
+        }
+      }*/
+      return diff.norm();
     }
+
+    /*double l2PointsDifference(VectorXd a, VectorXd b) { 
+      return (a - b).norm(); 
+    }*/
+
 
     void world_to_state(World* world, VectorXd& state);
 

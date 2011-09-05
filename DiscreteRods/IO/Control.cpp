@@ -2,9 +2,14 @@
 #include "../TrajectoryReader.h"
 
 Control::Control(Vector3d start_position, Matrix3d start_rotation)
-  : translate(0.0, 0.0, 0.0)
+  : position(start_position)
+  , rotation(start_rotation)
+  , translate(0.0, 0.0, 0.0)
 	, rotate(Matrix3d::Identity())
-{}
+{
+	button[0] = false;
+	button[1] = false;
+}
 
 Control::~Control() {}
 
@@ -14,8 +19,18 @@ void Control::setControl(ControllerBase* controller)
   rotate = Quaterniond(controller->getRotation().transpose() * rotation);
   position = controller->getPosition();
   rotation = controller->getRotation();
-  button[UP] = controller->hasButtonPressed(UP);
-  button[DOWN] = controller->hasButtonPressed(DOWN);
+  button[UP] = controller->hasButtonPressedAndReset(UP);
+  button[DOWN] = controller->hasButtonPressedAndReset(DOWN);
+}
+
+void Control::setTranslate(const Vector3d& t)
+{
+	translate = t;
+}
+
+void Control::setRotate(const Matrix3d& r)
+{
+	rotate = r;
 }
 
 void Control::setInitialTransform(const Vector3d& pos, const Matrix3d& rot)
@@ -79,7 +94,6 @@ void Control::writeToFile(ofstream& file)
 		file << translate(i) << " ";
 	file << rotate.w() << " " << rotate.x() << " " << rotate.y() << " " << rotate.z() << " ";
 	file << button[0] << " " << button[1] << " ";		
-	file << "\n";
 }
 
 Control::Control(ifstream& file)

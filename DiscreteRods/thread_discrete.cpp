@@ -2968,7 +2968,7 @@ void Thread::set_constraints_nearEnds(Vector3d& start_pos, Matrix3d& start_rot, 
 }
 
 // same as set_constraints_nearEnds except that the constraints is set at the end and not at the near end.
-void Thread::set_constraints_check(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot)
+void Thread::set_constraints_check(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot, bool minimize)
 {
   Vector3d start_pos_movement = start_pos - this->start_pos();
   Vector3d end_pos_movement = end_pos - this->end_pos();
@@ -2995,7 +2995,8 @@ void Thread::set_constraints_check(Vector3d& start_pos, Matrix3d& start_rot, Vec
     unviolate_total_length_constraint();
   }
   set_constraints(start_pos, start_rot, end_pos, end_rot);
-  minimize_energy();
+  if (minimize)
+  	minimize_energy();
 }
 
 bool Thread::check_fix_positions(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot)
@@ -3029,6 +3030,29 @@ bool Thread::check_fix_positions(Vector3d& start_pos, Matrix3d& start_rot, Vecto
   
   return (too_long_by > 1e-3);
 }
+
+//bool Thread::check_fix_positions(double start_fix_fraction)
+//{
+//  //check to make sure we aren't trying to go beyond the max length
+//  Vector3d pointA = this->start_pos()+this->start_rot().col(0)*start_rest_length();
+//  Vector3d pointB= this->end_pos()-this->end_rot().col(0)*end_rest_length();
+
+//  //if so, correct by moving back into acceptable region
+//  Vector3d entire_length_vector = pointB - pointA;
+//  double too_long_by = (entire_length_vector).norm() - (total_length() - start_rest_length() - end_rest_length()) + LENGTH_THRESHHOLD;
+//  if (too_long_by > 0)
+//  {
+//    entire_length_vector.normalize();
+//		set_constraints(this->start_pos() + start_fix_fraction*entire_length_vector*too_long_by, this->start_rot(),
+//										this->end_pos() - (1.0-start_fix_fraction)*entire_length_vector*too_long_by, this->end_rot());
+//  }  
+//  pointA = this->start_pos()+this->start_rot().col(0)*start_rest_length();
+//  pointB= this->end_pos()-this->end_rot().col(0)*end_rest_length();
+//  entire_length_vector = pointB - pointA;
+//  too_long_by = (entire_length_vector).norm() - (total_length() - start_rest_length() - end_rest_length()) + LENGTH_THRESHHOLD;
+//  
+//  return (too_long_by > 1e-3);
+//}
 
 void Thread::rotate_end_by(double degrees)
 {
@@ -3223,16 +3247,37 @@ void Thread::applyControl(const VectorXd& u)
 void Thread::getState(VectorXd& state)
 {
   const int _num_pieces = num_pieces();
-  state.resize(6*_num_pieces-3+1);
+  assert(_num_pieces == _thread_pieces.size());
+  state.resize(6*_num_pieces-3+1+1);
+  //state.resize(3*(3+3+3+3)+2);
+  state(0) = state.size(); 
   for (int piece_ind=0; piece_ind < _num_pieces; piece_ind++)
   {
-    state.segment(piece_ind*3, 3) = vertex_at_ind(piece_ind);
+    state.segment(piece_ind*3+1, 3) = vertex_at_ind(piece_ind);
   }
   for (int piece_ind=0; piece_ind < _num_pieces-1; piece_ind++)
   {
-    state.segment(3*_num_pieces + piece_ind*3, 3) = edge_at_ind(piece_ind);
+    state.segment(3*_num_pieces + piece_ind*3+1, 3) = edge_at_ind(piece_ind);
   }
-  state(6*_num_pieces-3) = end_angle();
+  state(6*_num_pieces-3+1) = end_angle();
+  
+  /*for (int piece_ind=0; piece_ind < 6; piece_ind++) {
+    state.segment(piece_ind*3+1, 3) = vertex_at_ind(piece_ind);
+    //state.segment(piece_ind*6+3,3) = vertex_at_ind(num_pieces()-piece_ind-1);
+  }
+  for (int piece_ind=0; piece_ind < 6; piece_ind++) {
+    state.segment(18 + piece_ind*3+1, 3) = edge_at_ind(piece_ind);
+    //state.segment(18 + piece_ind*6 + 3, 3) = edge_at_ind(num_pieces()-piece_ind-2);
+  }
+  //state(36 + 1) = end_angle();
+  state(36 + 1) = 0.29292929292922929;
+  */
+}
+
+void Thread::setState(VectorXd& state) {
+  assert(state(0) == state.size());
+  VectorXd data = state.segment(1, state.size() - 1);
+  copy_data_from_vector(data);
 }
 
 void Thread::set_coeffs_normalized(double bend_coeff, double twist_coeff, double grav_coeff)
