@@ -36,8 +36,6 @@ bool WorldSQP::iterative_control_opt(vector<World*>& trajectory, vector<VectorXd
   return iterative_control_opt(trajectory, controls, sqp_debug_data, num_opts);
 }
 
-
-
 bool WorldSQP::iterative_control_opt(vector<World*>& trajectory, vector<VectorXd>& controls, vector<vector<World*> >& sqp_debug_data, int num_opts, bool return_best_opt, double threshold) 
 {
 

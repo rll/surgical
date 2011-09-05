@@ -95,6 +95,7 @@ public:
   	for (int i = 0; i < 3; i++) {
   		state(i) = position(i);
   	}
+    //state.segment(3, 3) = 50 * rotation.col(0);
   	state(3) = angZ;
   	state(4) = angY;
   	state(5) = angX;

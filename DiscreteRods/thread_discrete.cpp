@@ -3223,8 +3223,9 @@ void Thread::applyControl(const VectorXd& u)
 void Thread::getState(VectorXd& state)
 {
   const int _num_pieces = num_pieces();
-  state.resize(6*_num_pieces-3+1);
-  for (int piece_ind=0; piece_ind < _num_pieces; piece_ind++)
+  //state.resize(6*_num_pieces-3+1);
+  state.resize(3*(3+3+3+3)+1); 
+  /*for (int piece_ind=0; piece_ind < _num_pieces; piece_ind++)
   {
     state.segment(piece_ind*3, 3) = vertex_at_ind(piece_ind);
   }
@@ -3233,6 +3234,16 @@ void Thread::getState(VectorXd& state)
     state.segment(3*_num_pieces + piece_ind*3, 3) = edge_at_ind(piece_ind);
   }
   state(6*_num_pieces-3) = end_angle();
+  */
+  for (int piece_ind=0; piece_ind < 6; piece_ind++) {
+    state.segment(piece_ind*3, 3) = vertex_at_ind(piece_ind);
+    //state.segment(piece_ind*6+3,3) = vertex_at_ind(num_pieces()-piece_ind-1);
+  }
+  for (int piece_ind=0; piece_ind < 6; piece_ind++) {
+    state.segment(18 + piece_ind*3, 3) = edge_at_ind(piece_ind);
+    //state.segment(18 + piece_ind*6 + 3, 3) = edge_at_ind(num_pieces()-piece_ind-2);
+  }
+  state(36) = end_angle(); 
 }
 
 void Thread::set_coeffs_normalized(double bend_coeff, double twist_coeff, double grav_coeff)

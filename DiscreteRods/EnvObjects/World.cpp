@@ -473,17 +473,19 @@ void World::getStateForJacobian(VectorXd& world_state) {
  
   
   for (int i = 0; i < cursors.size(); i++) { 
-    if (cursors[i]->isAttached()) {
+    //if (cursors[i]->isAttached()) {
       VectorXd state;
       //if (!cursors[i]->end_eff->isAttached()) {
         //cout << "WARNING: End Effector is not attached to a thread" << endl;
       //}
       cursors[i]->end_eff->getState(state);
-      //cursors[i]->getState(state); 
+      //cursors[i]->getState(state);
+      for (int i = 0; i < 3; i++) state(i) *= 5;
+      for (int i = 3; i < 6; i++) state(i) *= 50;
       states.push_back(state); 
       state_size += state.size();
-    }
-  } 
+    //}
+  }  
   
   
   //flatten vector<VectorXd> into one long VectorXd
@@ -503,7 +505,7 @@ void World::computeJacobian(MatrixXd& J) {
   int size_each_control = 12; 
   J.resize(world_state.size(), size_each_control);
   J.setZero();
-  double eps = 1e-1;
+  double eps = 5e-2;
    
   #pragma omp parallel for
   for (int i = 0 ; i < 12; i++) { 

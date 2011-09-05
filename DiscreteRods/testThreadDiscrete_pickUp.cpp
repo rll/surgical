@@ -346,10 +346,10 @@ void processNormalKeys(unsigned char key, int x, int y)
   	
   	vector<vector<double> > dof_perts;
   	vector<double> scale;
-  	scale.push_back(-2.0);
-  	scale.push_back(-4.0);
-  	scale.push_back(2.0);
-  	scale.push_back(4.0);
+
+    for (int i = -10; i <= 10; i+=2) {
+      scale.push_back(i); 
+    }
   	
   	for (int scale_ind = 0; scale_ind < scale.size(); scale_ind++) {
 			for (int dof = 0; dof < 12; dof++) {
@@ -361,13 +361,14 @@ void processNormalKeys(unsigned char key, int x, int y)
 		
 		
 		vector<World*> vis_data;
-		//for (int p = 0; p < dof_perts.size(); p++)
-    for (int p = 0; p < 1; p++) 
+		for (int p = 0; p < dof_perts.size(); p++)
 		{
-			char *icc_traj_pert_path = new char[256];
-  		sprintf(icc_traj_pert_path, "%s%s%s%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f", "environmentFiles/icc_traj/traj_", dstFileName, "_dof_",
+
+  		char *icc_traj_pert_path = new char[256];
+  		sprintf(icc_traj_pert_path, "%s%s%s%d%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f", "environmentFiles/icc_traj/traj_", dstFileName, "_dof_", p,
   													dof_perts[p][0], dof_perts[p][1], dof_perts[p][2], dof_perts[p][3], dof_perts[p][4], dof_perts[p][5],
   												  dof_perts[p][6], dof_perts[p][7], dof_perts[p][8], dof_perts[p][9], dof_perts[p][10], dof_perts[p][11]);
+
 			//load last state's many a worlds trajectory
 			vector<World*> temp_worlds;
 			TrajectoryReader read(icc_traj_pert_path);
@@ -375,12 +376,12 @@ void processNormalKeys(unsigned char key, int x, int y)
 				vis_data.push_back(temp_worlds.back());
 				cout << "Trajectory loading was sucessful. Putting last state into the trajectory." << endl;
 			} else {
-				assert(0);
+        break;
 			}
 		}	
 		setVisualizationData(vis_data);
 		
-		TrajectoryRecorder rec("c8_last_states");
+		TrajectoryRecorder rec("c2_last_states");
 		rec.start();
 		for (int i=0; i<vis_data.size(); i++) {
 			rec.writeWorldToFile(vis_data[i]);
@@ -410,10 +411,13 @@ void processNormalKeys(unsigned char key, int x, int y)
   	
   	vector<vector<double> > dof_perts;
   	vector<double> scale;
-  	scale.push_back(-2.0);
-  	scale.push_back(-4.0);
-  	scale.push_back(2.0);
-  	scale.push_back(4.0);
+  	//scale.push_back(-2.0);
+  	//scale.push_back(-4.0);
+  	//scale.push_back(2.0);
+    for (int i = -10; i <= 10; i+=2) {
+      scale.push_back(i); 
+    }
+
   	
   	for (int scale_ind = 0; scale_ind < scale.size(); scale_ind++) {
 			for (int dof = 0; dof < 12; dof++) {
@@ -422,8 +426,11 @@ void processNormalKeys(unsigned char key, int x, int y)
 				dof_perts.push_back(dof_pert);
 			}
 		}
-  	
-		for (int p = 0; p < dof_perts.size(); p++)
+    
+    for (int p = 10; p < 12; p++) 
+
+		//for (int p = 0; p < dof_perts.size(); p++)
+    //for (int p = 1; p < 2; p++)
 		{
 			//load initial condition from a worlds trajectory
 			vector<World*> temp_worlds;
@@ -435,30 +442,32 @@ void processNormalKeys(unsigned char key, int x, int y)
 			}
 			
 			char *ic_pert_path = new char[256];
-  		sprintf(ic_pert_path, "%s%s%s%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f", "environmentFiles/ic/ic_", dstFileName, "_dof_",
+  		sprintf(ic_pert_path, "%s%s%s%d%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f", "environmentFiles/ic/ic_", dstFileName, "_dof_", p,
   													dof_perts[p][0], dof_perts[p][1], dof_perts[p][2], dof_perts[p][3], dof_perts[p][4], dof_perts[p][5],
   												  dof_perts[p][6], dof_perts[p][7], dof_perts[p][8], dof_perts[p][9], dof_perts[p][10], dof_perts[p][11]);
   		char *icc_traj_pert_path = new char[256];
-  		sprintf(icc_traj_pert_path, "%s%s%s%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f", "environmentFiles/icc_traj/traj_", dstFileName, "_dof_",
+  		sprintf(icc_traj_pert_path, "%s%s%s%d%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f", "environmentFiles/icc_traj/traj_", dstFileName, "_dof_", p,
   													dof_perts[p][0], dof_perts[p][1], dof_perts[p][2], dof_perts[p][3], dof_perts[p][4], dof_perts[p][5],
   												  dof_perts[p][6], dof_perts[p][7], dof_perts[p][8], dof_perts[p][9], dof_perts[p][10], dof_perts[p][11]);
 			
 			//perturb initial condition
 			Control ctrl0(Vector3d::Zero(), Matrix3d::Identity());
 			ctrl0.setTranslate(Vector3d(dof_perts[p][0],dof_perts[p][1],dof_perts[p][2]));
-			ctrl0.setRotate((Matrix3d) (AngleAxisd(dof_perts[p][3]*2.0*M_PI/180.0, (temp_worlds[0]->cursorAtIndex(0)->getRotation()).col(0))
-											* AngleAxisd(dof_perts[p][4]*2.0*M_PI/180.0, (temp_worlds[0]->cursorAtIndex(0)->getRotation()).col(1))
-											* AngleAxisd(dof_perts[p][5]*2.0*M_PI/180.0, (temp_worlds[0]->cursorAtIndex(0)->getRotation()).col(2))));
+			ctrl0.setRotate((Matrix3d) (AngleAxisd(dof_perts[p][3]*4.0*M_PI/180.0, (temp_worlds[0]->cursorAtIndex(0)->getRotation()).col(0))
+											* AngleAxisd(dof_perts[p][4]*4.0*M_PI/180.0, (temp_worlds[0]->cursorAtIndex(0)->getRotation()).col(1))
+											* AngleAxisd(dof_perts[p][5]*4.0*M_PI/180.0, (temp_worlds[0]->cursorAtIndex(0)->getRotation()).col(2))));
 			
 			Control ctrl1(Vector3d::Zero(), Matrix3d::Identity());
 			ctrl1.setTranslate(Vector3d(dof_perts[p][6],dof_perts[p][7],dof_perts[p][8]));
-			ctrl1.setRotate((Matrix3d) (AngleAxisd(dof_perts[p][9]*2.0*M_PI/180.0, (temp_worlds[0]->cursorAtIndex(1)->getRotation()).col(0))
-											* AngleAxisd(dof_perts[p][10]*2.0*M_PI/180.0, (temp_worlds[0]->cursorAtIndex(1)->getRotation()).col(1))
-											* AngleAxisd(dof_perts[p][11]*2.0*M_PI/180.0, (temp_worlds[0]->cursorAtIndex(1)->getRotation()).col(2))));
+			ctrl1.setRotate((Matrix3d) (AngleAxisd(dof_perts[p][9]*4.0*M_PI/180.0, (temp_worlds[0]->cursorAtIndex(1)->getRotation()).col(0))
+											* AngleAxisd(dof_perts[p][10]*4.0*M_PI/180.0, (temp_worlds[0]->cursorAtIndex(1)->getRotation()).col(1))
+											* AngleAxisd(dof_perts[p][11]*4.0*M_PI/180.0, (temp_worlds[0]->cursorAtIndex(1)->getRotation()).col(2))));
 						
 			vector<Control*> ctrls;
 			ctrls.push_back(&ctrl0);
 			ctrls.push_back(&ctrl1);
+      World* initialWorld = new World(*temp_worlds[0]);
+      initialWorld->applyRelativeControl(ctrls,false);
 			//temp_worlds[0]->applyRelativeControl(ctrls, false);
 			
 			cout << "Saving initial condition state in " << ic_pert_path << endl;
@@ -487,11 +496,15 @@ void processNormalKeys(unsigned char key, int x, int y)
 				vector<World*> traj_in;
 				traj_in.push_back(new World(*temp_worlds[0]));
 				vector<World*> traj_out; 
-        openLoopController(new World(*temp_worlds[0]), temp_worlds, controls, traj_out);
-        //closedLoopSQPController(new World(*temp_worlds[0]), temp_worlds,
-         //   controls, traj_out);
+        //openLoopController(new World(*initialWorld), temp_worlds, controls, traj_out);
+        char nameString[256];
+        sprintf(nameString, "sqp_%d", p); 
+
+        closedLoopSQPController(new World(*initialWorld), temp_worlds,
+            controls, traj_out, nameString);
 				//openLoopController(traj_in, controls, traj_out);
-				setVisualizationData(traj_out);
+        
+				//setVisualizationData(traj_out);
 			
 				TrajectoryRecorder rec(icc_traj_pert_path); //TODO output world trajectory file generated from control trajectory
 				rec.start();
@@ -499,10 +512,14 @@ void processNormalKeys(unsigned char key, int x, int y)
 					rec.writeWorldToFile(traj_out[i]);
 				}
 				rec.stop();
+        for (int i = 0; i < traj_out.size(); i++) {
+          delete traj_out[i];
+        }
 			} else {
 				cout << "Failed to load trajectory. Specified file might not exist." << endl;
 				assert(0);
 			}
+
 			
 		}
 	} else if(key == 'l') {

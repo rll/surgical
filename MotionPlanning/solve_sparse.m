@@ -28,8 +28,8 @@ goal_state = b(end-size_each_state+1: end);
 
 %num_points = (size_each_state-1)/3;
 
-translation_control_constraint = 2e-1;
-rotation_control_constraint = 2e-2;
+translation_control_constraint = 5e-2;
+rotation_control_constraint = 5e-3;
 control_weights = zeros(size_each_control*(num_threads-1), 1);
 
 for i = 1:3
@@ -43,7 +43,7 @@ end
 %consectuve_state_diff_weight = zeros(100,1);
 
 cvx_solver sdpt3
-cvx_begin
+cvx_begin quiet
     variable x(A_n)
     %variable u((num_threads-1))
     %variable consecutive_state_diff(num_threads)
@@ -54,7 +54,7 @@ cvx_begin
     %minimize (square_pos(norm(A*x - b)) + 2*sum(sum(reshape(x((num_threads-2)*size_each_state+1:end), num_threads-1, size_each_control).^2,2)));
   
     %minimize(norm(A*x-b))
-    minimize(norm(A*x-b) + 0.001 * norm(control_weights.*u_block,1) + 0.01*norm(consecutive_control_diff,2))
+    minimize(norm(A*x-b) + 0.001 * norm(control_weights.*u_block,1) + 0.0001*norm(consecutive_control_diff,2))
 
     %minimize(norm(forward_scores) + 0.001*norm(u_block,1) + 0.1*norm(consecutive_control_diff, 2))
     %minimize(norm(forward_scores))
