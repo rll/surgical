@@ -73,7 +73,8 @@ class ThreadConstrained {
 		void writeToFile(ofstream& file);
 		ThreadConstrained(ifstream& file, World* w);
 		
-		int numVertices() { return num_vertices; }
+		int numVertices();
+		void checkNumVertices();
 		void get_thread_data(vector<Vector3d> &absolute_points);
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<double> &absolute_twist_angles);
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<double> &absolute_twist_angles, vector<Matrix3d> &absolute_material_frames);
@@ -81,7 +82,7 @@ class ThreadConstrained {
 		// parameters have to be of the right size, i.e. threads.size()+1
 		void getConstrainedTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations);
 		void setConstrainedTransforms(vector<Vector3d> positions, vector<Matrix3d> rotations);
-		void setConstrainedTransforms(int constraint_int, Vector3d position, Matrix3d rotation);
+		void updateRotationOffset(int constraint_ind, Matrix3d rotation);
 		void getAllTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations);
 		void setAllTransforms(vector<Vector3d> positions, vector<Matrix3d> rotations);
 		// parameters have to be of the right size.
@@ -101,10 +102,14 @@ class ThreadConstrained {
 		void minimize_energy();
 		void adapt_links();
 		void updateConstraints (vector<Vector3d> poss, vector<Matrix3d> rots);
+		void updateConstrainedTransform(int constraint_ind, Vector3d& pos, Matrix3d& rot);
+		void getConstrainedTransform(int constraint_ind, Vector3d& pos, Matrix3d& rot);
+		const Vector3d& positionAtConstraint(int constraint_ind) const;
+		const Matrix3d& rotationAtConstraint(int constraint_ind) const;
 		void applyMotionAtConstraints(vector<Vector3d> translations, vector<Matrix3d> rotations);
 		void applyControl(const VectorXd& u);
 		void getState(VectorXd& state);
-		void addConstraint (int absolute_vertex_num);
+		int addConstraint (int absolute_vertex_num);
 		void removeConstraint (int absolute_vertex_num);
 		// Returns the number of the vertex that is nearest to pos. The chosen vertex have to be a free operable vertex.
 		int nearestVertex(Vector3d pos);
@@ -121,7 +126,7 @@ class ThreadConstrained {
 
 
 
-	private:
+	//private:
 		int num_vertices;
 		vector<Thread*> threads;
 		double zero_angle;

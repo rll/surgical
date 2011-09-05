@@ -95,6 +95,27 @@ double cost_metric(World* a, World* b) {
   return l2PointsDifference(a,b);
 }
 
+void openLoopController(World* start, vector<World*> follow_traj,
+vector<vector<Control*> >& controls_in, vector<World*>& traj_out) { 
+  World* world = new World(*start);
+  boost::progress_display progress(controls_in.size());
+
+  for (int i = 0; i < controls_in.size(); i++) {
+    traj_out.push_back(new World(*world));
+    double c0 = cost_metric(world, follow_traj[i]);
+    if (c0 > 0.01)
+    	cout << c0 << endl;
+    world->applyRelativeControl(controls_in[i], true);
+    ++progress; 
+
+  }
+  traj_out.push_back(new World(*world));
+  double c = cost_metric(world, follow_traj.back());
+  if (c > 0.01)
+  	cout << c << endl; 
+
+}
+
 void getTrajectoryStatistics(vector<World*>& worlds) {
   // curvature
   // energy
@@ -110,7 +131,7 @@ void getTrajectoryStatistics(vector<World*>& worlds) {
 
   for (int i = 0; i < worlds.size(); i++) { 
     vector<ThreadConstrained*> world_threads;
-    worlds[i]->getThreads(world_threads); // not copies, so don't mess with it
+    worlds[i]->getObjects<ThreadConstrained>(world_threads); // not copies, so don't mess with it
     //for (int j = 0; j < world_threads.size(); j++) {
     for (int j = 0; j < 1; j++) {
       vector<Thread*> threads;
