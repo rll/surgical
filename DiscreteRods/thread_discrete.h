@@ -137,6 +137,7 @@ class Thread
     void copy_data_from_vector(VectorXd& toCopy);
     void applyControl(const VectorXd& u);
     void getState(VectorXd& state);
+    void setState(VectorXd& state); 
     
     //void project_length_constraint_old();
     bool project_length_constraint(int recursive_depth=250);

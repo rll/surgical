@@ -468,23 +468,29 @@ void World::getStateForJacobian(VectorXd& world_state) {
     VectorXd state;
     threads[i]->getState(state);
     states.push_back(state); 
-    state_size += state.size();  
+    state_size += state.size();
+    
+    // to verify state.size is correct, require state.size() == state(0)
+    assert(state(0) == state.size());
   }
- 
+
   
   for (int i = 0; i < cursors.size(); i++) { 
-    //if (cursors[i]->isAttached()) {
+    if (cursors[i]->isAttached()) {
       VectorXd state;
       //if (!cursors[i]->end_eff->isAttached()) {
         //cout << "WARNING: End Effector is not attached to a thread" << endl;
       //}
       cursors[i]->end_eff->getState(state);
       //cursors[i]->getState(state);
-      for (int i = 0; i < 3; i++) state(i) *= 5;
-      for (int i = 3; i < 6; i++) state(i) *= 50;
+      //for (int i = 0; i < 3; i++) state(i) *= 5;
+      //for (int i = 3; i < 6; i++) state(i) *= 50;
       states.push_back(state); 
       state_size += state.size();
-    //}
+
+      // to verify state.size is correct, require state.size() == state(0)
+      assert(state(0) == state.size());
+    }
   }  
   
   
@@ -497,6 +503,42 @@ void World::getStateForJacobian(VectorXd& world_state) {
   }
 
 }
+
+void World::setStateForJacobian(VectorXd& world_state) {
+  int ind = 0; 
+  for (int i = 0; i < threads.size(); i++) {
+    VectorXd state;
+    state = world_state.segment(ind, world_state(ind));
+    threads[i]->setState(state);
+    ind += state.size();
+  }
+
+  for (int i = 0; i < cursors.size(); i++) {
+    if(cursors[i]->isAttached()) {
+      VectorXd state;
+      state = world_state.segment(ind, world_state(ind));
+      cursors[i]->setState(state);
+      cursors[i]->end_eff->setState(state);
+      ind += state.size(); 
+    }
+  }
+
+  assert(ind == world_state.size());
+
+}
+
+void World::projectLegalState() {
+  for (int i = 0; i < threads.size(); i++) {
+    vector<Thread*> ind_threads;
+    threads[i]->getThreads(ind_threads); 
+    for (int t = 0; t < ind_threads.size(); t++) {
+      //ind_threads[t]->unviolate_total_length_constraint();
+      ind_threads[t]->project_length_constraint();
+      ind_threads[t]->minimize_energy();
+    }
+  }
+}
+
 
 void World::computeJacobian(MatrixXd& J) { 
   VectorXd world_state;

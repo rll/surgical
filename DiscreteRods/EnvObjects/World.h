@@ -90,7 +90,9 @@ class World
     void printStates();
 
     // Jacobian
-    void getStateForJacobian(VectorXd& world_state); 
+    void getStateForJacobian(VectorXd& world_state);
+    void setStateForJacobian(VectorXd& world_state);
+    void projectLegalState();
     void computeJacobian(MatrixXd& J); 
     
 		

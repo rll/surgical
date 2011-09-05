@@ -33,7 +33,7 @@ double l2PointsDifference(VectorXd& a, VectorXd& b) {
     diff(i) = fabs(diff(i)); 
   }
 
-  for (int i = 0; i < 3; i++) {
+  /*for (int i = 0; i < 3; i++) {
     int ind = diff.size() - 1 - i;
     if (diff(ind) > angle_weight * M_PI) {
       diff(ind) = 2 * angle_weight * M_PI - diff(ind);
@@ -42,7 +42,7 @@ double l2PointsDifference(VectorXd& a, VectorXd& b) {
     if (diff(ind) > angle_weight * M_PI) {
       diff(ind) = 2 * angle_weight * M_PI - diff(ind); 
     }
-  }
+  }*/
   return diff.norm();
 }
 
@@ -184,7 +184,7 @@ void closedLoopSQPController(World* start, vector<World*> follow_traj, vector<ve
 
   //TODO: FIX NAMESTRING
   //want to minimize actual_i - follow_traj[i]
-  int num_sqp_worlds = 30;
+  int num_sqp_worlds = 10;
   double sqp_init_norm = 1e-1;
   double sqp_error_to_break = 1e-1;
   World* start_copy = new World(*start);
@@ -236,7 +236,7 @@ void closedLoopSQPController(World* start, vector<World*> follow_traj, vector<ve
 }
 
 /* This is broken... don't use it */ 
-void closedLoopLeastSquaresController(World* start, vector<World*> follow_traj, vector<vector<Control*> >& controls_in, vector<World*>& traj_out) {
+/*void closedLoopLeastSquaresController(World* start, vector<World*> follow_traj, vector<vector<Control*> >& controls_in, vector<World*>& traj_out) {
 
   //TODO: FIX NAMESTRING
   //want to minimize actual_i - follow_traj[i]
@@ -268,7 +268,7 @@ void closedLoopLeastSquaresController(World* start, vector<World*> follow_traj, 
     ++progress; 
 
   }
-}
+}*/
 
 void getTrajectoryStatistics(vector<World*>& worlds) {
   // curvature

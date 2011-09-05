@@ -89,18 +89,35 @@ public:
 
   virtual void getState(VectorXd& state)
   {
-  	state.resize(6);
+  	state.resize(7);
   	double angZ, angY, angX;
+    int ind = 0; 
+    state(ind) = 7;
+    ind += 1;
   	euler_angles_from_rotation(rotation, angZ, angY, angX);
   	for (int i = 0; i < 3; i++) {
-  		state(i) = position(i);
+  		state(i+ind) = position(i);
   	}
+    ind += 3; 
     //state.segment(3, 3) = 50 * rotation.col(0);
-  	state(3) = angZ;
-  	state(4) = angY;
-  	state(5) = angX;
+  	state(ind+0) = angZ;
+  	state(ind+1) = angY;
+  	state(ind+2) = angX;
+  }
+
+  virtual void setState(VectorXd& state) 
+  {
+    assert(state(0) == state.size());
+    double angZ, angY, angX;
+    Matrix3d rot;
+    Vector3d pos; 
+    pos(0) = state(1);
+    pos(1) = state(2);
+    pos(2) = state(3); 
+    rotation_from_euler_angles(rot, state(4), state(5), state(6));
+
+    setTransform(pos, rot); 
   }  
-    
   /*virtual void applyControl(const VectorXd& u)
 	{
 		double max_ang = max( max(abs(u(3)), abs(u(4))), abs(u(5)));
