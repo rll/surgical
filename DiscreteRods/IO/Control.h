@@ -34,6 +34,8 @@ public:
 	~Control();
 	
 	void setControl(ControllerBase* controller);
+	void setTranslate(const Vector3d& t);
+	void setRotate(const Matrix3d& r);
 	void getControlVector(VectorXd& control);
 	void setInitialTransform(const Vector3d& pos, const Matrix3d& rot);
 	void setNoMotion();

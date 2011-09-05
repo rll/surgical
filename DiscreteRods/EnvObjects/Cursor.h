@@ -1,11 +1,9 @@
 #ifndef _Cursor_h
 #define _Cursor_h
 
-#include "EndEffector.h"
+#include "EnvObject.h"
 
 class EndEffector;
-
-class World;
 
 class Cursor
 {
@@ -16,6 +14,10 @@ class Cursor
 		Cursor(const Vector3d& pos, const Matrix3d& rot, World* w = NULL, EndEffector* ee = NULL);
 		Cursor(const Cursor& rhs, World* w);
 		~Cursor();
+		
+		//saving and loading from and to file
+		void writeToFile(ofstream& file);
+		Cursor(ifstream& file, World* w);
 
 		void setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_displacement = false);
 		const Vector3d& getPosition() const;
@@ -35,18 +37,37 @@ class Cursor
 
     void getState(VectorXd& state)
     {
-      state.resize(6);
+      state.resize(7);
       double angZ, angY, angX;
+      int ind = 0; 
+      state(ind) = 7;
+      ind += 1;
       euler_angles_from_rotation(rotation, angZ, angY, angX);
       for (int i = 0; i < 3; i++) {
-        state(i) = position(i);
+        state(i+ind) = position(i);
       }
-      state(3) = angZ;
-      state(4) = angY;
-      state(5) = angX;
+      ind += 3; 
+      //state.segment(3, 3) = 50 * rotation.col(0);
+      state(ind+0) = angZ;
+      state(ind+1) = angY;
+      state(ind+2) = angX;
+    }
+
+    void setState(VectorXd& state) 
+    {
+      assert(state(0) == state.size());
+      double angZ, angY, angX;
+      Matrix3d rot;
+      Vector3d pos; 
+      pos(0) = state(1);
+      pos(1) = state(2);
+      pos(2) = state(3); 
+      rotation_from_euler_angles(rot, state(4), state(5), state(6));
+
+      setTransform(pos, rot); 
     }  
 		
-		static const double height = 3.0;
+    static const double height = 3.0;
 		static const double radius = 2.0;
 		
 	protected:
@@ -55,6 +76,7 @@ class Cursor
 		World* world; //TODO ensure it is initialized properly
 		EndEffector* end_eff;
 		bool open;
+		object_type type;
 };
 
 #endif

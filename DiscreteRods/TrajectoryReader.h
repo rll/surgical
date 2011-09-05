@@ -38,7 +38,7 @@ class TrajectoryReader
 		void setFileName(const char* fileName);
 		
 		bool readWorldsFromFile(vector<World*>& worlds);
-		bool readControlsFromFile(vector<Control*>& controls);
+		bool readControlsFromFile(vector<vector<Control*> >& controls);
 	
 	private:
 		char _fileName[256];

@@ -1,21 +1,13 @@
 #include "World.h"
-#include "EnvObject.h"
-#include "Capsule.h"
-#include "Cursor.h"
-#include "EndEffector.h"
-#include "InfinitePlane.h"
-#include "TexturedSphere.h"
 #include "../thread_discrete.h"
-#include "../IO/Control.h"
-#include "../IO/ControllerBase.h"
 #include "../ThreadConstrained.h"
 
 World::World()
 {
 	//any of these pushes two threads into threads.
-	initThread();
+	//initThread();
   //initLongerThread();
-  //initRestingThread();
+  initRestingThread();
 	
 	//setting up control handles
 	cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));
@@ -27,32 +19,36 @@ World::World()
 	objs.push_back(plane);
 	//objs.push_back(new TexturedSphere(Vector3d::Zero(), 150.0, "../utils/textures/checkerBoardRect16.bmp", this));
 	
+	//objs.push_back(new Box(plane->getPosition() + Vector3d(0.0, 15.0, 0.0), Matrix3d::Identity(), Vector3d(15,15,15), 0.0, 0.5, 0.7, this));
+	
+	//objs.push_back(new Needle(plane->getPosition() + Vector3d(0.0, 15.0, 0.0), Matrix3d::Identity(), 150.0, 5.0, 0.3, 0.3, 0.3, this));
+	
 	//setting up end effectors
 	vector<Vector3d> positions;
 	vector<Matrix3d> rotations;
 	threads[0]->getConstrainedTransforms(positions, rotations);
 	
 	objs.push_back(new EndEffector(positions[0], rotations[0], this, threads[0], 0));
-	assert((dynamic_cast<EndEffector*>(objs.back()))->constraint_ind == 0);
+	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 0);
 
 	objs.push_back(new EndEffector(positions[1], rotations[1], this, threads[0], threads[0]->numVertices()-1));
-	assert((dynamic_cast<EndEffector*>(objs.back()))->constraint_ind == 1);
+	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
 
 	threads[1]->getConstrainedTransforms(positions, rotations);
 	
 	objs.push_back(new EndEffector(positions[0], rotations[0], this, threads[1], 0));
-	assert((dynamic_cast<EndEffector*>(objs.back()))->constraint_ind == 0);
+	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 0);
 	
 	objs.push_back(new EndEffector(positions[1], rotations[1], this, threads[1], threads[1]->numVertices()-1));
-	assert((dynamic_cast<EndEffector*>(objs.back()))->constraint_ind == 1);
+	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
 	
 	objs.push_back(new EndEffector(plane->getPosition() + Vector3d(30.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()), this));
-	assert((dynamic_cast<EndEffector*>(objs.back()))->constraint_ind == -1);
-	assert((dynamic_cast<EndEffector*>(objs.back()))->constraint == -1);
+	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == -1);
+	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint == -1);
 	
 	objs.push_back(new EndEffector(plane->getPosition() + Vector3d(35.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()), this));
-	assert((dynamic_cast<EndEffector*>(objs.back()))->constraint_ind == -1);
-	assert((dynamic_cast<EndEffector*>(objs.back()))->constraint == -1);
+	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == -1);
+	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint == -1);
 
 	initializeThreadsInEnvironment();
 }
@@ -69,17 +65,27 @@ World::World(const World& rhs)
     {
       case END_EFFECTOR:
         {
-          objs.push_back(new EndEffector(*(dynamic_cast<EndEffector*>(rhs.objs[i])), this));
+          objs.push_back(new EndEffector(*(TYPE_CAST<EndEffector*>(rhs.objs[i])), this));
           break;
         }
       case INFINITE_PLANE:
         {
-          objs.push_back(new InfinitePlane(*(dynamic_cast<InfinitePlane*>(rhs.objs[i])), this));
+          objs.push_back(new InfinitePlane(*(TYPE_CAST<InfinitePlane*>(rhs.objs[i])), this));
           break;
         }
       case TEXTURED_SPHERE:
         {
-          objs.push_back(new TexturedSphere(*(dynamic_cast<TexturedSphere*>(rhs.objs[i])), this));
+          objs.push_back(new TexturedSphere(*(TYPE_CAST<TexturedSphere*>(rhs.objs[i])), this));
+          break;
+        }
+      case BOX:
+        {
+          objs.push_back(new Box(*(TYPE_CAST<Box*>(rhs.objs[i])), this));
+          break;
+        }
+      case NEEDLE:
+        {
+          objs.push_back(new Needle(*(TYPE_CAST<Needle*>(rhs.objs[i])), this));
           break;
         }
       default:
@@ -109,6 +115,9 @@ void World::writeToFile(ofstream& file)
   
   for (int i = 0; i < objs.size(); i++)
     objs[i]->writeToFile(file);
+    
+  for (int i = 0; i < cursors.size(); i++)
+    cursors[i]->writeToFile(file);
   
   file << NO_OBJECT << " ";
   file << "\n";
@@ -117,13 +126,16 @@ void World::writeToFile(ofstream& file)
 World::World(ifstream& file)
 {
   //setting up control handles
-	cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));
-	cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));	
+	//cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));
+	//cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));	
   
   int type;
-  
+  //cout << "type: " ;
   while (!file.eof()) {
-    file >> type;
+  	double dtype;
+    file >> dtype;
+    //cout << dtype << " ";
+    type = dtype;
     switch (type)
     {
       case THREAD_CONSTRAINED:
@@ -146,12 +158,39 @@ World::World(ifstream& file)
           objs.push_back(new TexturedSphere(file, this));
           break;
         }
+      case BOX:
+        {
+          objs.push_back(new Box(file, this));
+          break;
+        }
+      case NEEDLE:
+        {
+          objs.push_back(new Needle(file, this));
+          break;
+        }
+      case CURSOR:
+      	{
+      		cursors.push_back(new Cursor(file, this));
+          break;
+      	}
+      case NO_OBJECT:
+      	{
+      		break;
+      	}
+      default:
+      	{
+      		assert(0);
+      		break;
+      	}
     }
     if (type == NO_OBJECT) { break; }
   }
+  //cout << endl;
   
   initializeThreadsInEnvironment();
 }
+
+//threadOwner_localVertex_test
 
 /*void World::addThread(ThreadConstrained* thread)
 {
@@ -164,88 +203,11 @@ void World::addEnvObj(EnvObject* obj)
 	objs.push_back(obj);
 }*/
 
-void World::getEnvObjs(vector<EnvObject*>& objects)
-{
-	objects.clear();
-	for (int i=0; i<objs.size(); i++) {
-		objects.push_back(objs[i]);
-	}
-}
-
-void World::getEnvObjs(vector<EnvObject*>& objects, object_type type)
-{
-	objects.clear();
-	for (int i=0; i<objs.size(); i++) {
-		if (objs[i]->getType() == type)
-			objects.push_back(objs[i]);
-	}
-}
-
-/*EnvObject* World::getEnvObj(int ind, object_type type)
-{	
-	assert(0); //TODO verify it works;
-	for (int i=0; i<objs.size(); i++) {
-		if (objs[i]->getType() == type) {
-			if (ind == 0)
-			 	return objs[i];
-			else if
-				ind--;
-		}
-	}
-	assert(0); //ind was out of bounds for that particulat type of object
-}*/
-
-void World::getThreads(vector<ThreadConstrained*>& ths)
-{
-	ths.clear();
-	for (int i=0; i<threads.size(); i++) {
-		ths.push_back(threads[i]);
-	}
-}
-
-Cursor* World::cursorAtIndex(int ind)
-{
-	assert((ind >= 0) && (ind < cursors.size()));
-	return cursors[ind];
-}
-
-int World::threadIndex(ThreadConstrained* thread)
-{	
-	int i;
-	for (i=0; i<threads.size() && threads[i]!=thread; i++) {}
-	if (i == threads.size())
-		return -1;	
-	return i;
-}
-
-ThreadConstrained* World::threadAtIndex(int thread_ind)
-{
-	assert((thread_ind >= -1) && (thread_ind < (int)threads.size()));
-	if (thread_ind == -1)
-		return NULL;
-	return threads[thread_ind];
-}
-
-int World::envObjIndex(EnvObject* env_obj)
-{
-	int i;
-	for (i=0; i<objs.size() && objs[i]!=env_obj; i++) {}
-	assert(i!=objs.size());
-	return i;
-}
-
-EnvObject* World::envObjAtIndex(int env_obj_ind)
-{
-	assert(env_obj_ind >= 0 && env_obj_ind < objs.size());
-	return objs[env_obj_ind];
-}
 
 // Updates the threads_in_env variable of every Thread object in the world (i.e. every Thread of every ThreadConstrained in the world). This variable is used for thread-thread collisions.
 void World::initializeThreadsInEnvironment()
 {
-	vector<ThreadConstrained*> all_thread_constrained;
-	getThreads(all_thread_constrained);
-	
+	vector<ThreadConstrained*> all_thread_constrained = threads;	
 	vector<Thread*> all_threads;
 	for (int k=0; k<all_thread_constrained.size(); k++) {
 		ThreadConstrained* thread_constrained = all_thread_constrained[k];
@@ -265,37 +227,47 @@ void World::initializeThreadsInEnvironment()
 
 EndEffector* World::closestEndEffector(Vector3d tip_pos)
 {
-	vector<EnvObject*> ee_env_objs;
-	getEnvObjs(ee_env_objs, END_EFFECTOR);
 	vector<EndEffector*> end_effectors;
-	for (int i=0; i<ee_env_objs.size(); i++) {
-		end_effectors.push_back(dynamic_cast<EndEffector*>(ee_env_objs[i]));
-	}	
-	int min_ee_ind;
-	for (min_ee_ind = 0; min_ee_ind < end_effectors.size(); min_ee_ind++) {
-		bool isCursorNotAttachedToEE = cursors[0]->end_eff!=end_effectors[min_ee_ind];
-		for (int cursor_ind = 1; cursor_ind < cursors.size(); cursor_ind++) {
-			isCursorNotAttachedToEE = isCursorNotAttachedToEE && cursors[cursor_ind]->end_eff!=end_effectors[min_ee_ind];
-		}		
-		if (isCursorNotAttachedToEE)
-			break;
-	}	
-	assert(min_ee_ind != end_effectors.size()); //There is no any end effectors that is not being holded by a cursor
-	float min_squared_dist = (tip_pos - end_effectors[min_ee_ind]->getPosition()).squaredNorm();
+	getObjects<EndEffector>(end_effectors);
+	int min_ee_ind = 0;
+	double min_squared_dist = (tip_pos - end_effectors[min_ee_ind]->getPosition()).squaredNorm();
 	for (int ee_ind = 1; ee_ind < end_effectors.size(); ee_ind++) {
-		float squared_dist = (tip_pos - end_effectors[ee_ind]->getPosition()).squaredNorm();
+		double squared_dist = (tip_pos - end_effectors[ee_ind]->getPosition()).squaredNorm(); 
 		if (squared_dist < min_squared_dist) {
-			bool isCursorNotAttachedToEE = cursors[0]->end_eff!=end_effectors[min_ee_ind];
-			for (int cursor_ind = 1; cursor_ind < cursors.size(); cursor_ind++) {
-				isCursorNotAttachedToEE = isCursorNotAttachedToEE && cursors[cursor_ind]->end_eff!=end_effectors[min_ee_ind];
-			}
-			if (isCursorNotAttachedToEE) {
-				min_squared_dist = squared_dist;
-				min_ee_ind = ee_ind;
-			}
-		}				
+			min_ee_ind = ee_ind;
+			min_squared_dist = squared_dist;
+		}
 	}
 	return end_effectors[min_ee_ind];
+	
+	//TODO don't return an end effector that already has cursor attached to it	
+//	vector<EndEffector*> end_effectors;
+//	getObjects<EndEffector>(end_effectors);
+//	int min_ee_ind;
+//	for (min_ee_ind = 0; min_ee_ind < end_effectors.size(); min_ee_ind++) {
+//		bool isCursorNotAttachedToEE = cursors[0]->end_eff!=end_effectors[min_ee_ind];
+//		for (int cursor_ind = 1; cursor_ind < cursors.size(); cursor_ind++) {
+//			isCursorNotAttachedToEE = isCursorNotAttachedToEE && cursors[cursor_ind]->end_eff!=end_effectors[min_ee_ind];
+//		}		
+//		if (isCursorNotAttachedToEE)
+//			break;
+//	}	
+//	assert(min_ee_ind != end_effectors.size()); //There is no any end effectors that is not being holded by a cursor
+//	float min_squared_dist = (tip_pos - end_effectors[min_ee_ind]->getPosition()).squaredNorm();
+//	for (int ee_ind = 1; ee_ind < end_effectors.size(); ee_ind++) {
+//		float squared_dist = (tip_pos - end_effectors[ee_ind]->getPosition()).squaredNorm();
+//		if (squared_dist < min_squared_dist) {
+//			bool isCursorNotAttachedToEE = cursors[0]->end_eff!=end_effectors[min_ee_ind];
+//			for (int cursor_ind = 1; cursor_ind < cursors.size(); cursor_ind++) {
+//				isCursorNotAttachedToEE = isCursorNotAttachedToEE && cursors[cursor_ind]->end_eff!=end_effectors[min_ee_ind];
+//			}
+//			if (isCursorNotAttachedToEE) {
+//				min_squared_dist = squared_dist;
+//				min_ee_ind = ee_ind;
+//			}
+//		}				
+//	}
+//	return end_effectors[min_ee_ind];
 }
 
 void World::clearObjs()
@@ -321,47 +293,72 @@ void World::clearObjs()
 
 void World::draw(bool examine_mode)
 {
-	for (int i = 0; i<cursors.size(); i++)
-		cursors[i]->draw();
-	for (int i = 0; i<threads.size(); i++)
-		threads[i]->draw(examine_mode);
-	for (int i = 0; i<objs.size(); i++)
-		objs[i]->draw();
+//	for (int i = 0; i<cursors.size(); i++)
+//		cursors[i]->draw();
+//	for (int i = 0; i<threads.size(); i++)
+//		threads[i]->draw(examine_mode);
+//	for (int i = 0; i<objs.size(); i++)
+//		objs[i]->draw();
+	
+	if (examine_mode) {
+		for (int i = 0; i<threads.size(); i++)
+			threads[i]->draw(examine_mode);
+	} else {
+		for (int i = 0; i<cursors.size(); i++)
+			cursors[i]->draw();
+		for (int i = 0; i<threads.size(); i++)
+			threads[i]->draw(examine_mode);
+		for (int i = 0; i<objs.size(); i++)
+			objs[i]->draw();
+	}	
 }
 
 void World::setTransformFromController(const vector<ControllerBase*>& controllers, bool limit_displacement)
 {
 	assert(cursors.size() == controllers.size());
 	for (int i = 0; i < cursors.size(); i++) {
-		Cursor* cursor = (dynamic_cast<Cursor*>(cursors[i]));
+		Cursor* cursor = cursors[i];
 		cursor->setTransform(controllers[i]->getPosition(), controllers[i]->getRotation(), limit_displacement);
 		if (controllers[i]->hasButtonPressedAndReset(UP))
 			cursor->openClose(limit_displacement);
 		if (controllers[i]->hasButtonPressedAndReset(DOWN))
 			cursor->attachDettach(limit_displacement);
 	}
-	setThreadConstraintsFromEndEffs();
 }
 
-void World::applyRelativeControl(const vector<Control*>& controls, bool limit_displacement)
+double normRand()
+{
+    return ((rand() - RAND_MAX/2.0)/(RAND_MAX/2.0));
+}
+
+void World::applyRelativeControl(const vector<Control*>& controls, double thresh, bool limit_displacement)
 {
 	assert(cursors.size() == controls.size());
 	for (int i = 0; i < cursors.size(); i++) {
-		Cursor* cursor = (dynamic_cast<Cursor*>(cursors[i]));
-		Matrix3d rotate(controls[i]->getRotate());		
-		//const Matrix3d cursor_rot = cursor->rotation * rotate;
-		const Matrix3d cursor_rot = controls[i]->rotation * rotate;
-		const Vector3d cursor_pos = cursor->position + controls[i]->getTranslate() + EndEffector::grab_offset * cursor_rot.col(0);
+		Cursor* cursor = cursors[i];
+    Matrix3d rotate(controls[i]->getRotate());
+    
+    
+    AngleAxisd noise_rot = AngleAxisd(thresh * normRand() * M_PI/180.0,
+        Vector3d(normRand(), normRand(), normRand()).normalized());
+		const Matrix3d cursor_rot = cursor->rotation * rotate * noise_rot;
+
+
+
+    const Vector3d noise_vec = Vector3d(thresh * normRand(),
+                                        thresh * normRand(),
+                                        thresh * normRand());
+		const Vector3d cursor_pos = cursor->position + controls[i]->getTranslate() + EndEffector::grab_offset * cursor_rot.col(0) + noise_vec;
+
+
 		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement);
 		
 		if (controls[i]->getButton(UP))
-			cursor->openClose();
+			cursor->openClose(limit_displacement);
 		if (controls[i]->getButton(DOWN))
-			cursor->attachDettach();
+			cursor->attachDettach(limit_displacement);
 		
-		controls[i]->setNoMotion();
 	}
-	setThreadConstraintsFromEndEffs();
 }
 
 //The control is effectively applied to the tip of the end effector
@@ -369,7 +366,7 @@ void World::applyRelativeControl(const VectorXd& relative_control, bool limit_di
 {
 	assert(cursors.size()*8 == relative_control.size());
 	for (int i = 0; i < cursors.size(); i++) {
-		Cursor* cursor = (dynamic_cast<Cursor*>(cursors[i]));
+		Cursor* cursor = cursors[i];
 		Matrix3d rotation;
 		rotation_from_euler_angles(rotation, relative_control(8*i+3), relative_control(8*i+4), relative_control(8*i+5));
 		const Matrix3d cursor_rot = cursor->rotation * rotation;
@@ -379,11 +376,10 @@ void World::applyRelativeControl(const VectorXd& relative_control, bool limit_di
 		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement);
 		
 		if (relative_control(8*i+6))
-			cursor->openClose();
+			cursor->openClose(limit_displacement);
 		if (relative_control(8*i+7))
-			cursor->attachDettach();
+			cursor->attachDettach(limit_displacement);
 	}
-	setThreadConstraintsFromEndEffs();
 }
 
 void World::applyRelativeControlJacobian(const VectorXd& relative_control) 
@@ -395,44 +391,6 @@ void World::applyRelativeControlJacobian(const VectorXd& relative_control)
   wrapper_control.segment(8, 6) = relative_control.segment(6,6);
 
   applyRelativeControl(wrapper_control);
-
-}
-
-void World::setThreadConstraintsFromEndEffs()
-{
-	vector<EnvObject*> ee_env_objs;
-	getEnvObjs(ee_env_objs, END_EFFECTOR);
-	vector<EndEffector*> end_effectors;
-	for (int i=0; i<ee_env_objs.size(); i++) {
-		end_effectors.push_back(dynamic_cast<EndEffector*>(ee_env_objs[i]));
-	}
-	
-	for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
-		
-		vector<EndEffector*> thread_end_effs;
-		for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++)
-			if (end_effectors[ee_ind]->getThread()==threads[thread_ind])
-				thread_end_effs.push_back(end_effectors[ee_ind]);
-
-		vector<Vector3d> positionConstraints;
-		vector<Matrix3d> rotationConstraints;
-		threads[thread_ind]->getConstrainedTransforms(positionConstraints, rotationConstraints);
-
-		for (int ee_ind = 0; ee_ind < thread_end_effs.size(); ee_ind++) {
-			EndEffector* ee = thread_end_effs[ee_ind];
-			positionConstraints[ee->constraint_ind] = ee->getPosition();
-			rotationConstraints[ee->constraint_ind] = ee->getRotation();
-		}
-
-		threads[thread_ind]->updateConstraints(positionConstraints, rotationConstraints);
-		threads[thread_ind]->getConstrainedTransforms(positionConstraints, rotationConstraints);
-		
-		for (int ee_ind = 0; ee_ind < thread_end_effs.size(); ee_ind++) {
-			EndEffector* ee = thread_end_effs[ee_ind];
-			ee->setTransform(positionConstraints[ee->constraint_ind], rotationConstraints[ee->constraint_ind], false);
-		}
-
-	}
 }
 
 void World::getStates(vector<VectorXd>& states)
@@ -457,22 +415,30 @@ void World::getStateForJacobian(VectorXd& world_state) {
     VectorXd state;
     threads[i]->getState(state);
     states.push_back(state); 
-    state_size += state.size();  
+    state_size += state.size();
+    
+    // to verify state.size is correct, require state.size() == state(0)
+    assert(state(0) == state.size());
   }
- 
+
   
-  /*for (int i = 0; i < cursors.size(); i++) { 
+  for (int i = 0; i < cursors.size(); i++) { 
     if (cursors[i]->isAttached()) {
       VectorXd state;
-      if (!cursors[i]->end_eff->isAttached()) {
-        cout << "WARNING: End Effector is not attached to a thread" << endl;
-      }
+      //if (!cursors[i]->end_eff->isAttached()) {
+        //cout << "WARNING: End Effector is not attached to a thread" << endl;
+      //}
       cursors[i]->end_eff->getState(state);
-      //cursors[i]->getState(state); 
+      //cursors[i]->getState(state);
+      //for (int i = 0; i < 3; i++) state(i) *= 5;
+      //for (int i = 3; i < 6; i++) state(i) *= 50;
       states.push_back(state); 
       state_size += state.size();
+
+      // to verify state.size is correct, require state.size() == state(0)
+      assert(state(0) == state.size());
     }
-  }*/
+  }  
   
   
   //flatten vector<VectorXd> into one long VectorXd
@@ -485,6 +451,42 @@ void World::getStateForJacobian(VectorXd& world_state) {
 
 }
 
+void World::setStateForJacobian(VectorXd& world_state) {
+  int ind = 0; 
+  for (int i = 0; i < threads.size(); i++) {
+    VectorXd state;
+    state = world_state.segment(ind, world_state(ind));
+    threads[i]->setState(state);
+    ind += state.size();
+  }
+
+  for (int i = 0; i < cursors.size(); i++) {
+    if(cursors[i]->isAttached()) {
+      VectorXd state;
+      state = world_state.segment(ind, world_state(ind));
+      cursors[i]->setState(state);
+      cursors[i]->end_eff->setState(state);
+      ind += state.size(); 
+    }
+  }
+
+  assert(ind == world_state.size());
+
+}
+
+void World::projectLegalState() {
+  for (int i = 0; i < threads.size(); i++) {
+    vector<Thread*> ind_threads;
+    threads[i]->getThreads(ind_threads); 
+    for (int t = 0; t < ind_threads.size(); t++) {
+      //ind_threads[t]->unviolate_total_length_constraint();
+      ind_threads[t]->project_length_constraint();
+      ind_threads[t]->minimize_energy();
+    }
+  }
+}
+
+
 void World::computeJacobian(MatrixXd& J) { 
   VectorXd world_state;
   getStateForJacobian(world_state);
@@ -492,13 +494,15 @@ void World::computeJacobian(MatrixXd& J) {
   int size_each_control = 12; 
   J.resize(world_state.size(), size_each_control);
   J.setZero();
-  double eps = 1e-1;
+  double eps = 2*5e-2;
    
   #pragma omp parallel for
   for (int i = 0 ; i < 12; i++) { 
     VectorXd du(12);
     du.setZero(); 
     du(i) = eps;
+    if (i >= 3 && i <= 5) du(i) = 0.1 * eps; 
+    if (i >= 9 && i <= 11) du(i) = 0.1 * eps; 
     World* world_copy = new World(*this); 
     world_copy->applyRelativeControlJacobian(du); 
     VectorXd new_state;
@@ -507,6 +511,8 @@ void World::computeJacobian(MatrixXd& J) {
     delete world_copy;
 
     du(i) = -eps;
+    if (i >= 3 && i <= 5) du(i) = 0.1 * -eps; 
+    if (i >= 9 && i <= 11) du(i) = 0.1 * -eps; 
     world_copy = new World(*this); 
     world_copy->applyRelativeControlJacobian(du); 
     world_copy->getStateForJacobian(new_state);
@@ -580,6 +586,166 @@ void World::capsuleObjectRepulsionEnergyGradient(const Vector3d& start, const Ve
 	}
 }
 
+#if 0
+
+const int maxNumObjects = 4;
+const int numObjects = 2;
+
+GL_Simplex1to4 simplex;
+
+btCollisionObject	objects[maxNumObjects];
+btCollisionWorld*	collisionWorld = 0;
+
+GLDebugDrawer debugDrawer;
+
+
+void	CollisionInterfaceDemo::initPhysics()
+{
+			
+//init
+	btMatrix3x3 basisA;
+	basisA.setIdentity();
+
+	btMatrix3x3 basisB;
+	basisB.setIdentity();
+
+	objects[0].getWorldTransform().setBasis(basisA);
+	objects[1].getWorldTransform().setBasis(basisB);
+
+	btCapsuleShape* capsuleA = new btCapsuleShape(btScalar(1), btScalar(4));
+	capsuleA->setMargin(0.f);
+	
+	btCapsuleShape* capsuleB = new btCapsuleShape(btScalar(1), btScalar(4));
+	capsuleB->setMargin(0.f);
+	
+	objects[0].setCollisionShape(capsuleA);
+	objects[1].setCollisionShape(capsuleB);
+
+	btDefaultCollisionConfiguration* collisionConfiguration = new btDefaultCollisionConfiguration();
+	btCollisionDispatcher* dispatcher = new btCollisionDispatcher(collisionConfiguration);
+	btVector3	worldAabbMin(-1000,-1000,-1000);
+	btVector3	worldAabbMax(1000,1000,1000);
+
+	btAxisSweep3*	broadphase = new btAxisSweep3(worldAabbMin,worldAabbMax);
+	
+	//SimpleBroadphase is a brute force alternative, performing N^2 aabb overlap tests
+	//SimpleBroadphase*	broadphase = new btSimpleBroadphase;
+
+	collisionWorld = new btCollisionWorld(dispatcher,broadphase,collisionConfiguration);
+
+	collisionWorld->addCollisionObject(&objects[0]);
+	collisionWorld->addCollisionObject(&objects[1]);
+
+
+
+//in every iter
+	btVector3	worldBoundsMin,worldBoundsMax;
+	collisionWorld->getBroadphase()->getBroadphaseAabb(worldBoundsMin,worldBoundsMax);
+	
+	if (collisionWorld)
+		collisionWorld->performDiscreteCollisionDetection();
+
+	
+	//Assume collisionWorld->stepSimulation or collisionWorld->performDiscreteCollisionDetection has been called
+	int numManifolds = collisionWorld->getDispatcher()->getNumManifolds();
+	for (i=0;i<numManifolds;i++)
+	{
+		btPersistentManifold* contactManifold = collisionWorld->getDispatcher()->getManifoldByIndexInternal(i);
+		btCollisionObject* obA = static_cast<btCollisionObject*>(contactManifold->getBody0());
+		btCollisionObject* obB = static_cast<btCollisionObject*>(contactManifold->getBody1());
+	
+		int numContacts = contactManifold->getNumContacts();
+		for (int j=0;j<numContacts;j++)
+		{
+			btManifoldPoint& pt = contactManifold->getContactPoint(j);
+
+			if (pt.getDistance()<0.f)
+			{
+				const btVector3& ptA = pt.getPositionWorldOnA();
+				const btVector3& ptB = pt.getPositionWorldOnB();
+				const btVector3& normalOnB = pt.m_normalWorldOnB;
+			}
+
+			glBegin(GL_LINES);
+			glColor3f(0, 0, 0);
+			
+			btVector3 ptA = pt.getPositionWorldOnA();
+			btVector3 ptB = pt.getPositionWorldOnB();
+
+			glVertex3d(ptA.x(),ptA.y(),ptA.z());
+			glVertex3d(ptB.x(),ptB.y(),ptB.z());
+			glEnd();
+		}
+
+		//you can un-comment out this line, and then all points are removed
+		//contactManifold->clearManifold();	
+	}
+
+	//for update transform
+	if ((objects[1].getWorldTransform().getOrigin()).y() > -2)
+			objects[1].getWorldTransform().setOrigin(objects[1].getWorldTransform().getOrigin()+btVector3(0,-0.0005*timeInSeconds,0));
+
+bool World::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Thread_Intersection>& thread_intersections, vector<Intersection>& intersections)
+{   	
+  double found = false; // count of number of intersections
+  Vector3d direction;
+  self_intersections.clear();
+  thread_intersections.clear();
+  intersections.clear();
+
+  //self intersections
+  for(int i = 0; i < _thread_pieces.size() - 3; i++) {
+    //+2 so you don't check the adjacent piece - bug?
+    for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
+      //skip if both ends, since these are constraints
+      if(i == 0 && j == _thread_pieces.size() - 2) 
+        continue;
+      double intersection_dist = self_intersection(i,j,THREAD_RADIUS,direction);
+      if(intersection_dist < 0) {
+        found = true;
+
+        self_intersections.push_back(Self_Intersection(i,j,-intersection_dist,direction));
+      }
+    }
+  }
+	
+	//intersections between threads
+	for (int k=0; k < threads_in_env.size(); k++) {
+		//if (this == threads_in_env[k]) //check
+			//continue;
+		for(int i = 0; i < _thread_pieces.size()-1; i++) {
+	    for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
+	      //skip if both ends, since these are constraints
+	      if((i==0 && j==0) ||
+	      	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
+	      	 (i==_thread_pieces.size()-2 && j==0) ||
+	      	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
+	        continue;
+	      double intersection_dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
+	      if(intersection_dist < 0) {
+	        found = true;
+	        thread_intersections.push_back(Thread_Intersection(i,j,k,-intersection_dist,direction));
+	      }
+	    }
+	  }
+	}
+	bool obj_intersection = false;
+	//object intersections
+  if (world != NULL) {
+		for(int i = 2; i < _thread_pieces.size() - 3; i++) {
+			//found = world->capsuleObjectIntersection(i, _thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS, intersections) || found;
+			bool temp_obj_intersection = world->capsuleObjectIntersection(i, _thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS, intersections);
+			if (temp_obj_intersection) obj_intersection = true;
+			found = temp_obj_intersection || found;
+		}
+  }
+  
+  //if (found || obj_intersection)
+  	//cout << "intersections. obj_intersection = " << obj_intersection << endl;
+
+  return found;
+}
+#endif
 void World::initThread()
 {
   int numInit = 6;
