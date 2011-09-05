@@ -40,7 +40,7 @@
 #include "TrajectoryRecorder.h"
 #include "TrajectoryReader.h"
 
-#define NOISE_THRESHOLD 0.01
+#define NOISE_THRESHOLD 0.0
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
@@ -435,6 +435,7 @@ void processNormalKeys(unsigned char key, int x, int y)
 			//load initial condition from a worlds trajectory
 			vector<World*> temp_worlds;
 			TrajectoryReader read(fullPath_world); //TODO input world trajectory to extract initial condition
+      cout << "reading worlds" << endl;
 			if (read.readWorldsFromFile(temp_worlds)) {
 				cout << "Trajectory loading was sucessful. Using first world as initial condition." << endl;
 			} else {
@@ -533,6 +534,7 @@ void processNormalKeys(unsigned char key, int x, int y)
   		mouse0->setTransform(haptic0);
   		mouse1->setTransform(haptic1);
   	}*/
+
   } else if(key == 'e') {
   	examine_mode = !examine_mode;
   } else if(key == 'w') {

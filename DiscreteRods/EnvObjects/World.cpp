@@ -130,11 +130,11 @@ World::World(ifstream& file)
 	//cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));	
   
   int type;
-  cout << "type: " ;
+  //cout << "type: " ;
   while (!file.eof()) {
   	double dtype;
     file >> dtype;
-    cout << dtype << " ";
+    //cout << dtype << " ";
     type = dtype;
     switch (type)
     {
@@ -185,7 +185,7 @@ World::World(ifstream& file)
     }
     if (type == NO_OBJECT) { break; }
   }
-  cout << endl;
+  //cout << endl;
   
   initializeThreadsInEnvironment();
 }

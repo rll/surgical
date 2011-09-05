@@ -192,7 +192,7 @@ void closedLoopSQPController(World* start, vector<World*> follow_traj, vector<ve
   boost::progress_display progress(controls_in.size());
   for (int i = 0; i < follow_traj.size() - 1; i++) {
 
-    start_copy->applyRelativeControl(controls_in[i], 0.0, true);
+    start_copy->applyRelativeControl(controls_in[i], 0.1, true);
     traj_out.push_back(new World(*start_copy));
 
     cout << "[" << i << ", " << cost_metric(start_copy, follow_traj[i+1]) <<
