@@ -2,6 +2,8 @@
 #include <boost/progress.hpp>
 
 #define MATLAB_INSTALL "matlab"
+#define REINITIALIZE_FROM_SQP_STATES true
+
 
 WorldSQP::WorldSQP(int num_worlds, int size_each_state)
 {
@@ -127,9 +129,32 @@ bool WorldSQP::iterative_control_opt(vector<World*>& trajectory, vector<VectorXd
     double sqp_olc_score = l2PointsDifference(OLTrajectory.back(), trajectory.back());
     cout << "SQP OLC score = " << sqp_olc_score << endl;
     
+#ifdef REINITIALIZE_FROM_SQP_STATES
+    //take sqp takes, transform to real states, and iterate
+    vector<World*> newStates;
+    newStates.resize(trajectory.size());
+    for (int i = 0; i < trajectory.size(); i++) {
+      newStates[i] = new World(*trajectory[i]);
+    }
+
+
+    cout << "Projecting SQP States into Legal States" << endl; 
+    boost::progress_display progress(sqp_intermediate_states.size());
+   
+    #pragma omp parallel for 
+    for (int i = 0; i < sqp_intermediate_states.size(); i++) { 
+      newStates[i+1]->setStateForJacobian(sqp_intermediate_states[i]);
+      newStates[i+1]->projectLegalState();
+      ++progress; 
+    }
+
+    trajectory = newStates;
+
+#else
     //set trajectory = OLTrajectory for next iteration 
     OLTrajectory[OLTrajectory.size()-1] = trajectory[trajectory.size()-1];
     trajectory = OLTrajectory;
+#endif
 
     //if (return_best_opt && sqp_olc_score < threshold) return true; 
     if (return_best_opt && sqp_olc_score < best_score) {

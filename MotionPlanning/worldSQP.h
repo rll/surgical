@@ -72,7 +72,7 @@ class WorldSQP
         diff(i) = fabs(diff(i)); 
       }
 
-      for (int i = 0; i < 3; i++) {
+      /*for (int i = 0; i < 3; i++) {
         int ind = diff.size() - 1 - i;
         if (diff(ind) > angle_weight * M_PI) {
           diff(ind) = 2 * angle_weight * M_PI - diff(ind);
@@ -83,7 +83,7 @@ class WorldSQP
         if (diff(ind) > angle_weight * M_PI) {
           diff(ind) = 2 * angle_weight * M_PI - diff(ind); 
         }
-      }
+      }*/
       return diff.norm();
     }
 

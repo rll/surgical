@@ -427,7 +427,7 @@ void processNormalKeys(unsigned char key, int x, int y)
 			}
 		}
     
-    for (int p = 10; p < 12; p++) 
+    for (int p = 0; p < 12; p++) 
 
 		//for (int p = 0; p < dof_perts.size(); p++)
     //for (int p = 1; p < 2; p++)
@@ -468,8 +468,6 @@ void processNormalKeys(unsigned char key, int x, int y)
 			ctrls.push_back(&ctrl1);
       World* initialWorld = new World(*temp_worlds[0]);
       initialWorld->applyRelativeControl(ctrls,false);
-			//temp_worlds[0]->applyRelativeControl(ctrls, false);
-			
 			cout << "Saving initial condition state in " << ic_pert_path << endl;
 			StateRecorder ic_state_recorder(ic_pert_path);
 		  ic_state_recorder.writeWorldToFile(temp_worlds[0]);
@@ -581,7 +579,6 @@ void processNormalKeys(unsigned char key, int x, int y)
       sqpPlanner(start, goal, completeOpenLoopTrajectory);
     }
     setVisualizationData(completeOpenLoopTrajectory);
-
   } else if (key == '<') { 
     drawInd = max(0, drawInd - 1);
     cout << drawInd << endl; 

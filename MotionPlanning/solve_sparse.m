@@ -43,7 +43,7 @@ end
 %consectuve_state_diff_weight = zeros(100,1);
 
 cvx_solver sdpt3
-cvx_begin quiet
+cvx_begin 
     variable x(A_n)
     %variable u((num_threads-1))
     %variable consecutive_state_diff(num_threads)
