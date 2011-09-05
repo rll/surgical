@@ -102,6 +102,15 @@ bool WorldSQP::iterative_control_opt(vector<World*>& trajectory, vector<VectorXd
     //Read solver output
     File_To_Vector(filename_statevec_thisiter, new_states);
 
+
+    vector<VectorXd> sqp_intermediate_states; 
+    sqp_intermediate_states.resize(_num_worlds-2); 
+    //copy out new states
+    for (int i = 0; i < _num_worlds-2; i++) { 
+      sqp_intermediate_states[i] = new_states.segment(_size_each_state*i, _size_each_state); 
+    }
+
+
     //copy out control
     controls.resize(_num_worlds-1);
     vector<vector<VectorXd> > control_vector;
