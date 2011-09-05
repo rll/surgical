@@ -5,9 +5,9 @@
 World::World()
 {
 	//any of these pushes two threads into threads.
-	initThread();
+	//initThread();
   //initLongerThread();
-  //initRestingThread();
+  initRestingThread();
 	
 	//setting up control handles
 	cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));
@@ -21,7 +21,7 @@ World::World()
 	
 	//objs.push_back(new Box(plane->getPosition() + Vector3d(0.0, 15.0, 0.0), Matrix3d::Identity(), Vector3d(15,15,15), 0.0, 0.5, 0.7, this));
 	
-	objs.push_back(new Needle(plane->getPosition() + Vector3d(0.0, 15.0, 0.0), Matrix3d::Identity(), 150.0, 5.0, 0.3, 0.3, 0.3, this));
+	//objs.push_back(new Needle(plane->getPosition() + Vector3d(0.0, 15.0, 0.0), Matrix3d::Identity(), 150.0, 5.0, 0.3, 0.3, 0.3, this));
 	
 	//setting up end effectors
 	vector<Vector3d> positions;
@@ -34,13 +34,13 @@ World::World()
 	objs.push_back(new EndEffector(positions[1], rotations[1], this, threads[0], threads[0]->numVertices()-1));
 	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
 
-//	threads[1]->getConstrainedTransforms(positions, rotations);
-//	
-//	objs.push_back(new EndEffector(positions[0], rotations[0], this, threads[1], 0));
-//	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 0);
-//	
-//	objs.push_back(new EndEffector(positions[1], rotations[1], this, threads[1], threads[1]->numVertices()-1));
-//	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
+	threads[1]->getConstrainedTransforms(positions, rotations);
+	
+	objs.push_back(new EndEffector(positions[0], rotations[0], this, threads[1], 0));
+	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 0);
+	
+	objs.push_back(new EndEffector(positions[1], rotations[1], this, threads[1], threads[1]->numVertices()-1));
+	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
 	
 	objs.push_back(new EndEffector(plane->getPosition() + Vector3d(30.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()), this));
 	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == -1);
@@ -326,14 +326,31 @@ void World::setTransformFromController(const vector<ControllerBase*>& controller
 	}
 }
 
-void World::applyRelativeControl(const vector<Control*>& controls, bool limit_displacement)
+double normRand()
+{
+    return ((rand() - RAND_MAX/2.0)/(RAND_MAX/2.0));
+}
+
+void World::applyRelativeControl(const vector<Control*>& controls, double thresh, bool limit_displacement)
 {
 	assert(cursors.size() == controls.size());
 	for (int i = 0; i < cursors.size(); i++) {
 		Cursor* cursor = cursors[i];
-		Matrix3d rotate(controls[i]->getRotate());		
-		const Matrix3d cursor_rot = cursor->rotation * rotate;
-		const Vector3d cursor_pos = cursor->position + controls[i]->getTranslate() + EndEffector::grab_offset * cursor_rot.col(0);
+    Matrix3d rotate(controls[i]->getRotate());
+    
+    
+    AngleAxisd noise_rot = AngleAxisd(thresh * normRand() * M_PI/180.0,
+        Vector3d(normRand(), normRand(), normRand()).normalized());
+		const Matrix3d cursor_rot = cursor->rotation * rotate * noise_rot;
+
+
+
+    const Vector3d noise_vec = Vector3d(thresh * normRand(),
+                                        thresh * normRand(),
+                                        thresh * normRand());
+		const Vector3d cursor_pos = cursor->position + controls[i]->getTranslate() + EndEffector::grab_offset * cursor_rot.col(0) + noise_vec;
+
+
 		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement);
 		
 		if (controls[i]->getButton(UP))
@@ -341,7 +358,6 @@ void World::applyRelativeControl(const vector<Control*>& controls, bool limit_di
 		if (controls[i]->getButton(DOWN))
 			cursor->attachDettach(limit_displacement);
 		
-		//controls[i]->setNoMotion();
 	}
 }
 
@@ -360,9 +376,9 @@ void World::applyRelativeControl(const VectorXd& relative_control, bool limit_di
 		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement);
 		
 		if (relative_control(8*i+6))
-			cursor->openClose();
+			cursor->openClose(limit_displacement);
 		if (relative_control(8*i+7))
-			cursor->attachDettach();
+			cursor->attachDettach(limit_displacement);
 	}
 }
 
@@ -375,7 +391,6 @@ void World::applyRelativeControlJacobian(const VectorXd& relative_control)
   wrapper_control.segment(8, 6) = relative_control.segment(6,6);
 
   applyRelativeControl(wrapper_control);
-
 }
 
 void World::getStates(vector<VectorXd>& states)
@@ -791,8 +806,8 @@ void World::initThread()
 		vertices[i](0) *= -1;
 	Matrix3d start_rotation1 = (Matrix3d) AngleAxisd(M_PI, Vector3d::UnitZ());
   Matrix3d end_rotation1 = (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitZ());
-  //ThreadConstrained* thread1 = new ThreadConstrained(vertices, angles, lengths, start_rotation1, end_rotation1, this);
-  //threads.push_back(thread1);
+  ThreadConstrained* thread1 = new ThreadConstrained(vertices, angles, lengths, start_rotation1, end_rotation1, this);
+  threads.push_back(thread1);
   
 	for (int thread_ind=0; thread_ind < threads.size(); thread_ind++) {
 #ifndef ISOTROPIC

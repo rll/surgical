@@ -40,6 +40,7 @@
 #include "TrajectoryRecorder.h"
 #include "TrajectoryReader.h"
 
+#define NOISE_THRESHOLD 0.01
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
@@ -466,7 +467,7 @@ void processNormalKeys(unsigned char key, int x, int y)
 			ctrls.push_back(&ctrl0);
 			ctrls.push_back(&ctrl1);
       World* initialWorld = new World(*temp_worlds[0]);
-      initialWorld->applyRelativeControl(ctrls,false);
+      initialWorld->applyRelativeControl(ctrls,0.0,false);
 			//temp_worlds[0]->applyRelativeControl(ctrls, false);
 			cout << "Saving initial condition state in " << ic_pert_path << endl;
 			StateRecorder ic_state_recorder(ic_pert_path);
@@ -1004,7 +1005,8 @@ void processInput(ControllerBase* controller0, ControllerBase* controller1)
 		controls.push_back(control0);
 		controls.push_back(control1);
 	
-		world->applyRelativeControl(controls, limit_displacement);
+		world->applyRelativeControl(controls, NOISE_THRESHOLD, limit_displacement);
+
 		
 	}
 }

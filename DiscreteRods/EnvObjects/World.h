@@ -117,8 +117,8 @@ class World
 		//if the control doesn't have an ee attachment, world should solve that; i.e. find the closest ee for the control.
 		//cursors are used as a handle for controls and the objects in the world
 		// for each control, there is 3 dof for translation, 3 for rotation, 2 for event
-		void setTransformFromController(const vector<ControllerBase*>& controls, bool limit_displacement = false); //applies controli to handlei
-		void applyRelativeControl(const vector<Control*>& controls, bool limit_displacement = false);
+		void setTransformFromController(const vector<ControllerBase*>& controls, bool limit_displacement = false); //applies controli to handle
+		void applyRelativeControl(const vector<Control*>& controls, double thresh=0.0, bool limit_displacement = false);
 		void applyRelativeControl(const VectorXd& relative_control, bool limit_displacement = false);
     void applyRelativeControlJacobian(const VectorXd& relative_control); 
 		

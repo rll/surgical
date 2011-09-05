@@ -158,7 +158,7 @@ void openLoopController(vector<World*> traj_in, vector<vector<Control*> >& contr
   boost::progress_display progress(controls_in.size());
   for (int i = 0; i < controls_in.size(); i++) {
     traj_out.push_back(new World(*world));
-    world->applyRelativeControl(controls_in[i], true);
+    world->applyRelativeControl(controls_in[i], 0.0, true);
     ++progress; 
   }
   traj_out.push_back(new World(*world));
@@ -171,7 +171,7 @@ void openLoopController(World* start, vector<World*> follow_traj, vector<vector<
   for (int i = 0; i < controls_in.size(); i++) {
     traj_out.push_back(new World(*world));
     cout << cost_metric(world, follow_traj[i]) << endl;
-    world->applyRelativeControl(controls_in[i], true);
+    world->applyRelativeControl(controls_in[i], 0.0, true);
     ++progress; 
 
   }
@@ -192,7 +192,7 @@ void closedLoopSQPController(World* start, vector<World*> follow_traj, vector<ve
   boost::progress_display progress(controls_in.size());
   for (int i = 0; i < follow_traj.size() - 1; i++) {
 
-    start_copy->applyRelativeControl(controls_in[i], true);
+    start_copy->applyRelativeControl(controls_in[i], 0.0, true);
     traj_out.push_back(new World(*start_copy));
 
     cout << "[" << i << ", " << cost_metric(start_copy, follow_traj[i+1]) <<
