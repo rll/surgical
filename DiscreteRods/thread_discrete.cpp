@@ -3031,6 +3031,29 @@ bool Thread::check_fix_positions(Vector3d& start_pos, Matrix3d& start_rot, Vecto
   return (too_long_by > 1e-3);
 }
 
+//bool Thread::check_fix_positions(double start_fix_fraction)
+//{
+//  //check to make sure we aren't trying to go beyond the max length
+//  Vector3d pointA = this->start_pos()+this->start_rot().col(0)*start_rest_length();
+//  Vector3d pointB= this->end_pos()-this->end_rot().col(0)*end_rest_length();
+
+//  //if so, correct by moving back into acceptable region
+//  Vector3d entire_length_vector = pointB - pointA;
+//  double too_long_by = (entire_length_vector).norm() - (total_length() - start_rest_length() - end_rest_length()) + LENGTH_THRESHHOLD;
+//  if (too_long_by > 0)
+//  {
+//    entire_length_vector.normalize();
+//		set_constraints(this->start_pos() + start_fix_fraction*entire_length_vector*too_long_by, this->start_rot(),
+//										this->end_pos() - (1.0-start_fix_fraction)*entire_length_vector*too_long_by, this->end_rot());
+//  }  
+//  pointA = this->start_pos()+this->start_rot().col(0)*start_rest_length();
+//  pointB= this->end_pos()-this->end_rot().col(0)*end_rest_length();
+//  entire_length_vector = pointB - pointA;
+//  too_long_by = (entire_length_vector).norm() - (total_length() - start_rest_length() - end_rest_length()) + LENGTH_THRESHHOLD;
+//  
+//  return (too_long_by > 1e-3);
+//}
+
 void Thread::rotate_end_by(double degrees)
 {
 #ifdef ISOTROPIC

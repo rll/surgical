@@ -34,13 +34,13 @@ World::World()
 	objs.push_back(new EndEffector(positions[1], rotations[1], this, threads[0], threads[0]->numVertices()-1));
 	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
 
-	threads[1]->getConstrainedTransforms(positions, rotations);
-	
-	objs.push_back(new EndEffector(positions[0], rotations[0], this, threads[1], 0));
-	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 0);
-	
-	objs.push_back(new EndEffector(positions[1], rotations[1], this, threads[1], threads[1]->numVertices()-1));
-	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
+//	threads[1]->getConstrainedTransforms(positions, rotations);
+//	
+//	objs.push_back(new EndEffector(positions[0], rotations[0], this, threads[1], 0));
+//	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 0);
+//	
+//	objs.push_back(new EndEffector(positions[1], rotations[1], this, threads[1], threads[1]->numVertices()-1));
+//	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
 	
 	objs.push_back(new EndEffector(plane->getPosition() + Vector3d(30.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()), this));
 	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == -1);
@@ -130,9 +130,12 @@ World::World(ifstream& file)
 	//cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));	
   
   int type;
-  
+  cout << "type: " ;
   while (!file.eof()) {
-    file >> type;
+  	double dtype;
+    file >> dtype;
+    cout << dtype << " ";
+    type = dtype;
     switch (type)
     {
       case THREAD_CONSTRAINED:
@@ -155,17 +158,39 @@ World::World(ifstream& file)
           objs.push_back(new TexturedSphere(file, this));
           break;
         }
+      case BOX:
+        {
+          objs.push_back(new Box(file, this));
+          break;
+        }
+      case NEEDLE:
+        {
+          objs.push_back(new Needle(file, this));
+          break;
+        }
       case CURSOR:
       	{
       		cursors.push_back(new Cursor(file, this));
           break;
       	}
+      case NO_OBJECT:
+      	{
+      		break;
+      	}
+      default:
+      	{
+      		assert(0);
+      		break;
+      	}
     }
     if (type == NO_OBJECT) { break; }
   }
+  cout << endl;
   
   initializeThreadsInEnvironment();
 }
+
+//threadOwner_localVertex_test
 
 /*void World::addThread(ThreadConstrained* thread)
 {
@@ -204,31 +229,45 @@ EndEffector* World::closestEndEffector(Vector3d tip_pos)
 {
 	vector<EndEffector*> end_effectors;
 	getObjects<EndEffector>(end_effectors);
-	int min_ee_ind;
-	for (min_ee_ind = 0; min_ee_ind < end_effectors.size(); min_ee_ind++) {
-		bool isCursorNotAttachedToEE = cursors[0]->end_eff!=end_effectors[min_ee_ind];
-		for (int cursor_ind = 1; cursor_ind < cursors.size(); cursor_ind++) {
-			isCursorNotAttachedToEE = isCursorNotAttachedToEE && cursors[cursor_ind]->end_eff!=end_effectors[min_ee_ind];
-		}		
-		if (isCursorNotAttachedToEE)
-			break;
-	}	
-	assert(min_ee_ind != end_effectors.size()); //There is no any end effectors that is not being holded by a cursor
-	float min_squared_dist = (tip_pos - end_effectors[min_ee_ind]->getPosition()).squaredNorm();
+	int min_ee_ind = 0;
+	double min_squared_dist = (tip_pos - end_effectors[min_ee_ind]->getPosition()).squaredNorm();
 	for (int ee_ind = 1; ee_ind < end_effectors.size(); ee_ind++) {
-		float squared_dist = (tip_pos - end_effectors[ee_ind]->getPosition()).squaredNorm();
+		double squared_dist = (tip_pos - end_effectors[ee_ind]->getPosition()).squaredNorm(); 
 		if (squared_dist < min_squared_dist) {
-			bool isCursorNotAttachedToEE = cursors[0]->end_eff!=end_effectors[min_ee_ind];
-			for (int cursor_ind = 1; cursor_ind < cursors.size(); cursor_ind++) {
-				isCursorNotAttachedToEE = isCursorNotAttachedToEE && cursors[cursor_ind]->end_eff!=end_effectors[min_ee_ind];
-			}
-			if (isCursorNotAttachedToEE) {
-				min_squared_dist = squared_dist;
-				min_ee_ind = ee_ind;
-			}
-		}				
+			min_ee_ind = ee_ind;
+			min_squared_dist = squared_dist;
+		}
 	}
 	return end_effectors[min_ee_ind];
+	
+	//TODO don't return an end effector that already has cursor attached to it	
+//	vector<EndEffector*> end_effectors;
+//	getObjects<EndEffector>(end_effectors);
+//	int min_ee_ind;
+//	for (min_ee_ind = 0; min_ee_ind < end_effectors.size(); min_ee_ind++) {
+//		bool isCursorNotAttachedToEE = cursors[0]->end_eff!=end_effectors[min_ee_ind];
+//		for (int cursor_ind = 1; cursor_ind < cursors.size(); cursor_ind++) {
+//			isCursorNotAttachedToEE = isCursorNotAttachedToEE && cursors[cursor_ind]->end_eff!=end_effectors[min_ee_ind];
+//		}		
+//		if (isCursorNotAttachedToEE)
+//			break;
+//	}	
+//	assert(min_ee_ind != end_effectors.size()); //There is no any end effectors that is not being holded by a cursor
+//	float min_squared_dist = (tip_pos - end_effectors[min_ee_ind]->getPosition()).squaredNorm();
+//	for (int ee_ind = 1; ee_ind < end_effectors.size(); ee_ind++) {
+//		float squared_dist = (tip_pos - end_effectors[ee_ind]->getPosition()).squaredNorm();
+//		if (squared_dist < min_squared_dist) {
+//			bool isCursorNotAttachedToEE = cursors[0]->end_eff!=end_effectors[min_ee_ind];
+//			for (int cursor_ind = 1; cursor_ind < cursors.size(); cursor_ind++) {
+//				isCursorNotAttachedToEE = isCursorNotAttachedToEE && cursors[cursor_ind]->end_eff!=end_effectors[min_ee_ind];
+//			}
+//			if (isCursorNotAttachedToEE) {
+//				min_squared_dist = squared_dist;
+//				min_ee_ind = ee_ind;
+//			}
+//		}				
+//	}
+//	return end_effectors[min_ee_ind];
 }
 
 void World::clearObjs()
@@ -254,12 +293,24 @@ void World::clearObjs()
 
 void World::draw(bool examine_mode)
 {
-	for (int i = 0; i<cursors.size(); i++)
-		cursors[i]->draw();
-	for (int i = 0; i<threads.size(); i++)
-		threads[i]->draw(examine_mode);
-	for (int i = 0; i<objs.size(); i++)
-		objs[i]->draw();
+//	for (int i = 0; i<cursors.size(); i++)
+//		cursors[i]->draw();
+//	for (int i = 0; i<threads.size(); i++)
+//		threads[i]->draw(examine_mode);
+//	for (int i = 0; i<objs.size(); i++)
+//		objs[i]->draw();
+	
+	if (examine_mode) {
+		for (int i = 0; i<threads.size(); i++)
+			threads[i]->draw(examine_mode);
+	} else {
+		for (int i = 0; i<cursors.size(); i++)
+			cursors[i]->draw();
+		for (int i = 0; i<threads.size(); i++)
+			threads[i]->draw(examine_mode);
+		for (int i = 0; i<objs.size(); i++)
+			objs[i]->draw();
+	}	
 }
 
 void World::setTransformFromController(const vector<ControllerBase*>& controllers, bool limit_displacement)
@@ -273,7 +324,6 @@ void World::setTransformFromController(const vector<ControllerBase*>& controller
 		if (controllers[i]->hasButtonPressedAndReset(DOWN))
 			cursor->attachDettach(limit_displacement);
 	}
-	setThreadConstraintsFromEndEffs();
 }
 
 void World::applyRelativeControl(const vector<Control*>& controls, bool limit_displacement)
@@ -293,7 +343,6 @@ void World::applyRelativeControl(const vector<Control*>& controls, bool limit_di
 		
 		//controls[i]->setNoMotion();
 	}
-	setThreadConstraintsFromEndEffs();
 }
 
 //The control is effectively applied to the tip of the end effector
@@ -315,7 +364,6 @@ void World::applyRelativeControl(const VectorXd& relative_control, bool limit_di
 		if (relative_control(8*i+7))
 			cursor->attachDettach();
 	}
-	setThreadConstraintsFromEndEffs();
 }
 
 void World::applyRelativeControlJacobian(const VectorXd& relative_control) 
@@ -328,39 +376,6 @@ void World::applyRelativeControlJacobian(const VectorXd& relative_control)
 
   applyRelativeControl(wrapper_control);
 
-}
-
-void World::setThreadConstraintsFromEndEffs()
-{
-	vector<EndEffector*> end_effectors;
-	getObjects<EndEffector>(end_effectors);
-	
-	for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
-		
-		vector<EndEffector*> thread_end_effs;
-		for (int ee_ind = 0; ee_ind < end_effectors.size(); ee_ind++)
-			if (end_effectors[ee_ind]->getThread()==threads[thread_ind])
-				thread_end_effs.push_back(end_effectors[ee_ind]);
-
-		vector<Vector3d> positionConstraints;
-		vector<Matrix3d> rotationConstraints;
-		threads[thread_ind]->getConstrainedTransforms(positionConstraints, rotationConstraints);
-
-		for (int ee_ind = 0; ee_ind < thread_end_effs.size(); ee_ind++) {
-			EndEffector* ee = thread_end_effs[ee_ind];
-			positionConstraints[ee->constraint_ind] = ee->getPosition();
-			rotationConstraints[ee->constraint_ind] = ee->getRotation();
-		}
-
-		threads[thread_ind]->updateConstraints(positionConstraints, rotationConstraints);
-		threads[thread_ind]->getConstrainedTransforms(positionConstraints, rotationConstraints);
-		
-		for (int ee_ind = 0; ee_ind < thread_end_effs.size(); ee_ind++) {
-			EndEffector* ee = thread_end_effs[ee_ind];
-			ee->setTransform(positionConstraints[ee->constraint_ind], rotationConstraints[ee->constraint_ind], false);
-		}
-
-	}
 }
 
 void World::getStates(vector<VectorXd>& states)
@@ -728,8 +743,8 @@ void World::initThread()
 		vertices[i](0) *= -1;
 	Matrix3d start_rotation1 = (Matrix3d) AngleAxisd(M_PI, Vector3d::UnitZ());
   Matrix3d end_rotation1 = (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitZ());
-  ThreadConstrained* thread1 = new ThreadConstrained(vertices, angles, lengths, start_rotation1, end_rotation1, this);
-  threads.push_back(thread1);
+  //ThreadConstrained* thread1 = new ThreadConstrained(vertices, angles, lengths, start_rotation1, end_rotation1, this);
+  //threads.push_back(thread1);
   
 	for (int thread_ind=0; thread_ind < threads.size(); thread_ind++) {
 #ifndef ISOTROPIC

@@ -73,7 +73,7 @@ class World
 					objects.push_back(reinterpret_cast<T*>(threads[i]));
 				}
 			} else if (typeid(Cursor) == typeid(T)) {
-				for (int i=0; i<threads.size(); i++) {
+				for (int i=0; i<cursors.size(); i++) {
 					objects.push_back(reinterpret_cast<T*>(cursors[i]));
 				}
 			} else {
@@ -81,7 +81,7 @@ class World
 					if (typeid(*objs[i]) == typeid(T))
 						objects.push_back(dynamic_cast<T*>(objs[i]));
 				}
-			}
+			} 
 		}
 		
 		template <class T> int objectIndex(T* object)
@@ -120,7 +120,6 @@ class World
 		void setTransformFromController(const vector<ControllerBase*>& controls, bool limit_displacement = false); //applies controli to handlei
 		void applyRelativeControl(const vector<Control*>& controls, bool limit_displacement = false);
 		void applyRelativeControl(const VectorXd& relative_control, bool limit_displacement = false);
-		void setThreadConstraintsFromEndEffs();
     void applyRelativeControlJacobian(const VectorXd& relative_control); 
 		
 		//state representation

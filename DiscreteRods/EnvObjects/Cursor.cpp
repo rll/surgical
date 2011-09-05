@@ -237,15 +237,20 @@ void Cursor::setClose(bool limit_displacement)
 	  	}
 	  	if ((thread->position(nearest_vertex) - tip_pos).squaredNorm() < 32.0) {												// cursor has an end effector which just started holding the thread
 	  		end_eff->constraint = nearest_vertex;
-		    thread->addConstraint(nearest_vertex);
-		    end_eff->attach(thread);				
-				vector<EndEffector*> world_end_effs;
+		    end_eff->constraint_ind = thread->addConstraint(nearest_vertex);
+		    end_eff->attach(thread);
+		    
+		    vector<EndEffector*> world_end_effs;
 				world->getObjects<EndEffector>(world_end_effs);
-				for (int ee_ind = 0; ee_ind < world_end_effs.size(); ee_ind++) {
-					world_end_effs[ee_ind]->updateConstraintIndex();
+		    for (int ee_ind = 0; ee_ind < world_end_effs.size(); ee_ind++) {
+					if ((world_end_effs[ee_ind]->thread == thread) && (world_end_effs[ee_ind]->constraint_ind >= end_eff->constraint_ind) && (world_end_effs[ee_ind]!=end_eff)) {
+						world_end_effs[ee_ind]->constraint_ind++;
+					}
+					world_end_effs[ee_ind]->updateConstraint();
 				}
-				thread->setConstrainedTransforms(end_eff->constraint_ind, tip_pos, rotation);										// the end effector's orientation matters when it grips the thread. This updates the offset rotation.
-		    end_eff->setTransform(tip_pos, rotation, limit_displacement); //TODO should I use the updated transform from previous line?
+
+				thread->updateRotationOffset(end_eff->constraint_ind, rotation);	// the end effector's orientation matters when it grips the thread. This updates the offset rotation.
+		    end_eff->setTransform(tip_pos, rotation, limit_displacement);
 		  }
 		} else {
 			//impossible to close cursor when the end effector is already holding the thread.

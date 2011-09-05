@@ -204,14 +204,14 @@ void processNormalKeys(unsigned char key, int x, int y)
  	else if (key == 'u') {
 		glutIgnoreKeyRepeat(1);
   } else if (key == 'j') {
-    //if (!world->objectAtIndex<Cursor>(0)->isAttached())
-   		//moveMouseToClosestEE(mouse0);
+    if (!world->objectAtIndex<Cursor>(0)->isAttached())
+   		moveMouseToClosestEE(mouse0);
 		glutIgnoreKeyRepeat(1);
   } else if (key == 'U') {
 		glutIgnoreKeyRepeat(1);
   } else if (key == 'J') {
-    //if (!world->objectAtIndex<Cursor>(1)->isAttached())
-    	//moveMouseToClosestEE(mouse1);
+    if (!world->objectAtIndex<Cursor>(1)->isAttached())
+    	moveMouseToClosestEE(mouse1);
 		glutIgnoreKeyRepeat(1);
 	} else if(key == 's') {
     cout << "Saving...\n";
@@ -659,6 +659,14 @@ void processHapticDevice()
 	}
 }
 
+void checkMouseUpdate()
+{
+	if (!haptics) {
+		processInput(mouse0, mouse1);
+		glutPostRedisplay();
+	}
+}
+
 void drawStuff()
 {
 #ifdef VIEW3D
@@ -803,6 +811,7 @@ int main (int argc, char * argv[])
   glutKeyboardUpFunc(processKeyUp);
   glutSpecialFunc(processSpecialKeys);
   glutIdleFunc(processHapticDevice);
+  glutIdleFunc(checkMouseUpdate);
  
 	
 	/* create popup menu */
@@ -930,6 +939,11 @@ void processInput(ControllerBase* controller0, ControllerBase* controller1)
 			control0->setRotate(world->objectAtIndex<Cursor>(0)->getRotation().transpose() * haptic0->getRotation());
 			control1->setTranslate(haptic1->getPosition() - world->objectAtIndex<Cursor>(1)->getPosition());
 			control1->setRotate(world->objectAtIndex<Cursor>(1)->getRotation().transpose() * haptic1->getRotation());
+		} else {
+			control0->setTranslate(mouse0->getPosition() - world->objectAtIndex<Cursor>(0)->getPosition());
+			control0->setRotate(world->objectAtIndex<Cursor>(0)->getRotation().transpose() * mouse0->getRotation());
+			control1->setTranslate(mouse1->getPosition() - world->objectAtIndex<Cursor>(1)->getPosition());
+			control1->setRotate(world->objectAtIndex<Cursor>(1)->getRotation().transpose() * mouse1->getRotation());
 		}
 	
 		if (trajectory_recorder_world.hasStarted())

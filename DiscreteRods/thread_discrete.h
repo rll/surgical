@@ -62,7 +62,7 @@
 #define num_iters_twist_est_max 0
 
 #define THREAD_RADIUS 0.2     /* MUST BE ATLEAST MAX_MOVEMENT_VERTICES */
-#define COLLISION_CHECKING true
+#define COLLISION_CHECKING false
 
 
 using namespace std;
@@ -125,6 +125,7 @@ class Thread
     void set_constraints_nearEnds(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot);
     void set_constraints_check(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot, bool minimize = true);
     bool check_fix_positions(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot);
+    //bool check_fix_positions(double start_fix_fraction);
     void set_start_constraint(const Vector3d& start_pos, const Matrix3d& start_rot, bool backup=true);
     void set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot, bool backup=true);
     void restore_constraints(const Vector3d& start_pos, const Matrix3d& start_rot, const Vector3d& end_pos, const Matrix3d& end_rot);

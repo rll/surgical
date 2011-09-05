@@ -212,6 +212,11 @@ void EndEffector::setTransform(const Vector3d& pos, const Matrix3d& rot, bool li
 		position = pos;
     rotation = rot;
   }
+  
+  if(isAttached()) {
+		thread->updateConstrainedTransform(constraint_ind, position, rotation);
+		thread->minimize_energy();
+	}  
 	
 	Vector3d start_pos;
 	Vector3d end_pos;

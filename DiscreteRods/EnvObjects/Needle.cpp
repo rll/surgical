@@ -91,6 +91,8 @@ void Needle::writeToFile(ofstream& file)
 {
 	assert(type == NEEDLE);
 	file << type << " ";
+	for (int i=0; i<3; i++)
+		file << position(i) << " ";
 	for (int r=0; r < 3; r++)
     for (int c=0; c < 3; c++)
       file << rotation(r,c) << " ";
