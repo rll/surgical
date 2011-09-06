@@ -3,6 +3,9 @@
 
 #include "EnvObject.h"
 
+class ThreadConstrained;
+class Needle;
+
 class Box : public EnvObject
 {
 	public:
