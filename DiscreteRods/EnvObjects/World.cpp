@@ -19,10 +19,10 @@ World::World()
 	objs.push_back(plane);
 	//objs.push_back(new TexturedSphere(Vector3d::Zero(), 150.0, "../utils/textures/checkerBoardRect16.bmp", this));
 	
-	//objs.push_back(new Box(plane->getPosition() + Vector3d(15.0, 10.0, 0.0), Matrix3d::Identity(), Vector3d(10,10,10), 0.0, 0.5, 0.7, this));
-	
+//	objs.push_back(new Box(plane->getPosition() + Vector3d(15.0, 10.0, 0.0), Matrix3d::Identity(), Vector3d(10,10,10), 0.0, 0.5, 0.7, this));
+//	
 //	objs.push_back(new Needle(plane->getPosition() + Vector3d(0.0, 50.0, 0.0), Matrix3d::Identity(), 120.0, 5.0, 0.3, 0.3, 0.3, this));
-	//objs.push_back(new Needle(threads[0]->positionAtConstraint(0), threads[0]->rotationAtConstraint(0), 120.0, 5.0, 0.3, 0.3, 0.3, this, threads[0], 0));
+//	objs.push_back(new Needle(threads[0]->positionAtConstraint(0), threads[0]->rotationAtConstraint(0), 120.0, 5.0, 0.3, 0.3, 0.3, this, threads[0], 0));
 	
 	//setting up end effectors
 	objs.push_back(new EndEffector(threads[0]->positionAtConstraint(0), threads[0]->rotationAtConstraint(0), this, threads[0], 0));
