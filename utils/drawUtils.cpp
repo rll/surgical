@@ -244,7 +244,7 @@ void labelAxes(Vector3d pos, Matrix3d rot) {
   glPopMatrix();
 }
 
-void drawArrow(Vector3d pos, Vector3d direction, float color0, float color1, float color2) {
+void drawArrow(Vector3d pos, Vector3d direction) {
 	double norm = direction.norm();
 	Matrix3d rot;
 	rotation_from_tangent(direction.normalized(), rot);
@@ -255,9 +255,9 @@ void drawArrow(Vector3d pos, Vector3d direction, float color0, float color1, flo
 													 pos(0), pos(1), pos(2), 1};
 	glMultMatrixd(transform);
 	glBegin(GL_LINES);
-	glEnable(GL_LINE_SMOOTH);
-	glEnable(GL_COLOR_MATERIAL);
-	glColor3d(color0, color1, color2);
+//	glEnable(GL_LINE_SMOOTH);
+//	glEnable(GL_COLOR_MATERIAL);
+//	glColor3d(color0, color1, color2);
 	glVertex3f(0.0, 0.0, 0.0);
 	glVertex3f(norm,0,0);
 	glEnd();

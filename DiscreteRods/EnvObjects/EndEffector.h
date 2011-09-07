@@ -3,6 +3,9 @@
 
 #include "EnvObject.h"
 
+#define MAX_DISPLACEMENT 0.2 //THREAD_RADIUS
+#define MAX_ANGLE_CHANGE 0.0036667160503703967 //arcsin(MAX_DISPLACEMENT/end_effector_length)
+
 class ThreadConstrained;
 class Needle;
 
@@ -51,10 +54,11 @@ class EndEffector : public EnvObject
 		void writeToFile(ofstream& file);
 		EndEffector(ifstream& file, World* w);
 		
-		void setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_displacement = false, double max_displacement = 0.2, double max_angle_change = M_PI/180.0);
+		void setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_displacement = false, double max_displacement = MAX_DISPLACEMENT, double max_angle_change = MAX_ANGLE_CHANGE);
 		void updateTransformFromAttachment();
 		
 		void draw();
+		void drawDebug();
 		
 		void setOpen() { open = true; }
 		void setClose() { open = false; }

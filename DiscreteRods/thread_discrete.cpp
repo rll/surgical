@@ -687,7 +687,7 @@ double Thread::calculate_energy()
 			  if(i == 0 && j == _thread_pieces.size() - 2) 
 			    continue;
 			  double dist = self_intersection(i,j,THREAD_RADIUS,direction);
-			  if (dist < 0 || dist > THREAD_RADIUS)
+			  if (dist > THREAD_RADIUS) //dist < 0 || 
 					continue;
 			  //energy += REPULSION_COEFF/2.0 * pow(dist/THREAD_RADIUS-1,2) * THREAD_RADIUS;
 				energy += REPULSION_COEFF * pow(dist-THREAD_RADIUS,2); //it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
@@ -705,7 +705,7 @@ double Thread::calculate_energy()
 				  	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
 				    continue;
 				  double dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
-				  if (dist < 0 || dist > THREAD_RADIUS)
+				  if (dist > THREAD_RADIUS) //dist < 0 || 
 						continue;
 					//energy += REPULSION_COEFF/2.0 * pow(dist/THREAD_RADIUS-1,2) * THREAD_RADIUS;
 					energy += REPULSION_COEFF * pow(dist-THREAD_RADIUS,2); //it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
@@ -1931,13 +1931,19 @@ void Thread::calculate_gradient_vertices(vector<Vector3d>& vertex_gradients)
 			  if(i == 0 && j == _thread_pieces.size() - 2) 
 			    continue;
 			  double dist = self_intersection(i,j,THREAD_RADIUS,direction);
-			  if (dist < 0 || dist > THREAD_RADIUS)
-					continue;
-				Vector3d grad = REPULSION_COEFF * (THREAD_RADIUS - dist) * direction.normalized();
-				vertex_gradients[i] -= grad;
-				vertex_gradients[i+1] -= grad;
-				vertex_gradients[j] += grad;
-				vertex_gradients[j+1] += grad;
+				if (dist < 0) {					
+					Vector3d grad = REPULSION_COEFF * (THREAD_RADIUS - dist) * direction.normalized();
+					vertex_gradients[i] -= grad;
+					vertex_gradients[i+1] -= grad;
+					vertex_gradients[j] += grad;
+					vertex_gradients[j+1] += grad;
+				} else if (dist <= THREAD_RADIUS) {
+					Vector3d grad = REPULSION_COEFF * (THREAD_RADIUS - dist) * direction.normalized();
+					vertex_gradients[i] -= grad;
+					vertex_gradients[i+1] -= grad;
+					vertex_gradients[j] += grad;
+					vertex_gradients[j+1] += grad;
+				}
 			}
 		}
 
@@ -1952,11 +1958,15 @@ void Thread::calculate_gradient_vertices(vector<Vector3d>& vertex_gradients)
 				  	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
 				    continue;
 				  double dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
-				  if (dist < 0 || dist > THREAD_RADIUS)
-						continue;
-					Vector3d grad = REPULSION_COEFF * (THREAD_RADIUS - dist) * direction.normalized();
-					vertex_gradients[i] -= grad;
-					vertex_gradients[i+1] -= grad;
+				  if (dist < 0) {					
+						Vector3d grad = REPULSION_COEFF * (THREAD_RADIUS - dist) * direction.normalized();
+						vertex_gradients[i] -= grad;
+						vertex_gradients[i+1] -= grad;
+					} else if (dist <= THREAD_RADIUS) {
+						Vector3d grad = REPULSION_COEFF * (THREAD_RADIUS - dist) * direction.normalized();
+						vertex_gradients[i] -= grad;
+						vertex_gradients[i+1] -= grad;
+					} 
 				}
 			}
 		}

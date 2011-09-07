@@ -4,6 +4,7 @@ UTILS_DIR = ../utils
 IO_DIR = IO
 ENV_DIR = EnvObjects
 COLLISIONS_DIR = Collisions
+BULLET_DIR = /home/alex/Downloads/bullet-2.77/src
 MP_DIR = ../MotionPlanning
 
 ifeq ($(MACHINE),Darwin)
@@ -13,8 +14,8 @@ ifeq ($(MACHINE),Darwin)
     LDFLAG=$(COMPILEFLAG) -L"/System/Library/Frameworks/OpenGL.framework/Libraries" -L"/System/Library/Frameworks/GLUT.framework" -framework GLUT -framework OpenGL -lGL -lGLU -L/usr/X11R6/lib
     INCLUDES = -I/usr/local/include/ -I/usr/include/ -I $(UTILS_DIR)/ -I/opt/local/include/eigen2/ -I/opt/local/include/
 else
-    LIBS = -L/usr/lib/ -lglut -lgle -lIL -lGLU
-    INCLUDES = -I/usr/local/include/ -I/usr/include/ -I $(UTILS_DIR)/ -I/usr/include/eigen2
+    LIBS = -L/usr/lib/ -lglut -lgle -lIL -lGLU -lBulletDynamics -lBulletCollision
+    INCLUDES = -I/usr/local/include/ -I/usr/include/ -I $(UTILS_DIR)/ -I/usr/include/eigen2 -I/usr/local/include/bullet
     COMPILEFLAG=
     LDFLAG=-lrt
 endif

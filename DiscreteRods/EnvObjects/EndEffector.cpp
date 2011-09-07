@@ -324,6 +324,35 @@ void EndEffector::draw()
 	//drawSphere(end, 1.2*i_objs[1]->_radius);
 }
 
+void EndEffector::drawDebug()
+{
+	return;
+	
+	//To visualize the collision capsule
+	glColor3f(0,1,0);
+	const Vector3d start = i_objs[1]->_start_pos + 2.0*(i_objs[1]->_start_pos - i_objs[1]->_end_pos).normalized();
+	const Vector3d end = i_objs[1]->_end_pos;
+	drawCylinder(start, end, 1.2*i_objs[1]->_radius);
+	drawSphere(start, 1.2*i_objs[1]->_radius);
+	drawSphere(end, 1.2*i_objs[1]->_radius);
+	
+	Vector3d direction;
+	vector<Box*> boxes;
+	world->getObjects<Box>(boxes);
+	vector<EndEffector*> ee_effs;
+	world->getObjects<EndEffector>(ee_effs);
+	if (boxes.size() > 0 && this == ee_effs[2]) {
+		double dist = capsuleBoxDistance(start, end, 1.2*i_objs[1]->_radius, boxes[0]->getPosition(), boxes[0]->getHalfLength(), direction);
+		//if (dist < 0) {
+			cout << dist << endl;
+			glColor3f(0,0,1);
+			//drawSphere(positionWorldOnA, 2.0);		
+			//drawSphere(positionWorldOnB, 2.0);
+			drawArrow(Vector3d::Zero(), direction);
+		//}
+	}
+}
+
 void EndEffector::updateConstraint()
 {
 	if (constraint_ind != -1) {
@@ -423,9 +452,18 @@ double EndEffector::capsuleRepulsionEnergy(const Vector3d& start, const Vector3d
 	if (REPULSION_COEFF <= 0.0) { return 0.0; }
 	Vector3d direction;
 	double dist = capsuleCapsuleDistance(start, end, radius, i_objs[1]->_start_pos + 9.0*(i_objs[1]->_start_pos - i_objs[1]->_end_pos).normalized(), i_objs[1]->_end_pos, i_objs[1]->_radius, direction);
-	if (dist < 0 || dist > radius)
+	if (dist > radius)
 		return 0.0;
 	return REPULSION_COEFF/2.0 * pow(dist-radius,2);
+	
+	//dist < 0 || 
+	
+//	if (dist < 0) {
+//		return REPULSION_COEFF/2.0 * pow(dist-radius,2);
+//	} else if (dist <= radius) {
+//		return REPULSION_COEFF/2.0 * pow(dist-radius,2);
+//	}
+//	return 0.0;
 }
 
 void EndEffector::capsuleRepulsionEnergyGradient(const Vector3d& start, const Vector3d& end, const double radius, Vector3d& gradient)
@@ -443,7 +481,9 @@ void EndEffector::capsuleRepulsionEnergyGradient(const Vector3d& start, const Ve
 	if (REPULSION_COEFF <= 0.0) { return; }
 	Vector3d direction;
 	double dist = capsuleCapsuleDistance(start, end, radius, i_objs[1]->_start_pos + 9.0*(i_objs[1]->_start_pos - i_objs[1]->_end_pos).normalized(), i_objs[1]->_end_pos, i_objs[1]->_radius, direction);
-	if (dist < 0 || dist > radius)
-		return;
-	gradient -= REPULSION_COEFF * (radius - dist) * direction.normalized();
+	if (dist < 0) {					
+		gradient -= REPULSION_COEFF * (radius - dist) * direction.normalized();
+	} else if (dist <= radius) {
+		gradient -= REPULSION_COEFF * (radius - dist) * direction.normalized();
+	}
 }

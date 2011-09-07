@@ -768,6 +768,7 @@ void drawStuff()
   }
   if (world && drawInteractiveWorld) {
    	world->draw(examine_mode);
+   	world->drawDebug();
   }
   if (start_world && drawStartWorld) {
   	start_world->draw();
@@ -1121,7 +1122,7 @@ void glutMenu(int ID) {
 
 void interruptHandler(int sig) {
   cout << "Time since last interrupt: " << interruptTimer->elapsed() << endl; 
-  if (interruptTimer->elapsed() < 0.1) exit(0);
+  if (interruptTimer->elapsed() < 10) exit(0);
   cout << "You need to hold ctrl-c to forcefully exit the program!" << endl;
 
   interruptTimer->restart();
