@@ -5,9 +5,9 @@
 World::World()
 {
 	//any of these pushes two threads into threads.
-	initThread();
+	//initThread();
   //initLongerThread();
-  //initRestingThread(1);
+  initRestingThread(0);
 	
 	//setting up control handles
 	cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));
@@ -21,7 +21,7 @@ World::World()
 	
 	//objs.push_back(new Box(plane->getPosition() + Vector3d(15.0, 10.0, 0.0), Matrix3d::Identity(), Vector3d(10,10,10), 0.0, 0.5, 0.7, this));
 	
-	//objs.push_back(new Needle(plane->getPosition() + Vector3d(0.0, 50.0, 0.0), Matrix3d::Identity(), 120.0, 5.0, 0.3, 0.3, 0.3, this));
+//	objs.push_back(new Needle(plane->getPosition() + Vector3d(0.0, 50.0, 0.0), Matrix3d::Identity(), 120.0, 5.0, 0.3, 0.3, 0.3, this));
 	//objs.push_back(new Needle(threads[0]->positionAtConstraint(0), threads[0]->rotationAtConstraint(0), 120.0, 5.0, 0.3, 0.3, 0.3, this, threads[0], 0));
 	
 	//setting up end effectors
@@ -285,6 +285,35 @@ void World::draw(bool examine_mode)
 			objs[i]->draw();
 	}	
 }
+
+void World::drawDebug()
+{
+//	for (int i = 0; i<cursors.size(); i++)
+//		cursors[i]->drawDebug();
+//	for (int i = 0; i<threads.size(); i++)
+//		threads[i]->drawDebug();
+	for (int i = 0; i<objs.size(); i++)
+		objs[i]->drawDebug();
+	
+//	vector<Box*> boxes;
+//	getObjects<Box>(boxes);
+//	vector<Needle*> needles;
+//	getObjects<Needle>(needles);
+//	vector<EndEffector*> end_effs;
+//	getObjects<EndEffector>(end_effs);
+//	if (boxes.size() > 0 && needles.size() > 0) {
+//		Vector3d direction;
+//		Vector3d positionWorldOnA;
+//		Vector3d positionWorldOnB;
+//		capsuleBoxDistance(end_effs[0]->getStartPosition(), end_effs[0]->getEndPosition(), 5.0/8.0, boxes[0]->getPosition(), boxes[0]->getHalfLength(), direction, positionWorldOnA, positionWorldOnB);
+//		//capsuleBoxDistance(needles[0]->getStartPosition(), needles[0]->getEndPosition(), 5.0/8.0, boxes[0]->getPosition(), boxes[0]->getHalfLength(), direction, positionWorldOnA, positionWorldOnB);
+//		//sphereBoxDistance(needles[0]->getStartPosition(), 5.0/8.0, boxes[0]->getPosition(), boxes[0]->getHalfLength(), direction, positionWorldOnA, positionWorldOnB);
+//		drawSphere(positionWorldOnA, 2.0);		
+//		drawSphere(positionWorldOnB, 2.0);
+//		drawArrow(positionWorldOnB, direction);
+//	}
+}
+
 
 void World::setTransformFromController(const vector<ControllerBase*>& controllers, bool limit_displacement)
 {

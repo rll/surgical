@@ -55,6 +55,7 @@ class EndEffector : public EnvObject
 		void updateTransformFromAttachment();
 		
 		void draw();
+		void drawDebug();
 		
 		void setOpen() { open = true; }
 		void setClose() { open = false; }

@@ -33,7 +33,7 @@ void drawSphere(Vector3d position, float radius);
 void drawCursor(int device_id, float color);
 void drawAxes(Vector3d pos, Matrix3d rot);
 void labelAxes(Vector3d pos, Matrix3d rot);
-void drawArrow(Vector3d pos, Vector3d direction, float color0, float color1, float color2);
+void drawArrow(Vector3d pos, Vector3d direction);
 void drawPlane(Vector3d pos, Vector3d normal, float side);
 void printText(float x, float y, const char *string);
 

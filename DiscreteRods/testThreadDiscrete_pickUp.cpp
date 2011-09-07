@@ -80,7 +80,7 @@ Vector3d zero_location;
 double zero_angle;
 
 // interactive variables
-bool limit_displacement = true;
+bool limit_displacement = false;
 bool haptics = true;
 bool examine_mode = false;
 
@@ -670,7 +670,7 @@ void checkMouseUpdate()
 void processIdle()
 {
 	processHapticDevice();
-	checkMouseUpdate();
+	//checkMouseUpdate();
 }
 
 void drawStuff()
@@ -715,6 +715,7 @@ void drawStuff()
   }
   if (world && drawInteractiveWorld) {
    	world->draw(examine_mode);
+   	world->drawDebug();
   }
   if (start_world && drawStartWorld) {
   	start_world->draw();
@@ -1075,7 +1076,7 @@ void glutMenu(int ID) {
 
 void interruptHandler(int sig) {
   cout << "Time since last interrupt: " << interruptTimer->elapsed() << endl; 
-  if (interruptTimer->elapsed() < 0.1) exit(0);
+  if (interruptTimer->elapsed() < 10) exit(0);
   cout << "You need to hold ctrl-c to forcefully exit the program!" << endl;
 
   interruptTimer->restart();
