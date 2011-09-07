@@ -667,6 +667,12 @@ void checkMouseUpdate()
 	}
 }
 
+void processIdle()
+{
+	processHapticDevice();
+	checkMouseUpdate();
+}
+
 void drawStuff()
 {
 #ifdef VIEW3D
@@ -810,8 +816,7 @@ int main (int argc, char * argv[])
   glutKeyboardFunc(processNormalKeys);
   glutKeyboardUpFunc(processKeyUp);
   glutSpecialFunc(processSpecialKeys);
-  glutIdleFunc(processHapticDevice);
-  glutIdleFunc(checkMouseUpdate);
+  glutIdleFunc(processIdle);
  
 	
 	/* create popup menu */

@@ -98,12 +98,35 @@ const Matrix3d& Cursor::getRotation() const
 
 void Cursor::draw()
 {
-	const Vector3d end_pos = position - height * rotation.col(0);
+	Vector3d start_pos;
+	Vector3d end_pos;
+	Vector3d new_pos;
+	Matrix3d new_rot;
+	Matrix3d open_rot = (Matrix3d) AngleAxisd(-(open?15.0:0.0)*M_PI/180, rotation*Vector3d::UnitZ());
+	double r = 0.9;
 	
-	const Vector3d before_mid_point = position + (2.0/6.0)*(end_pos - position);
-	const Vector3d after_mid_point = position + (4.0/6.0)*(end_pos - position);
+	new_rot = open_rot * rotation;
+	new_pos = open_rot * rotation * Vector3d(-EndEffector::end, 0.0, 0.0) + rotation * Vector3d(EndEffector::end, 0.0, 0.0) + position;
+	start_pos = new_rot * Vector3d(EndEffector::start, r, 0.0) + new_pos;
+	end_pos = new_rot * Vector3d(EndEffector::start+EndEffector::h, r, 0.0) + new_pos;
+	drawColoredCapsule(start_pos, end_pos);
+
+
+	new_rot = open_rot.transpose() * rotation;
+	new_pos = open_rot.transpose() * rotation * Vector3d(-EndEffector::end, 0.0, 0.0) + rotation * Vector3d(EndEffector::end, 0.0, 0.0) + position;
+	start_pos = new_rot * Vector3d(EndEffector::start, -r, 0.0) + new_pos;
+	end_pos = new_rot * Vector3d(EndEffector::start+EndEffector::h, -r, 0.0) + new_pos;
+	drawColoredCapsule(start_pos, end_pos);
+	
+	drawAxes(position, rotation);
+}
+
+void Cursor::drawColoredCapsule(const Vector3d& start_pos, const Vector3d& end_pos)
+{
+	Vector3d before_mid_point = start_pos + (2.0/6.0)*(end_pos - start_pos);
+	Vector3d after_mid_point = start_pos + (4.0/6.0)*(end_pos - start_pos);
 	glColor3f(isAttached()?0.0:0.5, isAttached()?0.5:0.0, 0.0);
-	drawCylinder(position, before_mid_point, radius);
+	drawCylinder(start_pos, before_mid_point, radius);
 	glColor3f(0.0, 0.0, 0.0);
 	drawCylinder(before_mid_point, (before_mid_point+after_mid_point)/2.0, radius);
 	glColor3f(1.0, 1.0, 1.0);
@@ -111,11 +134,9 @@ void Cursor::draw()
 	glColor3f(open?0.0:0.5, open?0.5:0.0, 0.0);
 	drawCylinder(after_mid_point, end_pos, radius);
 	glColor3f(isAttached()?0.0:0.5, isAttached()?0.5:0.0, 0.0);
-	drawSphere(position, radius);
+	drawSphere(start_pos, radius);
 	glColor3f(open?0.0:0.5, open?0.5:0.0, 0.0);
 	drawSphere(end_pos, radius);
-	
-	drawAxes(position, rotation);
 }
 
 inline bool closeEnough(const Vector3d& my_pos, const Matrix3d& my_rot, const Vector3d& pos, const Matrix3d& rot)
@@ -143,7 +164,7 @@ void Cursor::attach(bool limit_displacement)
 		EndEffector* ee = world_end_effs[ee_ind];
 		if (closeEnough(tip_pos, rotation, ee->getPosition(), ee->getRotation())) {
 			end_eff = ee;
-			if (ee->isAttached()) {
+			if (ee->isThreadAttached()) {
 				ee->updateConstraint();
 				if ((ee->constraint==0 || ee->constraint==(ee->getThread()->numVertices()-1)) && isOpen()) {
   				open = false;
@@ -191,14 +212,14 @@ void Cursor::setOpen(bool limit_displacement)
 {
 	assert(!open);
 	if (isAttached()) {																																													// cursor has an end effector
-	  if (end_eff->isAttached()) {																																							// cursor has an end effector which is holding the thread
+	  if (end_eff->isThreadAttached()) {																																							// cursor has an end effector which is holding the thread
 	  	if (end_eff->constraint==0 || end_eff->constraint==(end_eff->getThread()->numVertices()-1)) {		// cursor has an end effector which is holding the thread end and trying to be opened
 			 	open = false;
 			 	assert(!end_eff->isOpen());
 			} else {																																// cursor has an end effector which is holding the thread and trying to be opened
 			  end_eff->getThread()->removeConstraint(end_eff->constraint);
 			 	end_eff->constraint = end_eff->constraint_ind = -1;
-			 	end_eff->dettach();	
+			 	end_eff->dettachThread();	
 				vector<EndEffector*> world_end_effs;
 				world->getObjects<EndEffector>(world_end_effs);
 				for (int ee_ind = 0; ee_ind < world_end_effs.size(); ee_ind++) {
@@ -207,7 +228,11 @@ void Cursor::setOpen(bool limit_displacement)
 				open = true;
 				end_eff->setOpen();
 			}
-		} else {
+		} else if (end_eff->isNeedleAttached()) {
+			end_eff->dettachNeedle();
+			open = true;
+			end_eff->setOpen();
+		}	else {
 			open = true;
 			end_eff->setOpen();
 		}
@@ -222,7 +247,7 @@ void Cursor::setClose(bool limit_displacement)
 	assert(open);
 	if (isAttached()) {
 		const Vector3d tip_pos = position - EndEffector::grab_offset * rotation.col(0);
-	  if (!end_eff->isAttached()) {
+	  if (!end_eff->isThreadAttached() && !end_eff->isNeedleAttached()) {
 	  	vector<ThreadConstrained*> threads;
 	  	world->getObjects<ThreadConstrained>(threads);
 	  	int nearest_vertex = threads[0]->nearestVertex(tip_pos);
@@ -235,24 +260,45 @@ void Cursor::setClose(bool limit_displacement)
 	  			thread = threads[thread_ind];
 	  		}
 	  	}
-	  	if ((thread->position(nearest_vertex) - tip_pos).squaredNorm() < 32.0) {												// cursor has an end effector which just started holding the thread
-	  		end_eff->constraint = nearest_vertex;
-		    end_eff->constraint_ind = thread->addConstraint(nearest_vertex);
-		    end_eff->attach(thread);
-		    
-		    vector<EndEffector*> world_end_effs;
-				world->getObjects<EndEffector>(world_end_effs);
-		    for (int ee_ind = 0; ee_ind < world_end_effs.size(); ee_ind++) {
-					if ((world_end_effs[ee_ind]->thread == thread) && (world_end_effs[ee_ind]->constraint_ind >= end_eff->constraint_ind) && (world_end_effs[ee_ind]!=end_eff)) {
-						world_end_effs[ee_ind]->constraint_ind++;
+	  	
+	  	vector<Needle*> needles;
+	  	world->getObjects<Needle>(needles);
+	  	Vector3d nearest_position = needles[0]->nearestPosition(tip_pos);
+	  	Needle* needle = needles[0];
+	  	for (int needle_ind; needle_ind < needles.size(); needle_ind++) {
+	  		if ( (needles[needle_ind]->nearestPosition(tip_pos) - tip_pos).squaredNorm() <
+	  				 (nearest_position - tip_pos).squaredNorm() ) {	  		
+	  			nearest_position = needles[needle_ind]->nearestPosition(tip_pos);
+	  			needle = needles[needle_ind];
+	  		}
+	  	}
+	  	
+	  	if ((thread->position(nearest_vertex) - tip_pos).squaredNorm() < (nearest_position - tip_pos).squaredNorm()) {
+				if ((thread->position(nearest_vertex) - tip_pos).squaredNorm() < 32.0) {												// cursor has an end effector which just started holding the thread
+					end_eff->constraint = nearest_vertex;
+				  end_eff->constraint_ind = thread->addConstraint(nearest_vertex);
+				  end_eff->attach(thread);
+				  
+				  vector<EndEffector*> world_end_effs;
+					world->getObjects<EndEffector>(world_end_effs);
+				  for (int ee_ind = 0; ee_ind < world_end_effs.size(); ee_ind++) {
+						if ((world_end_effs[ee_ind]->thread == thread) && (world_end_effs[ee_ind]->constraint_ind >= end_eff->constraint_ind) && (world_end_effs[ee_ind]!=end_eff)) {
+							world_end_effs[ee_ind]->constraint_ind++;
+						}
+						world_end_effs[ee_ind]->updateConstraint();
 					}
-					world_end_effs[ee_ind]->updateConstraint();
-				}
 
-				thread->updateRotationOffset(end_eff->constraint_ind, rotation);	// the end effector's orientation matters when it grips the thread. This updates the offset rotation.
-		    end_eff->setTransform(tip_pos, rotation, limit_displacement);
-		  }
-		} else {
+					thread->updateRotationOffset(end_eff->constraint_ind, rotation);	// the end effector's orientation matters when it grips the thread. This updates the offset rotation.
+				  end_eff->setTransform(tip_pos, rotation, limit_displacement);
+				}
+			} else {
+				if ((nearest_position - tip_pos).squaredNorm() < 8.0) {												// cursor has an end effector which just started holding the needle
+					end_eff->attach(needle);
+					needle->setTransformOffsetFromEndEffector(nearest_position, rotation);
+					end_eff->setTransform(tip_pos, rotation, limit_displacement);
+				}
+			}
+		}	else {
 			//impossible to close cursor when the end effector is already holding the thread.
 			//however, this happens when a world is copyied and probably in other ocasions too.
 		}

@@ -7,6 +7,7 @@ EndEffector::EndEffector(const Vector3d& pos, const Matrix3d& rot, World* w, Thr
 	: EnvObject(default_color0, default_color1, default_color2, END_EFFECTOR)
 	, thread(t)
 	, constraint(constrained_vertex_num)
+	, needle(NULL)
 	, world(w)
 	, open(false)
 {
@@ -91,6 +92,7 @@ EndEffector::EndEffector(const EndEffector& rhs, World* w)
 	: EnvObject(rhs.color0, rhs.color1, rhs.color2, rhs.type)
 	, thread(rhs.thread)
 	, constraint(rhs.constraint)
+	, needle(NULL)
 	, world(w)
 	, open(rhs.open)
 {
@@ -156,6 +158,7 @@ void EndEffector::writeToFile(ofstream& file)
 EndEffector::EndEffector(ifstream& file, World* w)
 	: EnvObject(default_color0, default_color1, default_color2, END_EFFECTOR)
 	, thread(NULL)
+	, needle(NULL)
 	, world(w)
 {
 	for (int i=0; i<3; i++)
@@ -213,11 +216,19 @@ void EndEffector::setTransform(const Vector3d& pos, const Matrix3d& rot, bool li
     rotation = rot;
   }
   
-  if(isAttached()) {
+  if(isThreadAttached()) {
 		thread->updateConstrainedTransform(constraint_ind, position, rotation);
-		thread->minimize_energy();
-	}  
+		//thread->minimize_energy();
+	}
+	if(isNeedleAttached()) {
+		needle->setTransformFromEndEffector(position, rotation);
+	}
 	
+	updateIntersectionObjects();
+}
+
+void EndEffector::updateIntersectionObjects()
+{
 	Vector3d start_pos;
 	Vector3d end_pos;
 	Vector3d new_pos;
@@ -255,6 +266,20 @@ void EndEffector::setTransform(const Vector3d& pos, const Matrix3d& rot, bool li
 	}
 }
 
+void EndEffector::updateTransformFromAttachment()
+{
+	if (isThreadAttached()) {
+		position = thread->positionAtConstraint(constraint_ind);
+		rotation = thread->rotationAtConstraint(constraint_ind);
+		updateIntersectionObjects();
+	}
+	if (isNeedleAttached()) {
+		needle->updateTransformFromAttachment();
+		needle->getEndEffectorTransform(position, rotation);
+		updateIntersectionObjects();
+	}
+}
+
 void EndEffector::draw()
 {
 	glColor3f(color0, color1, color2);
@@ -263,7 +288,7 @@ void EndEffector::draw()
 	drawSphere(i_objs[1]->_end_pos, i_objs[1]->_radius);
  	
  	int obj_ind;
-  for (obj_ind = 2; obj_ind<2+pieces-1; obj_ind++) {
+  for (obj_ind = 3; obj_ind<2+pieces-1; obj_ind++) {
  		drawCylinder(i_objs[obj_ind]->_start_pos, i_objs[obj_ind]->_end_pos, i_objs[obj_ind]->_radius);
 		drawSphere(i_objs[obj_ind]->_start_pos, i_objs[obj_ind]->_radius);
 	}	
@@ -271,7 +296,7 @@ void EndEffector::draw()
 	drawSphere(i_objs[obj_ind]->_start_pos, i_objs[obj_ind]->_radius);
 	drawSphere(i_objs[obj_ind]->_end_pos, i_objs[obj_ind]->_radius);
 	
-	for (obj_ind++; obj_ind<2+2*pieces-1; obj_ind++) {
+	for (obj_ind+=2; obj_ind<2+2*pieces-1; obj_ind++) {
  		drawCylinder(i_objs[obj_ind]->_start_pos, i_objs[obj_ind]->_end_pos, i_objs[obj_ind]->_radius);
 		drawSphere(i_objs[obj_ind]->_start_pos, i_objs[obj_ind]->_radius);
 	}	
@@ -280,9 +305,16 @@ void EndEffector::draw()
 	drawSphere(i_objs[obj_ind]->_end_pos, i_objs[obj_ind]->_radius);
   
   glColor3f(0.3, 0.3, 0.0);
-  drawCylinder(i_objs[0]->_start_pos, i_objs[0]->_end_pos, i_objs[0]->_radius);
-	drawSphere(i_objs[0]->_start_pos, i_objs[0]->_radius);
-	drawSphere(i_objs[0]->_end_pos, i_objs[0]->_radius);
+  drawCylinder(i_objs[2]->_start_pos, i_objs[2]->_end_pos, i_objs[2]->_radius);
+	drawSphere(i_objs[2]->_start_pos, i_objs[2]->_radius);
+	drawCylinder(i_objs[5]->_start_pos, i_objs[5]->_end_pos, i_objs[5]->_radius);
+	drawSphere(i_objs[5]->_start_pos, i_objs[5]->_radius);
+  
+  //capsule representing possible attachment of cursor
+//  glColor3f(0.3, 0.3, 0.0);
+//  drawCylinder(i_objs[0]->_start_pos, i_objs[0]->_end_pos, i_objs[0]->_radius);
+//	drawSphere(i_objs[0]->_start_pos, i_objs[0]->_radius);
+//	drawSphere(i_objs[0]->_end_pos, i_objs[0]->_radius);
 	
 	//To visualize the collision capsule
 	//const Vector3d start = i_objs[1]->_start_pos + 2.0*(i_objs[1]->_start_pos - i_objs[1]->_end_pos).normalized();
