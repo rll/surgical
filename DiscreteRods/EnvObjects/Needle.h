@@ -33,7 +33,8 @@ class Needle : public EnvObject
 		Matrix3d getStartRotation();
 		Matrix3d getEndRotation();
 		double getAngle();
-		double getRadius();
+		double getCurvatureRadius();
+		double getThicknessRadius();
 		Vector3d getAxis();
 		void rotateAboutAxis(double degrees);
 		
