@@ -10,6 +10,8 @@ class ThreadConstrained;
 
 class Needle : public EnvObject
 {
+	friend class World;
+
 	public:
 		Needle(const Vector3d& pos, const Matrix3d& rot, double degrees, double r, float c0, float c1, float c2, World* w, ThreadConstrained* t = NULL, int constrained_vertex_num = -1);
 //		Needle(const Vector3d& pos, const Vector3d& start_pos, const Vector3d& end_pos, float c0, float c1, float c2, World* w, ThreadConstrained* t = NULL, int constrained_vertex_num = -1);
@@ -22,15 +24,14 @@ class Needle : public EnvObject
 		Needle(ifstream& file, World* w);
 
 		void setTransform(const Vector3d& pos, const Matrix3d& rot);
-		void updateTransform(Vector3d& pos, Matrix3d& rot);
+		void setTransformFromEndEffector(const Vector3d& ee_pos, const Matrix3d& ee_rot);
+		void setTransformOffsetFromEndEffector(const Vector3d& ee_pos, const Matrix3d& ee_rot);
+		void getEndEffectorTransform(Vector3d& ee_pos, Matrix3d& ee_rot);
+		void updateTransformFromAttachment();
 		Vector3d getStartPosition();
 		Vector3d getEndPosition();
 		Matrix3d getStartRotation();
 		Matrix3d getEndRotation();
-		void setStartPosition(const Vector3d& pos);
-		void setEndPosition(const Vector3d& pos);
-		void setStartRotation(const Matrix3d& rot);
-		void setEndRotation(const Matrix3d& rot);
 		double getAngle();
 		double getRadius();
 		Vector3d getAxis();

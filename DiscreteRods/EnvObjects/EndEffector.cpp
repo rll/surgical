@@ -218,12 +218,17 @@ void EndEffector::setTransform(const Vector3d& pos, const Matrix3d& rot, bool li
   
   if(isThreadAttached()) {
 		thread->updateConstrainedTransform(constraint_ind, position, rotation);
-		thread->minimize_energy();
+		//thread->minimize_energy();
 	}
 	if(isNeedleAttached()) {
-		needle->updateTransform(position, rotation);
+		needle->setTransformFromEndEffector(position, rotation);
 	}
 	
+	updateIntersectionObjects();
+}
+
+void EndEffector::updateIntersectionObjects()
+{
 	Vector3d start_pos;
 	Vector3d end_pos;
 	Vector3d new_pos;
@@ -258,6 +263,20 @@ void EndEffector::setTransform(const Vector3d& pos, const Matrix3d& rot, bool li
 		end_pos = new_rot * Vector3d(start+((double) piece+1)*h, -r, 0.0) + new_pos;
   	i_objs[piece+pieces+2]->_start_pos = start_pos;
 		i_objs[piece+pieces+2]->_end_pos 	= end_pos;;
+	}
+}
+
+void EndEffector::updateTransformFromAttachment()
+{
+	if (isThreadAttached()) {
+		position = thread->positionAtConstraint(constraint_ind);
+		rotation = thread->rotationAtConstraint(constraint_ind);
+		updateIntersectionObjects();
+	}
+	if (isNeedleAttached()) {
+		needle->updateTransformFromAttachment();
+		needle->getEndEffectorTransform(position, rotation);
+		updateIntersectionObjects();
 	}
 }
 

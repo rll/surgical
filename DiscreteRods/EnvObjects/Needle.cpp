@@ -177,6 +177,7 @@ Needle::Needle(ifstream& file, World* w)
 	setTransform(position, rotation);
 }
 
+//pos and rot correspond to the needle transform
 void Needle::setTransform(const Vector3d& pos, const Matrix3d& rot)
 {
 	position = pos;
@@ -192,16 +193,58 @@ void Needle::setTransform(const Vector3d& pos, const Matrix3d& rot)
 	}
 }
 
-void Needle::updateTransform(Vector3d& pos, Matrix3d& rot)
+//ROTATION RELATIONS BETWEEN NEEDLE AND OTHER OBJECTS
+//NEEDLE-END_EFFECTOR
+//needle_rotation = ee_rot * rotation_offset
+//needle_position = ee_pos + ee_rot*rotation_offset*position_offset
+//ee_rot = needle_rotation * rotation_offset.transpose()
+//ee_pos = needle_position - ee_rot*rotation_offset*position_offset
+
+//NEEDLE-THREAD_CONSTRAINED
+//thread_rot = AngleAxisd(-angle * M_PI/180.0, needle_rotation.col(1)) * needle_rotation = getEndRotation()
+//thread_pos = needle_position + radius * (AngleAxisd(-angle * M_PI/180.0, needle_rotation.col(1)) * needle_rotation).col(2) = getEndPosition()
+//needle_rotation = AngleAxisd(angle * M_PI/180.0, thread_rot.col(1)) * thread_rot
+//needle_position = thread_pos - radius * (AngleAxisd(-angle * M_PI/180.0, needle_rotation.col(1)) * needle_rotation).col(2)
+
+//FACT
+//needle_rotation.col(1) = thread_rot.col(1)
+
+void Needle::setTransformFromEndEffector(const Vector3d& ee_pos, const Matrix3d& ee_rot)
 {
-	setTransform(pos + rot*rotation_offset*position_offset, rot * rotation_offset);
+	setTransform(ee_pos + ee_rot*rotation_offset*position_offset, ee_rot * rotation_offset);
 	if(isThreadAttached()) {
-		Vector3d pos_cpy(getEndPosition());
-		Matrix3d rot_cpy(getEndRotation());
-		Vector3d pos_cpy_before(getEndPosition());
-		thread->updateConstrainedTransform(constraint_ind, pos_cpy, rot_cpy);
-		pos += pos_cpy - pos_cpy_before;
-		thread->minimize_energy();
+		thread->updateConstrainedTransform(constraint_ind, getEndPosition(), getEndRotation());
+		//thread->minimize_energy();
+	}
+}
+
+//call this when the end effector just attaches to the needle, so that the needle know the relative position and orientation at the time of the attachment.
+void Needle::setTransformOffsetFromEndEffector(const Vector3d& ee_pos, const Matrix3d& ee_rot)
+{
+	rotation_offset = ee_rot.transpose() * rotation;
+	position_offset = rotation_offset.transpose()*ee_rot.transpose()*(position - ee_pos);
+}
+
+void Needle::getEndEffectorTransform(Vector3d& ee_pos, Matrix3d& ee_rot)
+{
+	ee_rot = rotation * rotation_offset.transpose();
+	ee_rot.col(1) = ee_rot.col(2).cross(ee_rot.col(0));
+	ee_rot.col(2) = ee_rot.col(0).cross(ee_rot.col(1));
+	ee_rot.col(0).normalize();
+	ee_rot.col(1).normalize();
+	ee_rot.col(2).normalize();
+	
+	ee_pos = position - ee_rot*rotation_offset*position_offset;
+}
+
+void Needle::updateTransformFromAttachment()
+{
+	if (isThreadAttached()) {
+		const Matrix3d thread_rot = thread->rotationAtConstraint(constraint_ind);
+		const Vector3d thread_pos = thread->positionAtConstraint(constraint_ind);
+		const Matrix3d needle_rot = AngleAxisd(angle * M_PI/180.0, thread_rot.col(1)) * thread_rot;
+		const Vector3d needle_pos = thread_pos - radius * (AngleAxisd(-angle * M_PI/180.0, needle_rot.col(1)) * needle_rot).col(2);
+		setTransform(needle_pos, needle_rot);
 	}
 }
 
@@ -223,27 +266,6 @@ Matrix3d Needle::getStartRotation()
 Matrix3d Needle::getEndRotation()
 {
 	return AngleAxisd(-angle * M_PI/180.0, rotation.col(1)) * rotation;
-}
-
-//TODO: the following 4 methods don't work. DON'T USE THEM!!!
-void Needle::setStartPosition(const Vector3d& pos)
-{
-	position = pos - radius * rotation.col(2);
-}
-
-void Needle::setEndPosition(const Vector3d& pos)
-{
-	position = pos - radius * (AngleAxisd(-angle * M_PI/180.0, rotation.col(1)) * rotation).col(2);
-}
-
-void Needle::setStartRotation(const Matrix3d& rot)
-{
-	rotation = rot;
-}
-
-void Needle::setEndRotation(const Matrix3d& rot)
-{
-	rotation = ((Matrix3d) AngleAxisd(-angle * M_PI/180.0, rot.col(1))).transpose() * rot;
 }
 
 double Needle::getAngle()
@@ -298,12 +320,6 @@ Vector3d Needle::nearestPosition(const Vector3d& pos)
  		}
 	}
 	return min_pos;
-}
-
-void Needle::updateTransformOffset(const Vector3d& pos, const Matrix3d& rot)
-{
-	rotation_offset = rot.transpose() * rotation;
-	position_offset = rotation_offset.transpose()*rot.transpose()*(position - pos);
 }
 
 void Needle::draw()

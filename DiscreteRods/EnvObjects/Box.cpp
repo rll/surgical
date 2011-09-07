@@ -51,21 +51,16 @@ void Box::writeToFile(ofstream& file)
 	for (int r=0; r < 3; r++)
     for (int c=0; c < 3; c++)
       file << rotation(r,c) << " ";
-  file << half_length(0) << " " << half_length(1) << " " << half_length(2) << " " << color0 << " " << color1 << " " << color2 << " " << constraint0 << " " << constraint1 << " " << " " << world->objectIndex<ThreadConstrained>(thread) << " ";
+  file << half_length(0) << " " << half_length(1) << " " << half_length(2) << " " << color0 << " " << color1 << " " << color2 << " ";
+  file << constraint0 << " " << constraint1 << " " << world->objectIndex<ThreadConstrained>(thread) << " " << world->objectIndex<Needle>(needle) << " ";
   file << "\n";
 }
-// << radius << " " << color0 << " " << color1 << " " << color2 << " " << constraint << " " << world->objectIndex<ThreadConstrained>(thread) << " ";
-
-//		Vector3d half_length;v
-//		ThreadConstrained* thread;
-//		int constraint0;
-//		int constraint1;
-//		Needle* needle;
-//		World* world;
 
 Box::Box(ifstream& file, World* w)
+	: thread(NULL)
+	, needle(NULL)
+	, world(w)
 {
-  world = w;
   type = BOX;
   
 	for (int i=0; i<3; i++)
@@ -75,6 +70,13 @@ Box::Box(ifstream& file, World* w)
       file >> rotation(r,c);
 
   file >> half_length(0) >> half_length(1) >> half_length(2) >> color0 >> color1 >> color2;
+  int world_thread_ind, world_needle_ind;
+  file >> constraint0 >> constraint1 >> world_thread_ind >> world_needle_ind;
+ 	thread = world->objectAtIndex<ThreadConstrained>(world_thread_ind);
+ 	needle = world->objectAtIndex<Needle>(world_needle_ind);
+  
+  assert(((thread == NULL) && (constraint0 == -1) && (constraint1 == -1)) || ((thread != NULL) && (constraint0 != -1)));
+
   setTransform(position, rotation);
 }
 
@@ -125,10 +127,24 @@ void Box::draw()
 	glPopMatrix();
 }
 
+void insertNeedle(Needle* n)
+{
+
+}
+
+void stepThread()
+{
+
+}
+
 void Box::backup()
 {
 	backup_position = position;
 	backup_rotation = rotation;
+	backup_constraint0 = constraint0;
+	backup_constraint1 = constraint1;
+	backup_thread_ind = world->objectIndex<ThreadConstrained>(thread);
+	backup_needle_ind = world->objectIndex<Needle>(needle);
 }
 
 // caller is responsible for having backedup before restoring
@@ -136,6 +152,10 @@ void Box::restore()
 {
 	position = backup_position;;
 	rotation = backup_rotation;
+	constraint0 = backup_constraint0;
+	constraint1 = backup_constraint1;
+	thread = world->objectAtIndex<ThreadConstrained>(backup_thread_ind);
+	needle = world->objectAtIndex<Needle>(backup_needle_ind);
 }
 
 bool Box::capsuleIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections)

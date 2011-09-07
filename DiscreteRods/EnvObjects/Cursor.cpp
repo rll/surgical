@@ -294,7 +294,7 @@ void Cursor::setClose(bool limit_displacement)
 			} else {
 				if ((nearest_position - tip_pos).squaredNorm() < 8.0) {												// cursor has an end effector which just started holding the needle
 					end_eff->attach(needle);
-					needle->updateTransformOffset(nearest_position, rotation);
+					needle->setTransformOffsetFromEndEffector(nearest_position, rotation);
 					end_eff->setTransform(tip_pos, rotation, limit_displacement);
 				}
 			}

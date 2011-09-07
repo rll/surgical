@@ -24,6 +24,8 @@ class EndEffector : public EnvObject
 		int backup_constraint;
 		int backup_thread_ind;				// -1 if the end effector is not attached to the thread
 		bool backup_open;
+		
+		void updateIntersectionObjects();
 
 		//need to be backed up
 		// position
@@ -50,6 +52,7 @@ class EndEffector : public EnvObject
 		EndEffector(ifstream& file, World* w);
 		
 		void setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_displacement = false, double max_displacement = 0.2, double max_angle_change = M_PI/180.0);
+		void updateTransformFromAttachment();
 		
 		void draw();
 		

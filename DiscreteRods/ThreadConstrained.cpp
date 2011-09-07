@@ -636,8 +636,10 @@ void ThreadConstrained::updateConstraints (vector<Vector3d> poss, vector<Matrix3
 }
 
 // doesn't minimize energy
-void ThreadConstrained::updateConstrainedTransform(int constraint_ind, Vector3d& pos, Matrix3d& rot)
+void ThreadConstrained::updateConstrainedTransform(int constraint_ind, const Vector3d& pos, const Matrix3d& rot)
 {
+	Vector3d position(pos);
+	Matrix3d rotation(rot);
 	bool wrong_positions = true;
 	int iters = 0;
 	while (wrong_positions) {
@@ -647,22 +649,22 @@ void ThreadConstrained::updateConstrainedTransform(int constraint_ind, Vector3d&
 			if (constrained_vertices_nums[constraint_ind] != 0) {
 				Vector3d temp_start_pos = threads[constraint_ind-1]->start_pos();
 				Matrix3d temp_start_rot = threads[constraint_ind-1]->start_rot();
-				wrong_positions = wrong_positions || threads[constraint_ind-1]->check_fix_positions(temp_start_pos, temp_start_rot, pos, rot);
+				wrong_positions = wrong_positions || threads[constraint_ind-1]->check_fix_positions(temp_start_pos, temp_start_rot, position, rotation);
 			}
 			
 			if (constrained_vertices_nums[constraint_ind] != num_vertices-1) {
 				Vector3d temp_end_pos = threads[constraint_ind]->end_pos();
 				Matrix3d temp_end_rot = threads[constraint_ind]->end_rot();
-				wrong_positions = wrong_positions || threads[constraint_ind]->check_fix_positions(pos, rot, temp_end_pos, temp_end_rot);
+				wrong_positions = wrong_positions || threads[constraint_ind]->check_fix_positions(position, rotation, temp_end_pos, temp_end_rot);
 			}
 		}
 		if (iters == 10) { break; }
 	}
 	
 	if (constrained_vertices_nums[constraint_ind] != 0)
-		threads[constraint_ind-1]->set_end_constraint(pos, rot*rot_offset[constraint_ind]*rot_diff[constraint_ind]);
+		threads[constraint_ind-1]->set_end_constraint(position, rotation*rot_offset[constraint_ind]*rot_diff[constraint_ind]);
 	if (constrained_vertices_nums[constraint_ind] != num_vertices-1)
-		threads[constraint_ind]->set_start_constraint(pos, rot*rot_offset[constraint_ind]);
+		threads[constraint_ind]->set_start_constraint(position, rotation*rot_offset[constraint_ind]);
 }
 
 void ThreadConstrained::getConstrainedTransform(int constraint_ind, Vector3d& pos, Matrix3d& rot)
