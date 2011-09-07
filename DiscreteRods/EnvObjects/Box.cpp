@@ -1,19 +1,43 @@
 #include "Box.h"
+#include "World.h"
+#include "../ThreadConstrained.h"
 
-Box::Box(const Vector3d& pos, const Matrix3d& rot, const Vector3d& half_length_xyz, float c0, float c1, float c2, World* w)
+Box::Box(const Vector3d& pos, const Matrix3d& rot, const Vector3d& half_length_xyz, float c0, float c1, float c2, World* w, Needle* n, ThreadConstrained* t, int constrained_vertex_num0, int constrained_vertex_num1)
 	: EnvObject(pos, rot, c0, c1, c2, BOX)
 	, half_length(half_length_xyz)
+	, thread(t)
+	, constraint0(constrained_vertex_num0)
+	, constraint1(constrained_vertex_num1)
+	, needle(n)
 	, world(w)
 {
+  assert(((thread == NULL) && (constrained_vertex_num0 == -1) && (constrained_vertex_num1 == -1)) || ((thread != NULL) && (constrained_vertex_num0 != -1)));
   setTransform(position, rotation);
 }
 
 Box::Box(const Box& rhs, World* w)
 	: EnvObject(rhs.position, rhs.rotation, rhs.color0, rhs.color1, rhs.color2, rhs.type)
 	, half_length(rhs.half_length)
+	, thread(rhs.thread)
+	, constraint0(rhs.constraint0)
+	, constraint1(rhs.constraint1)
+	, needle(rhs.needle)
 	, world(w)
 {
 	assert(type == BOX);
+	
+	if (thread == NULL) {
+		assert(constraint0 == -1);
+		assert(constraint1 == -1);
+	} else {
+		assert(constraint0 != -1);
+		//box have only one constraint of the thread if the thread hasn't crossed the box
+		thread = world->objectAtIndex<ThreadConstrained>(rhs.world->objectIndex<ThreadConstrained>(rhs.thread));
+	}
+	if (needle != NULL) {
+		needle = world->objectAtIndex<Needle>(rhs.world->objectIndex<Needle>(rhs.needle));
+	}
+	
   setTransform(position, rotation);
 }
 		
@@ -28,12 +52,15 @@ void Box::writeToFile(ofstream& file)
     for (int c=0; c < 3; c++)
       file << rotation(r,c) << " ";
   file << half_length(0) << " " << half_length(1) << " " << half_length(2) << " " << color0 << " " << color1 << " " << color2 << " ";
+  file << constraint0 << " " << constraint1 << " " << world->objectIndex<ThreadConstrained>(thread) << " " << world->objectIndex<Needle>(needle) << " ";
   file << "\n";
 }
 
 Box::Box(ifstream& file, World* w)
+	: thread(NULL)
+	, needle(NULL)
+	, world(w)
 {
-  world = w;
   type = BOX;
   
 	for (int i=0; i<3; i++)
@@ -43,6 +70,13 @@ Box::Box(ifstream& file, World* w)
       file >> rotation(r,c);
 
   file >> half_length(0) >> half_length(1) >> half_length(2) >> color0 >> color1 >> color2;
+  int world_thread_ind, world_needle_ind;
+  file >> constraint0 >> constraint1 >> world_thread_ind >> world_needle_ind;
+ 	thread = world->objectAtIndex<ThreadConstrained>(world_thread_ind);
+ 	needle = world->objectAtIndex<Needle>(world_needle_ind);
+  
+  assert(((thread == NULL) && (constraint0 == -1) && (constraint1 == -1)) || ((thread != NULL) && (constraint0 != -1)));
+
   setTransform(position, rotation);
 }
 
@@ -93,10 +127,24 @@ void Box::draw()
 	glPopMatrix();
 }
 
+void insertNeedle(Needle* n)
+{
+
+}
+
+void stepThread()
+{
+
+}
+
 void Box::backup()
 {
 	backup_position = position;
 	backup_rotation = rotation;
+	backup_constraint0 = constraint0;
+	backup_constraint1 = constraint1;
+	backup_thread_ind = world->objectIndex<ThreadConstrained>(thread);
+	backup_needle_ind = world->objectIndex<Needle>(needle);
 }
 
 // caller is responsible for having backedup before restoring
@@ -104,6 +152,10 @@ void Box::restore()
 {
 	position = backup_position;;
 	rotation = backup_rotation;
+	constraint0 = backup_constraint0;
+	constraint1 = backup_constraint1;
+	thread = world->objectAtIndex<ThreadConstrained>(backup_thread_ind);
+	needle = world->objectAtIndex<Needle>(backup_needle_ind);
 }
 
 bool Box::capsuleIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections)

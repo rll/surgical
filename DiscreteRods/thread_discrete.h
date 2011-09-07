@@ -64,7 +64,6 @@
 #define THREAD_RADIUS 0.2     /* MUST BE ATLEAST MAX_MOVEMENT_VERTICES */
 #define COLLISION_CHECKING true
 
-
 using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN
 using namespace Eigen;
