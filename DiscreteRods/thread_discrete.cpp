@@ -1030,7 +1030,7 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
   */
 	
 	//if (opt_iter!=-1)
-		std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
+		//std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
 
 	return (opt_iter != num_opt_iters);
 } // end minimize_energy

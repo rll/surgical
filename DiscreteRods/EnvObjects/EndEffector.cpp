@@ -201,16 +201,27 @@ void EndEffector::setTransform(const Vector3d& pos, const Matrix3d& rot, bool li
 {
 	if (limit_displacement) {
 		double displacement = (pos-position).norm();
-		double angle_change	= 2*asin((rot.col(0) - rotation.col(0)).norm()/2);
+		//double angle_change	= 2*asin((rot.col(0) - rotation.col(0)).norm()/2);
+		double angle_change	= angle_between(rot.col(0), rotation.col(0));
+		
 		Quaterniond new_q(rot);
 		Quaterniond last_q(rotation);
 		if (displacement > max_displacement) {
 			position = position + (max_displacement/displacement) * (pos-position);
+		} else {
+			position = pos;
 		}
 		if (angle_change > max_angle_change) {
 			Quaterniond interp_q = last_q.slerp(max_angle_change/angle_change, new_q);
 			rotation = interp_q.toRotationMatrix(); 
+		} else {
+			rotation = rot;
 		}
+		rotation.col(1) = rotation.col(2).cross(rotation.col(0));
+		rotation.col(2) = rotation.col(0).cross(rotation.col(1));
+		rotation.col(0).normalize();
+		rotation.col(1).normalize();
+		rotation.col(2).normalize();
 	} else {
 		position = pos;
     rotation = rot;
