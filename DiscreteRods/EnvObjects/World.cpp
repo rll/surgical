@@ -399,7 +399,7 @@ void World::applyRelativeControlJacobian(const VectorXd& relative_control)
   wrapper_control.segment(0, 6) = relative_control.segment(0,6);
   wrapper_control.segment(8, 6) = relative_control.segment(6,6);
 
-  applyRelativeControl(wrapper_control);
+  applyRelativeControl(wrapper_control, true);
 
 }
 
