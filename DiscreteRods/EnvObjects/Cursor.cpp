@@ -81,22 +81,37 @@ void Cursor::setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_d
 	position = pos - EndEffector::grab_offset * rot.col(0) ;
 	rotation = rot;
 	if (isAttached()) {
-		end_eff->setTransform(position - EndEffector::grab_offset * rotation.col(0), rotation, limit_displacement);
-    
+		//end effector is holding needle, which is going through the box
+    bool needle_box_constrained = false;
     if (end_eff->isNeedleAttached()) {
+    	cout << "needle attached" << endl;
     	vector<Box*> boxes;
     	world->getObjects<Box>(boxes);
     	Box* box = NULL;
     	Vector3d direction;
     	for (int i = 0; i < boxes.size(); i++) {
-    		double dist = sphereBoxDistance(end_eff->needle->getStartPosition(), end_eff->needle->getRadius()/8.0, boxes[i]->getPosition(), boxes[i]->getHalfLength(), direction);
+    		double dist = sphereBoxDistance(end_eff->needle->getStartPosition(), end_eff->needle->getThicknessRadius(), boxes[i]->getPosition(), boxes[i]->getHalfLength(), direction);
     		if (dist < 0) {
     			box = boxes[i];
     			break;
     		}
     	}
-    	if (box) cout << "box party" << endl;
+    	if (box) {
+    		needle_box_constrained = true;
+    		cout << "box party" << endl;
+    		//end_eff->needle->rotateAboutAxis(1.0);
+    		//box->attachNeedle();
+    		
+    		
+    	}
     }
+    
+    if (!needle_box_constrained) {
+    	end_eff->setTransform(position - EndEffector::grab_offset * rotation.col(0), rotation, limit_displacement);
+    }
+    
+    
+    
 	}
 }
 

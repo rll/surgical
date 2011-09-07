@@ -211,11 +211,92 @@ void Needle::setTransform(const Vector3d& pos, const Matrix3d& rot)
 
 void Needle::setTransformFromEndEffector(const Vector3d& ee_pos, const Matrix3d& ee_rot)
 {
-	setTransform(ee_pos + ee_rot*rotation_offset*position_offset, ee_rot * rotation_offset);
+	if (true) { //(needle is inside box) {
+		Matrix3d new_ee_rot = ee_rot;
+		Vector3d new_ee_pos = ee_pos;
+		Matrix3d old_ee_rot = rotation * rotation_offset.transpose();
+		Vector3d old_ee_pos = position - old_ee_rot*rotation_offset*position_offset;
+				
+//		Vector3d normalized_displacement = (new_ee_pos - old_ee_pos).normalized();
+//		Vector3d normalized_radial = (old_ee_pos - position).normalized();
+//		cout << normalized_displacement - normalized_radial << endl;
+//		if ((abs(normalized_displacement(0) - normalized_radial(0)) < 0.5) &&
+//				(abs(normalized_displacement(1) - normalized_radial(1)) < 0.5) &&
+//				(abs(normalized_displacement(2) - normalized_radial(2)) < 0.5)) {
+//			cout << "almost" << endl;
+//			return;
+//		}
+//		Vector3d tangent = rotation.col(1).cross(old_ee_pos - position);
+//		tangent.normalize();
+//		Vector3d tan_movement = (new_ee_pos - old_ee_pos).dot(tangent)*tangent;
+//		//rotateAboutAxis(atan(tan_movement.norm()/radius));// * 180.0/M_PI);
+//		
+		
+//		Vector3d proj = (new_ee_pos-position).dot(rotation.col(0))*rotation.col(0) + (new_ee_pos-position).dot(rotation.col(2))*rotation.col(2);
+//		proj.normalize();
+//		//new_ee_pos = position + radius * proj;
+//		
+//		Vector3d old_proj = (old_ee_pos - position);
+//		old_proj.normalize();
+//		
+
+//		
+//		double angle = angle_between(proj, old_proj); // * 180.0/M_PI;
+
+////		if (almost_equal(old_proj.cross(proj).normalized(), rotation.col(1)))
+////		 angle *= -1;
+//		
+//		if ((AngleAxisd(angle, rotation.col(1)) * proj - old_proj).squaredNorm() > (AngleAxisd(-angle, rotation.col(1)) * proj - old_proj).squaredNorm())
+//			angle *= -1;
+//		
+//		cout << "calculated old_proj" << endl << AngleAxisd(angle, rotation.col(1)) * proj << endl;
+//		cout << "old_proj" << endl <<  old_proj << endl;
+
+//		cout << "angle " << angle * 180.0/M_PI << endl;
+//		
+////		if (angle > 90 || angle < -90)
+////			angle = 0.0;
+//		
+//		//cout << "angle " << angle << endl;
+//		rotateAboutAxis(angle);
+		
+		//setTransform(position, AngleAxisd(degrees * M_PI/180.0, rotation.col(1)) * rotation);
+		double angle;
+		Vector3d normal = getStartPosition() - getEndPosition();
+		if (new_ee_pos.dot(normal) > 0) {
+			Vector3d start_pos = getStartPosition();
+			start_pos.normalize();
+			Vector3d old_proj = (old_ee_pos - position);
+			old_proj.normalize();
+			Vector3d proj = (new_ee_pos-position).dot(rotation.col(0))*rotation.col(0) + (new_ee_pos-position).dot(rotation.col(2))*rotation.col(2);
+			proj.normalize();
+			if (almost_equal(old_proj, proj)) {
+				angle = 0.0;
+			} else {
+				angle = acos(proj.dot(old_proj)); //angle_between(proj, old_proj);
+				if ((AngleAxisd(angle, rotation.col(1)) * proj - old_proj).squaredNorm() > (AngleAxisd(-angle, rotation.col(1)) * proj - old_proj).squaredNorm())
+					angle *= -1;
+			}
+			if (angle * 180.0 / M_PI > 165.0 || angle * 180.0 / M_PI < -165.0)
+				angle = 0.0;
+			cout << angle << endl;
+		} else {
+		
+		}
+		rotateAboutAxis(angle);
+	} else {
+		setTransform(ee_pos + ee_rot*rotation_offset*position_offset, ee_rot * rotation_offset);
+	}
+
+	
 	if(isThreadAttached()) {
 		thread->updateConstrainedTransform(constraint_ind, getEndPosition(), getEndRotation());
 		//thread->minimize_energy();
 	}
+	
+	
+	
+	
 }
 
 //call this when the end effector just attaches to the needle, so that the needle know the relative position and orientation at the time of the attachment.
@@ -273,9 +354,14 @@ double Needle::getAngle()
 	return angle;
 }
 
-double Needle::getRadius()
+double Needle::getCurvatureRadius()
 {
 	return radius;
+}
+
+double Needle::getThicknessRadius()
+{
+	return radius/8.0;
 }
 
 Vector3d Needle::getAxis()
@@ -285,7 +371,10 @@ Vector3d Needle::getAxis()
 
 void Needle::rotateAboutAxis(double degrees)
 {
-	rotation = rotation * AngleAxisd(degrees * M_PI/180.0, rotation.col(1));
+	setTransform(position, AngleAxisd(degrees * M_PI/180.0, rotation.col(1)) * rotation);
+	if(isThreadAttached()) {
+		thread->updateConstrainedTransform(constraint_ind, getEndPosition(), getEndRotation());
+	}
 }
 
 Vector3d Needle::nearestPosition(const Vector3d& pos)

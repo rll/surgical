@@ -103,7 +103,7 @@ vector<vector<Control*> >& controls_in, vector<World*>& traj_out) {
   for (int i = 0; i < controls_in.size(); i++) {
     traj_out.push_back(new World(*world));
     double c0 = cost_metric(world, follow_traj[i]);
-    if (c0 > 0.01)
+    //if (c0 > 0.01)
     	cout << c0 << endl;
     world->applyRelativeControl(controls_in[i], true);
     ++progress; 
