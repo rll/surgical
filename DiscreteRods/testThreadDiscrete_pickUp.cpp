@@ -488,9 +488,16 @@ void processNormalKeys(unsigned char key, int x, int y)
 				vector<World*> traj_in;
 				traj_in.push_back(new World(*temp_worlds[0]));
 				vector<World*> traj_out; 			
-				openLoopController(temp_worlds[0], temp_worlds, controls, traj_out);
-				setVisualizationData(traj_out);
-			
+				//openLoopController(temp_worlds[0], temp_worlds, controls, traj_out);
+				//setVisualizationData(traj_out);
+				
+				VectorXd u(12);
+				u.setZero();
+				for(int i =0; i<temp_worlds.size(); i++) {
+					temp_worlds[i]->applyRelativeControlJacobian(u);
+				}
+				setVisualizationData(temp_worlds);
+				
 				//TrajectoryRecorder rec(icc_traj_pert_path); //TODO output world trajectory file generated from control trajectory
 				TrajectoryRecorder rec("c2_test");
 				rec.start();
