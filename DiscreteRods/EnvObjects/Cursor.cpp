@@ -82,7 +82,21 @@ void Cursor::setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_d
 	rotation = rot;
 	if (isAttached()) {
 		end_eff->setTransform(position - EndEffector::grab_offset * rotation.col(0), rotation, limit_displacement);
-    //end_eff->setTransform(position, rotation, limit_displacement);
+    
+    if (end_eff->isNeedleAttached()) {
+    	vector<Box*> boxes;
+    	world->getObjects<Box>(boxes);
+    	Box* box = NULL;
+    	Vector3d direction;
+    	for (int i = 0; i < boxes.size(); i++) {
+    		double dist = sphereBoxDistance(end_eff->needle->getStartPosition(), end_eff->needle->getRadius()/8.0, boxes[i]->getPosition(), boxes[i]->getHalfLength(), direction);
+    		if (dist < 0) {
+    			box = boxes[i];
+    			break;
+    		}
+    	}
+    	if (box) cout << "box party" << endl;
+    }
 	}
 }
 
@@ -263,17 +277,21 @@ void Cursor::setClose(bool limit_displacement)
 	  	
 	  	vector<Needle*> needles;
 	  	world->getObjects<Needle>(needles);
-	  	Vector3d nearest_position = needles[0]->nearestPosition(tip_pos);
-	  	Needle* needle = needles[0];
-	  	for (int needle_ind; needle_ind < needles.size(); needle_ind++) {
-	  		if ( (needles[needle_ind]->nearestPosition(tip_pos) - tip_pos).squaredNorm() <
-	  				 (nearest_position - tip_pos).squaredNorm() ) {	  		
-	  			nearest_position = needles[needle_ind]->nearestPosition(tip_pos);
-	  			needle = needles[needle_ind];
-	  		}
+	  	Vector3d nearest_position;
+	  	Needle* needle;
+	  	if (needles.size() > 0) {
+				nearest_position = needles[0]->nearestPosition(tip_pos);
+				needle = needles[0];
+				for (int needle_ind; needle_ind < needles.size(); needle_ind++) {
+					if ( (needles[needle_ind]->nearestPosition(tip_pos) - tip_pos).squaredNorm() <
+							 (nearest_position - tip_pos).squaredNorm() ) {	  		
+						nearest_position = needles[needle_ind]->nearestPosition(tip_pos);
+						needle = needles[needle_ind];
+					}
+				}
 	  	}
 	  	
-	  	if ((thread->position(nearest_vertex) - tip_pos).squaredNorm() < (nearest_position - tip_pos).squaredNorm()) {
+	  	if ((needles.size() <= 0) || (thread->position(nearest_vertex) - tip_pos).squaredNorm() < (nearest_position - tip_pos).squaredNorm()) {
 				if ((thread->position(nearest_vertex) - tip_pos).squaredNorm() < 32.0) {												// cursor has an end effector which just started holding the thread
 					end_eff->constraint = nearest_vertex;
 				  end_eff->constraint_ind = thread->addConstraint(nearest_vertex);
