@@ -1460,7 +1460,7 @@ void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, do
     make_max_norm_one(offsets);
 
 //    apply_vertex_offsets_vectorized(-max_movement_vertices*Inv_Hessian*Gradients, true);
-    apply_vertex_offsets(offsets, true, -max_movement_vertices);
+    apply_vertex_offsets(offsets, true, max_movement_vertices);
       
     double energy_before_projection = calculate_energy();
     project_length_constraint();
@@ -1469,7 +1469,7 @@ void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, do
     next_energy = calculate_energy();
 
 
-    std::cout << "curr energy: " << curr_energy << "   next energy: " << next_energy << "  before projection: " << energy_before_projection << "  last step: " << max_movement_vertices <<  std::endl;
+    //std::cout << "curr energy: " << curr_energy << "   next energy: " << next_energy << "  before projection: " << energy_before_projection << "  last step: " << max_movement_vertices <<  std::endl;
 
     recalc_vertex_grad = true;
     if (next_energy + energy_error_for_convergence > curr_energy)
@@ -1495,7 +1495,7 @@ void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, do
   curr_energy = calculate_energy();
 
   project_length_constraint();
-  //minimize_energy_twist_angles();
+  minimize_energy_twist_angles();
 
   next_energy = calculate_energy();
 
@@ -1978,7 +1978,7 @@ void Thread::calculate_hessian_vertices(MatrixXd& hessian)
 {
   //ignore first and last 2 pieces
   hessian.setZero();
-  const double eps = 1e-3;
+  const double eps = 1e-1;
   Vector3d grad_offets[3];
   grad_offsets[0] = Vector3d(eps, 0, 0);
   grad_offsets[1] = Vector3d(0, eps, 0);
@@ -2017,7 +2017,7 @@ void Thread::calculate_hessian_vertices(MatrixXd& hessian)
 
 
 
-  MatrixXd check_transposes(hessian.cols(), hessian.rows());
+  /*MatrixXd check_transposes(hessian.cols(), hessian.rows());
   for (int r=0; r < hessian.rows(); r++)
   {
     for (int c=0; c < hessian.cols(); c++)
@@ -2032,7 +2032,7 @@ void Thread::calculate_hessian_vertices(MatrixXd& hessian)
         hessian(r,c) = 0;
     }
 
-  }
+  }*/
 /*
   //calculate pseudoinverse with svd
   Eigen::SVD<Eigen::MatrixXd> hessian_svd;
@@ -3244,38 +3244,55 @@ void Thread::applyControl(const VectorXd& u)
   }
 }
 
+void Thread::getCompleteState(VectorXd& state) {
+  const int _num_pieces = num_pieces();
+  state.resize(6*_num_pieces-3 + 1);
+  for (int piece_ind=0; piece_ind < _num_pieces; piece_ind++)
+  {
+    state.segment(piece_ind*3, 3) = vertex_at_ind(piece_ind);
+  }
+  for (int piece_ind=0; piece_ind < _num_pieces-1; piece_ind++)
+  {
+    state.segment(3*_num_pieces + piece_ind*3, 3) = edge_at_ind(piece_ind);
+  }
+  state(6*_num_pieces-3) = end_angle();
+}
+
+
+void Thread::getPartialState(VectorXd& state) { 
+  const int _num_pieces = num_pieces(); 
+  state.resize(3*(6+6)); // check indices
+
+  for (int piece_ind=0; piece_ind < 6; piece_ind++) {
+    state.segment(piece_ind*3, 3) = vertex_at_ind(piece_ind);
+  }
+
+  int ind = 3*6; 
+  for (int piece_ind=0; piece_ind < 6; piece_ind++) {
+    state.segment(ind + piece_ind*3, 3) = edge_at_ind(piece_ind);
+  }
+  //state(6) = end_angle();
+}
+
 void Thread::getState(VectorXd& state)
 {
   const int _num_pieces = num_pieces();
   assert(_num_pieces == _thread_pieces.size());
-  state.resize(6*_num_pieces-3+1+1);
-  //state.resize(3*(3+3+3+3)+2);
-  state(0) = state.size(); 
-  for (int piece_ind=0; piece_ind < _num_pieces; piece_ind++)
-  {
-    state.segment(piece_ind*3+1, 3) = vertex_at_ind(piece_ind);
-  }
-  for (int piece_ind=0; piece_ind < _num_pieces-1; piece_ind++)
-  {
-    state.segment(3*_num_pieces + piece_ind*3+1, 3) = edge_at_ind(piece_ind);
-  }
-  state(6*_num_pieces-3+1) = end_angle();
-  
-  /*for (int piece_ind=0; piece_ind < 6; piece_ind++) {
-    state.segment(piece_ind*3+1, 3) = vertex_at_ind(piece_ind);
-    //state.segment(piece_ind*6+3,3) = vertex_at_ind(num_pieces()-piece_ind-1);
-  }
-  for (int piece_ind=0; piece_ind < 6; piece_ind++) {
-    state.segment(18 + piece_ind*3+1, 3) = edge_at_ind(piece_ind);
-    //state.segment(18 + piece_ind*6 + 3, 3) = edge_at_ind(num_pieces()-piece_ind-2);
-  }
-  //state(36 + 1) = end_angle();
-  state(36 + 1) = 0.29292929292922929;
-  */
+
+  VectorXd thread_state;
+  getPartialState(thread_state);
+  //getCompleteState(thread_state); 
+
+  state.resize(thread_state.size() + 1); 
+  state(0) = state.size();
+  state.segment(1, thread_state.size()) = thread_state; 
 }
 
 void Thread::setState(VectorXd& state) {
   assert(state(0) == state.size());
+  VectorXd thread_state;
+  getCompleteState(thread_state); 
+  assert(thread_state.size() + 1 == state.size()); // setState only works for complete state
   VectorXd data = state.segment(1, state.size() - 1);
   copy_data_from_vector(data);
 }

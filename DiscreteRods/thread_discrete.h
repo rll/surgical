@@ -62,7 +62,7 @@
 #define num_iters_twist_est_max 0
 
 #define THREAD_RADIUS 0.2     /* MUST BE ATLEAST MAX_MOVEMENT_VERTICES */
-#define COLLISION_CHECKING true
+#define COLLISION_CHECKING false
 
 using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN
@@ -137,6 +137,8 @@ class Thread
     void copy_data_from_vector(VectorXd& toCopy);
     void applyControl(const VectorXd& u);
     void getState(VectorXd& state);
+    void getPartialState(VectorXd& state);
+    void getCompleteState(VectorXd& state); 
     void setState(VectorXd& state); 
     
     //void project_length_constraint_old();

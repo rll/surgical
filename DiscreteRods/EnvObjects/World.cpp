@@ -308,10 +308,17 @@ void World::setTransformFromController(const vector<ControllerBase*>& controller
 	}
 }
 
-double normRand()
+double uniformRand()
 {
-    return ((rand() - RAND_MAX/2.0)/(RAND_MAX/2.0));
+  return ((drand48() - 0.5) * 2); 
 }
+
+
+double normRand() {
+  return uniformRand(); 
+}
+
+
 
 void World::applyRelativeControl(const vector<Control*>& controls, double thresh, bool limit_displacement)
 {

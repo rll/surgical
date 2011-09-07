@@ -40,7 +40,6 @@
 #include "TrajectoryRecorder.h"
 #include "TrajectoryReader.h"
 
-#define NOISE_THRESHOLD 0.0
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
@@ -428,7 +427,7 @@ void processNormalKeys(unsigned char key, int x, int y)
 			}
 		}
     
-    for (int p = 0; p < 12; p++) 
+    for (int p = 0; p < 1; p++) 
 		//for (int p = 0; p < dof_perts.size(); p++)
     //for (int p = 1; p < 2; p++)
 		{
@@ -468,7 +467,7 @@ void processNormalKeys(unsigned char key, int x, int y)
 			ctrls.push_back(&ctrl0);
 			ctrls.push_back(&ctrl1);
       World* initialWorld = new World(*temp_worlds[0]);
-      initialWorld->applyRelativeControl(ctrls,0.0,false);
+      //initialWorld->applyRelativeControl(ctrls,0.0,false);
 			//temp_worlds[0]->applyRelativeControl(ctrls, false);
 			cout << "Saving initial condition state in " << ic_pert_path << endl;
 			StateRecorder ic_state_recorder(ic_pert_path);
@@ -504,7 +503,8 @@ void processNormalKeys(unsigned char key, int x, int y)
             controls, traj_out, nameString);
 				//openLoopController(traj_in, controls, traj_out);
         
-				//setVisualizationData(traj_out);
+				setVisualizationData(traj_out);
+        break;
 			
 				//TrajectoryRecorder rec(icc_traj_pert_path); //TODO output world trajectory file generated from control trajectory
 				TrajectoryRecorder rec("c2_test");

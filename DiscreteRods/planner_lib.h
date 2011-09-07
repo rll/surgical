@@ -1,6 +1,7 @@
-#define NUM_ITERS_SQP_PLANNER 3
+#define NUM_ITERS_SQP_PLANNER 2
 #define NUM_ITERS_SQP_SMOOTHER 1
 #define SQP_BREAK_THRESHOLD 3
+#define NOISE_THRESHOLD 0.3
 
 
 #include "../MotionPlanning/worldSQP.h"
@@ -110,6 +111,7 @@ void sample_on_sphere(VectorXd& u, const double norm) {
 }
 
 
+/* This is broken, don't use this function 
 void leastSquaresStep(World* start, World* goal, VectorXd& u) { 
   VectorXd start_state, goal_state;
   start->getStateForJacobian(start_state);
@@ -140,9 +142,8 @@ void leastSquaresStep(World* start, World* goal, VectorXd& u) {
       u(i) /= max_control;
     }
   }
-
-
 }
+*/
 
 void openLoopController(vector<World*> traj_in, vector<VectorXd>& controls_in, vector<World*>& traj_out) {
   World* world = new World(*traj_in[0]);
@@ -158,7 +159,7 @@ void openLoopController(vector<World*> traj_in, vector<vector<Control*> >& contr
   boost::progress_display progress(controls_in.size());
   for (int i = 0; i < controls_in.size(); i++) {
     traj_out.push_back(new World(*world));
-    world->applyRelativeControl(controls_in[i], 0.0, true);
+    world->applyRelativeControl(controls_in[i], NOISE_THRESHOLD, true);
     ++progress; 
   }
   traj_out.push_back(new World(*world));
@@ -171,7 +172,7 @@ void openLoopController(World* start, vector<World*> follow_traj, vector<vector<
   for (int i = 0; i < controls_in.size(); i++) {
     traj_out.push_back(new World(*world));
     cout << cost_metric(world, follow_traj[i]) << endl;
-    world->applyRelativeControl(controls_in[i], 0.0, true);
+    world->applyRelativeControl(controls_in[i], NOISE_THRESHOLD, true);
     ++progress; 
 
   }
@@ -191,8 +192,9 @@ void closedLoopSQPController(World* start, vector<World*> follow_traj, vector<ve
   traj_out.push_back(new World(*start_copy));
   boost::progress_display progress(controls_in.size());
   for (int i = 0; i < follow_traj.size() - 1; i++) {
+    if (i > 50) break; 
 
-    start_copy->applyRelativeControl(controls_in[i], 0.1, true);
+    start_copy->applyRelativeControl(controls_in[i], NOISE_THRESHOLD, true);
     traj_out.push_back(new World(*start_copy));
 
     cout << "[" << i << ", " << cost_metric(start_copy, follow_traj[i+1]) <<

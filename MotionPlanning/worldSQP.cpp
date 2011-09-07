@@ -2,7 +2,7 @@
 #include <boost/progress.hpp>
 
 #define MATLAB_INSTALL "matlab"
-#define REINITIALIZE_FROM_SQP_STATES true
+#define COLOCATION_METHOD false
 
 
 WorldSQP::WorldSQP(int num_worlds, int size_each_state)
@@ -129,7 +129,7 @@ bool WorldSQP::iterative_control_opt(vector<World*>& trajectory, vector<VectorXd
     double sqp_olc_score = l2PointsDifference(OLTrajectory.back(), trajectory.back());
     cout << "SQP OLC score = " << sqp_olc_score << endl;
     
-#ifdef REINITIALIZE_FROM_SQP_STATES
+#if COLOCATION_METHOD
     //take sqp takes, transform to real states, and iterate
     vector<World*> newStates;
     newStates.resize(trajectory.size());
@@ -183,7 +183,6 @@ bool WorldSQP::iterative_control_opt(vector<World*>& trajectory, vector<VectorXd
 
   return true;
 }
-
 
 
 void WorldSQP::init_all_trans()

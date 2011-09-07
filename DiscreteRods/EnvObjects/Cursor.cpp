@@ -260,20 +260,22 @@ void Cursor::setClose(bool limit_displacement)
 	  			thread = threads[thread_ind];
 	  		}
 	  	}
-	  	
+	  
 	  	vector<Needle*> needles;
 	  	world->getObjects<Needle>(needles);
-	  	Vector3d nearest_position = needles[0]->nearestPosition(tip_pos);
-	  	Needle* needle = needles[0];
-	  	for (int needle_ind; needle_ind < needles.size(); needle_ind++) {
-	  		if ( (needles[needle_ind]->nearestPosition(tip_pos) - tip_pos).squaredNorm() <
-	  				 (nearest_position - tip_pos).squaredNorm() ) {	  		
-	  			nearest_position = needles[needle_ind]->nearestPosition(tip_pos);
-	  			needle = needles[needle_ind];
-	  		}
-	  	}
+      if (needles.size() > 0) { 
+        Vector3d nearest_position = needles[0]->nearestPosition(tip_pos);
+        Needle* needle = needles[0];
+        for (int needle_ind; needle_ind < needles.size(); needle_ind++) {
+          if ( (needles[needle_ind]->nearestPosition(tip_pos) - tip_pos).squaredNorm() <
+              (nearest_position - tip_pos).squaredNorm() ) {	  		
+            nearest_position = needles[needle_ind]->nearestPosition(tip_pos);
+            needle = needles[needle_ind];
+          }
+        }
+      }
 	  	
-	  	if ((thread->position(nearest_vertex) - tip_pos).squaredNorm() < (nearest_position - tip_pos).squaredNorm()) {
+	  	//if ((thread->position(nearest_vertex) - tip_pos).squaredNorm() < (nearest_position - tip_pos).squaredNorm()) {
 				if ((thread->position(nearest_vertex) - tip_pos).squaredNorm() < 32.0) {												// cursor has an end effector which just started holding the thread
 					end_eff->constraint = nearest_vertex;
 				  end_eff->constraint_ind = thread->addConstraint(nearest_vertex);
@@ -291,13 +293,13 @@ void Cursor::setClose(bool limit_displacement)
 					thread->updateRotationOffset(end_eff->constraint_ind, rotation);	// the end effector's orientation matters when it grips the thread. This updates the offset rotation.
 				  end_eff->setTransform(tip_pos, rotation, limit_displacement);
 				}
-			} else {
+			/*} else {
 				if ((nearest_position - tip_pos).squaredNorm() < 8.0) {												// cursor has an end effector which just started holding the needle
 					end_eff->attach(needle);
 					needle->setTransformOffsetFromEndEffector(nearest_position, rotation);
 					end_eff->setTransform(tip_pos, rotation, limit_displacement);
 				}
-			}
+			}*/
 		}	else {
 			//impossible to close cursor when the end effector is already holding the thread.
 			//however, this happens when a world is copyied and probably in other ocasions too.
