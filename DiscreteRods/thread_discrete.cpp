@@ -3290,8 +3290,8 @@ void Thread::getState(VectorXd& state)
   assert(_num_pieces == _thread_pieces.size());
 
   VectorXd thread_state;
-  getPartialState(thread_state);
-  //getCompleteState(thread_state); 
+  //getPartialState(thread_state);
+  getCompleteState(thread_state); 
 
   state.resize(thread_state.size() + 1); 
   state(0) = state.size();

@@ -495,13 +495,12 @@ void processNormalKeys(unsigned char key, int x, int y)
 				vector<World*> traj_in;
 				traj_in.push_back(new World(*temp_worlds[0]));
 				vector<World*> traj_out; 
-        //openLoopController(new World(*initialWorld), temp_worlds, controls, traj_out);
         char nameString[256];
         sprintf(nameString, "sqp_%d", p); 
 
-        closedLoopSQPController(new World(*initialWorld), temp_worlds,
-            controls, traj_out, nameString);
-				//openLoopController(traj_in, controls, traj_out);
+        //closedLoopSQPController(new World(*initialWorld), temp_worlds,
+        //    controls, traj_out, nameString);
+        openLoopController(new World(*initialWorld), temp_worlds, controls, traj_out);
         
 				setVisualizationData(traj_out);
         break;
@@ -1122,7 +1121,7 @@ void glutMenu(int ID) {
 
 void interruptHandler(int sig) {
   cout << "Time since last interrupt: " << interruptTimer->elapsed() << endl; 
-  if (interruptTimer->elapsed() < 10) exit(0);
+  if (interruptTimer->elapsed() < 0.1) exit(0);
   cout << "You need to hold ctrl-c to forcefully exit the program!" << endl;
 
   interruptTimer->restart();
