@@ -25,14 +25,17 @@ SOCKETS_DIR = ../utils/sockets/
 # OPT_COMP =
 OPT_COMP = -Os #-DEIGEN_NO_DEBUG -Os
 FOPENMP = -fopenmp
-PROFILER = -L/usr/lib/ -lprofiler
+PROFILER = #-L/usr/lib/ -lprofiler
 CC = g++ $(OPT_COMP) $(COMPILEFLAG) $(HOSTNAME) $(FOPENMP) $(PROFILER)
 LD = g++ $(OPT_COMP) $(LDFLAG) $(HOSTNAME) $(FOPENMP) $(PROFILER)
 DEBUG = -ggdb
 NDEBUG = #-DNDEBUG
 ISOTROPIC=-DISOTROPIC
 
-target: testThreadDiscrete_pickUp
+target: oldTestThreadDiscrete testThreadDiscrete_pickUp
+
+oldTestThreadDiscrete: testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o Mouse.o Haptic.o World.o Capsule.o Control.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o Box.o Needle.o thread_socket_interface.o UDPSocket.o Socket.o StateRecorder.o StateReader.o TrajectoryRecorder.o TrajectoryReader.o worldSQP.o trajectory_recorder.o trajectory_reader.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) $(NDEBUG) -o oldTestThreadDiscrete testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o Mouse.o Haptic.o World.o Capsule.o Control.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o Box.o Needle.o thread_socket_interface.o UDPSocket.o Socket.o StateRecorder.o StateReader.o TrajectoryRecorder.o TrajectoryReader.o worldSQP.o trajectory_recorder.o trajectory_reader.o $(LIBS) $(PROFILER)
 
 testThreadDiscrete_pickUp: testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o Mouse.o Haptic.o World.o Capsule.o Control.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o Box.o Needle.o thread_socket_interface.o UDPSocket.o Socket.o StateRecorder.o StateReader.o TrajectoryRecorder.o TrajectoryReader.o worldSQP.o
 	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) $(NDEBUG) -o testThreadDiscrete_pickUp testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o Mouse.o Haptic.o World.o Capsule.o Control.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o Box.o Needle.o thread_socket_interface.o UDPSocket.o Socket.o StateRecorder.o StateReader.o TrajectoryRecorder.o TrajectoryReader.o worldSQP.o $(LIBS) $(PROFILER)

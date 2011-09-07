@@ -27,13 +27,7 @@ USING_PART_OF_NAMESPACE_EIGEN
 
 void init_contour();
 void InitStuff();
-void idle();
 void DrawStuff();
-void IdleAndDrawLeft();
-void DrawRight();
-void drawAxesBishop(Vector3d pos, Matrix3d rot);
-void drawAxesMaterial(Vector3d pos, Matrix3d rot);
-void DrawObjectsInEnv();
 void updateThreadPoints();
 void initThread();
 void initThread_closedPolygon();
@@ -82,7 +76,7 @@ Vector3d tangents[2];
 Matrix3d rotations[3];
 
 key_code key_pressed;
-bool examine_mode = true;
+bool examine_mode = false;
 bool print_mode_permanent = false;
 bool print_mode_instant = false;
 bool only_hor_spin = false;
@@ -521,7 +515,6 @@ int main (int argc, char * argv[])
   glutMouseFunc (processMouse);
   glutKeyboardFunc(processNormalKeys);
   glutKeyboardUpFunc(processKeyUp);
-	glutIdleFunc(idle);
 
 	/* create popup menu */
 	glutCreateMenu (JoinStyle);
@@ -560,9 +553,9 @@ int main (int argc, char * argv[])
 	InitStuff ();
 
   initThread();
-  //thread->stepping = false;
-  //thread->step = false;
-	//thread->minimize_energy();
+//  thread->stepping = false;
+//  thread->step = false;
+	thread->minimize_energy();
   updateThreadPoints();
   thread_saved = new Thread(*thread);
 
@@ -592,33 +585,14 @@ void InitStuff (void)
   rotate_frame[0] = 0.0;
   rotate_frame[1] = -111.0;
 
-
 //  lastx = 121.0;
 //  lasty = 121.0;
 
   init_contour();
-
-}
-
-void idle() {
-  double dt = 1;
-  double M =  10;
-  double steps = 500;
-  currentTime += dt;
-  //thread->dynamic_step(dt, M, steps);
-  thread->dynamic_step_until_convergence(dt, M, steps);
-  glutPostRedisplay();
 }
 
 /* draw the helix shape */
 void DrawStuff (void)
-{
-  offset_3d = 10.0;
-  IdleAndDrawLeft();
-}
-
-/* draw the helix shape */
-void IdleAndDrawLeft (void)
 {
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glColor3f (0.8, 0.3, 0.6);
@@ -758,22 +732,13 @@ void IdleAndDrawLeft (void)
 
     zero_angle += angle_change_start;
 
-
-
-
-
-
-
-
-    
-
     //change thread
     //thread->set_constraints(positions[0], rotations[0], positions[1], rotations[1]);
-    thread->apply_motion_nearEnds(motion_to_apply, false);
+    thread->apply_motion_nearEnds(motion_to_apply);
     //thread->set_end_constraint(positions[1], rotations[1]);
-    //if(!few_minimization_steps) {
-    //  thread->minimize_energy();
-    //}
+    if(!few_minimization_steps) {
+      thread->minimize_energy();
+    }
 
 		//thread->adapt_links();
 
@@ -784,75 +749,12 @@ void IdleAndDrawLeft (void)
 
 
   }
-    updateThreadPoints();
+ 
+  updateThreadPoints();
 
-  //Draw Axes
-
-
- //Draw Axes at Start
-  Vector3d diff_pos = positions[0]-zero_location;
-  double rotation_scale_factor = 10.0;
-  Matrix3d rotations_project = rotations[0]*rotation_scale_factor;
-  glBegin(GL_LINES);
-  glEnable(GL_LINE_SMOOTH);
-  glColor3d(1.0, 0.0, 0.0); //red
-  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //x
-  glVertex3f((float)(diff_pos(0)+rotations_project(0,0)), (float)(diff_pos(1)+rotations_project(1,0)), (float)(diff_pos(2)+rotations_project(2,0)));
-  glColor3d(0.0, 1.0, 0.0); //green
-  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //y
-  glVertex3f((float)(diff_pos(0)+rotations_project(0,1)), (float)(diff_pos(1)+rotations_project(1,1)), (float)(diff_pos(2)+rotations_project(2,1)));
-  glColor3d(0.0, 0.0, 1.0); //blue
-  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //z
-  glVertex3f((float)(diff_pos(0)+rotations_project(0,2)), (float)(diff_pos(1)+rotations_project(1,2)), (float)(diff_pos(2)+rotations_project(2,2)));
-
-
-  //Draw Axes at End
-  diff_pos = positions[1]-zero_location;
-  rotation_scale_factor = 10.0;
-  rotations_project = rotations[1]*rotation_scale_factor;
-  glBegin(GL_LINES);
-  glEnable(GL_LINE_SMOOTH);
-  glColor3d(1.0, 0.0, 0.0); //red
-  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //x
-  glVertex3f((float)(diff_pos(0)+rotations_project(0,0)), (float)(diff_pos(1)+rotations_project(1,0)), (float)(diff_pos(2)+rotations_project(2,0)));
-  glColor3d(0.0, 1.0, 0.0); //green
-  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //y
-  glVertex3f((float)(diff_pos(0)+rotations_project(0,1)), (float)(diff_pos(1)+rotations_project(1,1)), (float)(diff_pos(2)+rotations_project(2,1)));
-  glColor3d(0.0, 0.0, 1.0); //blue
-  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //z
-  glVertex3f((float)(diff_pos(0)+rotations_project(0,2)), (float)(diff_pos(1)+rotations_project(1,2)), (float)(diff_pos(2)+rotations_project(2,2)));
-
-
-  glEnd( );
-
-
-  //label axes
-  diff_pos = positions[0]-zero_location;
-  rotation_scale_factor = 15.0;
-  rotations_project = rotations[0]*rotation_scale_factor;
-  void * font = GLUT_BITMAP_HELVETICA_18;
-  glColor3d(1.0, 0.0, 0.0); //red
-  //glRasterPos3i(20.0, 0.0, -1.0);
-  glRasterPos3i((float)(diff_pos(0)+rotations_project(0,0)), (float)(diff_pos(1)+rotations_project(1,0)), (float)(diff_pos(2)+rotations_project(2,0)));
-  glutBitmapCharacter(font, 'X');
-  glColor3d(0.0, 1.0, 0.0); //red
-  //glRasterPos3i(0.0, 20.0, -1.0);
-  glRasterPos3i((float)(diff_pos(0)+rotations_project(0,1)), (float)(diff_pos(1)+rotations_project(1,1)), (float)(diff_pos(2)+rotations_project(2,1)));
-  glutBitmapCharacter(font, 'Y');
-  glColor3d(0.0, 0.0, 1.0); //red
-  //glRasterPos3i(-1.0, 0.0, 20.0);
-  glRasterPos3i((float)(diff_pos(0)+rotations_project(0,2)), (float)(diff_pos(1)+rotations_project(1,2)), (float)(diff_pos(2)+rotations_project(2,2)));
-  glutBitmapCharacter(font, 'Z');
-
-
-
-
-/*  glColor3d(0.5, 0.5, 1.0);
-  glVertex3f(positions[1](0)-positions[0](0), positions[1](1)-positions[0](1), positions[1](2)-positions[0](2)); //z
-  glVertex3f(positions[1](0)-positions[0](0)+tangents[1](0)*4.0, positions[1](1)-positions[0](1)+tangents[1](1)*4.0, positions[1](2)-positions[0](2)+tangents[1](2)*4.0); //z
-*/
-
-
+  drawAxes(positions[0]-zero_location, rotations[0]);
+	drawAxes(positions[1]-zero_location, rotations[1]);
+	labelAxes(positions[0]-zero_location, rotations[0]);
 
   //Draw Thread
   glColor3f (0.5, 0.5, 0.2);
@@ -926,203 +828,16 @@ void IdleAndDrawLeft (void)
       0x0,
       twist_cpy);
 
-	if (examine_mode)
+	if (examine_mode) {
+		glColor3f(0.0, 0.5, 0.5);
 		for (int i=0; i<points.size(); i++)
-			drawSphere(points[i]-zero_location, 0.7, 0.0, 0.5, 0.5);
-
-  DrawObjectsInEnv();
+			drawSphere(points[i]-zero_location, 0.7);
+	}
 
   glPopMatrix ();
 
   glutSwapBuffers ();
 }
-
-/* draw the helix shape */
-void DrawRight (void)
-{
-  glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glColor3f (0.8, 0.3, 0.6);
-
-  glPushMatrix ();
-
-  /* set up some matrices so that the object spins with the mouse */
-  glTranslatef (0.0,0.0,-110.0);
-  glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
-  glRotatef (rotate_frame[0], 0.0, 0.0, 1.0);
-  
-  glTranslatef (+offset_3d,0.0,0.0);
-
-  //Draw Axes
-
- //Draw Axes at Start
-  Vector3d diff_pos = positions[0]-zero_location;
-  double rotation_scale_factor = 10.0;
-  Matrix3d rotations_project = rotations[0]*rotation_scale_factor;
-  glBegin(GL_LINES);
-  glEnable(GL_LINE_SMOOTH);
-  glColor3d(1.0, 0.0, 0.0); //red
-  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //x
-  glVertex3f((float)(diff_pos(0)+rotations_project(0,0)), (float)(diff_pos(1)+rotations_project(1,0)), (float)(diff_pos(2)+rotations_project(2,0)));
-  glColor3d(0.0, 1.0, 0.0); //green
-  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //y
-  glVertex3f((float)(diff_pos(0)+rotations_project(0,1)), (float)(diff_pos(1)+rotations_project(1,1)), (float)(diff_pos(2)+rotations_project(2,1)));
-  glColor3d(0.0, 0.0, 1.0); //blue
-  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //z
-  glVertex3f((float)(diff_pos(0)+rotations_project(0,2)), (float)(diff_pos(1)+rotations_project(1,2)), (float)(diff_pos(2)+rotations_project(2,2)));
-
-  //Draw Axes at End
-  diff_pos = positions[1]-zero_location;
-  rotation_scale_factor = 10.0;
-  rotations_project = rotations[1]*rotation_scale_factor;
-  glBegin(GL_LINES);
-  glEnable(GL_LINE_SMOOTH);
-  glColor3d(1.0, 0.0, 0.0); //red
-  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //x
-  glVertex3f((float)(diff_pos(0)+rotations_project(0,0)), (float)(diff_pos(1)+rotations_project(1,0)), (float)(diff_pos(2)+rotations_project(2,0)));
-  glColor3d(0.0, 1.0, 0.0); //green
-  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //y
-  glVertex3f((float)(diff_pos(0)+rotations_project(0,1)), (float)(diff_pos(1)+rotations_project(1,1)), (float)(diff_pos(2)+rotations_project(2,1)));
-  glColor3d(0.0, 0.0, 1.0); //blue
-  glVertex3f((float)diff_pos(0), (float)diff_pos(1), (float)diff_pos(2)); //z
-  glVertex3f((float)(diff_pos(0)+rotations_project(0,2)), (float)(diff_pos(1)+rotations_project(1,2)), (float)(diff_pos(2)+rotations_project(2,2)));
-  glEnd( );
-
-  //label axes
-  diff_pos = positions[0]-zero_location;
-  rotation_scale_factor = 15.0;
-  rotations_project = rotations[0]*rotation_scale_factor;
-  void * font = GLUT_BITMAP_HELVETICA_18;
-  glColor3d(1.0, 0.0, 0.0); //red
-  //glRasterPos3i(20.0, 0.0, -1.0);
-  glRasterPos3i((float)(diff_pos(0)+rotations_project(0,0)), (float)(diff_pos(1)+rotations_project(1,0)), (float)(diff_pos(2)+rotations_project(2,0)));
-  glutBitmapCharacter(font, 'X');
-  glColor3d(0.0, 1.0, 0.0); //red
-  //glRasterPos3i(0.0, 20.0, -1.0);
-  glRasterPos3i((float)(diff_pos(0)+rotations_project(0,1)), (float)(diff_pos(1)+rotations_project(1,1)), (float)(diff_pos(2)+rotations_project(2,1)));
-  glutBitmapCharacter(font, 'Y');
-  glColor3d(0.0, 0.0, 1.0); //red
-  //glRasterPos3i(-1.0, 0.0, 20.0);
-  glRasterPos3i((float)(diff_pos(0)+rotations_project(0,2)), (float)(diff_pos(1)+rotations_project(1,2)), (float)(diff_pos(2)+rotations_project(2,2)));
-  glutBitmapCharacter(font, 'Z');
-
-  //Draw Thread
-  glColor3f (0.5, 0.5, 0.2);
-
-  double pts_cpy[points.size()+2][3];
-  double twist_cpy[points.size()+2];
-
-  for (int i=0; i < points.size(); i++)
-  {
-    pts_cpy[i+1][0] = points[i](0)-(double)zero_location(0);
-    pts_cpy[i+1][1] = points[i](1)-(double)zero_location(1);
-    pts_cpy[i+1][2] = points[i](2)-(double)zero_location(2);
-    twist_cpy[i+1] = -(360.0/(2.0*M_PI))*(twist_angles[i]+zero_angle);
-  }
-  //add first and last point
-  pts_cpy[0][0] = pts_cpy[1][0]-rotations[0](0,0);
-  pts_cpy[0][1] = pts_cpy[1][1]-rotations[0](1,0);
-  pts_cpy[0][2] = pts_cpy[1][2]-rotations[0](2,0);
-  twist_cpy[0] = twist_cpy[1]; //-(360.0/(2.0*M_PI))*(zero_angle);
-
-
-  pts_cpy[points.size()+1][0] = pts_cpy[points.size()][0]+rotations[1](0,0);
-  pts_cpy[points.size()+1][1] = pts_cpy[points.size()][1]+rotations[1](1,0);
-  pts_cpy[points.size()+1][2] = pts_cpy[points.size()][2]+rotations[1](2,0);
-  twist_cpy[points.size()+1] = twist_cpy[points.size()];
-
-  gleTwistExtrusion(20,
-      contour,
-      contour_norms,
-      NULL,
-      points.size()+2,
-      pts_cpy,
-      0x0,
-      twist_cpy);
-
-	if (examine_mode)
-		for (int i=0; i<points.size(); i++)
-			drawSphere(points[i]-zero_location, 0.7, 0.0, 0.5, 0.5);
-
-  DrawObjectsInEnv();
-
-  glPopMatrix ();
-
-  glutSwapBuffers ();
-}
-
-void drawAxesBishop(Vector3d pos, Matrix3d rot) {
-	glPushMatrix();
-	double transform[] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
-												 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
-												 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
-												 pos(0)   , pos(1)   , pos(2)   , 1 };
-	glMultMatrixd(transform);
-	glBegin(GL_LINES);
-	glEnable(GL_LINE_SMOOTH);
-	glColor3d(1.0, 0.0, 0.0); //red
-	glVertex3f(-10.0, 0.0, 0.0); //x
-	glVertex3f(10.0, 0.0, 0.0);
-	glColor3d(0.0, 1.0, 0.0); //green
-	glVertex3f(0.0, 0.0, 0.0); //y
-	glVertex3f(0.0, 10.0, 0.0);
-	glColor3d(0.0, 0.0, 1.0); //blue
-	glVertex3f(0.0, 0.0, 0.0); //z
-	glVertex3f(0.0, 0.0, 10.0);
-	glEnd();
-	glPopMatrix();
-}
-
-void drawAxesMaterial(Vector3d pos, Matrix3d rot) {
-	glPushMatrix();
-	double transform[] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
-												 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
-												 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
-												 pos(0)   , pos(1)   , pos(2)   , 1 };
-	glMultMatrixd(transform);
-	glBegin(GL_LINES);
-	glEnable(GL_LINE_SMOOTH);
-	glColor3d(1.0, 1.0, 1.0);
-	glVertex3f(-10.0, 0.0, 0.0); //x
-	glVertex3f(10.0, 0.0, 0.0);
-	glColor3d(1.0, 1.0, 1.0);
-	glVertex3f(0.0, 0.0, 0.0); //y
-	glVertex3f(0.0, 10.0, 0.0);
-	glColor3d(1.0, 1.0, 1.0);
-	glVertex3f(0.0, 0.0, 0.0); //z
-	glVertex3f(0.0, 0.0, 10.0);
-	glEnd();
-	glPopMatrix();
-}
-
-void DrawObjectsInEnv()
-{/*
-  vector<Intersection_Object>* objects;
-  objects = get_objects_in_env();
-  
-  glColor3f(0.8, 0.05, 0.05);
-  Vector3d vector_array[4];
-  double point_array[4][3];
-  for (int obj_ind=0; obj_ind < objects->size(); obj_ind++)
-  {
-    vector_array[0] = objects->at(obj_ind)._start_pos - (objects->at(obj_ind)._end_pos - objects->at(obj_ind)._start_pos);
-    vector_array[1] = objects->at(obj_ind)._start_pos;
-    vector_array[2] = objects->at(obj_ind)._end_pos;
-    vector_array[3] = objects->at(obj_ind)._end_pos + (objects->at(obj_ind)._end_pos - objects->at(obj_ind)._start_pos);
-
-    for (int pt_ind = 0; pt_ind < 4; pt_ind++)
-    {
-      point_array[pt_ind][0] = vector_array[pt_ind](0);
-      point_array[pt_ind][1] = vector_array[pt_ind](1);
-      point_array[pt_ind][2] = vector_array[pt_ind](2);
-    }
-
-    glePolyCylinder(4, point_array, NULL, objects->at(obj_ind)._radius);
-
-   }
-
-*/
-}
-
 
 void updateThreadPoints()
 {
@@ -1144,21 +859,17 @@ void updateThreadPoints()
 	//std::cout << "last ang: " << thread->end_angle() << std::endl;
   //
   twist_angles.back() = 2.0*twist_angles[twist_angles.size()-2] - twist_angles[twist_angles.size()-3];
-
-
-
-
 }
 
 
 void initThread()
 {
-  int numInit = 20;//(3*3)/DEFAULT_REST_LENGTH;
+  int numInit = 15;
   double noise_factor = 0.0;
 
 	double end_length = DEFAULT_REST_LENGTH;
-	double start = DEFAULT_REST_LENGTH; //DEFAULT_REST_LENGTH;//8.0;
-	double end = DEFAULT_REST_LENGTH; //DEFAULT_REST_LENGTH;//1.0;
+	double start = DEFAULT_REST_LENGTH;
+	double end = DEFAULT_REST_LENGTH;
 	double m = (start-end)/(numInit-1);
 
   vector<Vector3d> vertices;
@@ -1283,10 +994,6 @@ void initThread()
   //Intersection_Object obj(1.5, start_pos_obj, end_pos_obj);
   //add_object_to_env(obj);
 */
-
-
-
-
 }
 
 
