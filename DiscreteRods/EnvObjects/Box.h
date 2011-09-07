@@ -21,6 +21,7 @@ class Box : public EnvObject
 		
 		void draw();
 		
+		const Vector3d& getHalfLength() const { return half_length; }
 		void insertNeedle(Needle* n);
 		void stepThread();
 		

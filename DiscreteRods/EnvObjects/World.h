@@ -107,6 +107,7 @@ class World
 		EndEffector* closestEndEffector(Vector3d tip_pos);
 	
 		void draw(bool examine_mode = false);
+		void drawDebug();
 
 		//applying control
 		//the controls should know to whom they are applying control.
