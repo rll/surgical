@@ -228,17 +228,18 @@ void ThreadConstrained::restore()
 void ThreadConstrained::getState(VectorXd& state) {
 	vector<VectorXd> thread_states;
 	int thread_states_size = 0;
-  VectorXd constants;
+  /*VectorXd constants;
   getThreadConstants(constants);
   thread_states.push_back(constants);
-  thread_states_size += constants.size(); 
+  thread_states_size += constants.size(); */ 
 
-	for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
-		VectorXd thread_state;
-		threads[thread_ind]->getState(thread_state);
-		thread_states.push_back(thread_state);
-		thread_states_size += thread_state.size();
-	}
+  for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
+    VectorXd thread_state;
+    bool ignore_first_vertex = thread_ind > 0;
+    threads[thread_ind]->getState(thread_state, ignore_first_vertex);
+    thread_states.push_back(thread_state);
+    thread_states_size += thread_state.size();
+  }
 
   // transform from vector<VectorXd> to one long VectorXd
 	state.resize(thread_states_size+1);
@@ -1121,11 +1122,12 @@ void ThreadConstrained::splitThread(int thread_num, int vertex_num) {
 	mapAdd(twist_angle1, -twist_angle1.front());
 	twist_angle0.back() = 2.0*twist_angle0[twist_angle0.size()-2] - twist_angle0[twist_angle0.size()-3];
 	twist_angle1.back() = 2.0*twist_angle1[twist_angle1.size()-2] - twist_angle1[twist_angle1.size()-3];
-	
+
+  
 	double first_length = FIRST_REST_LENGTH;
 	double second_length = SECOND_REST_LENGTH;
-	
-	if (length0[length0.size()-2] > (first_length + second_length)) {
+ 	
+	/*if (length0[length0.size()-2] > (first_length + second_length)) {
 		length0.push_back(0.0);
 		length0.push_back(0.0);
 		length0[length0.size()-1] = length0[length0.size()-4];
@@ -1145,7 +1147,8 @@ void ThreadConstrained::splitThread(int thread_num, int vertex_num) {
 		for (int i = thread_num+1; i < constrained_vertices_nums.size(); i++) {
 			constrained_vertices_nums[i] += 2;
 		}
-	} else if (length0[length0.size()-2] > first_length) {
+	} */
+  if (length0[length0.size()-2] > first_length) {
 		length0.push_back(0.0);
 		length0[length0.size()-1] = length0[length0.size()-3];
 		length0[length0.size()-2] = first_length;
@@ -1161,9 +1164,26 @@ void ThreadConstrained::splitThread(int thread_num, int vertex_num) {
 		for (int i = thread_num+1; i < constrained_vertices_nums.size(); i++) {
 			constrained_vertices_nums[i] += 1;
 		}
-	}
+	} else {
+    length0.push_back(0.0);
+    length0[length0.size()-1] = length0[length0.size()-3];
+    length0[length0.size()-2] = length0[length0.size()-3]/2.0;
+    length0[length0.size()-3] = length0[length0.size()-3]/2.0;
+
+    Vector3d sl = point0[point0.size()-2];
+    Vector3d l_sl = (sl - point0.back()).normalized();
+    point0.push_back(Vector3d::Zero());
+    point0[point0.size()-1] = point0[point0.size()-2];
+    point0[point0.size()-2] = point0[point0.size()-1] + length0[length0.size()] * l_sl;
+
+    num_vertices++;
+    for (int i = thread_num+1; i < constrained_vertices_nums.size(); i++) {
+      constrained_vertices_nums[i] += 1;
+    }
+
+  }
 		
-	if (length1[0] > (first_length + second_length)) {
+	/*if (length1[0] > (first_length + second_length)) {
 		length1.push_back(0.0);
 		length1.push_back(0.0);
 		for (int i = length1.size()-1; i >= 2; i--) {
@@ -1188,7 +1208,8 @@ void ThreadConstrained::splitThread(int thread_num, int vertex_num) {
 		for (int i = thread_num+2; i < constrained_vertices_nums.size(); i++) {
 			constrained_vertices_nums[i] += 2;
 		}
-	} else if (length1[0] > first_length) {
+	} else */
+  if (length1[0] > first_length) {
 		length1.push_back(0.0);
 		for (int i = length1.size()-1; i >= 1; i--) {
 			length1[i] = length1[i-1];
@@ -1209,8 +1230,30 @@ void ThreadConstrained::splitThread(int thread_num, int vertex_num) {
 		for (int i = thread_num+2; i < constrained_vertices_nums.size(); i++) {
 			constrained_vertices_nums[i] += 1;
 		}
-	}
+	} else {
+		length1.push_back(0.0);
+		for (int i = length1.size()-1; i >= 1; i--) {
+			length1[i] = length1[i-1];
+		}
+		length1[0] = length1[1]/2.0;
+		length1[1] = length1[1]/2.0;
 	
+		Vector3d s = point1[1];
+		Vector3d f_s = (s - point1.front()).normalized();
+		point1.push_back(Vector3d::Zero());
+		for (int i = point1.size()-1; i >= 1; i--) {
+			point1[i] = point1[i-1];
+		}
+		point1[0] = point1[1];
+		point1[1] = point1[0] + length1[1]/2.0 * f_s;
+		
+		num_vertices++;
+		for (int i = thread_num+2; i < constrained_vertices_nums.size(); i++) {
+			constrained_vertices_nums[i] += 1;
+		}
+  }
+	
+
 	Thread* thread0 = new Thread(point0, twist_angle0, length0, (Matrix3d&) (threads[thread_num])->start_rot(), vertex_end_rot);
 	Thread* thread1 = new Thread(point1, twist_angle1, length1, vertex_start_rot, (Matrix3d&) (threads[thread_num])->end_rot());
 	thread0->setWorld(world);

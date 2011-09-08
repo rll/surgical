@@ -1,6 +1,6 @@
-#define NUM_ITERS_SQP_PLANNER 2
+#define NUM_ITERS_SQP_PLANNER 1
 #define NUM_ITERS_SQP_SMOOTHER 1
-#define SQP_BREAK_THRESHOLD 3
+#define SQP_BREAK_THRESHOLD 2
 #define NOISE_THRESHOLD 0.0
 
 
@@ -28,11 +28,13 @@ double distanceBetweenAngles (double a, double b) {
 double l2PointsDifference(VectorXd& a, VectorXd& b) {
   VectorXd diff = a-b;
  
+  /*
   double angle_weight = 50;
 
   for (int i = 0; i < diff.size(); i++) {
     diff(i) = fabs(diff(i)); 
   }
+  */
 
   /*for (int i = 0; i < 3; i++) {
     int ind = diff.size() - 1 - i;
@@ -185,16 +187,42 @@ void closedLoopSQPController(World* start, vector<World*> follow_traj, vector<ve
 
   //TODO: FIX NAMESTRING
   //want to minimize actual_i - follow_traj[i]
-  int num_sqp_worlds = 10;
+  int num_sqp_worlds = 5;
   double sqp_init_norm = 1e-1;
-  double sqp_error_to_break = 1e-1;
+  double sqp_error_to_break = 0;
   World* start_copy = new World(*start);
   traj_out.push_back(new World(*start_copy));
   boost::progress_display progress(controls_in.size());
   for (int i = 0; i < follow_traj.size() - 1; i++) {
 
-    start_copy->applyRelativeControl(controls_in[i], NOISE_THRESHOLD, true);
+    //start_copy->applyRelativeControl(controls_in[i], NOISE_THRESHOLD, true);
     traj_out.push_back(new World(*start_copy));
+    
+    
+    // check if end_effectors closed/open TODO: UNHACK!
+    vector<Cursor*> current_cursors;
+    start_copy->getObjects<Cursor>(current_cursors);
+    vector<Cursor*> goal_cursors;
+    follow_traj[i+1]->getObjects<Cursor>(goal_cursors);
+
+    VectorXd du(8*current_cursors.size());
+    du.setZero();
+    for (int j = 0; j < current_cursors.size(); j++) {
+      if (current_cursors[j]->isOpen() != 
+          goal_cursors[j]->isOpen()) {
+        cout << "Grasping!" << endl; 
+        du(8*j + 6) = 1;
+      }
+    }
+
+    start_copy->applyRelativeControl(du);
+
+    for (int j = 0; j < current_cursors.size(); j++) {
+      if (current_cursors[j]->isOpen() != 
+          goal_cursors[j]->isOpen()) {
+        cout << "wait what?" << endl; 
+      }
+    }
 
     cout << "[" << i << ", " << cost_metric(start_copy, follow_traj[i+1]) <<
       "]" << endl; 
@@ -229,8 +257,9 @@ void closedLoopSQPController(World* start, vector<World*> follow_traj, vector<ve
             }
           }
 
-        } while (nextError + sqp_error_to_break < lastError);  
-        i += planInd;
+        } while (nextError + sqp_error_to_break < lastError); 
+          
+        //i += planInd;
     }
     ++progress; 
 

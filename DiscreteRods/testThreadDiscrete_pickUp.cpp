@@ -496,11 +496,20 @@ void processNormalKeys(unsigned char key, int x, int y)
 				traj_in.push_back(new World(*temp_worlds[0]));
 				vector<World*> traj_out; 
         char nameString[256];
-        sprintf(nameString, "sqp_%d", p); 
+        sprintf(nameString, "sqp_%d", p);
+
+        vector<World*> waypoints; 
+        for (int i = 2*53; i < 2*57; i++) {
+          delete initialWorld;
+          initialWorld = new World(*temp_worlds[53*20]);
+          waypoints.push_back(new World(*temp_worlds[(i)*10]));
+        }
 
         //closedLoopSQPController(new World(*initialWorld), temp_worlds,
         //    controls, traj_out, nameString);
-        openLoopController(new World(*initialWorld), temp_worlds, controls, traj_out);
+        closedLoopSQPController(new World(*initialWorld), waypoints,
+            controls, traj_out, nameString);
+        //openLoopController(new World(*initialWorld), temp_worlds, controls, traj_out);
         
 				setVisualizationData(traj_out);
         break;

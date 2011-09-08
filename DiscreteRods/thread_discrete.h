@@ -136,9 +136,9 @@ class Thread
     void unviolate_total_length_constraint();
     void copy_data_from_vector(VectorXd& toCopy);
     void applyControl(const VectorXd& u);
-    void getState(VectorXd& state);
+    void getState(VectorXd& state, bool ignore_first_vertex = false);
     void getPartialState(VectorXd& state);
-    void getCompleteState(VectorXd& state); 
+    void getCompleteState(VectorXd& state, bool ignore_first_vertex = false); 
     void setState(VectorXd& state); 
     
     //void project_length_constraint_old();

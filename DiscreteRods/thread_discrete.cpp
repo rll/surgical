@@ -3254,18 +3254,32 @@ void Thread::applyControl(const VectorXd& u)
   }
 }
 
-void Thread::getCompleteState(VectorXd& state) {
+
+void Thread::getCompleteState(VectorXd& state, bool ignore_first_vertex) {
   const int _num_pieces = num_pieces();
-  state.resize(6*_num_pieces-3 + 1);
+  
+  if (ignore_first_vertex) 
+    state.resize(6*(_num_pieces-1));
+  else 
+    state.resize(6*_num_pieces-3);
+
   for (int piece_ind=0; piece_ind < _num_pieces; piece_ind++)
   {
-    state.segment(piece_ind*3, 3) = vertex_at_ind(piece_ind);
+    
+    if (ignore_first_vertex) {
+      if(piece_ind < _num_pieces-1) {
+        state.segment(piece_ind*6, 3) = edge_at_ind(piece_ind);
+        state.segment(piece_ind*6+3, 3) = vertex_at_ind(piece_ind+1);
+      }
+    }
+    else {
+      state.segment(piece_ind*6, 3) = vertex_at_ind(piece_ind);
+      if (piece_ind < _num_pieces-1) { 
+        state.segment(piece_ind*6 + 3, 3) = edge_at_ind(piece_ind);
+      }
+    }
   }
-  for (int piece_ind=0; piece_ind < _num_pieces-1; piece_ind++)
-  {
-    state.segment(3*_num_pieces + piece_ind*3, 3) = edge_at_ind(piece_ind);
-  }
-  state(6*_num_pieces-3) = end_angle();
+  //state(6*_num_pieces-3) = end_angle(); // otherwise TC is weird
 }
 
 
@@ -3284,15 +3298,19 @@ void Thread::getPartialState(VectorXd& state) {
   //state(6) = end_angle();
 }
 
-void Thread::getState(VectorXd& state)
+void Thread::getState(VectorXd& state, bool ignore_first_vertex)
 {
   const int _num_pieces = num_pieces();
   assert(_num_pieces == _thread_pieces.size());
 
   VectorXd thread_state;
-  //getPartialState(thread_state);
-  getCompleteState(thread_state); 
+ //getPartialState(thread_state);
+  getCompleteState(thread_state, ignore_first_vertex); 
 
+  if (ignore_first_vertex) {
+    state = thread_state;
+    return; 
+  }
   state.resize(thread_state.size() + 1); 
   state(0) = state.size();
   state.segment(1, thread_state.size()) = thread_state; 
