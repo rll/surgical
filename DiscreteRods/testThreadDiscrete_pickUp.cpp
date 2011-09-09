@@ -80,7 +80,7 @@ Vector3d zero_location;
 double zero_angle;
 
 // interactive variables
-bool limit_displacement = false;
+bool limit_displacement = true;
 bool haptics = true;
 bool examine_mode = false;
 

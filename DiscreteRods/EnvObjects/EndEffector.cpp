@@ -232,7 +232,32 @@ void EndEffector::setTransform(const Vector3d& pos, const Matrix3d& rot, bool li
 		//thread->minimize_energy();
 	}
 	if(isNeedleAttached()) {
-		needle->setTransformFromEndEffector(position, rotation);
+		vector<Box*> boxes;
+		world->getObjects<Box>(boxes);
+		Box* box = NULL;
+		for (int i = 0; i < boxes.size(); i++) {
+			if (boxes[i]->isNeedleAttached() && (boxes[i]->getNeedle() == needle)) {
+				box = boxes[i];
+				break;
+			}
+		}
+		
+		if (box!=NULL) {	//box has needle
+			if (box->constraint0!=-1 && box->constraint1!=-1) {
+			
+			} else if (box->constraint0!=-1) {
+				
+			}
+			
+			needle->setTransformFromEndEffectorBoxConstrained(position, rotation);
+			//cout << "party_in_the_box" << endl;
+			
+		} else {
+			needle->setTransformFromEndEffector(position, rotation);		
+			
+		}
+
+		
 	}
 	
 	updateIntersectionObjects();
@@ -285,7 +310,18 @@ void EndEffector::updateTransformFromAttachment()
 		updateIntersectionObjects();
 	}
 	if (isNeedleAttached()) {
-		needle->updateTransformFromAttachment();
+		vector<Box*> boxes;
+		world->getObjects<Box>(boxes);
+		bool has_box_needle = false;
+		for (int i = 0; i < boxes.size(); i++) {
+			if (boxes[i]->isNeedleAttached() && (boxes[i]->getNeedle() == needle)) {
+				has_box_needle = true;
+				break;
+			}
+		}
+		if (!has_box_needle) {
+			needle->updateTransformFromAttachment();
+		}
 		needle->getEndEffectorTransform(position, rotation);
 		updateIntersectionObjects();
 	}
@@ -460,12 +496,18 @@ double EndEffector::capsuleRepulsionEnergy(const Vector3d& start, const Vector3d
 	}
 	return energy;
 	*/
+//	if (REPULSION_COEFF <= 0.0) { return 0.0; }
+//	Vector3d direction;
+//	double dist = capsuleCapsuleDistance(start, end, radius, i_objs[1]->_start_pos + 9.0*(i_objs[1]->_start_pos - i_objs[1]->_end_pos).normalized(), i_objs[1]->_end_pos, i_objs[1]->_radius, direction);
+//	if (dist > radius)
+//		return 0.0;
+//	return REPULSION_COEFF/2.0 * pow(dist-radius,2);
+//	
+//	
 	if (REPULSION_COEFF <= 0.0) { return 0.0; }
 	Vector3d direction;
-	double dist = capsuleCapsuleDistance(start, end, radius, i_objs[1]->_start_pos + 9.0*(i_objs[1]->_start_pos - i_objs[1]->_end_pos).normalized(), i_objs[1]->_end_pos, i_objs[1]->_radius, direction);
-	if (dist > radius)
-		return 0.0;
-	return REPULSION_COEFF/2.0 * pow(dist-radius,2);
+	const double dist = capsuleCapsuleDistance(start, end, radius, i_objs[1]->_start_pos + 9.0*(i_objs[1]->_start_pos - i_objs[1]->_end_pos).normalized(), i_objs[1]->_end_pos, i_objs[1]->_radius, direction);
+	return repulsionEnergy(dist, radius, direction);
 	
 	//dist < 0 || 
 	
@@ -489,12 +531,18 @@ void EndEffector::capsuleRepulsionEnergyGradient(const Vector3d& start, const Ve
 		gradient -= REPULSION_COEFF * (radius - dist) * direction.normalized();
 	}
 	*/
+	
 	if (REPULSION_COEFF <= 0.0) { return; }
 	Vector3d direction;
-	double dist = capsuleCapsuleDistance(start, end, radius, i_objs[1]->_start_pos + 9.0*(i_objs[1]->_start_pos - i_objs[1]->_end_pos).normalized(), i_objs[1]->_end_pos, i_objs[1]->_radius, direction);
-	if (dist < 0) {					
-		gradient -= REPULSION_COEFF * (radius - dist) * direction.normalized();
-	} else if (dist <= radius) {
-		gradient -= REPULSION_COEFF * (radius - dist) * direction.normalized();
-	}
+	const double dist = capsuleCapsuleDistance(start, end, radius, i_objs[1]->_start_pos + 9.0*(i_objs[1]->_start_pos - i_objs[1]->_end_pos).normalized(), i_objs[1]->_end_pos, i_objs[1]->_radius, direction);
+	gradient -= repulsionEnergyGradient(dist, radius, direction);
+	
+//	if (REPULSION_COEFF <= 0.0) { return; }
+//	Vector3d direction;
+//	double dist = capsuleCapsuleDistance(start, end, radius, i_objs[1]->_start_pos + 9.0*(i_objs[1]->_start_pos - i_objs[1]->_end_pos).normalized(), i_objs[1]->_end_pos, i_objs[1]->_radius, direction);
+//	if (dist < 0) {					
+//		gradient -= REPULSION_COEFF * (radius - dist) * direction.normalized();
+//	} else if (dist <= radius) {
+//		gradient -= REPULSION_COEFF * (radius - dist) * direction.normalized();
+//	}
 }
