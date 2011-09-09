@@ -686,11 +686,8 @@ double Thread::calculate_energy()
 			  //skip if both ends, since these are constraints
 			  if(i == 0 && j == _thread_pieces.size() - 2) 
 			    continue;
-			  double dist = self_intersection(i,j,THREAD_RADIUS,direction);
-			  if (dist > THREAD_RADIUS) //dist < 0 || 
-					continue;
-			  //energy += REPULSION_COEFF/2.0 * pow(dist/THREAD_RADIUS-1,2) * THREAD_RADIUS;
-				energy += REPULSION_COEFF * pow(dist-THREAD_RADIUS,2); //it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
+			  const double dist = self_intersection(i,j,THREAD_RADIUS,direction);
+				energy += 2.0 * repulsionEnergy(dist, THREAD_RADIUS, direction);	//it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
 			}
 		}
 
@@ -704,11 +701,8 @@ double Thread::calculate_energy()
 				  	 (i==_thread_pieces.size()-2 && j==0) ||
 				  	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
 				    continue;
-				  double dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
-				  if (dist > THREAD_RADIUS) //dist < 0 || 
-						continue;
-					//energy += REPULSION_COEFF/2.0 * pow(dist/THREAD_RADIUS-1,2) * THREAD_RADIUS;
-					energy += REPULSION_COEFF * pow(dist-THREAD_RADIUS,2); //it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
+				  const double dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
+					energy += 2.0 * repulsionEnergy(dist, THREAD_RADIUS, direction);	//it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
 				}
 			}
 		}
@@ -1907,7 +1901,6 @@ void Thread::calculate_gradient_vertices_vectorized(VectorXd* gradient) {
   }
 }
 
-
 void Thread::calculate_gradient_vertices(vector<Vector3d>& vertex_gradients)
 {
   //#pragma omp parallel for num_threads(NUM_CPU_THREADS)
@@ -1930,20 +1923,12 @@ void Thread::calculate_gradient_vertices(vector<Vector3d>& vertex_gradients)
 			  //skip if both ends, since these are constraints
 			  if(i == 0 && j == _thread_pieces.size() - 2) 
 			    continue;
-			  double dist = self_intersection(i,j,THREAD_RADIUS,direction);
-				if (dist < 0) {					
-					Vector3d grad = REPULSION_COEFF * (THREAD_RADIUS - dist) * direction.normalized();
-					vertex_gradients[i] -= grad;
-					vertex_gradients[i+1] -= grad;
-					vertex_gradients[j] += grad;
-					vertex_gradients[j+1] += grad;
-				} else if (dist <= THREAD_RADIUS) {
-					Vector3d grad = REPULSION_COEFF * (THREAD_RADIUS - dist) * direction.normalized();
-					vertex_gradients[i] -= grad;
-					vertex_gradients[i+1] -= grad;
-					vertex_gradients[j] += grad;
-					vertex_gradients[j+1] += grad;
-				}
+			  const double dist = self_intersection(i,j,THREAD_RADIUS,direction);
+				const Vector3d grad = repulsionEnergyGradient(dist, THREAD_RADIUS, direction);
+				vertex_gradients[i] -= grad;
+				vertex_gradients[i+1] -= grad;
+				vertex_gradients[j] += grad;
+				vertex_gradients[j+1] += grad;
 			}
 		}
 
@@ -1957,16 +1942,10 @@ void Thread::calculate_gradient_vertices(vector<Vector3d>& vertex_gradients)
 				  	 (i==_thread_pieces.size()-2 && j==0) ||
 				  	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
 				    continue;
-				  double dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
-				  if (dist < 0) {					
-						Vector3d grad = REPULSION_COEFF * (THREAD_RADIUS - dist) * direction.normalized();
-						vertex_gradients[i] -= grad;
-						vertex_gradients[i+1] -= grad;
-					} else if (dist <= THREAD_RADIUS) {
-						Vector3d grad = REPULSION_COEFF * (THREAD_RADIUS - dist) * direction.normalized();
-						vertex_gradients[i] -= grad;
-						vertex_gradients[i+1] -= grad;
-					} 
+				  const double dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
+				  const Vector3d grad = repulsionEnergyGradient(dist, THREAD_RADIUS, direction);
+				  vertex_gradients[i] -= grad;
+					vertex_gradients[i+1] -= grad;
 				}
 			}
 		}
