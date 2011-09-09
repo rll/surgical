@@ -228,14 +228,15 @@ void ThreadConstrained::restore()
 void ThreadConstrained::getState(VectorXd& state) {
 	vector<VectorXd> thread_states;
 	int thread_states_size = 0;
-  /*VectorXd constants;
+  VectorXd constants;
   getThreadConstants(constants);
   thread_states.push_back(constants);
-  thread_states_size += constants.size(); */ 
+  thread_states_size += constants.size(); 
 
   for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
     VectorXd thread_state;
-    bool ignore_first_vertex = thread_ind > 0;
+    //bool ignore_first_vertex = thread_ind > 0;
+    bool ignore_first_vertex = false;
     threads[thread_ind]->getState(thread_state, ignore_first_vertex);
     thread_states.push_back(thread_state);
     thread_states_size += thread_state.size();

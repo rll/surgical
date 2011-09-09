@@ -42,6 +42,15 @@ class WorldSQP
       strcpy(_namestring, str);
     };
 
+    void initializeClosedLoopStepper(World* start, vector<World*> target);
+    void pushGoal(World* state);
+    void pushStart(World* state);
+    void popGoal();
+    void popStart(); // poptarts anyone?
+    VectorXd getStartControl();
+
+    void solve();
+
     /*
      * Open loop controller applies controls in controls_in at every time step
      * Assumes start thread is traj_in[0]
@@ -65,9 +74,6 @@ class WorldSQP
 
     double l2PointsDifference(VectorXd& a, VectorXd& b) {
       VectorXd diff = a-b;
-
-      double angle_weight = 50;
-
       for (int i = 0; i < diff.size(); i++) {
         diff(i) = fabs(diff(i)); 
       }
@@ -101,6 +107,8 @@ class WorldSQP
     int _num_worlds;
     int _size_each_state;
     int _cols_all_unknown_states;
+    vector<World*> current_states;
+    vector<VectorXd> current_controls;
     char _namestring[256];
 
 };

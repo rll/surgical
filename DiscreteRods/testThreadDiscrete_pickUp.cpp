@@ -52,7 +52,9 @@ void initGL();
 void interruptHandler(int sig);
 void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_trajectory);
 void sqpPlanner(World* start, World* goal, vector<World*>& trajectory);
-
+void closedLoopSQPController(World* start, vector<World*>& target,
+    vector<vector<Control*> >& ctrls);
+VectorXd closedLoopSQPStepper(World* start, World* goal); 
 //#define VIEW3D
 
 float lastx_L=0;
@@ -102,6 +104,8 @@ bool drawStartWorld = false;
 bool drawGoalWorld = false; 
 bool drawVisualizationData = false;
 bool drawInteractiveWorld = true; 
+WorldSQP* solver = NULL;
+
 
 bool interruptEnabled = false;
 bool smoothingEnabled = false;
@@ -498,20 +502,21 @@ void processNormalKeys(unsigned char key, int x, int y)
         char nameString[256];
         sprintf(nameString, "sqp_%d", p);
 
-        vector<World*> waypoints; 
+        /*vector<World*> waypoints; 
         for (int i = 2*53; i < 2*57; i++) {
           delete initialWorld;
           initialWorld = new World(*temp_worlds[53*20]);
           waypoints.push_back(new World(*temp_worlds[(i)*10]));
-        }
+        }*/
 
         //closedLoopSQPController(new World(*initialWorld), temp_worlds,
         //    controls, traj_out, nameString);
-        closedLoopSQPController(new World(*initialWorld), waypoints,
-            controls, traj_out, nameString);
+        //closedLoopSQPController(new World(*initialWorld), waypoints,
+         //   controls, traj_out, nameString);
         //openLoopController(new World(*initialWorld), temp_worlds, controls, traj_out);
-        
-				setVisualizationData(traj_out);
+        closedLoopSQPController(initialWorld, temp_worlds, controls);
+
+				//setVisualizationData(traj_out);
         break;
 			
 				//TrajectoryRecorder rec(icc_traj_pert_path); //TODO output world trajectory file generated from control trajectory
@@ -1206,3 +1211,50 @@ void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_tr
 
   //setVisualizationData(openLoopWorlds);
 }
+
+VectorXd closedLoopSQPStepper(World* start, World* goal) { 
+  if (solver == NULL) assert(false); //initialize your shit
+  
+  solver->popStart(); //pop the initial start 
+  solver->popStart(); //pop the target start
+
+  solver->pushStart(new World(*start)); 
+  solver->pushGoal(new World(*goal));
+
+  solver->solve();
+  return solver->getStartControl();
+}
+
+void closedLoopSQPController(World* start, vector<World*>& target,
+    vector<vector<Control*> >& ctrls) { 
+  int horizon = 10;
+
+  vector<World*> init_worlds;
+  for (int i = 0; i < horizon; i++) {
+    init_worlds.push_back(target[i]); // solver will make copies
+  }
+
+  solver = new WorldSQP(0,0); /// HACK!!
+  solver->initializeClosedLoopStepper(new World(*start), init_worlds);
+
+  solver->solve();
+  VectorXd ctrl_cl_0 = solver->getStartControl();
+
+  World* start_copy = new World(*start);
+  start_copy->applyRelativeControlJacobian(ctrl_cl_0);
+  
+  start_world = start_copy; 
+  glutPostRedisplay();
+
+  for (int i = 1; i < target.size(); i++) {
+    start_world->applyRelativeControl(ctrls[i-1]);
+    VectorXd cl_ctrl = closedLoopSQPStepper(start_world, target[i+horizon]);
+    start_world->applyRelativeControlJacobian(cl_ctrl);
+    glutPostRedisplay();
+  
+  }
+
+
+
+}
+
