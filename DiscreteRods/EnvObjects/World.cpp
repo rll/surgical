@@ -5,9 +5,9 @@
 World::World()
 {
 	//any of these pushes two threads into threads.
-	//initThread();
+	initThread();
   //initLongerThread();
-  initRestingThread(0);
+  //initRestingThread(0);
 	
 	//setting up control handles
 	cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));
@@ -19,7 +19,7 @@ World::World()
 	objs.push_back(plane);
 	//objs.push_back(new TexturedSphere(Vector3d::Zero(), 150.0, "../utils/textures/checkerBoardRect16.bmp", this));
 	
-//	objs.push_back(new Box(plane->getPosition() + Vector3d(15.0, 10.0, 0.0), Matrix3d::Identity(), Vector3d(10,10,10), 0.0, 0.5, 0.7, this));
+//	objs.push_back(new Box(plane->getPosition() + Vector3d(-40.0, 10.0, 0.0), Matrix3d::Identity(), Vector3d(10,10,10), 0.0, 0.5, 0.7, this));
 //	
 //	objs.push_back(new Needle(plane->getPosition() + Vector3d(0.0, 50.0, 0.0), Matrix3d::Identity(), 120.0, 10.0, 0.3, 0.3, 0.3, this));
 //	objs.push_back(new Needle(threads[0]->positionAtConstraint(0), threads[0]->rotationAtConstraint(0), 120.0, 10.0, 0.3, 0.3, 0.3, this, threads[0], 0));
@@ -279,10 +279,10 @@ void World::draw(bool examine_mode)
 	} else {
 		for (int i = 0; i<cursors.size(); i++)
 			cursors[i]->draw();
-		for (int i = 0; i<threads.size(); i++)
-			threads[i]->draw(examine_mode);
 		for (int i = 0; i<objs.size(); i++)
 			objs[i]->draw();
+		for (int i = 0; i<threads.size(); i++)
+			threads[i]->draw(examine_mode);
 	}	
 }
 

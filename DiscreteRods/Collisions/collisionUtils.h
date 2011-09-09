@@ -37,11 +37,33 @@ inline Vector3d repulsionEnergyGradientLog(const double& dist, const double& ran
 {
 	double a = range / 2.0;
 	if (dist < 0) {
-		return abs(dist) * direction.normalized();
+		return - 1000.0 * abs(dist) * direction.normalized();
 	} else if (dist < a) {
 		return REPULSION_COEFF * (1/dist) * direction.normalized();
 	} else if (dist < 2.0*a) {
 		return - REPULSION_COEFF * (dist/(a*a) - 2/a) * direction.normalized();
+	} else {
+		return Vector3d::Zero();
+	}
+}
+
+inline double repulsionEnergyInverse(const double& dist, const double& range, const Vector3d& direction)
+{
+	if (dist < 0) {
+		return REPULSION_COEFF * 10000.0;
+	} else if (dist < 2*range) {
+		return REPULSION_COEFF * 10 * (1/dist);
+	} else {
+		return 0.0;
+	}
+}
+
+inline Vector3d repulsionEnergyGradientInverse(const double& dist, const double& range, const Vector3d& direction)
+{
+	if (dist < 0) {
+		return - 1000.0 * abs(dist) * direction.normalized();
+	} else if (dist < 2*range) {
+		return REPULSION_COEFF * 10 * (1/(dist*dist)) * direction.normalized();
 	} else {
 		return Vector3d::Zero();
 	}
@@ -68,14 +90,16 @@ inline Vector3d repulsionEnergyGradientLinear(const double& dist, const double& 
 
 inline double repulsionEnergy(const double& dist, const double& range, const Vector3d& direction)
 {
-	return repulsionEnergyLog(dist, range, direction);
+	//return repulsionEnergyLog(dist, range, direction);
 	//return repulsionEnergyLinear(dist, range, direction);
+	return repulsionEnergyInverse(dist, range, direction);
 }
 
 inline Vector3d repulsionEnergyGradient(const double& dist, const double& range, const Vector3d& direction)
 {
-	return repulsionEnergyGradientLog(dist, range, direction);
+	//return repulsionEnergyGradientLog(dist, range, direction);
 	//return repulsionEnergyGradientLinear(dist, range, direction);
+	return repulsionEnergyGradientInverse(dist, range, direction);
 }
 
 //Returns the minimun distance between a capsule and a plane. If the distance is positive, the capsule is not colliding. If the distance is negative, the absolute value of it is the minimun intersecting distance.

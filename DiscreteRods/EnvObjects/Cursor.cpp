@@ -115,7 +115,8 @@ void Cursor::setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_d
     	world->getObjects<Box>(boxes);
     	Vector3d direction;
     	for (int i = 0; i < boxes.size(); i++) {
-    		if (boxes[i]->isNeedleAttached()) {
+    		
+    		if (boxes[i]->isNeedleAttached() && end_eff->needle->isThreadAttached()) {
     			//thread is not in box yet, but starts to be in the box
 		  		if (!boxes[i]->isThreadAttached() && (sphereBoxDistance(end_eff->needle->getEndPosition(), end_eff->needle->getThicknessRadius(), boxes[i]->getPosition(), boxes[i]->getHalfLength(), direction) < 0)) {
 		  			boxes[i]->attach(end_eff->needle->getThread());
@@ -123,9 +124,12 @@ void Cursor::setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_d
 		  			boxes[i]->c0_pos = end_eff->needle->getEndPosition();
 		  			boxes[i]->c0_rot = end_eff->needle->getEndRotation();
 		  			cout << "constrained first" << endl;
+						boxes[i]->getThread()->addConstraint(5);
+						boxes[i]->getThread()->updateRotationOffset(1, boxes[i]->getThread()->rotationAtConstraint(1)); //boxes[i]->c0_rot);
+						boxes[i]->getThread()->updateConstrainedTransform(1, boxes[i]->getThread()->positionAtConstraint(1), boxes[i]->getThread()->rotationAtConstraint(1)); //, boxes[i]->c0_pos, boxes[i]->c0_rot);
 		  		}
 		  		//thread is only coming in to the box, but starts to come out of the box
-		  		if (boxes[i]->isThreadAttached() && (sphereBoxDistance(end_eff->needle->getStartPosition(), end_eff->needle->getThicknessRadius(), boxes[i]->getPosition(), boxes[i]->getHalfLength(), direction) >= 0)) {
+		  		if (boxes[i]->isThreadAttached() && (boxes[i]->constraint1==-1) && (sphereBoxDistance(end_eff->needle->getEndPosition(), end_eff->needle->getThicknessRadius(), boxes[i]->getPosition(), boxes[i]->getHalfLength(), direction) >= 0)) {
 		  			boxes[i]->attach(end_eff->needle->getThread());
 		  			boxes[i]->constraint0 = 7;
 		  			boxes[i]->c0_pos = end_eff->needle->getEndPosition();
@@ -135,6 +139,9 @@ void Cursor::setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_d
 		  			boxes[i]->c1_rot = end_eff->needle->getStartRotation();
 		  			cout << "constrained second" << endl;
 		  		}
+		  	}
+		  	
+		  	if (boxes[i]->isNeedleAttached()) {
 		  		//the needle gets out of the box
 		  		if (!end_eff->needle->boxCollision(boxes[i]->getPosition(), boxes[i]->getHalfLength())) {
 		  			boxes[i]->dettachNeedle();

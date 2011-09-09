@@ -702,7 +702,11 @@ double Thread::calculate_energy()
 				  	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
 				    continue;
 				  const double dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
-					energy += 2.0 * repulsionEnergy(dist, THREAD_RADIUS, direction);	//it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
+					if (j == 0 || j==threads_in_env[k]->_thread_pieces.size()-2) {
+						energy += 4.0 * repulsionEnergy(dist, THREAD_RADIUS, direction);	//it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
+					} else {
+						energy += 2.0 * repulsionEnergy(dist, THREAD_RADIUS, direction);	//it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
+					}
 				}
 			}
 		}
@@ -883,7 +887,7 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
     double curr_energy = calculate_energy();
     double next_energy = 0.0;
 
-    if (recalc_vertex_grad)
+    if (true || recalc_vertex_grad)
     {
       save_thread_pieces();
       calculate_gradient_vertices(vertex_gradients);
@@ -1944,8 +1948,13 @@ void Thread::calculate_gradient_vertices(vector<Vector3d>& vertex_gradients)
 				    continue;
 				  const double dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
 				  const Vector3d grad = repulsionEnergyGradient(dist, THREAD_RADIUS, direction);
-				  vertex_gradients[i] -= grad;
-					vertex_gradients[i+1] -= grad;
+				  if (j == 0 || j==threads_in_env[k]->_thread_pieces.size()-2) {
+				  	vertex_gradients[i] -= 2*grad;
+						vertex_gradients[i+1] -= 2*grad;
+					} else {
+						vertex_gradients[i] -= grad;
+						vertex_gradients[i+1] -= grad;
+					}
 				}
 			}
 		}
@@ -2446,8 +2455,25 @@ bool Thread::project_length_constraint(int recursive_depth)
 
 void Thread::apply_vertex_offsets(vector<Vector3d>& offsets, bool skip_edge_cases, double step_size, bool update_frames)
 {
-
-//std::cout << "last angle before: " << _thread_pieces[_thread_pieces.size()-2]->angle_twist() << std::endl;
+	double max_move = 0;
+	bool move_too_far = false;
+  for(int i = 2; i < offsets.size() - 2; i++) {
+    if(step_size*offsets[i].norm() > MAX_MOVEMENT_VERTICES) {
+      //cout << "MOVED MORE THAN MAX_MOVE_VERTICES IN PROJECT_LENGTH CONSTRAINTS, CANNOT GUARUNTEE LACK OF SELF INTERSECTION)" << endl;
+      //cout << "vertex " << i << "moved: " << offsets[i].norm() << " vector3d " << offsets[i] << endl;
+      move_too_far = true;
+      if(offsets[i].norm() > max_move) max_move = offsets[i].norm();
+      }
+  }
+	
+	if(move_too_far) {
+    for(int i = 2; i < offsets.size()-2; i++) {
+	    offsets[i] = offsets[i] * MAX_MOVEMENT_VERTICES / (max_move*step_size);
+    }
+		//cout << "offset vertex is offseting by more than max_movement_vertices" << endl;
+	}
+	
+	//std::cout << "last angle before: " << _thread_pieces[_thread_pieces.size()-2]->angle_twist() << std::endl;
   if (!skip_edge_cases)
   {
     _thread_pieces[0]->offset_vertex(step_size*offsets[0]);
