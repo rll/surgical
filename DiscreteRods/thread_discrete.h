@@ -10,6 +10,7 @@
 #include "Collisions/intersectionStructs.h"
 #include "EnvObjects/World.h"
 #include "threadpiece_discrete.h"
+#include "Collisions/collisionUtils.h"
 #include <Eigen/Cholesky>
 #include <Eigen/LU>
 #include <Eigen/SVD>
