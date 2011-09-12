@@ -24,9 +24,10 @@
 
 #include "../utils/drawUtils.h"
 #include "../Collisions/intersectionStructs.h"
-#include "../Collisions/collisionUtils.h"
+#include "../Collisions/CollisionWorld.h"
 
 #include "ObjectTypes.h"
+#include "Object.h"
 #include "EnvObject.h"
 #include "Capsule.h"
 #include "Cursor.h"
@@ -48,18 +49,20 @@ USING_PART_OF_NAMESPACE_EIGEN
 	#define TYPE_CAST dynamic_cast
 #endif
 
+enum RenderMode { NORMAL, EXAMINE, DEBUG, COLLISION };
+
 class ThreadConstrained;
 
 class World
 {
 	public:
-		World();
-		World(const World& rhs);
+		World(bool collision_checking = false);
+		World(const World& rhs, bool collision_checking = false);
 		~World();
 
 		//saving and loading from and to file
 		void writeToFile(ofstream& file);
-		World(ifstream& file);
+		World(ifstream& file, bool collision_checking = false);
 
 		template <class T> void getObjects(vector<T*>& objects)
 		{
@@ -106,8 +109,7 @@ class World
 		void initializeThreadsInEnvironment();
 		EndEffector* closestEndEffector(Vector3d tip_pos);
 	
-		void draw(bool examine_mode = false);
-		void drawDebug();
+		void draw(RenderMode examine_mode = NORMAL);
 
 		//applying control
 		//the controls should know to whom they are applying control.
@@ -127,16 +129,13 @@ class World
     void getStateForJacobian(VectorXd& world_state); 
     void computeJacobian(MatrixXd& J); 
     
-		
 		//backup
 		void backup();
 		void restore();
 		
 		//collision
-		bool capsuleObjectIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections);
-		double capsuleObjectRepulsionEnergy(const Vector3d& start, const Vector3d& end, const double radius);
-		void capsuleObjectRepulsionEnergyGradient(const Vector3d& start, const Vector3d& end, const double radius, Vector3d& gradient);
-		
+		CollisionWorld* collision_world;
+				
 		//Init thread
 		void initThread();
 		void initLongerThread();

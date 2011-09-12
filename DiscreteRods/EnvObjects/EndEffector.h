@@ -1,6 +1,8 @@
 #ifndef _EndEffector_h
 #define _EndEffector_h
 
+#include <btBulletDynamicsCommon.h>
+
 #include "EnvObject.h"
 
 #define MAX_DISPLACEMENT 0.2 //THREAD_RADIUS
@@ -13,6 +15,7 @@ class EndEffector : public EnvObject
 {
 	friend class World;
 	friend class Cursor;
+	friend class Box;
 
 	protected:
 		ThreadConstrained* thread;		// The thread this end effector is holding. NULL if it isn't holding a thread.
@@ -21,14 +24,14 @@ class EndEffector : public EnvObject
 		Needle* needle;								// The needle this end effector is holding. NULL if it isn't holding a needle.
 		World* world;
 		bool open;
-		vector<Intersection_Object*> i_objs;
+		vector<btCollisionObject*> col_objs;
 		
 		//backup
 		int backup_constraint;
 		int backup_thread_ind;				// -1 if the end effector is not attached to the thread
 		bool backup_open;
 		
-		void updateIntersectionObjects();
+		void updateCollisionObjects();
 
 		//need to be backed up
 		// position
@@ -80,11 +83,6 @@ class EndEffector : public EnvObject
 		//backup
 		void backup();
 		void restore();
-		
-		//collision
-		bool capsuleIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections);
-  	double capsuleRepulsionEnergy(const Vector3d& start, const Vector3d& end, const double radius);
-  	void capsuleRepulsionEnergyGradient(const Vector3d& start, const Vector3d& end, const double radius, Vector3d& gradient);
 	
 		static const double default_color0 = 0.7, default_color1 = 0.7, default_color2 = 0.7;
 		static const double pieces = 3.0; //4.0;
@@ -92,8 +90,11 @@ class EndEffector : public EnvObject
 		static const double start = -3.0;
 		static const double handle_r = 1.2;
 		static const double short_handle_r = 1.6; // corresponds to the capsule where the cursor can get attached
+		static const double handle_h = 30.0;
+		static const double short_handle_h = 3.0;
 		static const double end = 6.0; // pieces*h + start;
 		static const double grab_offset = 0.0; //12.0;
+		
 };
 
 #endif

@@ -26,6 +26,7 @@
 #include "../Collisions/intersectionStructs.h"
 #include "../Collisions/collisionUtils.h"
 #include "ObjectTypes.h"
+#include "Object.h"
 
 class World;
 
@@ -33,26 +34,30 @@ using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN
 
 /** Base class for objects in environment. */
-class EnvObject
+class EnvObject : public Object
 {
 public:
 
-  EnvObject() {}
+  EnvObject()
+  	: Object(NO_OBJECT)
+  {}
   
   EnvObject(Vector3d pos, Matrix3d rot, float c0, float c1, float c2, object_type t) 
-    : position(pos)
+  	: Object(t)
+    , position(pos)
     , rotation(rot)
     , color0(c0)
     , color1(c1)
     , color2(c2)
-    , type(t)
+    //, type(t)
   {}
   
   EnvObject(float c0, float c1, float c2, object_type t) 
-    : color0(c0)
+    : Object(t)
+    , color0(c0)
     , color1(c1)
     , color2(c2)
-    , type(t)
+    //, type(t)
   {}
   
   virtual ~EnvObject() {}
@@ -126,22 +131,17 @@ public:
   virtual void draw() = 0;
   virtual void drawDebug() {};
   
-  object_type getType() { return type; }
+  //object_type getType() { return type; }
   
   //backup
   virtual void backup() = 0;
   virtual void restore() = 0;
   
-  //collision
-  virtual bool capsuleIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections) = 0;
-  virtual double capsuleRepulsionEnergy(const Vector3d& start, const Vector3d& end, const double radius) = 0;
-  virtual void capsuleRepulsionEnergyGradient(const Vector3d& start, const Vector3d& end, const double radius, Vector3d& gradient) = 0;
-  
 protected:
   Vector3d position;
   Matrix3d rotation;
   float color0, color1, color2;
-  object_type type;
+  //object_type type;
   
   Vector3d backup_position;
   Matrix3d backup_rotation;

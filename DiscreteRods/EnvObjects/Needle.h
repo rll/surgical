@@ -7,6 +7,7 @@
 #include "EnvObject.h"
 
 class ThreadConstrained;
+class Box;
 
 class Needle : public EnvObject
 {
@@ -39,7 +40,8 @@ class Needle : public EnvObject
 		void rotateAboutAxis(double degrees);
 		
 		Vector3d nearestPosition(const Vector3d& pos);
-		void setTransformFromEndEffectorBoxConstrained(const Vector3d& new_ee_pos, const Matrix3d& new_ee_rot);
+		void checkBoxAttach();
+		void setTransformFromEndEffectorBoxConstrained(const Vector3d& new_ee_pos, const Matrix3d& new_ee_rot, Box* box);
 		void updateTransformOffset(const Vector3d& pos, const Matrix3d& rot);
 		
 		void draw();
