@@ -32,6 +32,7 @@ class WorldSQP
     ~WorldSQP();
 
     const int num_worlds() const {return _num_worlds;};
+    const int num_traj() const {return _num_traj;};
 
     void resize_controller(int num_worlds, int size_each_state, int num_traj);
 
@@ -43,6 +44,8 @@ class WorldSQP
     };
 
     void initializeClosedLoopStepper(World* start, vector<vector<World*> >& target);
+    void pushStart(vector<World*>& state);
+    void pushGoal(vector<World*>& state);
     void pushGoal(World* state);
     void pushStart(World* state);
     void popGoal();
@@ -89,8 +92,8 @@ class WorldSQP
   private:
     void init_all_trans();
     void compute_difference_block(DynamicSparseMatrix<double>& m);
-    void add_all_jacobians();
-    void compute_traj_jacobian(int traj_ind, DynamicSparseMatrix<double>& J);
+    void compute_all_jacobians();
+    //void computeJacobian(int traj_ind, int world_ind);
     //void add_transitions_alltrans(vector<World*>& trajectory);
     DynamicSparseMatrix<double> _all_trans;
     int _num_worlds;
@@ -109,5 +112,7 @@ void Matrix_To_File(SparseMatrix<double> mat, const char* filename);
 void File_To_Vector(const char* filename, VectorXd& vec);
 void Vector_To_File(VectorXd& vec, const char* filename);
 void block(DynamicSparseMatrix<double>& c, int s_row, int s_col, DynamicSparseMatrix<double>& data);
+void block(DynamicSparseMatrix<double>& c, int s_row, int s_col, MatrixXd& data);
+void computeJacobian(World* w, MatrixXd* J);
 
 #endif

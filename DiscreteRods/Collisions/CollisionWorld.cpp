@@ -7,8 +7,8 @@ CollisionWorld::CollisionWorld()
 	//btDefaultCollisionConfiguration* collision_configuration = new btDefaultCollisionConfiguration();
 	
 	btDefaultCollisionConstructionInfo constructionInfo = btDefaultCollisionConstructionInfo();
-	constructionInfo.m_defaultMaxCollisionAlgorithmPoolSize = 4096;	//default
-	constructionInfo.m_defaultMaxPersistentManifoldPoolSize = 4096;	//default
+	constructionInfo.m_defaultMaxCollisionAlgorithmPoolSize = 512;	//default
+	constructionInfo.m_defaultMaxPersistentManifoldPoolSize = 512;	//default
 	
 	btDefaultCollisionConfiguration* collision_configuration = new btDefaultCollisionConfiguration(constructionInfo);
 

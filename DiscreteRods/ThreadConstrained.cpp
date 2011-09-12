@@ -220,10 +220,10 @@ void ThreadConstrained::restore()
 void ThreadConstrained::getState(VectorXd& state) {
 	vector<VectorXd> thread_states;
 	int thread_states_size = 0;
-  /*VectorXd constants;
+  VectorXd constants;
   getThreadConstants(constants);
   thread_states.push_back(constants);
-  thread_states_size += constants.size();*/ 
+  thread_states_size += constants.size(); 
 
   for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
     VectorXd thread_state;
@@ -406,8 +406,7 @@ void ThreadConstrained::setState(VectorXd& state) {
   int ind = 0;
   int thread_state_size = state(0); 
   assert(thread_state_size == state.size());
-
-  /*num_vertices = state(1); 
+  num_vertices = state(1); 
   int num_threads = state(2); 
 
   ind += 3; 
@@ -442,11 +441,11 @@ void ThreadConstrained::setState(VectorXd& state) {
     rot_offset[i] = rot_off_i;
   }
   ind += 4*rot_offset.size();
-
+  
   threads.resize(num_threads);
-  */ 
+  
+  //ind += 1;
 
-  ind += 1; 
   for (int i = 0; i < threads.size(); i++) {
     VectorXd data = state.segment(ind, state(ind));
     threads[i]->setState(data); 

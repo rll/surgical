@@ -1,6 +1,7 @@
 #include "World.h"
 #include "../thread_discrete.h"
 #include "../ThreadConstrained.h"
+#include "../../utils/clock2.h"
 
 World::World(bool collision_checking)
 {	
@@ -8,7 +9,7 @@ World::World(bool collision_checking)
 		collision_world = new CollisionWorld();
 	else
 		collision_world = NULL;
-	
+
 	//any of these pushes two threads into threads.
 	//initThread();
   //initLongerThread();
@@ -462,7 +463,6 @@ void World::getStateForJacobian(VectorXd& world_state) {
     }
   }  
   
-  
   //flatten vector<VectorXd> into one long VectorXd
   world_state.resize(state_size);
   int start_ind = 0;
@@ -511,38 +511,49 @@ void World::projectLegalState() {
 }
 
 
-void World::computeJacobian(MatrixXd& J) { 
+void World::computeJacobian(MatrixXd& J) {
+
+  World* world_copy = new World(*this,true);
+
   VectorXd world_state;
-  getStateForJacobian(world_state);
+  world_copy->getStateForJacobian(world_state);
   int size_each_state = world_state.size();
   int size_each_control = 12; 
   J.resize(world_state.size(), size_each_control);
   J.setZero();
   double eps = 1e-1;
-   
-  #pragma omp parallel for num_threads(NUM_CPU_THREADS)
+
+
+  double t0 = GetClock(); 
+  //#pragma omp parallel for num_threads(NUM_CPU_THREADS)
   for (int i = 0 ; i < 12; i++) { 
     VectorXd du(12);
     du.setZero(); 
     du(i) = eps;
     if (i >= 3 && i <= 5) du(i) = 0.5 * eps; 
     if (i >= 9 && i <= 11) du(i) = 0.5 * eps; 
-    World* world_copy = new World(*this); 
+    //World* world_copy = new World(*this, true); 
     world_copy->applyRelativeControlJacobian(du); 
     VectorXd new_state;
     world_copy->getStateForJacobian(new_state);
-    J.block(0,i, size_each_state, 1) = new_state; 
-    delete world_copy;
+    J.block(0,i, size_each_state, 1) = new_state;
+    world_copy->setStateForJacobian(world_state);
+    //delete world_copy;
 
     du(i) = -eps;
     if (i >= 3 && i <= 5) du(i) = 0.5 * -eps; 
     if (i >= 9 && i <= 11) du(i) = 0.5 * -eps; 
-    world_copy = new World(*this); 
+    //world_copy = new World(*this, true); 
     world_copy->applyRelativeControlJacobian(du); 
     world_copy->getStateForJacobian(new_state);
-    J.block(0,i, size_each_state, 1) -= new_state; 
-    delete world_copy;
+    J.block(0,i, size_each_state, 1) -= new_state;
+    world_copy->setStateForJacobian(world_state);
+    //delete world_copy;
   }
+
+  //cout << GetClock() - t0 << endl; 
+
+  delete world_copy;
   
   J /= (2 * eps); 
   //J /= eps; 
@@ -551,13 +562,6 @@ void World::computeJacobian(MatrixXd& J) {
 
 
 void World::printStates() { 
-  cout << endl << endl << endl << endl << endl << endl << endl << endl;
-  cout << endl << endl << endl << endl << endl << endl << endl << endl;
-  cout << endl << endl << endl << endl << endl << endl << endl << endl;
-  cout << endl << endl << endl << endl << endl << endl << endl << endl;
-  cout << endl << endl << endl << endl << endl << endl << endl << endl;
-  cout << endl << endl << endl << endl << endl << endl << endl << endl;
-  cout << endl << endl << endl << endl << endl << endl << endl << endl;
   VectorXd world_state;
   getStateForJacobian(world_state);
   if (world_state.size() > 0) 

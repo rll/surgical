@@ -1276,6 +1276,18 @@ VectorXd closedLoopSQPStepper(World* start, World* goal, WorldSQP* solver) {
   solver->popStart(); //pop the initial start 
   solver->popStart(); //pop the target start
 
+  vector<World*> perturbations;
+  perturbations.push_back(start);
+  for (int i = 1; i < solver->num_traj(); i++) { 
+   World* perturbed_world = new World(*start, true);
+   VectorXd du(12);
+   sample_on_sphere(du, NOISE_THRESHOLD);
+   perturbed_world->applyRelativeControlJacobian(du);
+   World* input = new World(*perturbed_world);
+   delete perturbed_world;
+   perturbations.push_back(input);
+  }
+
   solver->pushStart(new World(*start)); 
   solver->pushGoal(new World(*goal));
 
@@ -1286,9 +1298,9 @@ VectorXd closedLoopSQPStepper(World* start, World* goal, WorldSQP* solver) {
 void closedLoopSQPController(World* start, vector<World*>& target,
     vector<vector<Control*> >& ctrls) { 
   vector<int> horizon;
-  horizon.push_back(0);
   horizon.push_back(5);
-  horizon.push_back(10);
+  horizon.push_back(0);
+  //horizon.push_back(30);
   //horizon.push_back(20);
 
   vector<vector<World*> > horizon_trajs;
@@ -1298,18 +1310,19 @@ void closedLoopSQPController(World* start, vector<World*>& target,
   for (int h = 0; h < horizon.size(); h++) { 
     cout << horizon[h] << endl; 
 
-    int max_ind = min(target.size(), 100); //1088 
+    int max_ind = min(target.size(), 1050); //1088 
     if (horizon[h] == 0) { 
       vector<World*> openLoopWorlds; 
       openLoopWorlds.push_back(new World(*start));
 
-      World* OLcopy = new World(*start);
+      World* OLcopy = new World(*start, true);
       for (int i = 1; i < max_ind; i++) { //state size change at 1088
         cout << "Step " << i << " / " << max_ind << endl;
         //if (interruptEnabled) break; 
         OLcopy->applyRelativeControl(ctrls[i-1], NOISE_THRESHOLD, true);
         openLoopWorlds.push_back(new World(*OLcopy));
       }
+      delete OLcopy; 
       horizon_trajs[h] = openLoopWorlds;
 
     } else { 
@@ -1319,6 +1332,7 @@ void closedLoopSQPController(World* start, vector<World*>& target,
         init_worlds.push_back(target[i]); // solver will make copies
       }
       vector<vector<World*> > sqp_init;
+      sqp_init.push_back(init_worlds);
       sqp_init.push_back(init_worlds);
       sqp_init.push_back(init_worlds);
 
@@ -1335,7 +1349,7 @@ void closedLoopSQPController(World* start, vector<World*>& target,
       closedLoopWorlds.push_back(new World(*start));
       VectorXd ctrl_cl_0 = solver->getStartControl();
 
-      World* CLcopy = new World(*start); 
+      World* CLcopy = new World(*start, true); 
       //start_copy->applyRelativeControlJacobian(ctrl_cl_0);
       //closedLoopWorlds.push_back(new World(*start_copy));
 
@@ -1348,6 +1362,7 @@ void closedLoopSQPController(World* start, vector<World*>& target,
         CLcopy->applyRelativeControlJacobian(cl_ctrl, NOISE_THRESHOLD);
         closedLoopWorlds.push_back(new World(*CLcopy));
       }
+      delete CLcopy;
 
       horizon_trajs[h] = closedLoopWorlds;
     }

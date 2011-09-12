@@ -21,6 +21,8 @@
 #include <Eigen/Geometry>
 #include <math.h>
 #include <vector>
+#include <boost/thread.hpp>
+
 
 #include "../utils/drawUtils.h"
 #include "../Collisions/intersectionStructs.h"

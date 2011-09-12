@@ -1,9 +1,12 @@
 #include "worldSQP.h"
 #include <boost/progress.hpp>
+#include <boost/thread.hpp>
 
 #define MATLAB_INSTALL "matlab"
 #define COLOCATION_METHOD true
 #define TIMER_ENABLED true 
+
+
 
 
 WorldSQP::WorldSQP(int num_worlds, int size_each_state, int num_traj)
@@ -58,34 +61,59 @@ void WorldSQP::initializeClosedLoopStepper(World* start, vector<vector<World*> >
       current_jacobians[i][j] = MatrixXd();
     }
   }
-
   pushStart(new World(*start));
+}
+
+
+void WorldSQP::pushGoal(vector<World*>& states) {
+#if COLOCATION_METHOD
+  assert(states.size() == current_states.size());
+  for (int i = 0; i < current_states.size(); i++) { 
+    current_states[i].push_back(states[i]);
+    current_jacobians[i].push_back(MatrixXd());
+  }
+#else
+  assert(false);
+#endif
 }
 
 void WorldSQP::pushGoal(World* state) {
 #if COLOCATION_METHOD
-  for (int i = 0; i < current_states.size(); i++) { 
-    current_states[i].push_back(state);
-    current_jacobians[i].push_back(MatrixXd());
+  vector<World*> goal_states;
+  for (int i = 0; i < current_states.size(); i++) {
+    goal_states.push_back(state);
   }
+  pushGoal(goal_states);
 #else 
   assert(false); 
 #endif
 }
 
-void WorldSQP::pushStart(World* state) {
+void WorldSQP::pushStart(vector<World*>& states) {
 #if COLOCATION_METHOD
-  pushGoal(state); // this is corrected for
+  assert(states.size() == current_states.size());
+  pushGoal(states); // this is corrected for
   for (int j = 0; j < current_states.size(); j++) { 
     int max_ind = current_states[j].size() - 1;
     for (int i = max_ind; i > 0; i--) {
       current_states[j][i]    = current_states[j][i-1];
       current_jacobians[j][i] = current_jacobians[j][i-1];
     }
-    current_states[j][0] = state;
+    current_states[j][0] = states[j];
     current_jacobians[j][0] = MatrixXd();
   }
+#else
+  assert(false);
+#endif
+}
 
+void WorldSQP::pushStart(World* state) {
+#if COLOCATION_METHOD
+  vector<World*> start_states;
+  for (int i = 0; i < current_states.size(); i++) {
+    start_states.push_back(state);
+  }
+  pushStart(start_states);
 #else
   assert(false);
 #endif
@@ -163,8 +191,9 @@ void WorldSQP::solve() {
   current_states = trajectory_local;*/
 
   //compute Jacobians
-  add_all_jacobians();
+  compute_all_jacobians();
 
+  double t0 = GetClock(); 
   //write out all Jacobians to file
   SparseMatrix<double> all_trans_sparse(_all_trans);
   Matrix_To_File(all_trans_sparse, filename_alltrans);
@@ -333,41 +362,55 @@ void WorldSQP::compute_difference_block(DynamicSparseMatrix<double>& m)
   }
 }
 
-void WorldSQP::add_all_jacobians() { 
-
-  for (int i = 0; i < _num_traj; i++) { 
-    DynamicSparseMatrix<double> J;
-    compute_traj_jacobian(i, J);
-    block(_all_trans,i*_size_each_state*(_num_worlds-1), _cols_all_unknown_states, J);
-  }
-}
-
-void WorldSQP::compute_traj_jacobian(int traj_ind, DynamicSparseMatrix<double>& J)
+void WorldSQP::compute_all_jacobians()
 {
-  J.resize((_num_worlds-1)*_size_each_state, (_num_worlds-1)*_size_each_control);
-  cout << "Computing Jacobians on traj = " << traj_ind << endl; ;
-  boost::progress_display progress(current_states[traj_ind].size()-1);
-  #pragma omp parallel for num_threads(NUM_CPU_THREADS) 
-  for (int i=0; i < current_states[traj_ind].size()-1; i++)
-  {
-    if (current_jacobians[traj_ind][i].rows() == 0) { 
-      MatrixXd trans;
-      current_states[traj_ind][i]->computeJacobian(trans);
-      current_jacobians[traj_ind][i] = trans; 
-    }
+  
+  boost::thread_group group;
 
-    int num_rows_start = i*_size_each_state;
-    int num_cols_start = i*_size_each_control;
-    for (int r=0; r < _size_each_state; r++)
+  for (int traj_ind = 0; traj_ind < _num_traj; traj_ind++) {
+    cout << "Computing Jacobians on traj = " << traj_ind << endl; ;
+    //boost::progress_display progress(current_states[traj_ind].size()-1);
+
+
+    for (int i=0; i < current_states[traj_ind].size()-1; i++)
     {
-      for (int c=0; c < _size_each_control; c++)
-      {
-        J.coeffRef(num_rows_start+r, num_cols_start+c) = current_jacobians[traj_ind][i](r,c);
+      if (current_jacobians[traj_ind][i].rows() == 0) {
+        group.create_thread( boost::bind(computeJacobian, 
+              current_states[traj_ind][i],
+              &current_jacobians[traj_ind][i]) );
+
       }
     }
-    ++progress; 
+  }
+
+  group.join_all();
+
+  for (int traj_ind = 0; traj_ind < _num_traj; traj_ind++) { 
+    DynamicSparseMatrix<double> J; 
+    J.resize((_num_worlds-1)*_size_each_state, (_num_worlds-1)*_size_each_control);
+    for (int i = 0; i < current_states[traj_ind].size()-1; i++) 
+    {
+      int num_rows_start = i*_size_each_state;
+      int num_cols_start = i*_size_each_control;
+      for (int r=0; r < _size_each_state; r++)
+      {
+        for (int c=0; c < _size_each_control; c++)
+        {
+          J.coeffRef(num_rows_start+r, num_cols_start+c) = current_jacobians[traj_ind][i](r,c);
+        }
+      }
+      //++progress; 
+    }
+    block(_all_trans,traj_ind*_size_each_state*(_num_worlds-1), _cols_all_unknown_states, J);
   }
 }
+
+/*void WorldSQP::computeJacobian(World* w, MatrixXd* J) {
+  w->computeJacobian(J);
+  current_states[traj_ind][world_ind]->computeJacobian(trans);
+  current_jacobians[traj_ind][world_ind] = trans; 
+}*/
+
 
 void WorldSQP::world_to_state(World* world, VectorXd& state)
 {
@@ -413,4 +456,17 @@ void block(DynamicSparseMatrix<double>& container, int start_row, int start_col,
   }
 }
 
+void block(DynamicSparseMatrix<double>& container, int start_row, int start_col, MatrixXd& data) {
+  for (int i = 0; i < data.rows(); i++) { 
+    for (int j = 0; j < data.cols(); j++) {
+      container.coeffRef(start_row+i, start_col+j) = data(i,j);
+    }
+  }
+}
+
+void computeJacobian(World* w, MatrixXd* J) {
+  w->computeJacobian(*J);
+
+
+}
 

@@ -12,7 +12,7 @@ from cvxopt import solvers
 printing.options['dformat'] = '%.5f'
 printing.options['width'] = -1
 solvers.options['show_progress'] = False
-#solvers.options['MOSEK'] = {pymosek.iparam.log: 0}
+solvers.options['MOSEK'] = {pymosek.iparam.log: 0}
 
 def sparseIdentity(n):
   return spmatrix(1.0, range(n), range(n))
@@ -155,7 +155,7 @@ def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, x_file, num_traj, num_states, s
   x = x[:num_traj*(num_states-2)*size_each_state+(num_controls)*size_each_control];
 
   U = matrix(x[num_traj*(num_states-2)*size_each_state:], (12, num_controls))
-  print U
+  #print U
 
   f = open(x_file, 'w')
   for i in range(x.size[0]):
