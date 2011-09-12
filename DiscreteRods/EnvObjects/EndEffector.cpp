@@ -173,7 +173,8 @@ EndEffector::EndEffector(const EndEffector& rhs, World* w)
 EndEffector::~EndEffector()
 {
 	for (int i=0; i<col_objs.size(); i++) {
-		world->collision_world->removeCollisionObject(col_objs[i]);
+		if (world->collision_world != NULL)
+			world->collision_world->removeCollisionObject(col_objs[i]);
 		delete col_objs[i];
 		col_objs[i] = NULL;
 	}

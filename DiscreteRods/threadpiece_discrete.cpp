@@ -153,8 +153,10 @@ ThreadPiece::ThreadPiece(const ThreadPiece& rhs, Thread* my_thread, bool add_col
 ThreadPiece::~ThreadPiece()
 {
 	if (_col_obj != NULL) {
-		_my_thread->world->collision_world->removeCollisionObject(_col_obj);
+		if (_my_thread->world->collision_world != NULL)
+			_my_thread->world->collision_world->removeCollisionObject(_col_obj);
 		delete _col_obj;
+		_col_obj = NULL;
 	}
 }
 
