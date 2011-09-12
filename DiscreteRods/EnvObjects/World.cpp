@@ -2,8 +2,13 @@
 #include "../thread_discrete.h"
 #include "../ThreadConstrained.h"
 
-World::World()
-{
+World::World(bool collision_checking)
+{	
+	if (collision_checking)
+		collision_world = new CollisionWorld();
+	else
+		collision_world = NULL;
+	
 	//any of these pushes two threads into threads.
 	//initThread();
   //initLongerThread();
@@ -19,7 +24,7 @@ World::World()
 	objs.push_back(plane);
 	//objs.push_back(new TexturedSphere(Vector3d::Zero(), 150.0, "../utils/textures/checkerBoardRect16.bmp", this));
 	
-//	objs.push_back(new Box(plane->getPosition() + Vector3d(15.0, 10.0, 0.0), Matrix3d::Identity(), Vector3d(10,10,10), 0.0, 0.5, 0.7, this));
+//	objs.push_back(new Box(plane->getPosition() + Vector3d(-40.0, 10.0, 0.0), Matrix3d::Identity(), Vector3d(10,10,10), 0.0, 0.5, 0.7, this));
 //	
 //	objs.push_back(new Needle(plane->getPosition() + Vector3d(0.0, 50.0, 0.0), Matrix3d::Identity(), 120.0, 10.0, 0.3, 0.3, 0.3, this));
 //	objs.push_back(new Needle(threads[0]->positionAtConstraint(0), threads[0]->rotationAtConstraint(0), 120.0, 10.0, 0.3, 0.3, 0.3, this, threads[0], 0));
@@ -44,12 +49,15 @@ World::World()
 	objs.push_back(new EndEffector(plane->getPosition() + Vector3d(35.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()), this));
 	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == -1);
 	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint == -1);
-
-	initializeThreadsInEnvironment();
 }
 
-World::World(const World& rhs)
+World::World(const World& rhs, bool collision_checking)
 {
+	if (collision_checking)
+		collision_world = new CollisionWorld();
+	else
+		collision_world = NULL;
+	
 	threads.clear();
 	for (int i = 0; i<rhs.threads.size(); i++) {
 		threads.push_back(new ThreadConstrained(*(rhs.threads[i]), this));
@@ -94,13 +102,13 @@ World::World(const World& rhs)
 	for (int i = 0; i<rhs.cursors.size(); i++) {
 		cursors.push_back(new Cursor(*(rhs.cursors[i]), this));
 	}
-
-  initializeThreadsInEnvironment();
 }
 
 World::~World()
 {
 	clearObjs();
+	if (collision_world != NULL)
+		delete collision_world;
 }
 
 void World::writeToFile(ofstream& file)
@@ -118,8 +126,13 @@ void World::writeToFile(ofstream& file)
   file << "\n";
 }
 
-World::World(ifstream& file)
+World::World(ifstream& file, bool collision_checking)
 {
+	if (collision_checking)
+		collision_world = new CollisionWorld();
+	else
+		collision_world = NULL;
+	
   int type;
   while (!file.eof()) {
     file >> type;
@@ -172,30 +185,6 @@ World::World(ifstream& file)
     }
     if (type == NO_OBJECT) { break; }
   }
-  cout << endl;
-  
-  initializeThreadsInEnvironment();
-}
-
-// Updates the threads_in_env variable of every Thread object in the world (i.e. every Thread of every ThreadConstrained in the world). This variable is used for thread-thread collisions.
-void World::initializeThreadsInEnvironment()
-{
-	vector<ThreadConstrained*> all_thread_constrained = threads;	
-	vector<Thread*> all_threads;
-	for (int k=0; k<all_thread_constrained.size(); k++) {
-		ThreadConstrained* thread_constrained = all_thread_constrained[k];
-		vector<Thread*> threads;
-		thread_constrained->getThreads(threads);
-		for (int i=0; i<threads.size(); i++)
-			all_threads.push_back(threads[i]);
-	}
-	for (int i=0; i<all_threads.size(); i++) {
-		all_threads[i]->clear_threads_in_env();
-		for (int j=0; j<all_threads.size(); j++) {
-			if (i!=j) 
-				all_threads[i]->add_thread_to_env(all_threads[j]);
-		}
-	}
 }
 
 EndEffector* World::closestEndEffector(Vector3d tip_pos)
@@ -264,56 +253,41 @@ void World::clearObjs()
 	objs.clear();
 }
 
-void World::draw(bool examine_mode)
+void World::draw(RenderMode render_mode)
 {
-//	for (int i = 0; i<cursors.size(); i++)
-//		cursors[i]->draw();
-//	for (int i = 0; i<threads.size(); i++)
-//		threads[i]->draw(examine_mode);
-//	for (int i = 0; i<objs.size(); i++)
-//		objs[i]->draw();
-	
-	if (examine_mode) {
+	if (render_mode == NORMAL) {
+		for (int i = 0; i<cursors.size(); i++)
+			cursors[i]->draw();
+		for (int i = 0; i<objs.size(); i++)
+			objs[i]->draw();
 		for (int i = 0; i<threads.size(); i++)
-			threads[i]->draw(examine_mode);
-	} else {
+			threads[i]->draw(false);
+	} else if (render_mode == EXAMINE) {
+		for (int i = 0; i<cursors.size(); i++)
+			cursors[i]->draw();
+		for (int i = 0; i<objs.size(); i++)
+			objs[i]->draw();
+		for (int i = 0; i<threads.size(); i++)
+			threads[i]->draw(true);
+	} else if (render_mode == DEBUG) {
 		for (int i = 0; i<cursors.size(); i++)
 			cursors[i]->draw();
 		for (int i = 0; i<threads.size(); i++)
-			threads[i]->draw(examine_mode);
+			threads[i]->drawDebug();
 		for (int i = 0; i<objs.size(); i++)
-			objs[i]->draw();
-	}	
+			objs[i]->drawDebug();
+	} else {
+		if (collision_world != NULL) {
+			btCollisionObjectArray col_objs = collision_world->collision_world->getCollisionObjectArray();
+			glColor3f(0,0.8,0.6);
+			for (int i = 0; i < col_objs.size(); i++) {
+				drawCapsule(col_objs[i], true);
+			}
+		}
+	}
+	if (collision_world != NULL)
+		collision_world->drawAllCollisions();
 }
-
-void World::drawDebug()
-{
-//	for (int i = 0; i<cursors.size(); i++)
-//		cursors[i]->drawDebug();
-//	for (int i = 0; i<threads.size(); i++)
-//		threads[i]->drawDebug();
-	for (int i = 0; i<objs.size(); i++)
-		objs[i]->drawDebug();
-	
-//	vector<Box*> boxes;
-//	getObjects<Box>(boxes);
-//	vector<Needle*> needles;
-//	getObjects<Needle>(needles);
-//	vector<EndEffector*> end_effs;
-//	getObjects<EndEffector>(end_effs);
-//	if (boxes.size() > 0 && needles.size() > 0) {
-//		Vector3d direction;
-//		Vector3d positionWorldOnA;
-//		Vector3d positionWorldOnB;
-//		capsuleBoxDistance(end_effs[0]->getStartPosition(), end_effs[0]->getEndPosition(), 5.0/8.0, boxes[0]->getPosition(), boxes[0]->getHalfLength(), direction, positionWorldOnA, positionWorldOnB);
-//		//capsuleBoxDistance(needles[0]->getStartPosition(), needles[0]->getEndPosition(), 5.0/8.0, boxes[0]->getPosition(), boxes[0]->getHalfLength(), direction, positionWorldOnA, positionWorldOnB);
-//		//sphereBoxDistance(needles[0]->getStartPosition(), 5.0/8.0, boxes[0]->getPosition(), boxes[0]->getHalfLength(), direction, positionWorldOnA, positionWorldOnB);
-//		drawSphere(positionWorldOnA, 2.0);		
-//		drawSphere(positionWorldOnB, 2.0);
-//		drawArrow(positionWorldOnB, direction);
-//	}
-}
-
 
 void World::setTransformFromController(const vector<ControllerBase*>& controllers, bool limit_displacement)
 {
@@ -352,7 +326,7 @@ void World::applyRelativeControl(const vector<Control*>& controls, bool limit_di
 		if (controls[i]->getButton(DOWN))
 			cursor->attachDettach(limit_displacement);
 	}
-
+	
 	for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
 		threads[thread_ind]->minimize_energy();
 	}
@@ -520,194 +494,8 @@ void World::restore()
 		if(cursors[i]->isAttached())
 			cursors[i]->dettach();
 	}
-	initializeThreadsInEnvironment();
 }
 
-bool World::capsuleObjectIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections)
-{
-	bool found = false;
-	for (int obj_ind = 0; obj_ind < objs.size(); obj_ind++) {
-		found = objs[obj_ind]->capsuleIntersection(capsule_ind, start, end, radius, intersections) || found;
-	}
-	return found;
-}
-
-double World::capsuleObjectRepulsionEnergy(const Vector3d& start, const Vector3d& end, const double radius)
-{
-	double energy = 0.0;
-	for (int obj_ind = 0; obj_ind < objs.size(); obj_ind++) {
-		energy += objs[obj_ind]->capsuleRepulsionEnergy(start, end, radius);
-	}
-	return energy;
-}
-
-void World::capsuleObjectRepulsionEnergyGradient(const Vector3d& start, const Vector3d& end, const double radius, Vector3d& gradient)
-{
-	for (int obj_ind = 0; obj_ind < objs.size(); obj_ind++) {
-		objs[obj_ind]->capsuleRepulsionEnergyGradient(start, end, radius, gradient);
-	}
-}
-
-#if 0
-
-const int maxNumObjects = 4;
-const int numObjects = 2;
-
-GL_Simplex1to4 simplex;
-
-btCollisionObject	objects[maxNumObjects];
-btCollisionWorld*	collisionWorld = 0;
-
-GLDebugDrawer debugDrawer;
-
-
-void	CollisionInterfaceDemo::initPhysics()
-{
-			
-//init
-	btMatrix3x3 basisA;
-	basisA.setIdentity();
-
-	btMatrix3x3 basisB;
-	basisB.setIdentity();
-
-	objects[0].getWorldTransform().setBasis(basisA);
-	objects[1].getWorldTransform().setBasis(basisB);
-
-	btCapsuleShape* capsuleA = new btCapsuleShape(btScalar(1), btScalar(4));
-	capsuleA->setMargin(0.f);
-	
-	btCapsuleShape* capsuleB = new btCapsuleShape(btScalar(1), btScalar(4));
-	capsuleB->setMargin(0.f);
-	
-	objects[0].setCollisionShape(capsuleA);
-	objects[1].setCollisionShape(capsuleB);
-
-	btDefaultCollisionConfiguration* collisionConfiguration = new btDefaultCollisionConfiguration();
-	btCollisionDispatcher* dispatcher = new btCollisionDispatcher(collisionConfiguration);
-	btVector3	worldAabbMin(-1000,-1000,-1000);
-	btVector3	worldAabbMax(1000,1000,1000);
-
-	btAxisSweep3*	broadphase = new btAxisSweep3(worldAabbMin,worldAabbMax);
-	
-	//SimpleBroadphase is a brute force alternative, performing N^2 aabb overlap tests
-	//SimpleBroadphase*	broadphase = new btSimpleBroadphase;
-
-	collisionWorld = new btCollisionWorld(dispatcher,broadphase,collisionConfiguration);
-
-	collisionWorld->addCollisionObject(&objects[0]);
-	collisionWorld->addCollisionObject(&objects[1]);
-
-
-
-//in every iter
-	btVector3	worldBoundsMin,worldBoundsMax;
-	collisionWorld->getBroadphase()->getBroadphaseAabb(worldBoundsMin,worldBoundsMax);
-	
-	if (collisionWorld)
-		collisionWorld->performDiscreteCollisionDetection();
-
-	
-	//Assume collisionWorld->stepSimulation or collisionWorld->performDiscreteCollisionDetection has been called
-	int numManifolds = collisionWorld->getDispatcher()->getNumManifolds();
-	for (i=0;i<numManifolds;i++)
-	{
-		btPersistentManifold* contactManifold = collisionWorld->getDispatcher()->getManifoldByIndexInternal(i);
-		btCollisionObject* obA = static_cast<btCollisionObject*>(contactManifold->getBody0());
-		btCollisionObject* obB = static_cast<btCollisionObject*>(contactManifold->getBody1());
-	
-		int numContacts = contactManifold->getNumContacts();
-		for (int j=0;j<numContacts;j++)
-		{
-			btManifoldPoint& pt = contactManifold->getContactPoint(j);
-
-			if (pt.getDistance()<0.f)
-			{
-				const btVector3& ptA = pt.getPositionWorldOnA();
-				const btVector3& ptB = pt.getPositionWorldOnB();
-				const btVector3& normalOnB = pt.m_normalWorldOnB;
-			}
-
-			glBegin(GL_LINES);
-			glColor3f(0, 0, 0);
-			
-			btVector3 ptA = pt.getPositionWorldOnA();
-			btVector3 ptB = pt.getPositionWorldOnB();
-
-			glVertex3d(ptA.x(),ptA.y(),ptA.z());
-			glVertex3d(ptB.x(),ptB.y(),ptB.z());
-			glEnd();
-		}
-
-		//you can un-comment out this line, and then all points are removed
-		//contactManifold->clearManifold();	
-	}
-
-	//for update transform
-	if ((objects[1].getWorldTransform().getOrigin()).y() > -2)
-			objects[1].getWorldTransform().setOrigin(objects[1].getWorldTransform().getOrigin()+btVector3(0,-0.0005*timeInSeconds,0));
-
-bool World::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Thread_Intersection>& thread_intersections, vector<Intersection>& intersections)
-{   	
-  double found = false; // count of number of intersections
-  Vector3d direction;
-  self_intersections.clear();
-  thread_intersections.clear();
-  intersections.clear();
-
-  //self intersections
-  for(int i = 0; i < _thread_pieces.size() - 3; i++) {
-    //+2 so you don't check the adjacent piece - bug?
-    for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
-      //skip if both ends, since these are constraints
-      if(i == 0 && j == _thread_pieces.size() - 2) 
-        continue;
-      double intersection_dist = self_intersection(i,j,THREAD_RADIUS,direction);
-      if(intersection_dist < 0) {
-        found = true;
-
-        self_intersections.push_back(Self_Intersection(i,j,-intersection_dist,direction));
-      }
-    }
-  }
-	
-	//intersections between threads
-	for (int k=0; k < threads_in_env.size(); k++) {
-		//if (this == threads_in_env[k]) //check
-			//continue;
-		for(int i = 0; i < _thread_pieces.size()-1; i++) {
-	    for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
-	      //skip if both ends, since these are constraints
-	      if((i==0 && j==0) ||
-	      	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
-	      	 (i==_thread_pieces.size()-2 && j==0) ||
-	      	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
-	        continue;
-	      double intersection_dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
-	      if(intersection_dist < 0) {
-	        found = true;
-	        thread_intersections.push_back(Thread_Intersection(i,j,k,-intersection_dist,direction));
-	      }
-	    }
-	  }
-	}
-	bool obj_intersection = false;
-	//object intersections
-  if (world != NULL) {
-		for(int i = 2; i < _thread_pieces.size() - 3; i++) {
-			//found = world->capsuleObjectIntersection(i, _thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS, intersections) || found;
-			bool temp_obj_intersection = world->capsuleObjectIntersection(i, _thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS, intersections);
-			if (temp_obj_intersection) obj_intersection = true;
-			found = temp_obj_intersection || found;
-		}
-  }
-  
-  //if (found || obj_intersection)
-  	//cout << "intersections. obj_intersection = " << obj_intersection << endl;
-
-  return found;
-}
-#endif
 void World::initThread()
 {
   int numInit = 6;

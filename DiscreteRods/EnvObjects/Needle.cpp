@@ -1,4 +1,5 @@
 #include "Needle.h"
+#include "World.h"
 #include "../ThreadConstrained.h"
 
 Needle::Needle(const Vector3d& pos, const Matrix3d& rot, double degrees, double r, float c0, float c1, float c2, World* w, ThreadConstrained* t, int constrained_vertex_num)
@@ -211,12 +212,51 @@ void Needle::setTransform(const Vector3d& pos, const Matrix3d& rot)
 
 void Needle::setTransformFromEndEffector(const Vector3d& ee_pos, const Matrix3d& ee_rot)
 {
-	setTransform(ee_pos + ee_rot*rotation_offset*position_offset, ee_rot * rotation_offset);
-
-	if(isThreadAttached()) {
-		thread->updateConstrainedTransform(constraint_ind, getEndPosition(), getEndRotation());
-		//thread->minimize_energy();
+	vector<Box*> boxes;
+	world->getObjects<Box>(boxes);
+	Box* box = NULL;
+	for (int i = 0; i < boxes.size(); i++) {
+		if (boxes[i]->isNeedleAttached() && (boxes[i]->getNeedle() == this)) {
+			box = boxes[i];
+			break;
+		}
 	}
+	if (box == NULL) {
+		setTransform(ee_pos + ee_rot*rotation_offset*position_offset, ee_rot * rotation_offset);
+
+		if(isThreadAttached()) {
+			vector<int> constraint_inds;
+			thread->getConstrainedVerticesNums(constraint_inds);
+			if (constraint_inds.size() != 3) {
+				cout << "adding constraint" << endl;
+				thread->addConstraint(10);
+				//thread->updateRotationOffset(1, (Matrix3d) Angle;
+			}
+			Vector3d position_diff = thread->rotationAtConstraint(1).transpose() * (thread->positionAtConstraint(1) - thread->positionAtConstraint(0));
+			position_diff = (thread->positionAtConstraint(1) - thread->positionAtConstraint(0));
+			//Matrix3d rotation_diff = thread->rotationAtConstraint(0).transpose() * thread->rotationAtConstraint(1);
+			Matrix3d rotation_diff =  thread->rotationAtConstraint(0).transpose() * thread->rotationAtConstraint(1);
+			assert(constraint_ind == 0);
+			//thread->updateConstrainedTransform(constraint_ind, getEndPosition(), getEndRotation());
+			thread->updateConstrainedTransform(0, getEndPosition(), getEndRotation());
+			Matrix3d ee_rot = thread->rotationAtConstraint(0) * rotation_diff;
+			//ee_rot = (Matrix3d) AngleAxisd(ee_rot);
+//			ee_rot.col(1) = ee_rot.col(2).cross(ee_rot.col(0));
+//			ee_rot.col(2) = ee_rot.col(0).cross(ee_rot.col(1));
+//			ee_rot.col(0).normalize();
+//			ee_rot.col(1).normalize();
+//			ee_rot.col(2).normalize();
+			//position_diff = Vector3d(-10,0,0);
+			//thread->updateConstrainedTransform(1, ee_rot*position_diff + getEndPosition(), ee_rot);
+			thread->updateConstrainedTransform(1, position_diff + getEndPosition(), ee_rot); //thread->rotationAtConstraint(1);
+			//thread->updateConstrainedRawTransform(1, position_diff + getEndPosition(), ee_rot, ee_rot);
+			//thread->updateConstrainedRawTransform(1, ee_rot*position_diff + getEndPosition(), ee_rot, ee_rot);
+			//thread->minimize_energy();
+		}
+	} else {
+		setTransformFromEndEffectorBoxConstrained(ee_pos, ee_rot, box);
+	}
+	checkBoxAttach();
 }
 
 //call this when the end effector just attaches to the needle, so that the needle know the relative position and orientation at the time of the attachment.
@@ -238,7 +278,7 @@ void Needle::getEndEffectorTransform(Vector3d& ee_pos, Matrix3d& ee_rot)
 	ee_pos = position - ee_rot*rotation_offset*position_offset;
 }
 
-void Needle::setTransformFromEndEffectorBoxConstrained(const Vector3d& new_ee_pos, const Matrix3d& new_ee_rot)
+void Needle::setTransformFromEndEffectorBoxConstrained(const Vector3d& new_ee_pos, const Matrix3d& new_ee_rot, Box* box)
 {
 	Vector3d old_ee_pos;
 	Matrix3d old_ee_rot;
@@ -271,7 +311,38 @@ void Needle::setTransformFromEndEffectorBoxConstrained(const Vector3d& new_ee_po
 		if(isThreadAttached()) {
 			thread->updateConstrainedTransform(constraint_ind, getEndPosition(), getEndRotation());
 		}
-	}	
+	}
+	
+	if (isThreadAttached()) {
+		Vector3d direction;
+		if (!box->isThreadAttached() && (sphereBoxDistance(getEndPosition(), getThicknessRadius(), box->getPosition(), box->getHalfLength(), direction) < 0)) {
+		  cout << "thread gets into the box" << endl;
+		  //box->attach(getThread());
+			box->attachThreadIn(getThread(), getEndPosition(), getEndRotation());
+		}
+		if (box->isThreadAttached() && !boxCollision(box->getPosition(), box->getHalfLength())) {
+		  cout << "thread gets out of the box" << endl;
+		  box->attachThreadOut(getThread(), getEndPosition(), getEndRotation());
+		}
+	}
+}
+
+void Needle::checkBoxAttach() {
+	vector<Box*> boxes;
+  world->getObjects<Box>(boxes);
+  for (int box_ind = 0; box_ind < boxes.size(); box_ind++) {
+  	if (!boxes[box_ind]->isNeedleAttached()) {
+  		if (!boxes[box_ind]->isThreadAttached() && boxCollision(boxes[box_ind]->getPosition(), boxes[box_ind]->getHalfLength())) {
+ 	 			boxes[box_ind]->attach(this);
+ 	 			cout << "needle gets attached to box" << endl;
+ 	 		}
+  	} else {
+  		if (!boxCollision(boxes[box_ind]->getPosition(), boxes[box_ind]->getHalfLength())) {
+ 	 			boxes[box_ind]->dettachNeedle();
+ 	 			cout << "needle gets dettached from box" << endl;
+ 	 		}
+  	}
+  }
 }
 
 void Needle::updateTransformFromAttachment()

@@ -25,8 +25,8 @@ class Box : public EnvObject
 		void draw();
 		
 		const Vector3d& getHalfLength() const { return half_length; }
-		void insertNeedle(Needle* n);
-		void stepThread();
+		void attachThreadIn(ThreadConstrained* t, const Vector3d& in_pos, const Matrix3d& in_rot);
+		void attachThreadOut(ThreadConstrained* t, const Vector3d& out_pos, const Matrix3d& out_rot);
 		
 		//thread attachment
 		void attach(ThreadConstrained* t) { thread = t; }
@@ -53,10 +53,10 @@ class Box : public EnvObject
 		ThreadConstrained* thread;
 		int constraint0;
 		int constraint1;
-		Vector3d c0_pos;
-		Matrix3d c0_rot;
-		Vector3d c1_pos;
-		Matrix3d c1_rot;
+		Vector3d c0_position;
+		Matrix3d c0_rotation;
+		Vector3d c1_position;
+		Matrix3d c1_rotation;
 		Needle* needle;
 		World* world;
 
