@@ -12,7 +12,7 @@
 #include "../threadutils_discrete.h"
 #include "../threadpiece_discrete.h"
 
-#define REPULSION_DIST 0.4
+#define REPULSION_DIST 0.6
 
 using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN
