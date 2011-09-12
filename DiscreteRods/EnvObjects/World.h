@@ -25,6 +25,7 @@
 #include "../utils/drawUtils.h"
 #include "../Collisions/intersectionStructs.h"
 #include "../Collisions/CollisionWorld.h"
+#include "WorldManager.h"
 
 #include "ObjectTypes.h"
 #include "Object.h"
@@ -56,13 +57,13 @@ class ThreadConstrained;
 class World
 {
 	public:
-		World(bool collision_checking = false);
-		World(const World& rhs, bool collision_checking = false);
+		World(WorldManager* wm = NULL);
+		World(const World& rhs, WorldManager* wm = NULL);
 		~World();
 
 		//saving and loading from and to file
 		void writeToFile(ofstream& file);
-		World(ifstream& file, bool collision_checking = false);
+		World(ifstream& file, WorldManager* wm = NULL);
 
 		template <class T> void getObjects(vector<T*>& objects)
 		{
@@ -104,9 +105,6 @@ class World
 			return objects[object_ind];
 		}
 				
-		void clearObjs();
-
-		void initializeThreadsInEnvironment();
 		EndEffector* closestEndEffector(Vector3d tip_pos);
 	
 		void draw(RenderMode examine_mode = NORMAL);
@@ -135,6 +133,7 @@ class World
 		
 		//collision
 		CollisionWorld* collision_world;
+		WorldManager* world_manager;
 				
 		//Init thread
 		void initThread();
