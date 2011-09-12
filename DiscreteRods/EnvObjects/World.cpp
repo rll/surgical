@@ -3,10 +3,11 @@
 #include "../ThreadConstrained.h"
 #include "../../utils/clock2.h"
 
-World::World(bool collision_checking)
-{	
-	if (collision_checking)
-		collision_world = new CollisionWorld();
+World::World(WorldManager* wm)
+{
+	world_manager = wm;
+	if (world_manager != NULL)
+		collision_world = world_manager->allocateWorld(this);
 	else
 		collision_world = NULL;
 
@@ -52,10 +53,11 @@ World::World(bool collision_checking)
 	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint == -1);
 }
 
-World::World(const World& rhs, bool collision_checking)
+World::World(const World& rhs, WorldManager* wm)
 {
-	if (collision_checking)
-		collision_world = new CollisionWorld();
+	world_manager = wm;
+	if (world_manager != NULL)
+		collision_world = world_manager->allocateWorld(this);
 	else
 		collision_world = NULL;
 	
@@ -107,9 +109,26 @@ World::World(const World& rhs, bool collision_checking)
 
 World::~World()
 {
-	clearObjs();
-	if (collision_world != NULL)
-		delete collision_world;
+	for (int i = 0; i<cursors.size(); i++) {
+		assert(cursors[i]!=NULL);
+		delete cursors[i];
+		cursors[i] = NULL;
+	}
+	for (int i = 0; i<threads.size(); i++) {
+		assert(threads[i]!=NULL);
+		delete threads[i];
+		threads[i] = NULL;
+	}
+	for (int i = 0; i<objs.size(); i++) {
+		assert(objs[i]!=NULL);
+		delete objs[i];
+		objs[i] = NULL;
+	}
+	cursors.clear();
+	threads.clear();
+	objs.clear();
+	if (world_manager != NULL)
+		world_manager->freeWorld(this);
 }
 
 void World::writeToFile(ofstream& file)
@@ -127,10 +146,11 @@ void World::writeToFile(ofstream& file)
   file << "\n";
 }
 
-World::World(ifstream& file, bool collision_checking)
+World::World(ifstream& file, WorldManager* wm)
 {
-	if (collision_checking)
-		collision_world = new CollisionWorld();
+	world_manager = wm;
+	if (world_manager != NULL)
+		collision_world = world_manager->allocateWorld(this);
 	else
 		collision_world = NULL;
 	
@@ -234,27 +254,6 @@ EndEffector* World::closestEndEffector(Vector3d tip_pos)
 //		}				
 //	}
 //	return end_effectors[min_ee_ind];
-}
-
-void World::clearObjs()
-{
-	for (int i = 0; i<cursors.size(); i++) {
-		assert(cursors[i]!=NULL);
-		delete cursors[i];
-		cursors[i] = NULL;
-	}
-	for (int i = 0; i<threads.size(); i++) {
-		assert(threads[i]!=NULL);
-		delete threads[i];
-		threads[i] = NULL;
-	}
-	for (int i = 0; i<objs.size(); i++) {
-		assert(objs[i]!=NULL);
-		delete objs[i];
-		objs[i] = NULL;
-	}
-	threads.clear();
-	objs.clear();
 }
 
 void World::draw(RenderMode render_mode)
