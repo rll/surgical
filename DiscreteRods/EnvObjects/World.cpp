@@ -388,15 +388,26 @@ void World::applyRelativeControl(const vector<Control*>& controls, double thresh
 }
 
 //The control is effectively applied to the tip of the end effector
-void World::applyRelativeControl(const VectorXd& relative_control, bool limit_displacement)
+void World::applyRelativeControl(const VectorXd& relative_control, double thresh, bool limit_displacement)
 {
-	assert(cursors.size()*8 == relative_control.size());
-	for (int i = 0; i < cursors.size(); i++) {
+  vector<Control*> all_u;
+  VectorXdToControl(relative_control, all_u);
+  applyRelativeControl(all_u, thresh, limit_displacement);
+
+	/*for (int i = 0; i < cursors.size(); i++) {
 		Cursor* cursor = cursors[i];
 		Matrix3d rotation;
 		rotation_from_euler_angles(rotation, relative_control(8*i+3), relative_control(8*i+4), relative_control(8*i+5));
-		const Matrix3d cursor_rot = cursor->rotation * rotation;
-		const Vector3d cursor_pos = cursor->position + relative_control.segment(8*i+0, 3) + EndEffector::grab_offset * cursor_rot.col(0);
+
+    AngleAxisd noise_rot = AngleAxisd(thresh * normRand() * M_PI/180.0,
+        Vector3d(normRand(), normRand(), normRand()).normalized());
+    const Vector3d noise_vec = Vector3d(thresh * normRand(),
+                                        thresh * normRand(),
+                                        thresh * normRand());
+
+
+		const Matrix3d cursor_rot = cursor->rotation * rotation * noise_rot;
+		const Vector3d cursor_pos = cursor->position + relative_control.segment(8*i+0, 3) + EndEffector::grab_offset * cursor_rot.col(0) + noise_vec;
 		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement);
 		
 		if (relative_control(8*i+6))
@@ -412,18 +423,18 @@ void World::applyRelativeControl(const VectorXd& relative_control, bool limit_di
 	getObjects<EndEffector>(end_effs);
 	for (int ee_ind = 0; ee_ind < end_effs.size(); ee_ind++) {
 		end_effs[ee_ind]->updateTransformFromAttachment();
-	}
+	}*/
 }
 
-void World::applyRelativeControlJacobian(const VectorXd& relative_control) 
+void World::applyRelativeControlJacobian(const VectorXd& relative_control, double thresh) 
 {
   assert(cursors.size()*6 == relative_control.size());
-  VectorXd wrapper_control(16);
-  wrapper_control.setZero(); 
+  VectorXd wrapper_control = JacobianControlWrapper(relative_control);
+  /*wrapper_control.setZero(); 
   wrapper_control.segment(0, 6) = relative_control.segment(0,6);
-  wrapper_control.segment(8, 6) = relative_control.segment(6,6);
+  wrapper_control.segment(8, 6) = relative_control.segment(6,6); */
 
-  applyRelativeControl(wrapper_control, true);
+  applyRelativeControl(wrapper_control, thresh, true);
 
 }
 
@@ -514,8 +525,10 @@ void World::projectLegalState() {
     threads[i]->getThreads(ind_threads); 
     for (int t = 0; t < ind_threads.size(); t++) {
       //ind_threads[t]->unviolate_total_length_constraint();
+      
       ind_threads[t]->project_length_constraint();
       ind_threads[t]->minimize_energy();
+      ind_threads[t]->minimize_energy_twist_angles();
     }
   }
 }
@@ -530,7 +543,7 @@ void World::computeJacobian(MatrixXd& J) {
   J.setZero();
   double eps = 1e-1;
    
-  #pragma omp parallel for
+  #pragma omp parallel for num_threads(NUM_CPU_THREADS)
   for (int i = 0 ; i < 12; i++) { 
     VectorXd du(12);
     du.setZero(); 

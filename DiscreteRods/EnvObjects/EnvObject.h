@@ -121,8 +121,10 @@ public:
     Vector3d pos; 
     pos(0) = state(1);
     pos(1) = state(2);
-    pos(2) = state(3); 
-    rotation_from_euler_angles(rot, state(4), state(5), state(6));
+    pos(2) = state(3);
+
+    Quaterniond quat_rotation(state(4), state(5), state(6), state(7));
+    rot = quat_rotation.toRotationMatrix(); 
 
     setTransform(pos, rot); 
   }  

@@ -116,8 +116,8 @@ class World
 		// for each control, there is 3 dof for translation, 3 for rotation, 2 for event
 		void setTransformFromController(const vector<ControllerBase*>& controls, bool limit_displacement = false); //applies controli to handle
 		void applyRelativeControl(const vector<Control*>& controls, double thresh=0.0, bool limit_displacement = false);
-		void applyRelativeControl(const VectorXd& relative_control, bool limit_displacement = false);
-    void applyRelativeControlJacobian(const VectorXd& relative_control); 
+		void applyRelativeControl(const VectorXd& relative_control, double thresh=0.0, bool limit_displacement = false);
+    void applyRelativeControlJacobian(const VectorXd& relative_control, double thresh=0.0);
 		
 		//state representation
     void getStates(vector<VectorXd>& states);
@@ -128,6 +128,35 @@ class World
     void setStateForJacobian(VectorXd& world_state);
     void projectLegalState();
     void computeJacobian(MatrixXd& J); 
+
+    //control representation
+    void VectorXdToControl(const VectorXd& relative_control, vector<Control*>& c) {
+      assert(cursors.size()*8 == relative_control.size());
+
+      c.resize(cursors.size());
+
+      for (int i = 0; i < cursors.size(); i++) { 
+        Vector3d translation = relative_control.segment(8*i, 3);
+        Matrix3d rotation;
+        rotation_from_euler_angles(rotation, relative_control(8*i+3), relative_control(8*i+4), relative_control(8*i+5));
+
+        Control* u = new Control(Vector3d::Zero(), Matrix3d::Identity());
+
+        u->setTranslate(translation);
+        u->setRotate(rotation);
+        c[i] = u;
+      }
+    }
+
+    VectorXd JacobianControlWrapper(const VectorXd& relative_control) { 
+
+      assert(cursors.size()*6 == relative_control.size());
+      VectorXd wrapper_control(16);
+      wrapper_control.setZero(); 
+      wrapper_control.segment(0, 6) = relative_control.segment(0,6);
+      wrapper_control.segment(8, 6) = relative_control.segment(6,6);
+      return wrapper_control;
+    }
     
 		
 		//backup

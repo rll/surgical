@@ -14,6 +14,7 @@
 #include <fstream>
 #include <string.h>
 #include <float.h>
+#include "../utils/clock2.h"
 
 #define SQP_BASE_FOLDER "../MotionPlanning/SQP_DATA"
 #define FILENAME_ALLTRANS "alltrans.txt"
@@ -27,28 +28,36 @@ static const int _size_each_control = 12;
 class WorldSQP
 {
   public:
-    WorldSQP(int num_worlds, int size_each_state);
+    WorldSQP(int num_worlds, int size_each_state, int num_traj);
     ~WorldSQP();
 
     const int num_worlds() const {return _num_worlds;};
 
-    void resize_controller(int num_worlds, int size_each_state);
+    void resize_controller(int num_worlds, int size_each_state, int num_traj);
 
-    bool iterative_control_opt(vector<World*>& trajectory, vector<VectorXd>& controls, int num_opts = 5);
-    bool iterative_control_opt(vector<World*>& trajectory, vector<VectorXd>& controls, vector<vector<World*> >& sqp_debug_data, int num_opts = 5, bool return_best_opt = true, double threshold = 2);
+    bool iterative_control_opt(vector<vector<World*> >& trajectory, vector<VectorXd>& controls, int num_opts = 5, bool return_best_opt = true, double threshold = 2);
 
     void set_namestring(const char* str)
     {
       strcpy(_namestring, str);
     };
 
-    void initializeClosedLoopStepper(World* start, vector<World*> target);
+    void initializeClosedLoopStepper(World* start, vector<vector<World*> >& target);
     void pushGoal(World* state);
     void pushStart(World* state);
     void popGoal();
     void popStart(); // poptarts anyone?
-    VectorXd getStartControl();
+    void getCurrentStates(vector<vector<World*> >& colocation_states) {
+      colocation_states.resize(current_states.size());
+      for (int i = 0; i < current_states.size(); i++) {
+        colocation_states[i].resize(current_states[i].size());
+        for (int j = 0; j < current_states[i].size(); j++) { 
+          colocation_states[i][j] = new World(*current_states[i][j]);
+        }
+      }
+    }
 
+    VectorXd getStartControl();
     void solve();
 
     /*
@@ -71,44 +80,27 @@ class WorldSQP
       return l2PointsDifference(state_a, state_b); 
     }
 
-
-    double l2PointsDifference(VectorXd& a, VectorXd& b) {
-      VectorXd diff = a-b;
-      for (int i = 0; i < diff.size(); i++) {
-        diff(i) = fabs(diff(i)); 
-      }
-
-      /*for (int i = 0; i < 3; i++) {
-        int ind = diff.size() - 1 - i;
-        if (diff(ind) > angle_weight * M_PI) {
-          diff(ind) = 2 * angle_weight * M_PI - diff(ind);
-          cout << a(ind) << " " << b(ind) << endl; 
-          cout << "Big " << endl;
-        }
-        ind = diff.size() - 1 - 6 - i;
-        if (diff(ind) > angle_weight * M_PI) {
-          diff(ind) = 2 * angle_weight * M_PI - diff(ind); 
-        }
-      }*/
-      return diff.norm();
+    double l2PointsDifference(VectorXd a, VectorXd b) { 
+      return (a - b).norm(); 
     }
 
-    /*double l2PointsDifference(VectorXd a, VectorXd b) { 
-      return (a - b).norm(); 
-    }*/
-
-
     void world_to_state(World* world, VectorXd& state);
-
+  
   private:
     void init_all_trans();
-    void add_transitions_alltrans(vector<World*>& trajectory);
+    void compute_difference_block(DynamicSparseMatrix<double>& m);
+    void add_all_jacobians();
+    void compute_traj_jacobian(int traj_ind, DynamicSparseMatrix<double>& J);
+    //void add_transitions_alltrans(vector<World*>& trajectory);
     DynamicSparseMatrix<double> _all_trans;
     int _num_worlds;
     int _size_each_state;
     int _cols_all_unknown_states;
-    vector<World*> current_states;
+    int _num_traj;
+    vector<vector<World*> >   current_states;
     vector<VectorXd> current_controls;
+    vector<vector<MatrixXd> > current_jacobians;
+
     char _namestring[256];
 
 };
@@ -116,5 +108,6 @@ class WorldSQP
 void Matrix_To_File(SparseMatrix<double> mat, const char* filename);
 void File_To_Vector(const char* filename, VectorXd& vec);
 void Vector_To_File(VectorXd& vec, const char* filename);
+void block(DynamicSparseMatrix<double>& c, int s_row, int s_col, DynamicSparseMatrix<double>& data);
 
 #endif

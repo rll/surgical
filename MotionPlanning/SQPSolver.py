@@ -1,13 +1,18 @@
 from cvxopt import matrix, spmatrix, spdiag, sparse, normal
 from cvxopt.solvers import qp
+#from qp import qp
 from time import clock
 from sys import argv
-
+import pymosek
 
 from cvxopt import printing
+from cvxopt import solvers
+
 
 printing.options['dformat'] = '%.5f'
 printing.options['width'] = -1
+solvers.options['show_progress'] = False
+#solvers.options['MOSEK'] = {pymosek.iparam.log: 0}
 
 def sparseIdentity(n):
   return spmatrix(1.0, range(n), range(n))
@@ -31,7 +36,6 @@ def generateP(num_states, size_each_state, size_each_control, lmbda):
   P = spdiag(all_matrices)
 
   return P
-
 def generateA(num_states, size_each_state, size_each_control, all_trans):
   num_controls = num_states - 1;
   left_block = all_trans;
@@ -40,7 +44,20 @@ def generateA(num_states, size_each_state, size_each_control, all_trans):
 
   return A
    
-def generateB(num_states, size_each_state, x_0, x_N):
+def generateB(num_states, size_each_state, b_data, num_traj):
+  B = [ ]
+  for i in range(num_traj):
+    bi_data = b_data[i*(num_states*size_each_state):(i+1)*(num_states*size_each_state)]
+    B.append(generateBi(num_states, size_each_state, bi_data));
+
+  B = matrix(B);
+  return B; 
+
+def generateBi(num_states, size_each_state, bi_data):
+
+  x_0 = -1 * bi_data[0:size_each_state]
+  x_N = bi_data[-size_each_state:]
+
   b = [ ]
   b.append(x_0)
   for i in range(num_states-3):
@@ -49,6 +66,7 @@ def generateB(num_states, size_each_state, x_0, x_N):
 
   b = matrix(b);
   return b;
+
 
 def generateQ(num_states, size_each_state, size_each_control):
   q_size =  (num_states-2)*size_each_state + (num_states - 1) * size_each_control + (num_states-1)*size_each_state
@@ -76,7 +94,7 @@ def generateH(num_states, control_const_vec):
   H = matrix(H)
   return H;
 
-def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, x_file, num_states, size_each_state, size_each_control):
+def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, x_file, num_traj, num_states, size_each_state, size_each_control):
   #read A file to get J
 
   num_controls = num_states - 1
@@ -85,6 +103,8 @@ def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, x_file, num_states, size_each_s
   lmbda = 0.001
 
   control_const_vec = matrix([max_trans, max_trans, max_trans, max_rot, max_rot, max_rot, max_trans, max_trans, max_trans, max_rot, max_rot, max_rot], (12,1))
+
+  t0 = clock();
   f_A = open(A_file, 'r')
   rows = [ ]
   cols = [ ]
@@ -99,6 +119,9 @@ def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, x_file, num_states, size_each_s
 
   all_trans = spmatrix(vals, rows, cols, (A_m, A_n))
 
+  print "setting up all_trans took %f" % (clock()-t0)
+  t0 = clock()
+
   #read b file to get x_1, x_N
   f_b = open(b_file, 'r')
   b_data = matrix(0.0, (num_states*size_each_state, 1))
@@ -106,22 +129,30 @@ def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, x_file, num_states, size_each_s
   for line in f_b:
     b_data[i] = float(line.rstrip())
     i = i + 1
+
+  f_b.close()
   
-  x_0 = -1 * b_data[0:size_each_state]
-  x_N = b_data[-size_each_state:]
+  print "setting up loading b_data took %f" % (clock() - t0)
+  t0 = clock()
 
   #setup matrices
 
   P = generateP(num_states, size_each_state, size_each_control, lmbda)
   q = generateQ(num_states, size_each_state, size_each_control)
   A = generateA(num_states, size_each_state, size_each_control, all_trans)
-  b = generateB(num_states, size_each_state, x_0, x_N)
+  b = generateB(num_states, size_each_state, b_data, num_traj)
   G = generateG(num_states, size_each_state, size_each_control)
   h = generateH(num_states, control_const_vec)
 
+  print "generating took %f" % (clock() - t0)
+  t0 = clock()
   #solve
 
   x = qp(P,q,G,h,A,b,solver='mosek')['x']
+
+
+  print "solving took %f" % (clock() - t0)
+  t0 = clock()
   x = x[:(num_states-2)*size_each_state+(num_controls)*size_each_control];
 
   U = matrix(x[(num_states-2)*size_each_state:], (12, num_controls))
@@ -131,6 +162,9 @@ def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, x_file, num_states, size_each_s
   for i in range(x.size[0]):
     f.write('%.8f\n' % x[i])
   f.close()
+
+  print "writing took %f" % (clock()-t0)
+  t0 = clock()
 
 def debug():
   t0 = clock()
@@ -143,7 +177,8 @@ def debug():
   max_rot = 5e-2
   control_const_vec = matrix([max_trans, max_trans, max_trans, max_rot, max_rot, max_rot, max_trans, max_trans, max_trans, max_rot, max_rot, max_rot], (12,1))
 
-  solveSQP(1940,1612,'/home/sameep/rll/surgical/MotionPlanning/SQP_DATA/_alltrans.txt',2328,1,'/home/sameep/rll/surgical/MotionPlanning/SQP_DATA/_goalvec.txt', 'x_file', 6,388,12)
+  solveSQP(3880,3612,'SQP_DATA/_alltrans.txt',4268,1,'SQP_DATA/_goalvec.txt','SQP_DATA/_newstate1.txt',1,11,388,12)
+
 
   print "Setup took: %f. Starting qp" % (clock() - t0)
   t0 = clock();
@@ -152,9 +187,6 @@ def debug():
 
 
 def main():
-  if len(argv) < 12:
-    print "Not enough arguments!"
-    return
 
   if argv[1] == 'solver':
     A_m =                 int(argv[2])
@@ -164,10 +196,14 @@ def main():
     b_n =                 int(argv[6])
     b_file =                  argv[7]
     x_file =                  argv[8]
-    num_states =          int(argv[9])
-    size_each_state =     int(argv[10])
-    size_each_control =   int(argv[11])
-    solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, x_file, num_states, size_each_state, size_each_control)
+    num_traj =            int(argv[9])
+    num_states =          int(argv[10])
+    size_each_state =     int(argv[11])
+    size_each_control =   int(argv[12])
+    solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, x_file, num_traj, num_states, size_each_state, size_each_control)
+
+  elif argv[1] == 'debug':
+    debug()
   
 
 if __name__ == "__main__":

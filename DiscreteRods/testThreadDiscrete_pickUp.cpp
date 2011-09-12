@@ -51,10 +51,12 @@ void glutMenu(int ID);
 void initGL();
 void interruptHandler(int sig);
 void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_trajectory);
-void sqpPlanner(World* start, World* goal, vector<World*>& trajectory);
+//void sqpPlanner(World* start, World* goal, vector<World*>& trajectory);
 void closedLoopSQPController(World* start, vector<World*>& target,
     vector<vector<Control*> >& ctrls);
-VectorXd closedLoopSQPStepper(World* start, World* goal); 
+VectorXd closedLoopSQPStepper(World* start, World* goal, WorldSQP* solver);
+void chunkSmoother(vector<World*>& dirty, vector<World*>& smooth, vector<vector<Control*> >& smooth_controls);
+
 //#define VIEW3D
 
 float lastx_L=0;
@@ -95,8 +97,9 @@ Control *control0, *control1;
 World *world;
 
 //drawing SQP results
-vector<World*> drawWorlds;
-int drawInd = 0; 
+vector<vector<World*> > drawWorlds;
+int drawInd = 0;
+int drawWorldInd = 0; 
 
 World* start_world = NULL;
 World* goal_world = NULL;
@@ -104,7 +107,6 @@ bool drawStartWorld = false;
 bool drawGoalWorld = false; 
 bool drawVisualizationData = false;
 bool drawInteractiveWorld = true; 
-WorldSQP* solver = NULL;
 
 
 bool interruptEnabled = false;
@@ -123,10 +125,17 @@ vector<string> samples_problems1;
 
 bool absoluteControl = false;
 
+void setVisualizationData(vector<vector<World*> > vis_data) {
+  drawWorlds = vis_data;
+  drawWorldInd = 0; 
+  drawInd = 0; 
+}
+
 void setVisualizationData(vector<World*>& visualize_worlds)
 {
-	drawWorlds = visualize_worlds;
-	drawInd = 0;
+  vector<vector<World*> > all_vis_data;
+  all_vis_data.push_back(visualize_worlds);
+  setVisualizationData(all_vis_data);
 }
 
 void processLeft(int x, int y)
@@ -502,19 +511,28 @@ void processNormalKeys(unsigned char key, int x, int y)
         char nameString[256];
         sprintf(nameString, "sqp_%d", p);
 
-        /*vector<World*> waypoints; 
-        for (int i = 2*53; i < 2*57; i++) {
+        vector<World*> waypoints;
+        vector<vector<Control*> > waypoint_controls;
+        //for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < temp_worlds.size()-100; i++) {
           delete initialWorld;
-          initialWorld = new World(*temp_worlds[53*20]);
-          waypoints.push_back(new World(*temp_worlds[(i)*10]));
-        }*/
+          initialWorld = new World(*temp_worlds[0]);
+          waypoints.push_back(new World(*temp_worlds[i]));
+          waypoint_controls.push_back(controls[i]);
+        }
+
+    
 
         //closedLoopSQPController(new World(*initialWorld), temp_worlds,
         //    controls, traj_out, nameString);
         //closedLoopSQPController(new World(*initialWorld), waypoints,
          //   controls, traj_out, nameString);
         //openLoopController(new World(*initialWorld), temp_worlds, controls, traj_out);
-        closedLoopSQPController(initialWorld, temp_worlds, controls);
+        closedLoopSQPController(initialWorld, waypoints, waypoint_controls);
+        vector<World*> smooth_traj;
+        vector<vector<Control*> > smooth_controls;
+        //chunkSmoother(waypoints, smooth_traj, smooth_controls);
+        //closedLoopSQPController(initialWorld, smooth_traj, smooth_controls);
 
 				//setVisualizationData(traj_out);
         break;
@@ -556,7 +574,7 @@ void processNormalKeys(unsigned char key, int x, int y)
 		translate_frame[2] = -110.0;
   } else if(key == 'g') {
     vector<World*> plan; 
-    sqpPlanner(start_world, goal_world, plan);
+    //sqpPlanner(start_world, goal_world, plan);
     setVisualizationData(plan);
   } else if (key == 'G') {
     vector<World*> traj_to_smooth;
@@ -584,7 +602,7 @@ void processNormalKeys(unsigned char key, int x, int y)
     vector<World*> temp_worlds;
     getWaypoints(worlds, temp_worlds);
     setVisualizationData(temp_worlds);
-    cout << "number of waypoints = " << drawWorlds.size() << endl; 
+    //cout << "number of waypoints = " << drawWorlds.size() << endl; 
   } else if (key == 'V') {
     vector<World*> waypoints;
     getWaypoints(worlds, waypoints);
@@ -593,19 +611,27 @@ void processNormalKeys(unsigned char key, int x, int y)
     for (int i = 0; i < 10; i++) {
       World* start = completeOpenLoopTrajectory.back();
       World* goal = waypoints[i];
-      sqpPlanner(start, goal, completeOpenLoopTrajectory);
+      //sqpPlanner(start, goal, completeOpenLoopTrajectory);
     }
     setVisualizationData(completeOpenLoopTrajectory);
-  } else if (key == '<') { 
-    drawInd = max(0, drawInd - 1);
-    cout << drawInd << endl; 
-  } else if (key == '>') { 
-    drawInd = min((int) drawWorlds.size()-1, drawInd + 1);
-    cout << drawInd << endl; 
+  } else if (key == '<') {
+    if (drawWorldInd < drawWorlds.size()) { 
+      drawInd = max(0, drawInd - 1);
+      cout << drawInd << endl;
+    }
+  } else if (key == '>') {
+    if (drawWorldInd < drawWorlds.size()) { 
+      drawInd = min((int) drawWorlds[drawWorldInd].size()-1, drawInd + 1);
+      cout << drawInd << endl;
+    }
   } else if (key == ',') {
-    drawStartWorld = !drawStartWorld;
-  } else if (key == '.') { 
-    drawGoalWorld = !drawGoalWorld;
+    //drawStartWorld = !drawStartWorld;
+    drawWorldInd = max(0, drawWorldInd - 1);
+    cout << "drawWorldInd = " << drawWorldInd << endl; 
+  } else if (key == '.') {
+    drawWorldInd = min((int) drawWorlds.size()-1, drawWorldInd + 1);
+    cout << "drawWorldInd = " << drawWorldInd << endl; 
+    //drawGoalWorld = !drawGoalWorld;
   } else if (key == ';') { 
   	drawInteractiveWorld = !drawInteractiveWorld;
   }	else if (key == '\'') {
@@ -749,7 +775,10 @@ void drawStuff()
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   /* set up some matrices so that the object spins with the mouse */
   glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
-	if (drawInd < drawWorlds.size() && drawWorlds[drawInd] && drawVisualizationData) { 
+	if (drawWorldInd < drawWorlds.size() &&
+      drawInd < drawWorlds[drawWorldInd].size() &&
+      drawWorlds[drawWorldInd][drawInd] != NULL &&
+      drawVisualizationData) { 
     bitmap_output(50, 55, "Viz (')", GLUT_BITMAP_TIMES_ROMAN_24);
   }
   if (world && drawInteractiveWorld) {
@@ -776,8 +805,12 @@ void drawStuff()
   glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
 	glGetDoublev(GL_PROJECTION_MATRIX, projection);
 	glGetIntegerv(GL_VIEWPORT, viewport);
-  if (drawInd < drawWorlds.size() && drawWorlds[drawInd] && drawVisualizationData) { 
-  	drawWorlds[drawInd]->draw(examine_mode);
+  
+	if (drawWorldInd < drawWorlds.size() &&
+      drawInd < drawWorlds[drawWorldInd].size() &&
+      drawWorlds[drawWorldInd][drawInd] != NULL &&
+      drawVisualizationData) { 
+  	drawWorlds[drawWorldInd][drawInd]->draw(examine_mode);
   }
   if (world && drawInteractiveWorld) {
    	world->draw(examine_mode);
@@ -905,6 +938,11 @@ int main (int argc, char * argv[])
 	
 	//Environment
 	world = new World();
+
+  for (int i = 0; i < 1000; i++) { 
+    World* d = new World(*world);
+  }
+  cout << "done" << endl; 
 	
 	//control0 = new Control(Vector3d::Zero(), Matrix3d::Identity());
 	//control1 = new Control(Vector3d::Zero(), Matrix3d::Identity());
@@ -1142,7 +1180,7 @@ void interruptHandler(int sig) {
   interruptEnabled = true;
 }
 
-void sqpPlanner(World* start, World* goal, vector<World*>& completeOpenLoopTrajectory) { 
+/*void sqpPlanner(World* start, World* goal, vector<World*>& completeOpenLoopTrajectory) { 
 
     int num_worlds = 15;
     string namestring = "world_sqp_debug";
@@ -1191,7 +1229,7 @@ void sqpPlanner(World* start, World* goal, vector<World*>& completeOpenLoopTraje
     //drawWorlds = worlds;
     //drawWorlds = openLoopWorlds;
     //setVisualizationData(completeOpenLoopTrajectory);
-}
+}*/
 
 void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_trajectory) {
 
@@ -1200,11 +1238,14 @@ void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_tr
   if (trajectory_to_smooth.size() == 0) return;
   cout << "Smoothing over " << trajectory_to_smooth.size() << " worlds" << endl; 
 
-  vector<World*> sqpWorlds;
+  vector<vector<World*> > traj_in;
+  traj_in.push_back(trajectory_to_smooth);
+
+  vector<vector<World*> > sqpWorlds;
   vector<VectorXd> sqpControls;
 
   string namestring = "world_sqp_debug";
-  solveSQP(trajectory_to_smooth, sqpWorlds, sqpControls, namestring.c_str(), false);
+  solveSQP(traj_in, sqpWorlds, sqpControls, namestring.c_str(), false);
 
   smooth_trajectory.clear();
   openLoopController(trajectory_to_smooth, sqpControls, smooth_trajectory);
@@ -1212,7 +1253,7 @@ void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_tr
   //setVisualizationData(openLoopWorlds);
 }
 
-VectorXd closedLoopSQPStepper(World* start, World* goal) { 
+VectorXd closedLoopSQPStepper(World* start, World* goal, WorldSQP* solver) { 
   if (solver == NULL) assert(false); //initialize your shit
   
   solver->popStart(); //pop the initial start 
@@ -1227,34 +1268,139 @@ VectorXd closedLoopSQPStepper(World* start, World* goal) {
 
 void closedLoopSQPController(World* start, vector<World*>& target,
     vector<vector<Control*> >& ctrls) { 
-  int horizon = 10;
+  vector<int> horizon;
+  horizon.push_back(0);
+  horizon.push_back(5);
+  horizon.push_back(10);
+  //horizon.push_back(20);
 
-  vector<World*> init_worlds;
-  for (int i = 0; i < horizon; i++) {
-    init_worlds.push_back(target[i]); // solver will make copies
+  vector<vector<World*> > horizon_trajs;
+  horizon_trajs.resize(horizon.size());
+
+
+  for (int h = 0; h < horizon.size(); h++) { 
+    cout << horizon[h] << endl; 
+
+    int max_ind = min(target.size(), 100); //1088 
+    if (horizon[h] == 0) { 
+      vector<World*> openLoopWorlds; 
+      openLoopWorlds.push_back(new World(*start));
+
+      World* OLcopy = new World(*start);
+      for (int i = 1; i < max_ind; i++) { //state size change at 1088
+        cout << "Step " << i << " / " << max_ind << endl;
+        //if (interruptEnabled) break; 
+        OLcopy->applyRelativeControl(ctrls[i-1], NOISE_THRESHOLD, true);
+        openLoopWorlds.push_back(new World(*OLcopy));
+      }
+      horizon_trajs[h] = openLoopWorlds;
+
+    } else { 
+      int T = horizon[h];
+      vector<World*> init_worlds;
+      for (int i = 0; i < T; i++) {
+        init_worlds.push_back(target[i]); // solver will make copies
+      }
+      vector<vector<World*> > sqp_init;
+      sqp_init.push_back(init_worlds);
+
+      WorldSQP* solver; 
+      solver = new WorldSQP(0,0,0); /// HACK!!
+      char namestring[128];
+      sprintf(namestring, "clsqp_stepper_h_%d", horizon[h]);
+      cout << "namestring = " << namestring << endl; 
+      solver->set_namestring(namestring);
+      solver->initializeClosedLoopStepper(new World(*start), sqp_init);
+      solver->solve();
+
+      vector<World*> closedLoopWorlds;
+      closedLoopWorlds.push_back(new World(*start));
+      VectorXd ctrl_cl_0 = solver->getStartControl();
+
+      World* CLcopy = new World(*start); 
+      //start_copy->applyRelativeControlJacobian(ctrl_cl_0);
+      //closedLoopWorlds.push_back(new World(*start_copy));
+
+      for (int i = 1; i < max_ind; i++) { //state size change at 1088
+        cout << "Step " << i << " / " << max_ind << endl;
+        //if (interruptEnabled) break; 
+        if (i + T > target.size() - 1) T = target.size() - i - 1;
+        //CLcopy->applyRelativeControl(ctrls[i-1], NOISE_THRESHOLD, true);  
+        VectorXd cl_ctrl = closedLoopSQPStepper(CLcopy, target[i+T], solver);
+        CLcopy->applyRelativeControlJacobian(cl_ctrl, NOISE_THRESHOLD);
+        closedLoopWorlds.push_back(new World(*CLcopy));
+      }
+
+      horizon_trajs[h] = closedLoopWorlds;
+    }
+    //if (interruptEnabled) break; 
+
   }
 
-  solver = new WorldSQP(0,0); /// HACK!!
-  solver->initializeClosedLoopStepper(new World(*start), init_worlds);
 
-  solver->solve();
-  VectorXd ctrl_cl_0 = solver->getStartControl();
-
-  World* start_copy = new World(*start);
-  start_copy->applyRelativeControlJacobian(ctrl_cl_0);
+    //solver->getCurrentStates(closedLoopWorlds);
   
-  start_world = start_copy; 
-  glutPostRedisplay();
+  vector< vector<World*> > visualization_data; 
 
-  for (int i = 1; i < target.size(); i++) {
-    start_world->applyRelativeControl(ctrls[i-1]);
-    VectorXd cl_ctrl = closedLoopSQPStepper(start_world, target[i+horizon]);
-    start_world->applyRelativeControlJacobian(cl_ctrl);
-    glutPostRedisplay();
-  
+  visualization_data.push_back(target);
+  for (int h = 0; h < horizon_trajs.size(); h++) {
+    visualization_data.push_back(horizon_trajs[h]);
   }
 
-
+  setVisualizationData(visualization_data);
 
 }
 
+void chunkSmoother(vector<World*>& traj_in, vector<World*>& traj_out, vector<vector<Control*> >& controls_out) {
+  int size_each_chunk = 20;
+  int num_chunks = traj_in.size() / size_each_chunk;
+
+  vector<vector<World*> > chunks;
+
+  for (int i = 0; i < num_chunks; i++) {
+    vector<World*> individual_chunk;
+    for (int j = 0; j < size_each_chunk; j++) {
+      individual_chunk.push_back(traj_in[i*size_each_chunk + j]);
+    }
+    chunks.push_back(individual_chunk);
+  }
+
+  vector<vector<World*> > smooth_chunks;
+  vector<vector<VectorXd> > smooth_controls;
+  smooth_chunks.resize(chunks.size());
+  smooth_controls.resize(chunks.size());
+
+  //#pragma omp parallel for
+  for (int i = 0; i < chunks.size(); i++) {
+    //smooth each chunk
+    char namestring[128];
+    sprintf(namestring, "sqp_smoother_chunk_%d", i);
+    vector<vector<World*> > smooth_chunk;
+    vector<VectorXd> smooth_control;
+    vector<vector<World*> > sqp_init;
+    sqp_init.push_back(chunks[i]);
+
+    solveSQP(sqp_init, smooth_chunk, smooth_control, namestring, false);
+    VectorXd du(12);
+    du.setZero(); 
+    smooth_control.push_back(du);
+    smooth_chunks[i] = smooth_chunk[0];
+    smooth_controls[i] = smooth_control;
+  }
+
+  for (int i = 0; i < smooth_chunks.size(); i++) { 
+    for (int j = 0; j < smooth_chunks[i].size(); j++) {
+      traj_out.push_back(smooth_chunks[i][j]);
+      vector<Control*> du;
+      VectorXd full_control = smooth_chunks[i][j]->JacobianControlWrapper(smooth_controls[i][j]);
+      smooth_chunks[i][j]->VectorXdToControl(full_control, du);
+      controls_out.push_back(du);
+
+    }
+  }
+
+  //vector<vector<World *> > visualization_data;
+  //visualization_data.push_back(traj_in);
+  //visualization_data.push_back(traj_out);
+  //setVisualizationData(visualization_data);
+}

@@ -1,7 +1,7 @@
 #define NUM_ITERS_SQP_PLANNER 1
 #define NUM_ITERS_SQP_SMOOTHER 1
 #define SQP_BREAK_THRESHOLD 2
-#define NOISE_THRESHOLD 0.0
+#define NOISE_THRESHOLD 0.3
 
 
 #include "../MotionPlanning/worldSQP.h"
@@ -26,27 +26,7 @@ double distanceBetweenAngles (double a, double b) {
 }
 
 double l2PointsDifference(VectorXd& a, VectorXd& b) {
-  VectorXd diff = a-b;
- 
-  /*
-  double angle_weight = 50;
-
-  for (int i = 0; i < diff.size(); i++) {
-    diff(i) = fabs(diff(i)); 
-  }
-  */
-
-  /*for (int i = 0; i < 3; i++) {
-    int ind = diff.size() - 1 - i;
-    if (diff(ind) > angle_weight * M_PI) {
-      diff(ind) = 2 * angle_weight * M_PI - diff(ind);
-    }
-    ind = diff.size() - 1 - 6 - i;
-    if (diff(ind) > angle_weight * M_PI) {
-      diff(ind) = 2 * angle_weight * M_PI - diff(ind); 
-    }
-  }*/
-  return diff.norm();
+  return (a-b).norm();
 }
 
 double l2PointsDifference(World* a, World* b) { 
@@ -64,7 +44,7 @@ double cost_metric(World* a, World* b) {
 /*
  * Use SQP solver given traj_in. Puts results in traj_out and control_out
  */
-void solveSQP(vector<World*>& traj_in, vector<World*>& traj_out, vector<VectorXd>& control_out, vector<vector<World*> >& sqp_debug_data, const char* namestring, bool planner = true)
+void solveSQP(vector<vector<World*> >& traj_in, vector<vector<World*> >& traj_out, vector<VectorXd>& control_out, const char* namestring, bool planner = true)
 {
   int num_iters;
   if (planner) {
@@ -73,27 +53,22 @@ void solveSQP(vector<World*>& traj_in, vector<World*>& traj_out, vector<VectorXd
     num_iters = NUM_ITERS_SQP_SMOOTHER;
   }
 
-  // Wrap controls and put threads in traj_out as copies 
   traj_out.resize(traj_in.size());
   for (int i = 0; i < traj_in.size(); i++) {
-    traj_out[i] = new World(*traj_in[i]);
+    traj_out[i].resize(traj_in[i].size());
+    for (int j = 0; j < traj_in[i].size(); j++) { 
+      traj_out[i][j] = new World(*traj_in[i][j]);
+    }
   }
   VectorXd initialState;
-  traj_in[0]->getStateForJacobian(initialState);
+  traj_in[0][0]->getStateForJacobian(initialState);
 
   WorldSQP *wsqp = 
-    new WorldSQP(traj_out.size(), initialState.size());
+    new WorldSQP(traj_out[0].size(), initialState.size(), traj_out.size());
   wsqp->set_namestring(namestring);
-  wsqp->iterative_control_opt(traj_out, control_out, sqp_debug_data, num_iters);
+  wsqp->iterative_control_opt(traj_out, control_out, num_iters);
 
 };
-
-void solveSQP(vector<World*>& traj_in, vector<World*>& traj_out, vector<VectorXd>& control_out, const char* namestring, bool planner = true)
-{
-  vector<vector<World*> > sqp_debug_data;
-  solveSQP(traj_in, traj_out, control_out, sqp_debug_data, namestring, planner);
-};
-
 
 void sample_on_sphere(VectorXd& u, const double norm) {
   // sample coordinate wise 
@@ -111,41 +86,6 @@ void sample_on_sphere(VectorXd& u, const double norm) {
     }
   }
 }
-
-
-/* This is broken, don't use this function 
-void leastSquaresStep(World* start, World* goal, VectorXd& u) { 
-  VectorXd start_state, goal_state;
-  start->getStateForJacobian(start_state);
-  goal->getStateForJacobian(goal_state);
-
-  VectorXd diff = start_state - goal_state;
-
-  MatrixXd J;
-  start->computeJacobian(J);
-
-  // diff = Ju (solve for u)
-  //
-  u.resize(12); 
-  VectorXd tmp = J.transpose() * diff; 
-
-  (J.transpose() * J).ldlt().solve(tmp, &u); 
-
-  cout << u.transpose() << endl;
-
-  double max_control = 0.0;
-  for (int i = 0; i < u.size(); i++) {
-    if (fabs(u(i)) > max_control) max_control = fabs(u(i)); 
-
-  }
-
-  if (max_control > 0.2) { 
-    for (int i = 0; i < u.size(); i++) { 
-      u(i) /= max_control;
-    }
-  }
-}
-*/
 
 void openLoopController(vector<World*> traj_in, vector<VectorXd>& controls_in, vector<World*>& traj_out) {
   World* world = new World(*traj_in[0]);
@@ -183,7 +123,7 @@ void openLoopController(World* start, vector<World*> follow_traj, vector<vector<
 
 }
 
-void closedLoopSQPController(World* start, vector<World*> follow_traj, vector<vector<Control*> >& controls_in, vector<World*>& traj_out, string sqp_name_string = "clSQP") {
+/*void closedLoopSQPController(World* start, vector<World*> follow_traj, vector<vector<Control*> >& controls_in, vector<World*>& traj_out, string sqp_name_string = "clSQP") {
 
   //TODO: FIX NAMESTRING
   //want to minimize actual_i - follow_traj[i]
@@ -261,41 +201,6 @@ void closedLoopSQPController(World* start, vector<World*> follow_traj, vector<ve
           
         //i += planInd;
     }
-    ++progress; 
-
-  }
-}
-
-/* This is broken... don't use it */ 
-/*void closedLoopLeastSquaresController(World* start, vector<World*> follow_traj, vector<vector<Control*> >& controls_in, vector<World*>& traj_out) {
-
-  //TODO: FIX NAMESTRING
-  //want to minimize actual_i - follow_traj[i]
-  World* start_copy = new World(*start);
-  traj_out.push_back(new World(*start_copy));
-  boost::progress_display progress(controls_in.size());
-  for (int i = 0; i < follow_traj.size() - 1; i++) {
-
-    start_copy->applyRelativeControl(controls_in[i], true);
-    cout << cost_metric(start_copy, follow_traj[i+1]) << endl;
-    
-    if (cost_metric(start_copy, follow_traj[i+1]) > SQP_BREAK_THRESHOLD) {
-      double lastError, newError; 
-      do { 
-        VectorXd u; 
-        lastError = cost_metric(start_copy, follow_traj[i+1]);
-        cout << "calling lss" << endl; 
-        leastSquaresStep(start_copy, follow_traj[i+1], u);
-        cout << "calling apply control" << endl;
-        cout << u.transpose() << endl; 
-        start_copy->applyRelativeControlJacobian(u);
-        newError = cost_metric(start_copy, follow_traj[i+1]);
-        traj_out.push_back(new World(*start_copy));
-        cout << "[ " << lastError << ", " << newError << "]" << endl; 
-      } while (newError + 1e-4 < lastError); 
-    
-    }
-    traj_out.push_back(new World(*start_copy));
     ++progress; 
 
   }
