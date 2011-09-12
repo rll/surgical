@@ -57,6 +57,16 @@ void closedLoopSQPController(World* start, vector<World*>& target,
 VectorXd closedLoopSQPStepper(World* start, World* goal, WorldSQP* solver);
 void chunkSmoother(vector<World*>& dirty, vector<World*>& smooth, vector<vector<Control*> >& smooth_controls);
 
+  static const GLfloat light_model_ambient[] = {0.3f, 0.3f, 0.3f, 1.0f};    
+  static const GLfloat lightOnePosition[] = {140.0, 0.0, 200.0, 0.0};
+  static const GLfloat lightOneColor[] = {0.99, 0.99, 0.99, 1.0};
+  static const GLfloat lightTwoPosition[] = {-140.0, 0.0, 200.0, 0.0};
+  static const GLfloat lightTwoColor[] = {0.99, 0.99, 0.99, 1.0};
+  static const GLfloat lightThreePosition[] = {140.0, 0.0, -200.0, 0.0};
+  static const GLfloat lightThreeColor[] = {0.99, 0.99, 0.99, 1.0};
+  static const GLfloat lightFourPosition[] = {-140.0, 0.0, -200.0, 0.0};
+  static const GLfloat lightFourColor[] = {0.99, 0.99, 0.99, 1.0};
+
 //#define VIEW3D
 
 float lastx_L=0;
@@ -86,7 +96,7 @@ double zero_angle;
 // interactive variables
 bool limit_displacement = false;
 bool haptics = false;
-bool examine_mode = false;
+RenderMode examine_mode = NORMAL;
 
 //IO
 Haptic *haptic0, *haptic1;
@@ -567,7 +577,7 @@ void processNormalKeys(unsigned char key, int x, int y)
   	}*/
 
   } else if(key == 'e') {
-  	examine_mode = !examine_mode;
+  	examine_mode = (RenderMode) ((examine_mode+1)%4);
   } else if(key == 'w') {
   	rotate_frame[0] = rotate_frame[1] = 0.0;
 		translate_frame[0] = translate_frame[1] = 0.0;
@@ -650,6 +660,9 @@ void processNormalKeys(unsigned char key, int x, int y)
   } else if(key == 'f') {
   	cout << "restoring from backup" << endl;
   	world->restore();
+  } else if (key == '`') {
+  	World* world_ptr = new World(*world);
+  	cout << "copy" << endl;
   }
 #ifdef VIEW3D
   else if(key == '=') {
@@ -771,10 +784,13 @@ void drawStuff()
  	glutSetWindow(main_window);
 #endif
   
-	glPushMatrix ();
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glColor3f(1.0, 1.0, 1.0);
+	glPushMatrix ();
   /* set up some matrices so that the object spins with the mouse */
   glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
+
+  glDisable(GL_LIGHTING);
 	if (drawWorldInd < drawWorlds.size() &&
       drawInd < drawWorlds[drawWorldInd].size() &&
       drawWorlds[drawWorldInd][drawInd] != NULL &&
@@ -785,11 +801,12 @@ void drawStuff()
     bitmap_output(50, 50, "Int (;)", GLUT_BITMAP_TIMES_ROMAN_24);
   }
   if (start_world && drawStartWorld) {
-  	bitmap_output(50, 45, "Start (,)", GLUT_BITMAP_TIMES_ROMAN_24);
+    bitmap_output(50, 45, "Start (,)", GLUT_BITMAP_TIMES_ROMAN_24);
   }
   if (goal_world && drawGoalWorld) {
-  	bitmap_output(50, 40, "Goal (.)", GLUT_BITMAP_TIMES_ROMAN_24);
-  } 
+    bitmap_output(50, 40, "Goal (.)", GLUT_BITMAP_TIMES_ROMAN_24);
+  }
+  glEnable(GL_LIGHTING);
 
 #ifdef VIEW3D
 	glTranslatef(0.0, 0.0, +eye_focus_depth);
@@ -802,6 +819,12 @@ void drawStuff()
 #endif
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 1.0, 0.0);
+  
+  glLightfv (GL_LIGHT0, GL_POSITION, lightOnePosition);
+	glLightfv (GL_LIGHT1, GL_POSITION, lightTwoPosition);
+	glLightfv (GL_LIGHT2, GL_POSITION, lightThreePosition);
+	glLightfv (GL_LIGHT3, GL_POSITION, lightFourPosition);
+  
   glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
 	glGetDoublev(GL_PROJECTION_MATRIX, projection);
 	glGetIntegerv(GL_VIEWPORT, viewport);
@@ -814,7 +837,6 @@ void drawStuff()
   }
   if (world && drawInteractiveWorld) {
    	world->draw(examine_mode);
-   	world->drawDebug();
   }
   if (start_world && drawStartWorld) {
   	start_world->draw();
@@ -937,7 +959,7 @@ int main (int argc, char * argv[])
 	connectionInit();
 	
 	//Environment
-	world = new World();
+	world = new World(true);
 	
 	//control0 = new Control(Vector3d::Zero(), Matrix3d::Identity());
 	//control1 = new Control(Vector3d::Zero(), Matrix3d::Identity());
@@ -1102,15 +1124,15 @@ void bitmap_output(int x, int y, char *string, void *font)
 
 void initGL()        
 {
-  static const GLfloat light_model_ambient[] = {0.3f, 0.3f, 0.3f, 1.0f};    
-  static const GLfloat lightOnePosition[] = {140.0, 0.0, 200.0, 0.0};
-  static const GLfloat lightOneColor[] = {0.99, 0.99, 0.99, 1.0};
-  static const GLfloat lightTwoPosition[] = {-140.0, 0.0, 200.0, 0.0};
-  static const GLfloat lightTwoColor[] = {0.99, 0.99, 0.99, 1.0};
-  static const GLfloat lightThreePosition[] = {140.0, 0.0, -200.0, 0.0};
-  static const GLfloat lightThreeColor[] = {0.99, 0.99, 0.99, 1.0};
-  static const GLfloat lightFourPosition[] = {-140.0, 0.0, -200.0, 0.0};
-  static const GLfloat lightFourColor[] = {0.99, 0.99, 0.99, 1.0};
+//  static const GLfloat light_model_ambient[] = {0.3f, 0.3f, 0.3f, 1.0f};    
+//  static const GLfloat lightOnePosition[] = {140.0, 0.0, 200.0, 0.0};
+//  static const GLfloat lightOneColor[] = {0.99, 0.99, 0.99, 1.0};
+//  static const GLfloat lightTwoPosition[] = {-140.0, 0.0, 200.0, 0.0};
+//  static const GLfloat lightTwoColor[] = {0.99, 0.99, 0.99, 1.0};
+//  static const GLfloat lightThreePosition[] = {140.0, 0.0, -200.0, 0.0};
+//  static const GLfloat lightThreeColor[] = {0.99, 0.99, 0.99, 1.0};
+//  static const GLfloat lightFourPosition[] = {-140.0, 0.0, -200.0, 0.0};
+//  static const GLfloat lightFourColor[] = {0.99, 0.99, 0.99, 1.0};
   
 	// Change background color.
 	glClearColor (0.0, 0.0, 0.0, 0.0);
@@ -1132,7 +1154,7 @@ void initGL()
 	glMatrixMode (GL_PROJECTION);
 	glFrustum (-30.0, 30.0, -30.0, 30.0, 50.0, 500.0); // roughly, measured in centimeters
 	glMatrixMode(GL_MODELVIEW);
-
+	glLoadIdentity();
   // initialize lighting
   glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, GL_FALSE);
   glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);    

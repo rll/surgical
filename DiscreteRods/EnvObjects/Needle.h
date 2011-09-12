@@ -7,6 +7,7 @@
 #include "EnvObject.h"
 
 class ThreadConstrained;
+class Box;
 
 class Needle : public EnvObject
 {
@@ -39,9 +40,12 @@ class Needle : public EnvObject
 		void rotateAboutAxis(double degrees);
 		
 		Vector3d nearestPosition(const Vector3d& pos);
+		void checkBoxAttach();
+		void setTransformFromEndEffectorBoxConstrained(const Vector3d& new_ee_pos, const Matrix3d& new_ee_rot, Box* box);
 		void updateTransformOffset(const Vector3d& pos, const Matrix3d& rot);
 		
 		void draw();
+		void drawDebug();
 		
 		void updateConstraint();
 		void updateConstraintIndex();
@@ -57,6 +61,8 @@ class Needle : public EnvObject
 		void restore();
 		
 		//collision
+		bool boxCollision(const Vector3d& b_center, const Vector3d& b_half_length);
+		
 		bool capsuleIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections);
   	double capsuleRepulsionEnergy(const Vector3d& start, const Vector3d& end, const double radius);
   	void capsuleRepulsionEnergyGradient(const Vector3d& start, const Vector3d& end, const double radius, Vector3d& gradient);

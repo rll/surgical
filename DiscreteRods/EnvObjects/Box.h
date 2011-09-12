@@ -8,6 +8,9 @@ class Needle;
 
 class Box : public EnvObject
 {
+	friend class Cursor;
+	friend class EndEffector;
+	
 	public:
 		Box(const Vector3d& pos, const Matrix3d& rot, const Vector3d& half_length_xyz, float c0, float c1, float c2, World* w, Needle* n = NULL, ThreadConstrained* t = NULL, int constrained_vertex_num0 = -1, int constrained_vertex_num1 = -1);
 		Box(const Box& rhs, World* w);
@@ -22,8 +25,19 @@ class Box : public EnvObject
 		void draw();
 		
 		const Vector3d& getHalfLength() const { return half_length; }
-		void insertNeedle(Needle* n);
-		void stepThread();
+		void attachThreadIn(ThreadConstrained* t, const Vector3d& in_pos, const Matrix3d& in_rot);
+		void attachThreadOut(ThreadConstrained* t, const Vector3d& out_pos, const Matrix3d& out_rot);
+		
+		//thread attachment
+		void attach(ThreadConstrained* t) { thread = t; }
+		void dettachThread() { thread = NULL; }
+		bool isThreadAttached() { return (thread!=NULL); }
+		ThreadConstrained* getThread() { return thread; }
+		//needle attachment
+		void attach(Needle* n) { needle = n; }
+		void dettachNeedle() { needle = NULL; }
+		bool isNeedleAttached() { return (needle!=NULL); }
+		Needle* getNeedle() { return needle; }
 		
 		//backup
 		void backup();
@@ -39,6 +53,10 @@ class Box : public EnvObject
 		ThreadConstrained* thread;
 		int constraint0;
 		int constraint1;
+		Vector3d c0_position;
+		Matrix3d c0_rotation;
+		Vector3d c1_position;
+		Matrix3d c1_rotation;
 		Needle* needle;
 		World* world;
 

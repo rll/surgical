@@ -1,57 +1,161 @@
 #include "threadpiece_discrete.h"
 #include "thread_discrete.h"
 #include "EnvObjects/World.h"
+#include "Collisions/CollisionWorld.h"
 
-ThreadPiece::ThreadPiece() :
-  rot(Matrix3d::Zero()), _my_thread(NULL)
+ThreadPiece::ThreadPiece(bool add_col_obj)
+	: Object(THREAD_PIECE)
+	, rot(Matrix3d::Zero())
+	, _my_thread(NULL)
+	, _piece_ind(-1)
 {
 	grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
 	grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
 	grad_offsets[2] = Vector3d(0.0, 0.0, grad_eps);
 	rot = Matrix3d::Zero();
+	
+	_rest_length = 0.0;
+	
+	if (add_col_obj) {
+		btCapsuleShapeX* capsule_piece = new btCapsuleShapeX(btScalar(THREAD_RADIUS+REPULSION_DIST), btScalar(_rest_length));
+		capsule_piece->setMargin(0.f);
+		_col_obj = new btCollisionObject();
+		_col_obj->setCollisionShape(capsule_piece);
+		_col_obj->setUserPointer(this);
+		if (_my_thread->world->collision_world != NULL)
+			_my_thread->world->collision_world->addCollisionObject(_col_obj);
+	} else {
+		_col_obj = NULL;
+	}
 }
 
-
-	ThreadPiece::ThreadPiece(const Vector3d& vertex, const double angle_twist, const double rest_length, Thread* my_thread)
-: _vertex(vertex), _angle_twist(angle_twist), _rest_length(rest_length), _prev_piece(NULL), _next_piece(NULL), rot(Matrix3d::Zero()), _my_thread(my_thread)
+ThreadPiece::ThreadPiece(const Vector3d& vertex, const double angle_twist, const double rest_length, Thread* my_thread, bool add_col_obj)
+	: Object(THREAD_PIECE)
+	, _vertex(vertex)
+	, _angle_twist(angle_twist)
+	, _rest_length(rest_length)
+	, _prev_piece(NULL)
+	, _next_piece(NULL), rot(Matrix3d::Zero())
+	, _my_thread(my_thread)
+	, _piece_ind(-1)
 {
 	grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
 	grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
 	grad_offsets[2] = Vector3d(0.0, 0.0, grad_eps);
+	
+	if (add_col_obj) {
+		btCapsuleShapeX* capsule_piece = new btCapsuleShapeX(btScalar(THREAD_RADIUS+REPULSION_DIST), btScalar(_rest_length));
+		capsule_piece->setMargin(0.f);
+		_col_obj = new btCollisionObject();
+		_col_obj->setCollisionShape(capsule_piece);
+		_col_obj->setUserPointer(this);
+		if (_my_thread->world->collision_world != NULL)
+			_my_thread->world->collision_world->addCollisionObject(_col_obj);
+	} else {
+		_col_obj = NULL;
+	}
 }
 
-	ThreadPiece::ThreadPiece(const Vector3d& vertex, const double angle_twist, const double rest_length, ThreadPiece* prev, ThreadPiece* next, Thread* my_thread)
-: _vertex(vertex), _angle_twist(angle_twist), _rest_length(rest_length), rot(Matrix3d::Zero()), _my_thread(my_thread)
+ThreadPiece::ThreadPiece(const Vector3d& vertex, const double angle_twist, const double rest_length, ThreadPiece* prev, ThreadPiece* next, Thread* my_thread, bool add_col_obj)
+	: Object(THREAD_PIECE)
+	, _vertex(vertex)
+	, _angle_twist(angle_twist)
+	, _rest_length(rest_length)
+	, rot(Matrix3d::Zero())
+	, _my_thread(my_thread)
+	, _piece_ind(-1)
 {
 	grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
 	grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
 	grad_offsets[2] = Vector3d(0.0, 0.0, grad_eps);
   set_prev(prev);
   set_next(next);
+
+ 	if (add_col_obj) {
+		btCapsuleShapeX* capsule_piece = new btCapsuleShapeX(btScalar(THREAD_RADIUS+REPULSION_DIST), btScalar(_rest_length));
+		capsule_piece->setMargin(0.f);
+		_col_obj->setCollisionShape(capsule_piece);
+		_col_obj->setUserPointer(this);
+		if (_my_thread->world->collision_world != NULL)
+			_my_thread->world->collision_world->addCollisionObject(_col_obj);
+	} else {
+		_col_obj = NULL;
+	}
 }
 
 
-	ThreadPiece::ThreadPiece(const ThreadPiece& rhs)
-: _vertex(rhs._vertex), _angle_twist(rhs._angle_twist), _rest_length(rhs._rest_length), _edge(rhs._edge), _edge_norm(rhs._edge_norm), _curvature_binormal(rhs._curvature_binormal), _bishop_frame(rhs._bishop_frame), _material_frame(rhs._material_frame), _prev_piece(rhs._prev_piece), _next_piece(rhs._next_piece), _my_thread(rhs._my_thread)
+ThreadPiece::ThreadPiece(const ThreadPiece& rhs, bool add_col_obj)
+	: Object(THREAD_PIECE)
+	, _vertex(rhs._vertex)
+	, _angle_twist(rhs._angle_twist)
+	, _rest_length(rhs._rest_length)
+	, _edge(rhs._edge)
+	, _edge_norm(rhs._edge_norm)
+	, _curvature_binormal(rhs._curvature_binormal)
+	, _bishop_frame(rhs._bishop_frame)
+	, _material_frame(rhs._material_frame)
+	, _prev_piece(rhs._prev_piece)
+	, _next_piece(rhs._next_piece)
+	, _my_thread(rhs._my_thread)
+	, _piece_ind(-1)
 {
 	grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
 	grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
 	grad_offsets[2] = Vector3d(0.0, 0.0, grad_eps);
 	rot = Matrix3d::Zero();
+	
+	if (add_col_obj) {
+		btCapsuleShapeX* capsule_piece = new btCapsuleShapeX(btScalar(THREAD_RADIUS+REPULSION_DIST), btScalar(_rest_length));
+		capsule_piece->setMargin(0.f);
+		_col_obj = new btCollisionObject();
+		_col_obj->setCollisionShape(capsule_piece);
+		_col_obj->setUserPointer(this);
+		if (_my_thread->world->collision_world != NULL)
+			_my_thread->world->collision_world->addCollisionObject(_col_obj);
+	} else {
+		_col_obj = NULL;
+	}
 }
 	
-  ThreadPiece::ThreadPiece(const ThreadPiece& rhs, Thread* my_thread)
-: _vertex(rhs._vertex), _angle_twist(rhs._angle_twist), _rest_length(rhs._rest_length), _edge(rhs._edge), _edge_norm(rhs._edge_norm), _curvature_binormal(rhs._curvature_binormal), _bishop_frame(rhs._bishop_frame), _material_frame(rhs._material_frame), _prev_piece(rhs._prev_piece), _next_piece(rhs._next_piece), _my_thread(my_thread)
+ThreadPiece::ThreadPiece(const ThreadPiece& rhs, Thread* my_thread, bool add_col_obj)
+	: Object(THREAD_PIECE)
+	, _vertex(rhs._vertex)
+	, _angle_twist(rhs._angle_twist)
+	, _rest_length(rhs._rest_length)
+	, _edge(rhs._edge)
+	, _edge_norm(rhs._edge_norm)
+	, _curvature_binormal(rhs._curvature_binormal)
+	, _bishop_frame(rhs._bishop_frame)
+	, _material_frame(rhs._material_frame)
+	, _prev_piece(rhs._prev_piece)
+	, _next_piece(rhs._next_piece)
+	, _my_thread(my_thread)
+	, _piece_ind(-1)
 {
 	grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
 	grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
 	grad_offsets[2] = Vector3d(0.0, 0.0, grad_eps);
 	rot = Matrix3d::Zero();
+	
+	if (add_col_obj) {
+		btCapsuleShapeX* capsule_piece = new btCapsuleShapeX(btScalar(THREAD_RADIUS+REPULSION_DIST), btScalar(_rest_length));
+		capsule_piece->setMargin(0.f);
+		_col_obj = new btCollisionObject();
+		_col_obj->setCollisionShape(capsule_piece);
+		_col_obj->setUserPointer(this);
+		if (_my_thread->world->collision_world != NULL)
+			_my_thread->world->collision_world->addCollisionObject(_col_obj);
+	} else {
+		_col_obj = NULL;
+	}
 }
-
 
 ThreadPiece::~ThreadPiece()
 {
+	if (_col_obj != NULL) {
+		_my_thread->world->collision_world->removeCollisionObject(_col_obj);
+		delete _col_obj;
+	}
 }
 
 void ThreadPiece::set_vertex(const Vector3d& vertex)
@@ -61,7 +165,7 @@ void ThreadPiece::set_vertex(const Vector3d& vertex)
 
 double ThreadPiece::energy()
 {
-  return energy_curvature() + energy_twist() + energy_grav() + energy_stretch() + energy_repulsion();
+  return energy_curvature() + energy_twist() + energy_grav() + energy_stretch();
 }
 
 //not defined for first or last piece
@@ -117,51 +221,24 @@ double ThreadPiece::energy_stretch()
     return 0.0;
   //std::cout << "energy stretch: " << STRETCH_COEFF*(edge_after.norm() - (my_thread->rest_length())) << std::endl;
   return STRETCH_COEFF/2.0 * pow(_edge_norm/_rest_length - 1.0, 2.0) * _rest_length;
-}
 
-double ThreadPiece::energy_repulsion()
-{
-  if (REPULSION_COEFF<=0)
-  	return 0.0;
-  int piece_ind;
-  for (piece_ind=0; piece_ind<_my_thread->_thread_pieces.size() && _my_thread->_thread_pieces[piece_ind]!=this; piece_ind++) {}
-	if (piece_ind==_my_thread->_thread_pieces.size())
-		cout << "Internal error: ThreadPiece::energy_repulsion: this piece is not in _my_thread->_thread_pieces." << endl;
-
-	double energy = 0;
-	
-	if (piece_ind > 0 && piece_ind < (_my_thread->_thread_pieces.size() - 2)) {
-		for (int other_ind = 1; other_ind < _my_thread->_thread_pieces.size() - 2; other_ind++) {
-			if (other_ind == (piece_ind - 1) || other_ind == piece_ind || other_ind == (piece_ind + 1))
-				continue;
-			Vector3d direction;
-			double dist = _my_thread->self_intersection(piece_ind, other_ind, THREAD_RADIUS, direction);
-			if (dist < 0 || dist > THREAD_RADIUS)
-				continue;
-			double overlap = (THREAD_RADIUS - dist);
-			//energy += REPULSION_COEFF/2.0 * pow(dist/THREAD_RADIUS-1,2) * THREAD_RADIUS;
-			energy += REPULSION_COEFF/2.0 * pow(dist-THREAD_RADIUS,2);
-		}
-		if (_my_thread->world != NULL)
-			energy += _my_thread->world->capsuleObjectRepulsionEnergy(_my_thread->_thread_pieces[piece_ind]->vertex(), _my_thread->_thread_pieces[piece_ind+1]->vertex(), THREAD_RADIUS);
-	}
-	piece_ind--;
-	if (piece_ind > 0 && piece_ind < (_my_thread->_thread_pieces.size() - 2)) {
-		for (int other_ind = 1; other_ind < _my_thread->_thread_pieces.size() - 2; other_ind++) {
-			if (other_ind == (piece_ind - 1) || other_ind == piece_ind || other_ind == (piece_ind + 1))
-				continue;
-			Vector3d direction;
-			double dist = _my_thread->self_intersection(piece_ind, other_ind, THREAD_RADIUS, direction);
-			if (dist < 0 || dist > THREAD_RADIUS)
-				continue;
-			double overlap = (THREAD_RADIUS - dist);
-			//energy += REPULSION_COEFF/2.0 * pow(dist/THREAD_RADIUS-1,2) * THREAD_RADIUS;
-			energy += REPULSION_COEFF/2.0 * pow(dist-THREAD_RADIUS,2);
-		}
-		if (_my_thread->world != NULL)
-			energy += _my_thread->world->capsuleObjectRepulsionEnergy(_my_thread->_thread_pieces[piece_ind]->vertex(), _my_thread->_thread_pieces[piece_ind+1]->vertex(), THREAD_RADIUS);
-	}
-  return energy;
+  //double dl = abs(_edge_norm-_rest_length);
+//  double a = 0.05*_rest_length;
+//  double dist = 2.0*a - abs(_edge_norm-_rest_length);
+//	//cout << "diff: " << a << "\t\t" << abs(_edge_norm-_rest_length) << endl;
+//	if (dist < 0) {	//abs(_edge_norm-_rest_length) > 2.0*a
+//		//cout << "case 0" << endl;
+//		return 0.0; //STRETCH_COEFF * 10000.0;
+//	} else if (dist < a) { //abs(_edge_norm-_rest_length) > a
+//		//cout << "case 1" << endl;
+//		return STRETCH_COEFF * (-log(dist/a) + 0.5);
+//	} else if (dist < 2.0*a) {	//abs(_edge_norm-_rest_length) > 0
+//		//cout << "case 2" << endl;
+//		return STRETCH_COEFF * (dist*dist/(a*a*2) - 2*dist/a + 2);
+//	} else {	//abs(_edge_norm-_rest_length) == 0
+//		//cout << "case 3" << endl;
+//		return 0.0;
+//	}
 }
 
 double ThreadPiece::energy_grav()
@@ -236,6 +313,49 @@ void ThreadPiece::gradient_twist(double& grad)
 
 }
 
+void ThreadPiece::stretch_gradient_vertex(Vector3d& grad) {
+	if (STRETCH_COEFF > 0.0) {
+		double a = 0.05*_rest_length;
+		double dist;
+		double dl;
+		Vector3d direction;
+		
+		if (_prev_piece != NULL && _prev_piece->_prev_piece != NULL) { //(piece_ind > 1)
+			//vertex i related to edge of the prev piece
+			dist = 2.0*a - abs(_prev_piece->_edge_norm-_prev_piece->_rest_length);
+			dl = _prev_piece->_edge_norm-_prev_piece->_rest_length;
+			// if stretching, dl > 0 and direction should be _prev_piece->_edge/_prev_piece->_edge_norm
+			direction = _prev_piece->_edge/_prev_piece->_edge_norm;
+			if (dl > 0) direction *= -1.0;
+	
+			if (dist < 0) {
+				//grad -= - STRETCH_COEFF * 1000.0 * abs(dist) * direction;
+			} else if (dist < a) {
+				grad -= STRETCH_COEFF * (1/dist) * direction;
+			} else if (dist < 2.0*a) {
+				grad -= - STRETCH_COEFF * (dist/(a*a) - 2/a) * direction;
+			}
+		}
+		
+		if (_next_piece != NULL && _next_piece->_next_piece != NULL) { //piece_ind < _my_thread->_thread_pieces.size()-2)
+			//vertex i related to edge of this piece
+			dist = 2.0*a - abs(_edge_norm-_rest_length);
+			dl = _edge_norm-_rest_length;
+			// if stretching, dl > 0 and direction should be -_edge/_edge_norm
+			direction = _edge/_edge_norm;
+			if (dl < 0) direction *= -1.0;
+	
+			if (dist < 0) {
+				//grad -= - STRETCH_COEFF * 1000.0 * abs(dist) * direction;
+			} else if (dist < a) {
+				grad -= STRETCH_COEFF * (1/dist) * direction;
+			} else if (dist < 2.0*a) {
+				grad -= - STRETCH_COEFF * (dist/(a*a) - 2/a) * direction;
+			}
+		}
+	}
+}
+
 //not defined for first 2 or last 2 pieces
 void ThreadPiece::gradient_vertex(Vector3d& grad)
 {
@@ -272,58 +392,19 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
 	grad += (2.0*BEND_COEFF/(_prev_piece->_rest_length + _rest_length))*(-del_kb_i_im1-del_kb_i_ip1).transpose()*_curvature_binormal - beta_angle_diff_over_L*(-del_psi_i_im1-del_psi_i_ip1);
 
 	grad += Vector3d::UnitZ()*GRAV_COEFF;
-	
-  int piece_ind;
-  for (piece_ind=0; piece_ind<_my_thread->_thread_pieces.size() && _my_thread->_thread_pieces[piece_ind]!=this; piece_ind++) {}
-	if (piece_ind==_my_thread->_thread_pieces.size())
-		cout << "Internal error: ThreadPiece::energy_repulsion: this piece is not in _my_thread->_thread_pieces." << endl;
-	
+
 	if (STRETCH_COEFF > 0.0) {
 		double factor;
-		if (piece_ind == (_my_thread->_thread_pieces.size()-3) ||	piece_ind == 2)
+		if ((_next_piece != NULL && _next_piece->_next_piece != NULL && _next_piece->_next_piece->_next_piece != NULL) ||
+				 (_prev_piece != NULL && _prev_piece->_prev_piece != NULL && _prev_piece->_prev_piece->_prev_piece != NULL))	//(_my_thread->_thread_pieces.size()-3) ||	piece_ind == 2)
 			factor = 0.25;
 		else
 			factor = 1.0;
-		if (piece_ind < _my_thread->_thread_pieces.size()-2)
+		if (_next_piece != NULL && _next_piece->_next_piece != NULL) //piece_ind < _my_thread->_thread_pieces.size()-2)
 			grad -= factor * STRETCH_COEFF * (_edge_norm/_rest_length - 1.0) * _edge.normalized();
-		if (piece_ind > 1)
+		if (_prev_piece != NULL && _prev_piece->_prev_piece != NULL) //(piece_ind > 1)
 			grad += factor * STRETCH_COEFF * (_prev_piece->_edge_norm/_prev_piece->_rest_length - 1.0) * _prev_piece->_edge.normalized();
 	}
-	/*
-	if (REPULSION_COEFF > 0.0) {
-		if (piece_ind > 0 && piece_ind < (_my_thread->_thread_pieces.size() - 2)) {
-			for (int other_ind = 1; other_ind < _my_thread->_thread_pieces.size() - 2; other_ind++) {
-				if (other_ind == (piece_ind - 1) || other_ind == piece_ind || other_ind == (piece_ind + 1))
-					continue;
-				Vector3d direction;
-				double dist = _my_thread->self_intersection(piece_ind, other_ind, THREAD_RADIUS, direction);
-				if (dist < 0 || dist > THREAD_RADIUS)
-					continue;
-				double overlap = (THREAD_RADIUS - dist);
-				//double overlap = 1/pow(dist,4);
-				grad -= REPULSION_COEFF * overlap * direction.normalized();
-			}
-			if (_my_thread->world != NULL)
-				_my_thread->world->capsuleObjectRepulsionEnergyGradient(_my_thread->_thread_pieces[piece_ind]->vertex(), _my_thread->_thread_pieces[piece_ind+1]->vertex(), THREAD_RADIUS, grad);
-		}
-		piece_ind--;
-		if (piece_ind > 0 && piece_ind < (_my_thread->_thread_pieces.size() - 2)) {
-			for (int other_ind = 1; other_ind < _my_thread->_thread_pieces.size() - 2; other_ind++) {
-				if (other_ind == (piece_ind - 1) || other_ind == piece_ind || other_ind == (piece_ind + 1))
-					continue;
-				Vector3d direction;
-				double dist = _my_thread->self_intersection(piece_ind, other_ind, THREAD_RADIUS, direction);
-				if (dist < 0 || dist > THREAD_RADIUS)
-					continue;
-				double overlap = (THREAD_RADIUS - dist);
-				//double overlap = 1/pow(dist,4);
-				grad -= REPULSION_COEFF * overlap * direction.normalized();
-			}
-			if (_my_thread->world != NULL)
-				_my_thread->world->capsuleObjectRepulsionEnergyGradient(_my_thread->_thread_pieces[piece_ind]->vertex(), _my_thread->_thread_pieces[piece_ind+1]->vertex(), THREAD_RADIUS, grad);
-		}
-	}
-	*/
 #else
   grad.setZero();
 
@@ -944,24 +1025,41 @@ void ThreadPiece::fixPointersMerge()
 	this->_prev_piece = _prev_piece->_prev_piece;
 }
 
-ThreadPiece& ThreadPiece::operator=(const ThreadPiece& rhs)
+//collision
+bool ThreadPiece::isPieceIndConsistent()
 {
-  _vertex = rhs._vertex;
-  _angle_twist = rhs._angle_twist;
-	_edge = rhs._edge;
-	_edge_norm = rhs._edge_norm;
-	_curvature_binormal = rhs._curvature_binormal;
-	_bishop_frame = rhs._bishop_frame;
-	_material_frame = rhs._material_frame;
-	_rest_length = rhs._rest_length;
-
-  _prev_piece = rhs._prev_piece;
-  _next_piece = rhs._next_piece;
-  _my_thread = rhs._my_thread;
-
-	return *this;
-
+	int piece_ind;
+  for (piece_ind=0; piece_ind<_my_thread->_thread_pieces.size() && _my_thread->_thread_pieces[piece_ind]!=this; piece_ind++) {}
+	assert(piece_ind != _my_thread->_thread_pieces.size()); //this piece is not in _my_thread->_thread_pieces.
 }
+
+void ThreadPiece::updateCollisionObjectTransform()
+{
+	assert(_next_piece != NULL);
+	_col_obj->getWorldTransform().setOrigin(tobtVector3((_vertex + _next_piece->_vertex)/2.0)); //(_edge_norm/2.0) * _material_frame.col(0) + _vertex
+	_col_obj->getWorldTransform().setBasis(tobtMatrix3x3(_material_frame));
+}
+
+//ThreadPiece& ThreadPiece::operator=(const ThreadPiece& rhs)
+//{
+//  _vertex = rhs._vertex;
+//  _angle_twist = rhs._angle_twist;
+//	_edge = rhs._edge;
+//	_edge_norm = rhs._edge_norm;
+//	_curvature_binormal = rhs._curvature_binormal;
+//	_bishop_frame = rhs._bishop_frame;
+//	_material_frame = rhs._material_frame;
+//	_rest_length = rhs._rest_length;
+
+//  _prev_piece = rhs._prev_piece;
+//  _next_piece = rhs._next_piece;
+//  _my_thread = rhs._my_thread;
+
+//	_col_obj.setCollisionShape(dynamic_cast<btCapsuleShapeX*>((btCollisionShape*) rhs._col_obj.getCollisionShape()));
+
+//	return *this;
+
+//}
 
 void ThreadPiece::copyData(const ThreadPiece& rhs)
 {
@@ -973,4 +1071,6 @@ void ThreadPiece::copyData(const ThreadPiece& rhs)
 	_bishop_frame = rhs._bishop_frame;
 	_material_frame = rhs._material_frame;
   _rest_length = rhs._rest_length;
+
+	_col_obj = rhs._col_obj;
 }

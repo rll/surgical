@@ -127,15 +127,75 @@ void Box::draw()
 	glPopMatrix();
 }
 
-void insertNeedle(Needle* n)
+void Box::attachThreadIn(ThreadConstrained* t, const Vector3d& in_pos, const Matrix3d& in_rot)
 {
-
+	thread = t;
+	constraint0 = 16;
+	c0_position = in_pos;
+	c0_rotation = in_rot;
+	thread->addConstraint(constraint0);
+	
+	vector<int> constrained_vertices_nums;
+	thread->getConstrainedVerticesNums(constrained_vertices_nums);
+	int constraint_ind = find(constrained_vertices_nums, constraint0);
+	assert(constraint_ind != -1);
+	
+	vector<EndEffector*> world_end_effs;
+	world->getObjects<EndEffector>(world_end_effs);
+  for (int ee_ind = 0; ee_ind < world_end_effs.size(); ee_ind++) {
+		if ((world_end_effs[ee_ind]->getThread() == thread) && (world_end_effs[ee_ind]->constraint_ind >= constraint_ind)) { //TODO what about fixing the constraint of every box?
+			world_end_effs[ee_ind]->constraint_ind++;
+		}
+		world_end_effs[ee_ind]->updateConstraint();
+	}
+	cout << "constraint_ind " << constraint_ind << endl;
+	cout << "c0_position: " << endl << c0_position << endl;
+	cout << "c0_rotation: " << endl << c0_rotation << endl;
+	//thread->updateRotationOffset(constraint_ind, c0_rotation);	// the end effector's orientation matters when it grips the thread. This updates the offset rotation.
+	//thread->updateConstrainedTransform(constraint_ind, c0_position, c0_rotation);
 }
 
-void stepThread()
+void Box::attachThreadOut(ThreadConstrained* t, const Vector3d& out_pos, const Matrix3d& out_rot)
 {
-
+	assert(thread == t);
+	constraint1 = 8;
+	c1_position = out_pos;
+	c1_rotation = out_rot;
+	thread->addConstraint(constraint1);
+	
+	vector<int> constrained_vertices_nums;
+	thread->getConstrainedVerticesNums(constrained_vertices_nums);
+	int constraint_ind = find(constrained_vertices_nums, constraint1);
+	assert(constraint_ind != -1);
+	
+	vector<EndEffector*> world_end_effs;
+	world->getObjects<EndEffector>(world_end_effs);
+  for (int ee_ind = 0; ee_ind < world_end_effs.size(); ee_ind++) {
+		if ((world_end_effs[ee_ind]->getThread() == thread) && (world_end_effs[ee_ind]->constraint_ind >= constraint_ind)) { //TODO what about fixing the constraint of every box?
+			world_end_effs[ee_ind]->constraint_ind++;
+		}
+		world_end_effs[ee_ind]->updateConstraint();
+	}
+	cout << "constraint_ind " << constraint_ind << endl;
+	cout << "c1_position: " << endl << c1_position << endl;
+	cout << "c1_rotation: " << endl << c1_rotation << endl;
+	thread->updateRotationOffset(constraint_ind, c1_rotation);	// the end effector's orientation matters when it grips the thread. This updates the offset rotation.
+	thread->updateConstrainedTransform(constraint_ind, c1_position, c1_rotation);
 }
+
+//void updateThreadConstraints()
+//{
+//	if (constraint0 != -1) {
+//		assert(thread!=NULL);
+//		thread->updateConstrainedTransform(constraint_ind, position, rotation);
+//	}
+//}
+
+//	vector<Vector3d> vertices;
+//	get_thread_data(vertices);
+//	vector<int> free_vertices_num;
+//	getOperableFreeVertices(free_vertices_num);
+//	vertices[free_vertices_num[i]];
 
 void Box::backup()
 {
