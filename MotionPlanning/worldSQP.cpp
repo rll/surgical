@@ -85,6 +85,7 @@ void WorldSQP::pushStart(World* state) {
     current_states[j][0] = state;
     current_jacobians[j][0] = MatrixXd();
   }
+
 #else
   assert(false);
 #endif
@@ -100,8 +101,8 @@ void WorldSQP::popStart() {
     }
     current_states[j][max_ind - 1] = new World(*current_states[j][max_ind]);
     current_jacobians[j][max_ind - 1] = current_jacobians[j][max_ind]; 
-    popGoal();
   }
+  popGoal();
 #else
   assert(false);
 #endif
@@ -113,6 +114,7 @@ void WorldSQP::popGoal() {
     current_states[i].pop_back();
     current_jacobians[i].pop_back();
   }
+
 #else
   assert(false);
 #endif
@@ -133,7 +135,7 @@ void WorldSQP::solve() {
 
 #if COLOCATION_METHOD
   assert(current_states.size() == _num_traj);
-  for (int i = 0; i < current_states.size(); i++) { 
+  for (int i = 0; i < current_states.size(); i++) {
     assert(current_states[i].size() == _num_worlds); // memory leak if false
   }
 #else
@@ -232,7 +234,8 @@ void WorldSQP::solve() {
     newStates[j].resize(current_states[j].size());
     for (int i = 0; i < current_states[j].size(); i++) {
       newStates[j][i] = new World(*current_states[j][i]);
-      delete current_states[j][i]; // TODO: Dependent on memory leak above
+      //delete current_states[j][i]; // TODO: Dependent on memory leak above
+
     }
   }
 
@@ -335,7 +338,7 @@ void WorldSQP::add_all_jacobians() {
   for (int i = 0; i < _num_traj; i++) { 
     DynamicSparseMatrix<double> J;
     compute_traj_jacobian(i, J);
-    block(_all_trans,i*_size_each_state*(_num_worlds-1), _cols_all_unknown_states + i*_size_each_control*(_num_worlds-1), J);
+    block(_all_trans,i*_size_each_state*(_num_worlds-1), _cols_all_unknown_states, J);
   }
 }
 

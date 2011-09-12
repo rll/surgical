@@ -20,31 +20,31 @@ def sparseIdentity(n):
 def sparseZero(m,n):
   return spmatrix([], [], [], (m,n))
 
-def generateP(num_states, size_each_state, size_each_control, lmbda):
+def generateP(num_traj, num_states, size_each_state, size_each_control, lmbda):
   num_controls = num_states - 1
   all_matrices = []
 
-  for i in range(num_states - 2): #unknown states
+  for i in range(num_traj*(num_states - 2)): #unknown states
     all_matrices.append(sparseZero(size_each_state,size_each_state))
 
   for i in range(num_controls): #controls
     all_matrices.append(2*lmbda*sparseIdentity(size_each_control))
 
-  for i in range(num_states - 1): #transformation variables
+  for i in range(num_traj*(num_states - 1)): #transformation variables
     all_matrices.append(2*sparseIdentity(size_each_state))
 
   P = spdiag(all_matrices)
 
   return P
-def generateA(num_states, size_each_state, size_each_control, all_trans):
+def generateA(num_traj, num_states, size_each_state, size_each_control, all_trans):
   num_controls = num_states - 1;
   left_block = all_trans;
-  right_block = sparseIdentity(num_controls * size_each_state)
+  right_block = sparseIdentity(num_traj * (num_states - 1) * size_each_state)
   A = sparse([[left_block], [right_block]])
 
   return A
    
-def generateB(num_states, size_each_state, b_data, num_traj):
+def generateB(num_traj, num_states, size_each_state, b_data):
   B = [ ]
   for i in range(num_traj):
     bi_data = b_data[i*(num_states*size_each_state):(i+1)*(num_states*size_each_state)]
@@ -68,27 +68,27 @@ def generateBi(num_states, size_each_state, bi_data):
   return b;
 
 
-def generateQ(num_states, size_each_state, size_each_control):
-  q_size =  (num_states-2)*size_each_state + (num_states - 1) * size_each_control + (num_states-1)*size_each_state
+def generateQ(num_traj, num_states, size_each_state, size_each_control):
+  q_size =  num_traj*(num_states-2)*size_each_state + (num_states - 1) * size_each_control + num_traj*(num_states-1)*size_each_state
   q = matrix(0.0, (q_size, 1))
   return q
 
-def generateG(num_states, size_each_state, size_each_control):
+def generateG(num_traj, num_states, size_each_state, size_each_control):
   num_controls = num_states - 1
   num_inequality_constraints = 2 * (size_each_control * num_controls)
-  problem_state_size =  (num_states-2)*size_each_state + (num_states - 1) * size_each_control + (num_states-1)*size_each_state
 
-  left_block = sparseZero(num_inequality_constraints, (num_states-2)*size_each_state)
+  left_block = sparseZero(num_inequality_constraints, num_traj*(num_states-2)*size_each_state)
   upper_middle_block = sparseIdentity(num_controls*size_each_control)
   lower_middle_block = -1*sparseIdentity(num_controls*size_each_control)
   middle_block = sparse([upper_middle_block, lower_middle_block])
-  right_block = sparseZero(num_inequality_constraints, (num_states-1)*size_each_state)
+  right_block = sparseZero(num_inequality_constraints, num_traj*(num_states-1)*size_each_state)
   G = sparse([[left_block], [middle_block], [right_block]])
   return G
 
-def generateH(num_states, control_const_vec):
+def generateH(num_traj, num_states, control_const_vec):
+  num_controls = num_states - 1
   H = [ ]
-  for i in range(2*(num_states - 1)):
+  for i in range(2*num_controls):
     H.append(control_const_vec)
   
   H = matrix(H)
@@ -124,25 +124,24 @@ def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, x_file, num_traj, num_states, s
 
   #read b file to get x_1, x_N
   f_b = open(b_file, 'r')
-  b_data = matrix(0.0, (num_states*size_each_state, 1))
+  b_data = matrix(0.0, (num_traj*num_states*size_each_state, 1))
   i = 0
   for line in f_b:
     b_data[i] = float(line.rstrip())
     i = i + 1
-
+  
   f_b.close()
   
   print "setting up loading b_data took %f" % (clock() - t0)
   t0 = clock()
 
   #setup matrices
-
-  P = generateP(num_states, size_each_state, size_each_control, lmbda)
-  q = generateQ(num_states, size_each_state, size_each_control)
-  A = generateA(num_states, size_each_state, size_each_control, all_trans)
-  b = generateB(num_states, size_each_state, b_data, num_traj)
-  G = generateG(num_states, size_each_state, size_each_control)
-  h = generateH(num_states, control_const_vec)
+  P = generateP(num_traj, num_states, size_each_state, size_each_control, lmbda)
+  q = generateQ(num_traj, num_states, size_each_state, size_each_control)
+  A = generateA(num_traj, num_states, size_each_state, size_each_control, all_trans)
+  b = generateB(num_traj, num_states, size_each_state, b_data)
+  G = generateG(num_traj, num_states, size_each_state, size_each_control)
+  h = generateH(num_traj, num_states, control_const_vec)
 
   print "generating took %f" % (clock() - t0)
   t0 = clock()
@@ -153,9 +152,9 @@ def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, x_file, num_traj, num_states, s
 
   print "solving took %f" % (clock() - t0)
   t0 = clock()
-  x = x[:(num_states-2)*size_each_state+(num_controls)*size_each_control];
+  x = x[:num_traj*(num_states-2)*size_each_state+(num_controls)*size_each_control];
 
-  U = matrix(x[(num_states-2)*size_each_state:], (12, num_controls))
+  U = matrix(x[num_traj*(num_states-2)*size_each_state:], (12, num_controls))
   print U
 
   f = open(x_file, 'w')

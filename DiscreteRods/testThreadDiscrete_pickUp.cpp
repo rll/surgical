@@ -938,11 +938,6 @@ int main (int argc, char * argv[])
 	
 	//Environment
 	world = new World();
-
-  for (int i = 0; i < 1000; i++) { 
-    World* d = new World(*world);
-  }
-  cout << "done" << endl; 
 	
 	//control0 = new Control(Vector3d::Zero(), Matrix3d::Identity());
 	//control1 = new Control(Vector3d::Zero(), Matrix3d::Identity());
@@ -1302,6 +1297,7 @@ void closedLoopSQPController(World* start, vector<World*>& target,
         init_worlds.push_back(target[i]); // solver will make copies
       }
       vector<vector<World*> > sqp_init;
+      sqp_init.push_back(init_worlds);
       sqp_init.push_back(init_worlds);
 
       WorldSQP* solver; 
