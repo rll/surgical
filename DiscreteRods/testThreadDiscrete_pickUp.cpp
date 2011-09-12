@@ -92,7 +92,7 @@ double zero_angle;
 // interactive variables
 bool limit_displacement = false;
 bool haptics = true;
-bool examine_mode = false;
+RenderMode examine_mode = NORMAL;
 
 //IO
 Haptic *haptic0, *haptic1;
@@ -534,7 +534,7 @@ void processNormalKeys(unsigned char key, int x, int y)
   		mouse1->setTransform(haptic1);
   	}*/
   } else if(key == 'e') {
-  	examine_mode = !examine_mode;
+  	examine_mode = (RenderMode) ((examine_mode+1)%4);
   } else if(key == 'w') {
   	rotate_frame[0] = rotate_frame[1] = 0.0;
 		translate_frame[0] = translate_frame[1] = 0.0;
@@ -576,6 +576,9 @@ void processNormalKeys(unsigned char key, int x, int y)
   } else if(key == 'f') {
   	cout << "restoring from backup" << endl;
   	world->restore();
+  } else if (key == '`') {
+  	World* world_ptr = new World(*world);
+  	cout << "copy" << endl;
   }
 #ifdef VIEW3D
   else if(key == '=') {
@@ -743,7 +746,6 @@ void drawStuff()
   }
   if (world && drawInteractiveWorld) {
    	world->draw(examine_mode);
-   	world->drawDebug();
   }
   if (start_world && drawStartWorld) {
   	start_world->draw();
@@ -866,7 +868,7 @@ int main (int argc, char * argv[])
 	connectionInit();
 	
 	//Environment
-	world = new World();
+	world = new World(true);
 	
 	//control0 = new Control(Vector3d::Zero(), Matrix3d::Identity());
 	//control1 = new Control(Vector3d::Zero(), Matrix3d::Identity());

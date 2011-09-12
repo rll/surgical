@@ -1,23 +1,25 @@
 #include "thread_discrete.h"
 
-Thread::Thread()
-{
-  world = NULL;
-  _thread_pieces.resize(0);
-	_thread_pieces_backup.resize(0);
-}
+//Thread::Thread()
+//{
+//  world = NULL;
+//  _thread_pieces.resize(0);
+//	_thread_pieces_backup.resize(0);
+//}
 
 
-Thread::Thread(const VectorXd& vertices, const VectorXd& twists, const Matrix3d& start_rot)
+Thread::Thread(const VectorXd& vertices, const VectorXd& twists, const Matrix3d& start_rot, World* w)
 {
-  world = NULL;
+  world = w;
+  assert(world != NULL);
   _thread_pieces.resize(twists.size());
   _thread_pieces_backup.resize(twists.size());
   _angle_twist_backup.resize(twists.size());
-  for (int i=0; i < twists.size(); i++)
+  for (int i=0; i < twists.size()-1; i++)
   {
-    _thread_pieces[i] = new ThreadPiece(vertices.segment<3>(3*i), twists(i), DEFAULT_REST_LENGTH, this);
+    _thread_pieces[i] = new ThreadPiece(vertices.segment<3>(3*i), twists(i), DEFAULT_REST_LENGTH, this, true);
   }
+	_thread_pieces[twists.size()-1] = new ThreadPiece(vertices.segment<3>(3*(twists.size()-1)), twists(twists.size()-1), DEFAULT_REST_LENGTH, this, false);
 
   for (int i=1; i < twists.size(); i++)
   {
@@ -39,7 +41,7 @@ Thread::Thread(const VectorXd& vertices, const VectorXd& twists, const Matrix3d&
   //setup backups
   for (int i=0; i < twists.size(); i++)
   {
-  	_thread_pieces_backup[i] = new ThreadPiece(vertices.segment<3>(3*i), twists(i), DEFAULT_REST_LENGTH, this);
+  	_thread_pieces_backup[i] = new ThreadPiece(vertices.segment<3>(3*i), twists(i), DEFAULT_REST_LENGTH, this, false);
   }
 
   for (int i=1; i < twists.size(); i++)
@@ -52,6 +54,8 @@ Thread::Thread(const VectorXd& vertices, const VectorXd& twists, const Matrix3d&
   	_thread_pieces_backup[i]->set_next(_thread_pieces_backup[i+1]);
   }
   _thread_pieces_backup[twists.size()-1]->set_next(NULL);
+	
+	setPieceIndices();
 
 
   _thread_pieces.front()->set_bishop_frame(start_rot);
@@ -68,17 +72,19 @@ Thread::Thread(const VectorXd& vertices, const VectorXd& twists, const Matrix3d&
 }
 
 //Create a Thread. start_rot is the first bishop frame. the last material frame is calculated from twist_angles
-Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot)
+Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, World* w)
 {
-  world = NULL;
+  world = w;
+  assert(world != NULL);
   _thread_pieces.resize(vertices.size());
   _thread_pieces_backup.resize(vertices.size());
   _angle_twist_backup.resize(vertices.size());
-  for (int i=0; i < vertices.size(); i++)
+  for (int i=0; i < vertices.size()-1; i++)
   {
-    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], DEFAULT_REST_LENGTH, this);
+    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], DEFAULT_REST_LENGTH, this, true);
 //    _thread_pieces.push_back(ThreadPiece(vertices[i], twist_angles[i]));
   }
+	_thread_pieces[vertices.size()-1] = new ThreadPiece(vertices[vertices.size()-1], twist_angles[vertices.size()-1], DEFAULT_REST_LENGTH, this, false);
 
   for (int i=1; i < vertices.size(); i++)
   {
@@ -100,7 +106,7 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
 	//setup backups
   for (int i=0; i < vertices.size(); i++)
   {
-    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], DEFAULT_REST_LENGTH, this);
+    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], DEFAULT_REST_LENGTH, this, false);
   }
 
   for (int i=1; i < vertices.size(); i++)
@@ -114,6 +120,7 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
   }
   _thread_pieces_backup[vertices.size()-1]->set_next(NULL);
 
+	setPieceIndices();
 
   _thread_pieces.front()->set_bishop_frame(start_rot);
   _thread_pieces.front()->set_material_frame(start_rot);
@@ -135,17 +142,19 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
 }
 
 //As above, with a specific rest length
-Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, const double rest_length)
+Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, const double rest_length, World* w)
 {
-  world = NULL;
+  world = w;
+  assert(world != NULL);
   _thread_pieces.resize(vertices.size());
   _thread_pieces_backup.resize(vertices.size());
   _angle_twist_backup.resize(vertices.size());
-  for (int i=0; i < vertices.size(); i++)
+  for (int i=0; i < vertices.size()-1; i++)
   {
-    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_length, this);
+    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_length, this, true);
 //    _thread_pieces.push_back(ThreadPiece(vertices[i], twist_angles[i]));
   }
+  _thread_pieces[vertices.size()-1] = new ThreadPiece(vertices[vertices.size()-1], twist_angles[vertices.size()-1], rest_length, this, false);
 
   for (int i=1; i < vertices.size(); i++)
   {
@@ -167,7 +176,7 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
 	//setup backups
   for (int i=0; i < vertices.size(); i++)
   {
-    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_length, this);
+    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_length, this, false);
   }
 
   for (int i=1; i < vertices.size(); i++)
@@ -180,6 +189,8 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
     _thread_pieces_backup[i]->set_next(_thread_pieces_backup[i+1]);
   }
 	_thread_pieces_backup[vertices.size()-1]->set_next(NULL);
+	
+	setPieceIndices();
 
   _thread_pieces.front()->set_bishop_frame(start_rot);
   _thread_pieces.front()->set_material_frame(start_rot);
@@ -201,17 +212,19 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
 
 
 //As above, with a specific rest length for each threadpiece.
-Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot)
+Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, World* w)
 {
-  world = NULL;
+  world = w;
+  assert(world != NULL);
   _thread_pieces.resize(vertices.size());
   _thread_pieces_backup.resize(vertices.size());
   _angle_twist_backup.resize(vertices.size());
-  for (int i=0; i < vertices.size(); i++)
+  for (int i=0; i < vertices.size()-1; i++)
   {
-    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_lengths[i], this);
+    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_lengths[i], this, true);
 //    _thread_pieces.push_back(ThreadPiece(vertices[i], twist_angles[i]));
   }
+  _thread_pieces[vertices.size()-1] = new ThreadPiece(vertices[vertices.size()-1], twist_angles[vertices.size()-1], rest_lengths[vertices.size()-1], this, false);
 	
   for (int i=1; i < vertices.size(); i++)
   {
@@ -233,7 +246,7 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<
 	//setup backups
   for (int i=0; i < vertices.size(); i++)
   {
-    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_lengths[i], this);
+    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_lengths[i], this, false);
   }
 
   for (int i=1; i < vertices.size(); i++)
@@ -246,6 +259,8 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<
     _thread_pieces_backup[i]->set_next(_thread_pieces_backup[i+1]);
   }
 	_thread_pieces_backup[vertices.size()-1]->set_next(NULL);
+	
+	setPieceIndices();
 
   _thread_pieces.front()->set_bishop_frame(start_rot);
   _thread_pieces.front()->set_material_frame(start_rot);
@@ -266,17 +281,19 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<
 }
 
 //Create a Thread. start_rot is the first bishop frame. end_rot is used to calculate the last twist angle
-Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot)
+Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot, World* w)
 {
-  world = NULL;
+  world = w;
+  assert(world != NULL);
   //_thread_pieces.resize(vertices.size());
   _thread_pieces_backup.resize(vertices.size());
   _angle_twist_backup.resize(vertices.size());
   _thread_pieces.resize(vertices.size());
-  for (int i=0; i < vertices.size(); i++)
+  for (int i=0; i < vertices.size()-1; i++)
   {
-    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], DEFAULT_REST_LENGTH, this);
+    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], DEFAULT_REST_LENGTH, this, true);
   }
+  _thread_pieces[vertices.size()-1] = new ThreadPiece(vertices[vertices.size()-1], twist_angles[vertices.size()-1], DEFAULT_REST_LENGTH, this, false);
 
   for (int i=1; i < vertices.size(); i++)
   {
@@ -298,7 +315,7 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
 	//setup backups
   for (int i=0; i < vertices.size(); i++)
   {
-    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], DEFAULT_REST_LENGTH, this);
+    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], DEFAULT_REST_LENGTH, this, false);
     //_thread_pieces.push_back(ThreadPiece(vertices[i], twist_angles[i]));
   }
 
@@ -312,6 +329,8 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
     _thread_pieces_backup[i]->set_next(_thread_pieces_backup[i+1]);
   }
   _thread_pieces_backup[vertices.size()-1]->set_next(NULL);
+
+	setPieceIndices();
 
   _thread_pieces.front()->set_bishop_frame(start_rot);
   _thread_pieces.front()->set_material_frame(start_rot);
@@ -400,16 +419,18 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
 }
 
 
-Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, Matrix3d& end_rot)
+Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, Matrix3d& end_rot, World* w)
 {
-  world = NULL;
+  world = w;
+  assert(world != NULL);
   _thread_pieces_backup.resize(vertices.size());
   _angle_twist_backup.resize(vertices.size());
   _thread_pieces.resize(vertices.size());
-  for (int i=0; i < vertices.size(); i++)
+  for (int i=0; i < vertices.size()-1; i++)
   {
-    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_lengths[i], this);
+    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_lengths[i], this, true);
   }
+  _thread_pieces[vertices.size()-1] = new ThreadPiece(vertices[vertices.size()-1], twist_angles[vertices.size()-1], rest_lengths[vertices.size()-1], this, false);
 
   for (int i=1; i < vertices.size(); i++)
   {
@@ -431,7 +452,7 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<
 	//setup backups
   for (int i=0; i < vertices.size(); i++)
   {
-    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_lengths[i], this);
+    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_lengths[i], this, false);
   }
 
   for (int i=1; i < vertices.size(); i++)
@@ -445,6 +466,8 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<
   }
   _thread_pieces_backup[vertices.size()-1]->set_next(NULL);
 
+	setPieceIndices();
+	
   _thread_pieces.front()->set_bishop_frame(start_rot);
   _thread_pieces.front()->set_material_frame(start_rot);
 
@@ -454,18 +477,20 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<
 }
 
 
-Thread::Thread(const Thread& rhs)
+Thread::Thread(const Thread& rhs, World* w)
 {
-  world = rhs.world;
+  world = w;
+  assert(world != NULL);
   _thread_pieces.resize(rhs._thread_pieces.size());
   _thread_pieces_backup.resize(rhs._thread_pieces_backup.size());
   _angle_twist_backup.resize(rhs._thread_pieces.size());
 
-  for (int piece_ind =0; piece_ind < rhs._thread_pieces.size(); piece_ind++)
+  for (int piece_ind =0; piece_ind < rhs._thread_pieces.size()-1; piece_ind++)
   {
     //_thread_pieces.push_back(rhs._thread_pieces[piece_ind]);
-    _thread_pieces[piece_ind] = new ThreadPiece(*rhs._thread_pieces[piece_ind], this);
+    _thread_pieces[piece_ind] = new ThreadPiece(*rhs._thread_pieces[piece_ind], this, true);
   }
+  _thread_pieces[rhs._thread_pieces.size()-1] = new ThreadPiece(*rhs._thread_pieces[rhs._thread_pieces.size()-1], this, false);
 
   for (int i=1; i < _thread_pieces.size(); i++)
   {
@@ -483,7 +508,7 @@ Thread::Thread(const Thread& rhs)
 	//setup backups
   for (int i=0; i < rhs._thread_pieces_backup.size(); i++)
   {
-    _thread_pieces_backup[i] = new ThreadPiece(*rhs._thread_pieces_backup[i], this);
+    _thread_pieces_backup[i] = new ThreadPiece(*rhs._thread_pieces_backup[i], this, false);
     //_thread_pieces.push_back(ThreadPiece(vertices[i], twist_angles[i]));
   }
 
@@ -498,6 +523,7 @@ Thread::Thread(const Thread& rhs)
   }
 	_thread_pieces_backup[_thread_pieces_backup.size()-1]->set_next(NULL);
 
+	setPieceIndices();
 
   _thread_pieces.front()->set_bishop_frame(rhs.start_rot());
   _thread_pieces.front()->set_material_frame(rhs.start_rot());
@@ -514,7 +540,7 @@ Thread::Thread(const Thread& rhs)
   set_all_pieces_mythread();
 }
 
-Thread::Thread(ifstream& file)
+Thread::Thread(ifstream& file, World* w)
 {
   int num_pts_each;
   file >> num_pts_each;
@@ -549,14 +575,16 @@ Thread::Thread(ifstream& file)
     file >> points[i](0) >> points[i](1) >> points[i](2) >> twist_angles[i] >> rest_lengths[i];
   }
 
-  world = NULL;
+  world = w;
+  assert(world != NULL);
   _thread_pieces_backup.resize(points.size());
   _angle_twist_backup.resize(points.size());
   _thread_pieces.resize(points.size());
-  for (int i=0; i < points.size(); i++)
+  for (int i=0; i < points.size()-1; i++)
   {
-    _thread_pieces[i] = new ThreadPiece(points[i], twist_angles[i], rest_lengths[i], this);
+    _thread_pieces[i] = new ThreadPiece(points[i], twist_angles[i], rest_lengths[i], this, true);
   }
+  _thread_pieces[points.size()-1] = new ThreadPiece(points[points.size()-1], twist_angles[points.size()-1], rest_lengths[points.size()-1], this, false);
 
   for (int i=1; i < points.size(); i++)
   {
@@ -578,7 +606,7 @@ Thread::Thread(ifstream& file)
 	//setup backups
   for (int i=0; i < points.size(); i++)
   {
-    _thread_pieces_backup[i] = new ThreadPiece(points[i], twist_angles[i], rest_lengths[i], this);
+    _thread_pieces_backup[i] = new ThreadPiece(points[i], twist_angles[i], rest_lengths[i], this, false);
   }
 
   for (int i=1; i < points.size(); i++)
@@ -591,6 +619,8 @@ Thread::Thread(ifstream& file)
     _thread_pieces_backup[i]->set_next(_thread_pieces_backup[i+1]);
   }
   _thread_pieces_backup[points.size()-1]->set_next(NULL);
+  
+	setPieceIndices();
 
   _thread_pieces.front()->set_bishop_frame(start_rot);
   _thread_pieces.front()->set_material_frame(start_rot);
@@ -649,6 +679,7 @@ void Thread::delete_current_threadpieces()
 
 	for (int piece_ind=0; piece_ind < _thread_pieces_backup.size(); piece_ind++)
 	{
+		_thread_pieces_backup[piece_ind]->_col_obj = NULL;
 		delete _thread_pieces_backup[piece_ind];
 	}
 	_thread_pieces_backup.clear();
@@ -669,7 +700,6 @@ void Thread::delete_threadpieces(vector<ThreadPiece*> thread_pieces)
  * Needs at least two thread pieces to work */
 double Thread::calculate_energy()
 {
-
 #ifdef ISOTROPIC
   //double energy = _thread_pieces[2]->get_twist_coeff() * (pow(_thread_pieces[_thread_pieces.size() - 2]->angle_twist() - _thread_pieces.front()->angle_twist(),2)) / (2.0 * _rest_length * (_thread_pieces.size() - 2));
 	double energy = _thread_pieces[2]->get_twist_coeff() * (pow(end_angle() - start_angle(),2)) / (2.0*total_length() - start_rest_length() - end_rest_length());
@@ -677,50 +707,59 @@ double Thread::calculate_energy()
 	//std::cout << _thread_pieces[2]->get_twist_coeff() << " " << _thread_pieces.size() << " " << _thread_pieces[_thread_pieces.size()-2]->angle_twist() << " " << _thread_pieces.front()->angle_twist() << " " << 2.0*_rest_length*(_thread_pieces.size()-2) << std::endl;
 
   if (REPULSION_COEFF>0) {
-	  Vector3d direction;
-	  
-	  //self repulsion
-		for(int i = 0; i < _thread_pieces.size() - 3; i++) {
-			//+2 so you don't check the adjacent piece - bug?
-			for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
-			  //skip if both ends, since these are constraints
-			  if(i == 0 && j == _thread_pieces.size() - 2) 
-			    continue;
-			  const double dist = self_intersection(i,j,THREAD_RADIUS,direction);
-				energy += 2.0 * repulsionEnergy(dist, THREAD_RADIUS, direction);	//it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
-			}
-		}
+  	updateCollisionObjectsTransform();
+  	if (world->collision_world != NULL) {
+		 	world->collision_world->performDiscreteCollisionDetection();
+  		energy += world->collision_world->totalRepulsionEnergy(this);
+  	}
+  }
+//	  Vector3d direction;
+//	  
+//	  //self repulsion
+//		for(int i = 0; i < _thread_pieces.size() - 3; i++) {
+//			//+2 so you don't check the adjacent piece - bug?
+//			for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
+//			  //skip if both ends, since these are constraints
+//			  if(i == 0 && j == _thread_pieces.size() - 2) 
+//			    continue;
+//			  const double dist = self_intersection(i,j,THREAD_RADIUS,direction);
+//				energy += 2.0 * repulsionEnergy(dist, THREAD_RADIUS);	//it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
+//			}
+//		}
 
-		//repulsions between threads
-		for (int k=0; k < threads_in_env.size(); k++) {
-			for(int i = 0; i < _thread_pieces.size()-1; i++) {
-				for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
-				  //skip if both ends, since these are constraints
-				  if((i==0 && j==0) ||
-				  	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
-				  	 (i==_thread_pieces.size()-2 && j==0) ||
-				  	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
-				    continue;
-				  const double dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
-					if (j == 0 || j==threads_in_env[k]->_thread_pieces.size()-2) {
-						energy += 4.0 * repulsionEnergy(dist, THREAD_RADIUS, direction);	//it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
-					} else {
-						energy += 2.0 * repulsionEnergy(dist, THREAD_RADIUS, direction);	//it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
-					}
-				}
-			}
-		}
-		
-		//object repulsions
-		if (world != NULL)
-			for(int i = 2; i < _thread_pieces.size() - 3; i++)
-				energy += world->capsuleObjectRepulsionEnergy(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS);
-	}
+//		//repulsions between threads
+//		for (int k=0; k < threads_in_env.size(); k++) {
+//			for(int i = 0; i < _thread_pieces.size()-1; i++) {
+//				for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
+//				  //skip if both ends, since these are constraints
+//				  if((i==0 && j==0) ||
+//				  	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
+//				  	 (i==_thread_pieces.size()-2 && j==0) ||
+//				  	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
+//				    continue;
+//				  const double dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
+//					if (j == 0 || j==threads_in_env[k]->_thread_pieces.size()-2) {
+//						energy += 4.0 * repulsionEnergy(dist, THREAD_RADIUS);	//it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
+//					} else {
+//						energy += 2.0 * repulsionEnergy(dist, THREAD_RADIUS);	//it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
+//					}
+//				}
+//			}
+//		}
+//		
+//		//object repulsions
+//		if (world != NULL)
+//			for(int i = 2; i < _thread_pieces.size() - 3; i++)
+//				energy += world->capsuleObjectRepulsionEnergy(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS);
 	
 //#pragma omp parallel for num_threads(NUM_CPU_THREADS) reduction(+ : energy)
   for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
-    energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav() + _thread_pieces[piece_ind]->energy_stretch();
+    energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav();// + _thread_pieces[piece_ind]->energy_stretch();
+  }
+  for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
+  {
+    energy += _thread_pieces[piece_ind]->energy_stretch();
   }
   return energy;
 #else
@@ -840,6 +879,12 @@ double Thread::calculate_energy_inefficient()
 bool debugflag = false;
 bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
 {
+#ifndef NDEBUG
+	for (int i = 0; i < _thread_pieces.size(); i++) {
+		_thread_pieces[i]->isPieceIndConsistent();
+	}
+#endif
+  
   //backup pieces in case collision checking infinite loops due to unsatisfiable system
   //cout << "backing up pieces" << endl; 
 	
@@ -851,14 +896,14 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 			cout << "_thread_pieces[" << i << "]->_my_thread is this" << endl;
 	}*/
 	
-  if (COLLISION_CHECKING) { 
-    save_thread_pieces_and_resize(_thread_pieces_collision_backup);
-    for (int i=0; i<threads_in_env.size(); i++) {
-    	//if (this == threads_in_env[i])
-    		//continue;
-    	threads_in_env[i]->save_thread_pieces_and_resize(threads_in_env[i]->_thread_pieces_collision_backup);
-    }
-  }
+//  if (COLLISION_CHECKING) { 
+//    save_thread_pieces_and_resize(_thread_pieces_collision_backup);
+//    for (int i=0; i<threads_in_env.size(); i++) {
+//    	//if (this == threads_in_env[i])
+//    		//continue;
+//    	threads_in_env[i]->save_thread_pieces_and_resize(threads_in_env[i]->_thread_pieces_collision_backup);
+//    }
+//  }
   bool project_length_constraint_pass = true; 
 
   double step_in_grad_dir_vertices = 1.0;
@@ -1010,16 +1055,16 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 
   next_energy = calculate_energy();
 
-  if (!project_length_constraint_pass && COLLISION_CHECKING) {
-    cout << "reverting thread to prior state" << endl; 
-    restore_thread_pieces_and_resize(_thread_pieces_collision_backup);
-    restore_constraints(_start_pos_backup, _start_rot_backup, _end_pos_backup, _end_rot_backup);
-    for (int i=0; i<threads_in_env.size(); i++) {
-    	//if (this == threads_in_env[i])
-    		//continue;
-    	threads_in_env[i]->restore_thread_pieces_and_resize(threads_in_env[i]->_thread_pieces_collision_backup);
-    }
-  }
+//  if (!project_length_constraint_pass && COLLISION_CHECKING) {
+//    cout << "reverting thread to prior state" << endl; 
+//    restore_thread_pieces_and_resize(_thread_pieces_collision_backup);
+//    restore_constraints(_start_pos_backup, _start_rot_backup, _end_pos_backup, _end_rot_backup);
+//    for (int i=0; i<threads_in_env.size(); i++) {
+//    	//if (this == threads_in_env[i])
+//    		//continue;
+//    	threads_in_env[i]->restore_thread_pieces_and_resize(threads_in_env[i]->_thread_pieces_collision_backup);
+//    }
+//  }
   /*
      cout << "Edges: " << endl; 
      for (int i = 0; i < num_pieces()-1; i++) {
@@ -1117,64 +1162,65 @@ void Thread::fix_intersections() {
 }
 
 bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Thread_Intersection>& thread_intersections, vector<Intersection>& intersections)
-{   	
-  double found = false; // count of number of intersections
-  Vector3d direction;
-  self_intersections.clear();
-  thread_intersections.clear();
-  intersections.clear();
+{
+	assert(0);
+//  double found = false; // count of number of intersections
+//  Vector3d direction;
+//  self_intersections.clear();
+//  thread_intersections.clear();
+//  intersections.clear();
 
-  //self intersections
-  for(int i = 0; i < _thread_pieces.size() - 3; i++) {
-    //+2 so you don't check the adjacent piece - bug?
-    for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
-      //skip if both ends, since these are constraints
-      if(i == 0 && j == _thread_pieces.size() - 2) 
-        continue;
-      double intersection_dist = self_intersection(i,j,THREAD_RADIUS,direction);
-      if(intersection_dist < 0) {
-        found = true;
+//  //self intersections
+//  for(int i = 0; i < _thread_pieces.size() - 3; i++) {
+//    //+2 so you don't check the adjacent piece - bug?
+//    for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
+//      //skip if both ends, since these are constraints
+//      if(i == 0 && j == _thread_pieces.size() - 2) 
+//        continue;
+//      double intersection_dist = self_intersection(i,j,THREAD_RADIUS,direction);
+//      if(intersection_dist < 0) {
+//        found = true;
 
-        self_intersections.push_back(Self_Intersection(i,j,-intersection_dist,direction));
-      }
-    }
-  }
-	
-	//intersections between threads
-	for (int k=0; k < threads_in_env.size(); k++) {
-		//if (this == threads_in_env[k]) //check
-			//continue;
-		for(int i = 0; i < _thread_pieces.size()-1; i++) {
-	    for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
-	      //skip if both ends, since these are constraints
-	      if((i==0 && j==0) ||
-	      	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
-	      	 (i==_thread_pieces.size()-2 && j==0) ||
-	      	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
-	        continue;
-	      double intersection_dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
-	      if(intersection_dist < 0) {
-	        found = true;
-	        thread_intersections.push_back(Thread_Intersection(i,j,k,-intersection_dist,direction));
-	      }
-	    }
-	  }
-	}
-	bool obj_intersection = false;
-	//object intersections
-  if (world != NULL) {
-		for(int i = 2; i < _thread_pieces.size() - 3; i++) {
-			//found = world->capsuleObjectIntersection(i, _thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS, intersections) || found;
-			bool temp_obj_intersection = world->capsuleObjectIntersection(i, _thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS, intersections);
-			if (temp_obj_intersection) obj_intersection = true;
-			found = temp_obj_intersection || found;
-		}
-  }
-  
-  //if (found || obj_intersection)
-  	//cout << "intersections. obj_intersection = " << obj_intersection << endl;
+//        self_intersections.push_back(Self_Intersection(i,j,-intersection_dist,direction));
+//      }
+//    }
+//  }
+//	
+//	//intersections between threads
+//	for (int k=0; k < threads_in_env.size(); k++) {
+//		//if (this == threads_in_env[k]) //check
+//			//continue;
+//		for(int i = 0; i < _thread_pieces.size()-1; i++) {
+//	    for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
+//	      //skip if both ends, since these are constraints
+//	      if((i==0 && j==0) ||
+//	      	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
+//	      	 (i==_thread_pieces.size()-2 && j==0) ||
+//	      	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
+//	        continue;
+//	      double intersection_dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
+//	      if(intersection_dist < 0) {
+//	        found = true;
+//	        thread_intersections.push_back(Thread_Intersection(i,j,k,-intersection_dist,direction));
+//	      }
+//	    }
+//	  }
+//	}
+//	bool obj_intersection = false;
+//	//object intersections
+//  if (world != NULL) {
+//		for(int i = 2; i < _thread_pieces.size() - 3; i++) {
+//			//found = world->capsuleObjectIntersection(i, _thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS, intersections) || found;
+//			bool temp_obj_intersection = world->capsuleObjectIntersection(i, _thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS, intersections);
+//			if (temp_obj_intersection) obj_intersection = true;
+//			found = temp_obj_intersection || found;
+//		}
+//  }
+//  
+//  //if (found || obj_intersection)
+//  	//cout << "intersections. obj_intersection = " << obj_intersection << endl;
 
-  return found;
+//  return found;
 }
 
 double Thread::self_intersection(int i, int j, double radius, Vector3d& direction)
@@ -1187,12 +1233,33 @@ double Thread::thread_intersection(int i, int j, int k, double radius, Vector3d&
 	return capsuleCapsuleDistance(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, threads_in_env[k]->_thread_pieces[j]->vertex(), threads_in_env[k]->_thread_pieces[j+1]->vertex(), radius, direction);
 }
 
+void Thread::setPieceIndices()
+{
+  for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
+  {
+    _thread_pieces[piece_ind]->setPieceInd(piece_ind);
+  }
+
+  for (int piece_ind=0; piece_ind < _thread_pieces_backup.size(); piece_ind++)
+  {
+    _thread_pieces_backup[piece_ind]->setPieceInd(piece_ind);
+  }
+}
+
+void Thread::updateCollisionObjectsTransform()
+{
+	for (int piece_ind=0; piece_ind < _thread_pieces.size()-1; piece_ind++)
+  {
+    _thread_pieces[piece_ind]->updateCollisionObjectTransform();
+  }
+}
+
 /*********************************************************************************/
 //variable-length thread_pieces
 
 void Thread::split_thread_piece(ThreadPiece* this_piece)
 {
-	ThreadPiece* new_piece = new ThreadPiece();
+	ThreadPiece* new_piece = new ThreadPiece(true);
 	this_piece->splitPiece(new_piece);
 	
 	int piece_ind;
@@ -1253,7 +1320,8 @@ void Thread::refine_links_geometrical() {
 			split_concatenation_right(to_refine[piece_ind]);
 		}
 	}
-	save_thread_pieces_and_resize(_thread_pieces_backup);
+	//TODO resize
+	//save_thread_pieces_and_resize(_thread_pieces_backup);
 	//minimize_energy();
 }
 
@@ -1280,7 +1348,8 @@ void Thread::refine_links_mechanical() {
 			split_concatenation_right(to_refine[piece_ind]);
 		}
 	}
-	save_thread_pieces_and_resize(_thread_pieces_backup);
+	//TODO resize
+	//save_thread_pieces_and_resize(_thread_pieces_backup);
 	//minimize_energy();
 }
 
@@ -1328,7 +1397,8 @@ void Thread::unrefine_links() {
 			merge_thread_piece(temp);
 		}
 	}
-	save_thread_pieces_and_resize(_thread_pieces_backup);
+	//TODO resize
+	//save_thread_pieces_and_resize(_thread_pieces_backup);
 	//minimize_energy();
 }
 
@@ -1415,90 +1485,90 @@ double Thread::closest_intersection_dist(ThreadPiece* piece)
 //end variable-length thread_pieces
 /*********************************************************************************/
 
-void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
-{
-  double max_movement_vertices = max_move_vert;
-  project_length_constraint();
-  bool recalc_vertex_grad = true;
+//void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
+//{
+//  double max_movement_vertices = max_move_vert;
+//  project_length_constraint();
+//  bool recalc_vertex_grad = true;
 
-  double curr_energy = calculate_energy();
-  double next_energy = 0.0;
+//  double curr_energy = calculate_energy();
+//  double next_energy = 0.0;
 
-  int opt_iter;
-  MatrixXd Hessian(3*(int)_thread_pieces.size(), 3*(int)_thread_pieces.size());
-  VectorXd Gradients(3*(int)_thread_pieces.size());
-  VectorXd offsets_vectorized(3*(int)_thread_pieces.size());
-  vector<Vector3d> offsets(_thread_pieces.size());
-  Gradients.setZero();
-  for (opt_iter = 0; opt_iter < num_opt_iters; opt_iter++)
-  {
-    double curr_energy = calculate_energy();
-    double next_energy = 0.0;
+//  int opt_iter;
+//  MatrixXd Hessian(3*(int)_thread_pieces.size(), 3*(int)_thread_pieces.size());
+//  VectorXd Gradients(3*(int)_thread_pieces.size());
+//  VectorXd offsets_vectorized(3*(int)_thread_pieces.size());
+//  vector<Vector3d> offsets(_thread_pieces.size());
+//  Gradients.setZero();
+//  for (opt_iter = 0; opt_iter < num_opt_iters; opt_iter++)
+//  {
+//    double curr_energy = calculate_energy();
+//    double next_energy = 0.0;
 
-    if (recalc_vertex_grad)
-    {
-      save_thread_pieces();
-      calculate_hessian_vertices(Hessian);
-      calculate_gradient_vertices_vectorized(&Gradients);
-      curr_energy = calculate_energy();
-    }
-    
+//    if (recalc_vertex_grad)
+//    {
+//      save_thread_pieces();
+//      calculate_hessian_vertices(Hessian);
+//      calculate_gradient_vertices_vectorized(&Gradients);
+//      curr_energy = calculate_energy();
+//    }
+//    
 
-    //std::cout << "hessian:\n" << Inv_Hessian << "\nGrads:\n" << Gradients << std::endl;
-
-
-
-    Hessian.lu().solve(Gradients, &offsets_vectorized);
-    //offsets_vectorized = Inv_Hessian*Gradients;
-    //std::cout << "wanted step: " << offsets_vectorized.transpose() << std::endl;
-    for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
-    {
-      offsets[piece_ind] = offsets_vectorized.segment<3>(3*piece_ind);
-    }
-    make_max_norm_one(offsets);
-
-//    apply_vertex_offsets_vectorized(-max_movement_vertices*Inv_Hessian*Gradients, true);
-    apply_vertex_offsets(offsets, true, -max_movement_vertices);
-      
-    double energy_before_projection = calculate_energy();
-    project_length_constraint();
+//    //std::cout << "hessian:\n" << Inv_Hessian << "\nGrads:\n" << Gradients << std::endl;
 
 
-    next_energy = calculate_energy();
+
+//    Hessian.lu().solve(Gradients, &offsets_vectorized);
+//    //offsets_vectorized = Inv_Hessian*Gradients;
+//    //std::cout << "wanted step: " << offsets_vectorized.transpose() << std::endl;
+//    for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
+//    {
+//      offsets[piece_ind] = offsets_vectorized.segment<3>(3*piece_ind);
+//    }
+//    make_max_norm_one(offsets);
+
+////    apply_vertex_offsets_vectorized(-max_movement_vertices*Inv_Hessian*Gradients, true);
+//    apply_vertex_offsets(offsets, true, -max_movement_vertices);
+//      
+//    double energy_before_projection = calculate_energy();
+//    project_length_constraint();
 
 
-    std::cout << "curr energy: " << curr_energy << "   next energy: " << next_energy << "  before projection: " << energy_before_projection << "  last step: " << max_movement_vertices <<  std::endl;
+//    next_energy = calculate_energy();
 
-    recalc_vertex_grad = true;
-    if (next_energy + energy_error_for_convergence > curr_energy)
-    {
-      if (next_energy >= curr_energy) {
-        restore_thread_pieces();
-        recalc_vertex_grad = false;
-      }
 
-      if (max_movement_vertices <= min_move_vert)
-      {
-        break;
-      }
+//    std::cout << "curr energy: " << curr_energy << "   next energy: " << next_energy << "  before projection: " << energy_before_projection << "  last step: " << max_movement_vertices <<  std::endl;
 
-      max_movement_vertices = max_movement_vertices / 2.0;
-    } else {
-      max_movement_vertices = min(max_movement_vertices*2.0, max_move_vert);
-      //max_movement_vertices = max_move_vert;
-    }
+//    recalc_vertex_grad = true;
+//    if (next_energy + energy_error_for_convergence > curr_energy)
+//    {
+//      if (next_energy >= curr_energy) {
+//        restore_thread_pieces();
+//        recalc_vertex_grad = false;
+//      }
 
-  }
+//      if (max_movement_vertices <= min_move_vert)
+//      {
+//        break;
+//      }
 
-  curr_energy = calculate_energy();
+//      max_movement_vertices = max_movement_vertices / 2.0;
+//    } else {
+//      max_movement_vertices = min(max_movement_vertices*2.0, max_move_vert);
+//      //max_movement_vertices = max_move_vert;
+//    }
 
-  project_length_constraint();
-  //minimize_energy_twist_angles();
+//  }
 
-  next_energy = calculate_energy();
+//  curr_energy = calculate_energy();
 
-  //std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
-}
+//  project_length_constraint();
+//  //minimize_energy_twist_angles();
+
+//  next_energy = calculate_energy();
+
+//  //std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
+//}
 
 
 
@@ -1918,165 +1988,171 @@ void Thread::calculate_gradient_vertices(vector<Vector3d>& vertex_gradients)
   }
   
   if (REPULSION_COEFF>0) {
-	  Vector3d direction;
+  	updateCollisionObjectsTransform();
+  	if (world->collision_world != NULL) {
+			world->collision_world->performDiscreteCollisionDetection();
+			world->collision_world->totalRepulsionEnergyGradient(this, vertex_gradients);
+  	}
+  }
+//	  Vector3d direction;
 
-	  //self repulsion
-		for(int i = 0; i < _thread_pieces.size() - 3; i++) {
-			//+2 so you don't check the adjacent piece - bug?
-			for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
-			  //skip if both ends, since these are constraints
-			  if(i == 0 && j == _thread_pieces.size() - 2) 
-			    continue;
-			  const double dist = self_intersection(i,j,THREAD_RADIUS,direction);
-				const Vector3d grad = repulsionEnergyGradient(dist, THREAD_RADIUS, direction);
-				vertex_gradients[i] -= grad;
-				vertex_gradients[i+1] -= grad;
-				vertex_gradients[j] += grad;
-				vertex_gradients[j+1] += grad;
-			}
-		}
+//	  //self repulsion
+//		for(int i = 0; i < _thread_pieces.size() - 3; i++) {
+//			//+2 so you don't check the adjacent piece - bug?
+//			for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
+//			  //skip if both ends, since these are constraints
+//			  if(i == 0 && j == _thread_pieces.size() - 2) 
+//			    continue;
+//			  const double dist = self_intersection(i,j,THREAD_RADIUS,direction);
+//				const Vector3d grad = repulsionEnergyGradient(dist, THREAD_RADIUS, direction);
+//				vertex_gradients[i] -= grad;
+//				vertex_gradients[i+1] -= grad;
+//				vertex_gradients[j] += grad;
+//				vertex_gradients[j+1] += grad;
+//			}
+//		}
 
-		//repulsions between threads
-		for (int k=0; k < threads_in_env.size(); k++) {
-			for(int i = 0; i < _thread_pieces.size()-1; i++) {
-				for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
-				  //skip if both ends, since these are constraints
-				  if((i==0 && j==0) ||
-				  	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
-				  	 (i==_thread_pieces.size()-2 && j==0) ||
-				  	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
-				    continue;
-				  const double dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
-				  const Vector3d grad = repulsionEnergyGradient(dist, THREAD_RADIUS, direction);
-				  if (j == 0 || j==threads_in_env[k]->_thread_pieces.size()-2) {
-				  	vertex_gradients[i] -= 2*grad;
-						vertex_gradients[i+1] -= 2*grad;
-					} else {
-						vertex_gradients[i] -= grad;
-						vertex_gradients[i+1] -= grad;
-					}
-				}
-			}
-		}
-		
-		//object repulsions
-		if (world != NULL)
-			for(int i = 2; i < _thread_pieces.size() - 3; i++) {
-				Vector3d grad = Vector3d::Zero();
-				world->capsuleObjectRepulsionEnergyGradient(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS, grad);
-				vertex_gradients[i] += grad;
-				vertex_gradients[i+1] += grad;
-			}
-	}
+//		//repulsions between threads
+//		for (int k=0; k < threads_in_env.size(); k++) {
+//			for(int i = 0; i < _thread_pieces.size()-1; i++) {
+//				for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
+//				  //skip if both ends, since these are constraints
+//				  if((i==0 && j==0) ||
+//				  	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
+//				  	 (i==_thread_pieces.size()-2 && j==0) ||
+//				  	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
+//				    continue;
+//				  const double dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
+//				  const Vector3d grad = repulsionEnergyGradient(dist, THREAD_RADIUS, direction);
+//				  if (j == 0 || j==threads_in_env[k]->_thread_pieces.size()-2) {
+//				  	vertex_gradients[i] -= 2*grad;
+//						vertex_gradients[i+1] -= 2*grad;
+//					} else {
+//						vertex_gradients[i] -= grad;
+//						vertex_gradients[i+1] -= grad;
+//					}
+//				}
+//			}
+//		}
+//		
+//		//object repulsions
+//		if (world != NULL)
+//			for(int i = 2; i < _thread_pieces.size() - 3; i++) {
+//				Vector3d grad = Vector3d::Zero();
+//				world->capsuleObjectRepulsionEnergyGradient(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS, grad);
+//				vertex_gradients[i] += grad;
+//				vertex_gradients[i+1] += grad;
+//			}
+//	}
   
 }
 
 
-void Thread::calculate_hessian_vertices(MatrixXd& hessian)
-{
-  //ignore first and last 2 pieces
-  hessian.setZero();
-  const double eps = 1e-3;
-  Vector3d grad_offets[3];
-  grad_offsets[0] = Vector3d(eps, 0, 0);
-  grad_offsets[1] = Vector3d(0, eps, 0);
-  grad_offsets[2] = Vector3d(0, 0, eps);
+//void Thread::calculate_hessian_vertices(MatrixXd& hessian)
+//{
+//  //ignore first and last 2 pieces
+//  hessian.setZero();
+//  const double eps = 1e-3;
+//  Vector3d grad_offets[3];
+//  grad_offsets[0] = Vector3d(eps, 0, 0);
+//  grad_offsets[1] = Vector3d(0, eps, 0);
+//  grad_offsets[2] = Vector3d(0, 0, eps);
 
-  Vector3d gradient;
-  //vector<ThreadPiece*> backup_pieces;
-  for (int r=2; r < _thread_pieces.size()-2; r++)
-  {
-    int r_ind = r-2;
-    for (int grad_ind = 0; grad_ind < 3; grad_ind++)
-    {
-      //save_thread_pieces_and_resize(backup_pieces);
-      _thread_pieces[r]->offset_and_update(grad_offsets[grad_ind]);
-      for (int c=max(2,r-2); c < min((int)_thread_pieces.size()-2,r+3); c++)
-      {
-        int c_ind = c-2;
-        _thread_pieces[c]->gradient_vertex(gradient);
-        hessian.block(6+3*r_ind+grad_ind ,3*c_ind+6,1,3) = gradient.transpose();
-      }
+//  Vector3d gradient;
+//  //vector<ThreadPiece*> backup_pieces;
+//  for (int r=2; r < _thread_pieces.size()-2; r++)
+//  {
+//    int r_ind = r-2;
+//    for (int grad_ind = 0; grad_ind < 3; grad_ind++)
+//    {
+//      //save_thread_pieces_and_resize(backup_pieces);
+//      _thread_pieces[r]->offset_and_update(grad_offsets[grad_ind]);
+//      for (int c=max(2,r-2); c < min((int)_thread_pieces.size()-2,r+3); c++)
+//      {
+//        int c_ind = c-2;
+//        _thread_pieces[c]->gradient_vertex(gradient);
+//        hessian.block(6+3*r_ind+grad_ind ,3*c_ind+6,1,3) = gradient.transpose();
+//      }
 
-      //restore_thread_pieces(backup_pieces);
-      _thread_pieces[r]->offset_and_update(-2.0*grad_offsets[grad_ind]);
+//      //restore_thread_pieces(backup_pieces);
+//      _thread_pieces[r]->offset_and_update(-2.0*grad_offsets[grad_ind]);
 
-      for (int c=max(2,r-2); c < min((int)_thread_pieces.size()-2,r+3); c++)
-      {
-        int c_ind = c-2;
-        _thread_pieces[c]->gradient_vertex(gradient);
-        hessian.block(6+3*r_ind+grad_ind, 3*c_ind+6,1,3) -= gradient.transpose();
-        hessian.block(6+3*r_ind+grad_ind, 3*c_ind+6,1,3) /= 2.0*eps;
-      }
-      _thread_pieces[r]->offset_and_update(grad_offsets[grad_ind]);
-      //restore_thread_pieces_and_resize(backup_pieces);
-    } 
-  }
-
-
-
-  MatrixXd check_transposes(hessian.cols(), hessian.rows());
-  for (int r=0; r < hessian.rows(); r++)
-  {
-    for (int c=0; c < hessian.cols(); c++)
-    {
-      if (abs(hessian(r,c) - hessian(c,r)) < 1e-2)
-        check_transposes(r,c) = 0;
-      else
-        check_transposes(r,c) = (abs(hessian(r,c) - hessian(c,r)));
-
-      
-      if (abs(hessian(r,c)) < 1e-5)
-        hessian(r,c) = 0;
-    }
-
-  }
-/*
-  //calculate pseudoinverse with svd
-  Eigen::SVD<Eigen::MatrixXd> hessian_svd;
-  hessian_svd.compute(hessian);
+//      for (int c=max(2,r-2); c < min((int)_thread_pieces.size()-2,r+3); c++)
+//      {
+//        int c_ind = c-2;
+//        _thread_pieces[c]->gradient_vertex(gradient);
+//        hessian.block(6+3*r_ind+grad_ind, 3*c_ind+6,1,3) -= gradient.transpose();
+//        hessian.block(6+3*r_ind+grad_ind, 3*c_ind+6,1,3) /= 2.0*eps;
+//      }
+//      _thread_pieces[r]->offset_and_update(grad_offsets[grad_ind]);
+//      //restore_thread_pieces_and_resize(backup_pieces);
+//    } 
+//  }
 
 
-  MatrixXd sing_vals_mat(hessian_svd.singularValues().rows(), hessian_svd.singularValues().rows());
-  sing_vals_mat.setZero();
-  for (int i=0; i < hessian_svd.singularValues().rows(); i++)
-  {
-    if (hessian_svd.singularValues()(i) != 0)
-      sing_vals_mat(i,i) = 1.0/(hessian_svd.singularValues()(i));
-  }
-  inv_hessian.block(6,6,hessian.cols(), hessian.rows()) = hessian_svd.matrixV()*sing_vals_mat*hessian_svd.matrixU().transpose();
-  //inv_hessian.block(6,6,hessian.cols(), hessian.rows()) = hessian;
 
-  MatrixXd hess_times_inv(hessian.rows(), hessian.cols());
-  hess_times_inv = hessian*inv_hessian.block(6,6,hessian.cols(),hessian.rows());
-  MatrixXd inv_times_hess(hessian.rows(), hessian.cols());
-  inv_times_hess = inv_hessian.block(6,6,hessian.cols(),hessian.rows())*hessian;
+//  MatrixXd check_transposes(hessian.cols(), hessian.rows());
+//  for (int r=0; r < hessian.rows(); r++)
+//  {
+//    for (int c=0; c < hessian.cols(); c++)
+//    {
+//      if (abs(hessian(r,c) - hessian(c,r)) < 1e-2)
+//        check_transposes(r,c) = 0;
+//      else
+//        check_transposes(r,c) = (abs(hessian(r,c) - hessian(c,r)));
 
-  for (int r=0; r < hessian.rows(); r++)
-  {
-    for (int c=0; c < hessian.cols(); c++)
-    {
-      if (abs(hess_times_inv(r,c)) < 1e-4)
-        hess_times_inv(r,c) = 0;
+//      
+//      if (abs(hessian(r,c)) < 1e-5)
+//        hessian(r,c) = 0;
+//    }
 
-      if (abs(inv_times_hess(r,c)) < 1e-4)
-        inv_times_hess(r,c) = 0;
-    }
-  }
-  */
- 
-  //skip first 2 pieces
-  //inv_hessian.block(6,6,hessian.cols(), hessian.rows()) = hessian.inverse();
-  //std::cout << hessian << "\n\n\n";
-  //std::cout << hessian_svd.matrixU()*sing_vals_mat*hessian_svd.matrixV().transpose() << "\n\n\n";
-  //std::cout << check_transposes << "\n\n\n";
-  //std::cout << inv_hessian.block(6,6,hessian.rows(), hessian.cols()) << "\n\n\n";
-  //std::cout << hess_times_inv << "\n\n\n";
-  //std::cout << inv_times_hess << "\n\n\n";
-  //exit(0);
+//  }
+///*
+//  //calculate pseudoinverse with svd
+//  Eigen::SVD<Eigen::MatrixXd> hessian_svd;
+//  hessian_svd.compute(hessian);
 
 
-}
+//  MatrixXd sing_vals_mat(hessian_svd.singularValues().rows(), hessian_svd.singularValues().rows());
+//  sing_vals_mat.setZero();
+//  for (int i=0; i < hessian_svd.singularValues().rows(); i++)
+//  {
+//    if (hessian_svd.singularValues()(i) != 0)
+//      sing_vals_mat(i,i) = 1.0/(hessian_svd.singularValues()(i));
+//  }
+//  inv_hessian.block(6,6,hessian.cols(), hessian.rows()) = hessian_svd.matrixV()*sing_vals_mat*hessian_svd.matrixU().transpose();
+//  //inv_hessian.block(6,6,hessian.cols(), hessian.rows()) = hessian;
+
+//  MatrixXd hess_times_inv(hessian.rows(), hessian.cols());
+//  hess_times_inv = hessian*inv_hessian.block(6,6,hessian.cols(),hessian.rows());
+//  MatrixXd inv_times_hess(hessian.rows(), hessian.cols());
+//  inv_times_hess = inv_hessian.block(6,6,hessian.cols(),hessian.rows())*hessian;
+
+//  for (int r=0; r < hessian.rows(); r++)
+//  {
+//    for (int c=0; c < hessian.cols(); c++)
+//    {
+//      if (abs(hess_times_inv(r,c)) < 1e-4)
+//        hess_times_inv(r,c) = 0;
+
+//      if (abs(inv_times_hess(r,c)) < 1e-4)
+//        inv_times_hess(r,c) = 0;
+//    }
+//  }
+//  */
+// 
+//  //skip first 2 pieces
+//  //inv_hessian.block(6,6,hessian.cols(), hessian.rows()) = hessian.inverse();
+//  //std::cout << hessian << "\n\n\n";
+//  //std::cout << hessian_svd.matrixU()*sing_vals_mat*hessian_svd.matrixV().transpose() << "\n\n\n";
+//  //std::cout << check_transposes << "\n\n\n";
+//  //std::cout << inv_hessian.block(6,6,hessian.rows(), hessian.cols()) << "\n\n\n";
+//  //std::cout << hess_times_inv << "\n\n\n";
+//  //std::cout << inv_times_hess << "\n\n\n";
+//  //exit(0);
+
+
+//}
 
 void Thread::make_max_norm_one(vector<Vector3d>& to_normalize)
 {
@@ -2222,7 +2298,6 @@ void Thread::calculate_gradient_twist(vector<double>& angle_twist_gradients)
 //this function might introduce intersections. fix_intersections should be called (with caution) afterwards. 
 bool Thread::project_length_constraint(int recursive_depth)
 {
-
   if (recursive_depth <= 0) {
     //cout << "project length constraint recursively called too much!" << endl;
     return false; 
@@ -2241,7 +2316,7 @@ bool Thread::project_length_constraint(int recursive_depth)
   }
   if (all_norms_within_thresh)
     return true;
-
+	  
   // set up the augmented lagrangian system: need C, grad C, mass mat.
   // y is the coordinates of all vertices
   // dy is what we are solving for
@@ -2569,83 +2644,86 @@ void Thread::save_angle_twist_changes(vector<double>& start_angles, vector<doubl
 
 void Thread::save_thread_pieces()
 {
+  assert(_thread_pieces_backup.size() == _thread_pieces.size());
   for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
     _thread_pieces_backup[piece_ind]->copyData(*_thread_pieces[piece_ind]);
   }
-
 }
 
 void Thread::restore_thread_pieces()
 {
+  assert(_thread_pieces_backup.size() == _thread_pieces.size());
   for (int piece_ind=0; piece_ind < _thread_pieces_backup.size(); piece_ind++)
   {
     _thread_pieces[piece_ind]->copyData(*_thread_pieces_backup[piece_ind]);
+    _thread_pieces_backup[piece_ind]->_col_obj = NULL;
   }
 }
 
-
 void Thread::save_thread_pieces(vector<ThreadPiece*>& to_save)
 {
+  assert(to_save.size() == _thread_pieces.size());
   for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
     to_save[piece_ind]->copyData(*_thread_pieces[piece_ind]);
   }
-
-}
-
-void Thread::save_thread_pieces_and_resize(vector<ThreadPiece*>& to_save)
-{
-  while (to_save.size() < _thread_pieces.size())
-  {
-    to_save.push_back(new ThreadPiece());
-  }
-
-  for (int i = to_save.size()-1; i >= (int)_thread_pieces.size(); i--)
-  {
-    delete to_save[i];
-    to_save.pop_back();
-  }
-  
-  save_thread_pieces(to_save);
-
 }
 
 void Thread::restore_thread_pieces(vector<ThreadPiece*>& to_restore)
 {
+  assert(to_restore.size() == _thread_pieces.size());
   for (int piece_ind=0; piece_ind < to_restore.size(); piece_ind++)
   {
     _thread_pieces[piece_ind]->copyData(*to_restore[piece_ind]);
+    to_restore[piece_ind]->_col_obj = NULL;
   }
-  for (int piece_ind=to_restore.size()-1; piece_ind >= 0; piece_ind--)
-  {
-      delete to_restore[piece_ind];
-      to_restore.pop_back();
-  }
+//  for (int piece_ind=to_restore.size()-1; piece_ind >= 0; piece_ind--)
+//  {
+//      delete to_restore[piece_ind];
+//      to_restore.pop_back();
+//  }
 }
 
-void Thread::restore_thread_pieces_and_resize(vector<ThreadPiece*>& to_restore)
-{
-  while (_thread_pieces.size() < to_restore.size())
-  {
-    _thread_pieces.push_back(new ThreadPiece());
-    _thread_pieces_backup.push_back(new ThreadPiece());
-  }
+//void Thread::save_thread_pieces_and_resize(vector<ThreadPiece*>& to_save)
+//{
+//  while (to_save.size() < _thread_pieces.size())
+//  {
+//    to_save.push_back(new ThreadPiece());
+//  }
 
-  for (int i = _thread_pieces.size()-1; i >= (int)to_restore.size(); i--)
-  {
-    delete _thread_pieces[i];
-    delete _thread_pieces_backup[i];
-    _thread_pieces.pop_back();
-    _thread_pieces_backup.pop_back();
-  }
-  
-  set_prev_next_pointers(_thread_pieces);
-  set_prev_next_pointers(_thread_pieces_backup);
+//  for (int i = to_save.size()-1; i >= (int)_thread_pieces.size(); i--)
+//  {
+//    delete to_save[i];
+//    to_save.pop_back();
+//  }
+//  
+//  save_thread_pieces(to_save);
 
-  restore_thread_pieces(to_restore);
+//}
 
-}
+//void Thread::restore_thread_pieces_and_resize(vector<ThreadPiece*>& to_restore)
+//{
+//  while (_thread_pieces.size() < to_restore.size())
+//  {
+//    _thread_pieces.push_back(new ThreadPiece());
+//    _thread_pieces_backup.push_back(new ThreadPiece());
+//  }
+
+//  for (int i = _thread_pieces.size()-1; i >= (int)to_restore.size(); i--)
+//  {
+//    delete _thread_pieces[i];
+//    delete _thread_pieces_backup[i];
+//    _thread_pieces.pop_back();
+//    _thread_pieces_backup.pop_back();
+//  }
+//  
+//  set_prev_next_pointers(_thread_pieces);
+//  set_prev_next_pointers(_thread_pieces_backup);
+
+//  restore_thread_pieces(to_restore);
+
+//}
 
 void Thread::set_prev_next_pointers(vector<ThreadPiece*> pieces)
 {
@@ -3183,10 +3261,16 @@ void Thread::unviolate_total_length_constraint()
   Vector3d entire_length_vector = pointB - pointA;
   double too_long_by = (entire_length_vector).norm() - (total_length() - start_rest_length() - end_rest_length()) + LENGTH_THRESHHOLD;
 
+//  if (too_long_by > 0)
+//  {
+//    entire_length_vector.normalize();
+//    set_end_constraint(this->end_pos() -entire_length_vector*too_long_by, this->end_rot());
+//  }
+  
   if (too_long_by > 0)
   {
     entire_length_vector.normalize();
-    set_end_constraint(this->end_pos() -entire_length_vector*too_long_by, this->end_rot());
+    set_start_constraint(this->start_pos() -entire_length_vector*too_long_by, this->start_rot());
   }
 
 
@@ -3309,8 +3393,10 @@ void Thread::evaluate_twist_scores(vector<double>& twist_to_try, vector<double>&
   get_thread_data(orig_pts, orig_angls);
 
   vector<ThreadPiece*> backups;
-
-  save_thread_pieces_and_resize(backups);
+	for (int i = 0; i < _thread_pieces.size(); i++) {
+		backups.push_back(new ThreadPiece(false));
+	}
+  save_thread_pieces(backups);
 
   for (int i=0; i < twist_to_try.size(); i++)
   {
@@ -3381,11 +3467,12 @@ Thread& Thread::operator=(const Thread& rhs)
   _thread_pieces.resize(rhs._thread_pieces.size());
  _thread_pieces_backup.resize(rhs._thread_pieces_backup.size());
   _angle_twist_backup.resize(rhs._thread_pieces.size());
-  for (int piece_ind =0; piece_ind < rhs._thread_pieces.size(); piece_ind++)
+  for (int piece_ind =0; piece_ind < rhs._thread_pieces.size()-1; piece_ind++)
   {
     //_thread_pieces.push_back(rhs._thread_pieces[piece_ind]);
-    _thread_pieces[piece_ind] = new ThreadPiece(*rhs._thread_pieces[piece_ind], this);
+    _thread_pieces[piece_ind] = new ThreadPiece(*rhs._thread_pieces[piece_ind], this, true);
   }
+  _thread_pieces[rhs._thread_pieces.size()-1] = new ThreadPiece(*rhs._thread_pieces[rhs._thread_pieces.size()-1], this, false);
 
   for (int i=1; i < _thread_pieces.size(); i++)
   {
@@ -3400,7 +3487,7 @@ Thread& Thread::operator=(const Thread& rhs)
 	//setup backups
   for (int piece_ind=0; piece_ind < rhs._thread_pieces_backup.size(); piece_ind++)
   {
-    _thread_pieces_backup[piece_ind] = new ThreadPiece(*rhs._thread_pieces_backup[piece_ind], this);
+    _thread_pieces_backup[piece_ind] = new ThreadPiece(*rhs._thread_pieces_backup[piece_ind], this, false);
   }
 
   for (int i=1; i < _thread_pieces_backup.size(); i++)
@@ -3445,10 +3532,6 @@ Thread& Thread::operator=(const Thread& rhs)
 
   return *this;
 
-}
-
-void Thread::setWorld(World* w) {
-	world = w;
 }
 
 void Thread::add_thread_to_env(Thread* thread) {  // check

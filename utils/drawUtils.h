@@ -20,12 +20,20 @@
 #include <Eigen/Geometry>
 #include <math.h>
 
+#include <btBulletDynamicsCommon.h>
+
 #include "../DiscreteRods/threadutils_discrete.h"
+#include "../DiscreteRods/Collisions/collisionUtils.h"
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
+void drawCylinder(const btTransform& tr, float half_height, float r);
+void drawSphere(const btTransform& tr, float r);
+void drawCapsule(btCollisionObject* col_obj, bool include_repulsion_dist = false);
+
 void drawCylinder(Vector3d pos, Matrix3d rot, double h, double r);
+void drawCylinder(const btTransform& tr, double half_height, double r);
 void drawCylinder(Vector3d start_pos, Vector3d end_pos, double r);
 void drawEndEffector(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2);
 void drawGrip(Vector3d pos, Matrix3d rot, double radius, double degrees, float color0, float color1, float color2);

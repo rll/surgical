@@ -12,6 +12,8 @@
 #include "../threadutils_discrete.h"
 #include "../threadpiece_discrete.h"
 
+#define REPULSION_DIST 0.4
+
 using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN
 
@@ -19,7 +21,7 @@ class btCollisionShape;
 class btCollisionDispatcher;
 class btDefaultCollisionConfiguration;
 
-inline double repulsionEnergyLog(const double& dist, const double& range, const Vector3d& direction)
+inline double repulsionEnergyLog(const double& dist, const double& range)
 {
 	double a = range / 2.0;
 	if (dist < 0) {
@@ -47,7 +49,7 @@ inline Vector3d repulsionEnergyGradientLog(const double& dist, const double& ran
 	}
 }
 
-inline double repulsionEnergyInverse(const double& dist, const double& range, const Vector3d& direction)
+inline double repulsionEnergyInverse(const double& dist, const double& range)
 {
 	if (dist < 0) {
 		return REPULSION_COEFF * 10000.0;
@@ -69,7 +71,7 @@ inline Vector3d repulsionEnergyGradientInverse(const double& dist, const double&
 	}
 }
 
-inline double repulsionEnergyLinear(const double& dist, const double& range, const Vector3d& direction)
+inline double repulsionEnergyLinear(const double& dist, const double& range)
 {
 	if (dist < range) {
 		//return REPULSION_COEFF/2.0 * pow(dist/range-1,2) * range;
@@ -88,19 +90,26 @@ inline Vector3d repulsionEnergyGradientLinear(const double& dist, const double& 
 	}
 }
 
-inline double repulsionEnergy(const double& dist, const double& range, const Vector3d& direction)
+//dist is the distance between two objects. dist is negative if they are penetrating.
+inline double repulsionEnergy(const double& dist, const double& range)
 {
-	//return repulsionEnergyLog(dist, range, direction);
-	//return repulsionEnergyLinear(dist, range, direction);
-	return repulsionEnergyInverse(dist, range, direction);
+	return repulsionEnergyLog(dist, range);
+	//return repulsionEnergyLinear(dist, range);
+	//return repulsionEnergyInverse(dist, range);
 }
 
 inline Vector3d repulsionEnergyGradient(const double& dist, const double& range, const Vector3d& direction)
 {
-	//return repulsionEnergyGradientLog(dist, range, direction);
+	return repulsionEnergyGradientLog(dist, range, direction);
 	//return repulsionEnergyGradientLinear(dist, range, direction);
-	return repulsionEnergyGradientInverse(dist, range, direction);
+	//return repulsionEnergyGradientInverse(dist, range, direction);
 }
+
+void convertToBtTransform(const Vector3d& start_pos, const Vector3d& end_pos, btVector3& origin, btMatrix3x3& basis);
+Matrix3d toMatrix3d(const btMatrix3x3& basis);
+btMatrix3x3 tobtMatrix3x3(const Matrix3d& rotation);
+Vector3d toVector3d(const btVector3& origin);
+btVector3 tobtVector3(const Vector3d& position);
 
 //Returns the minimun distance between a capsule and a plane. If the distance is positive, the capsule is not colliding. If the distance is negative, the absolute value of it is the minimun intersecting distance.
 //direction is a vector describing the minimun movement the capsule needs to take in order to fix the interesection.

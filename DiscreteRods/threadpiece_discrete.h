@@ -2,8 +2,11 @@
 #define _threadpiece_discrete_h
 
 #include <math.h>
+#include <btBulletDynamicsCommon.h>
 
 #include "threadutils_discrete.h"
+#include "EnvObjects/ObjectTypes.h"
+#include "EnvObjects/Object.h"
 
 using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN
@@ -26,15 +29,15 @@ static Vector3d grad_offsets[3];
 
 class Thread;
 
-class ThreadPiece
+class ThreadPiece : public Object
 {
   public:
-    ThreadPiece(const Vector3d& vertex, const double angle_twist, const double rest_length, Thread* my_thread);
-    ThreadPiece(const Vector3d& vertex, const double angle_twist, const double rest_length, ThreadPiece* prev, ThreadPiece* next, Thread* my_thread);
-    ThreadPiece(const ThreadPiece& rhs);
-    ThreadPiece(const ThreadPiece& rhs, Thread* my_thread);
+    ThreadPiece(const Vector3d& vertex, const double angle_twist, const double rest_length, Thread* my_thread, bool add_col_obj);
+    ThreadPiece(const Vector3d& vertex, const double angle_twist, const double rest_length, ThreadPiece* prev, ThreadPiece* next, Thread* my_thread, bool add_col_obj);
+    ThreadPiece(const ThreadPiece& rhs, bool add_col_obj);
+    ThreadPiece(const ThreadPiece& rhs, Thread* my_thread, bool add_col_obj);
 
-    ThreadPiece();
+    ThreadPiece(bool add_col_obj);
     virtual ~ThreadPiece();
 
     //Data Structures
@@ -82,7 +85,6 @@ class ThreadPiece
     double energy_twist();
     double energy_stretch();
 		double energy_grav();
-    double energy_repulsion();
 
 		//Energy Params
 		void set_bend_coeff(double bend_coeff);
@@ -97,6 +99,7 @@ class ThreadPiece
     //Gradients
     void gradient_twist(double& grad);
     void gradient_vertex(Vector3d& grad);
+    void stretch_gradient_vertex(Vector3d& grad);
     void gradient_vertex_numeric(Vector3d& grad);
     void calc_del_kb_k(Matrix3d& del_kb_k, const ThreadPiece* other_piece, Matrix3d& edge_skew_prev, Matrix3d& edge_skew_next);
     void add_sum_writhe(ThreadPiece* other_piece, Vector3d& curr_sum);
@@ -140,6 +143,12 @@ class ThreadPiece
 
     Thread* _my_thread;
 
+		//collision
+		int _piece_ind;
+		void setPieceInd(int piece_ind) { _piece_ind = piece_ind; }
+		bool isPieceIndConsistent();
+		btCollisionObject* _col_obj;
+		void updateCollisionObjectTransform();
 
 		Matrix3d skew_i;
 		Matrix3d skew_i_im1;
