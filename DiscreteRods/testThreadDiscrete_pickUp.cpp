@@ -691,7 +691,7 @@ void checkMouseUpdate()
 void processIdle()
 {
 	processHapticDevice();
-	//checkMouseUpdate();
+	checkMouseUpdate();
 }
 
 void drawStuff()
