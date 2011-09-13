@@ -1,5 +1,42 @@
 #include "drawUtils.h"
 
+void drawCylinder(const btTransform& tr, float half_height, float r) {
+	glPushMatrix();
+	btScalar transform[16];
+	tr.getOpenGLMatrix(transform);
+	glMultMatrixf((float*) transform);
+	double cylinder[4][3] = { {-half_height-1.0, 0.0, 0.0} , {-half_height, 0.0, 0.0} , {half_height, 0.0, 0.0} ,
+															 {half_height+1.0, 0.0, 0.0} };
+	glePolyCylinder(4, cylinder, NULL, r);
+	glPopMatrix();
+}
+
+void drawSphere(const btTransform& tr, float radius) {
+	glPushMatrix();
+	glTranslated(tr.getOrigin().getX(), tr.getOrigin().getY(), tr.getOrigin().getZ());
+  glutSolidSphere(radius, 20, 16);
+	glPopMatrix();
+}
+
+void drawCapsule(btCollisionObject* col_obj, bool include_repulsion_dist)
+{
+	btCapsuleShapeX* capsule_shape = static_cast<btCapsuleShapeX*>(col_obj->getCollisionShape());
+	glPushMatrix();
+	btScalar transform[16];
+	col_obj->getWorldTransform().getOpenGLMatrix(transform);
+	glMultMatrixf((float*) transform);
+	float half_height = capsule_shape->getHalfHeight();
+	float radius = capsule_shape->getRadius() - ((include_repulsion_dist) ? 0.0 : REPULSION_DIST);
+	double cylinder[4][3] = { {-half_height-1.0, 0.0, 0.0} , {-half_height, 0.0, 0.0} , {half_height, 0.0, 0.0} ,
+															 {half_height+1.0, 0.0, 0.0} };
+	glePolyCylinder(4, cylinder, NULL, radius);
+	glTranslated(-half_height, 0.0, 0.0);
+	glutSolidSphere(radius, 20, 16);
+	glTranslated(2.0*half_height, 0.0, 0.0);
+	glutSolidSphere(radius, 20, 16);
+	glPopMatrix();
+}
+
 void drawCylinder(Vector3d pos, Matrix3d rot, double h, double r) {
 	glPushMatrix();
 	double transform[16] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
@@ -244,7 +281,7 @@ void labelAxes(Vector3d pos, Matrix3d rot) {
   glPopMatrix();
 }
 
-void drawArrow(Vector3d pos, Vector3d direction, float color0, float color1, float color2) {
+void drawArrow(Vector3d pos, Vector3d direction) {
 	double norm = direction.norm();
 	Matrix3d rot;
 	rotation_from_tangent(direction.normalized(), rot);
@@ -255,9 +292,9 @@ void drawArrow(Vector3d pos, Vector3d direction, float color0, float color1, flo
 													 pos(0), pos(1), pos(2), 1};
 	glMultMatrixd(transform);
 	glBegin(GL_LINES);
-	glEnable(GL_LINE_SMOOTH);
-	glEnable(GL_COLOR_MATERIAL);
-	glColor3d(color0, color1, color2);
+//	glEnable(GL_LINE_SMOOTH);
+//	glEnable(GL_COLOR_MATERIAL);
+//	glColor3d(color0, color1, color2);
 	glVertex3f(0.0, 0.0, 0.0);
 	glVertex3f(norm,0,0);
 	glEnd();

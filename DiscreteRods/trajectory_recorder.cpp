@@ -34,7 +34,8 @@ void Trajectory_Recorder::add_threads_to_list(vector<Thread*> threads)
 
 void Trajectory_Recorder::clear_threads()
 {
-	_threads.resize(0);
+	assert(0);
+	//_threads.resize(0);
 }
 
 void Trajectory_Recorder::write_threads_to_file()

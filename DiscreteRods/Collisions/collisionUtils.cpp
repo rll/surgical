@@ -1,6 +1,51 @@
 #include "collisionUtils.h"
 
+//include common Bullet Collision Detection headerfiles
+#include "btBulletCollisionCommon.h"
+
 #define INTERSECTION_PARALLEL_CHECK_FACTOR 1e-5
+
+void convertToBtTransform(const Vector3d& start_pos, const Vector3d& end_pos, btVector3& origin, btMatrix3x3& basis)
+{
+	Matrix3d rotation;
+	rotation_from_tangent((start_pos - end_pos).normalized(), rotation);
+	basis.setValue(rotation(0,0), rotation(0,1), rotation(0,2),
+								 rotation(1,0), rotation(1,1), rotation(1,2),
+								 rotation(2,0), rotation(2,1), rotation(2,2));
+	Vector3d mid_point = (start_pos + end_pos)/2.0;
+	origin.setValue(mid_point(0), mid_point(1), mid_point(2));
+}
+
+Matrix3d toMatrix3d(const btMatrix3x3& basis)
+{
+	Matrix3d rotation;
+	btVector3 col0 = basis.getColumn(0);
+	btVector3 col1 = basis.getColumn(1);
+	btVector3 col2 = basis.getColumn(2);
+	rotation.col(0) = toVector3d(col0);
+	rotation.col(1) = toVector3d(col1);
+	rotation.col(2) = toVector3d(col2);
+	return rotation;
+}
+
+btMatrix3x3 tobtMatrix3x3(const Matrix3d& rotation)
+{
+	btMatrix3x3 basis;
+	basis.setValue(rotation(0,0), rotation(0,1), rotation(0,2),
+								 rotation(1,0), rotation(1,1), rotation(1,2),
+								 rotation(2,0), rotation(2,1), rotation(2,2));
+	return basis;
+}
+
+Vector3d toVector3d(const btVector3& origin)
+{
+	return Vector3d(origin.getX(), origin.getY(), origin.getZ());
+}
+
+btVector3 tobtVector3(const Vector3d& position)
+{
+	return btVector3(position(0), position(1), position(2));
+}
 
 //Returns the minimun distance between a capsule and a plane. If the distance is positive, the capsule is not colliding. If the distance is negative, the absolute value of it is the minimun intersecting distance.
 //direction is a vector describing the minimun movement the capsule needs to take in order to fix the interesection.
@@ -40,6 +85,233 @@ double capsuleInfinitePlaneDistance(const Vector3d& a_start, const Vector3d& a_e
 	//
 	//direction = - dist * b_normal/b_normal_norm;
 	//return - abs(dist) - a_radius;
+}
+
+struct	MyContactResultCallback : public btCollisionWorld::ContactResultCallback
+{
+	public:
+	double distance;
+	Vector3d positionWorldOnA;
+	Vector3d positionWorldOnB;
+	
+	virtual	btScalar	addSingleResult(btManifoldPoint& cp,	const btCollisionObject* colObj0,int partId0,int index0,const btCollisionObject* colObj1,int partId1,int index1)
+	{
+		distance = cp.getDistance();
+		positionWorldOnA = Vector3d(cp.m_positionWorldOnA.getX(),cp.m_positionWorldOnA.getY(),cp.m_positionWorldOnA.getZ());
+		positionWorldOnB = Vector3d(cp.m_positionWorldOnB.getX(),cp.m_positionWorldOnB.getY(),cp.m_positionWorldOnB.getZ());
+
+		return 1.f;
+	}
+};
+
+//double capsuleCapsuleDistance(const Vector3d& a_start, const Vector3d& a_end, const double a_radius, const Vector3d& b_start, const Vector3d& b_end, const double b_radius, Vector3d& direction)
+//{
+//	btTransform tr[2];
+
+//	Matrix3d rotationA;
+//	rotation_from_tangent((a_start - a_end).normalized(), rotationA);
+//	btMatrix3x3 basisA;
+//	basisA.setValue(rotationA(0,1), rotationA(0,0), rotationA(0,2),
+//									rotationA(1,1), rotationA(1,0), rotationA(1,2),
+//									rotationA(2,1), rotationA(2,0), rotationA(2,2));
+//	Matrix3d rotationB;
+//	rotation_from_tangent((b_start - b_end).normalized(), rotationB);
+//	btMatrix3x3 basisB;
+//	basisB.setValue(rotationB(0,1), rotationB(0,0), rotationB(0,2),
+//									rotationB(1,1), rotationB(1,0), rotationB(1,2),
+//									rotationB(2,1), rotationB(2,0), rotationB(2,2));
+//	tr[0].setBasis(basisA);
+//	tr[1].setBasis(basisB);
+//	
+//	Vector3d a_mid_point = (a_start + a_end)/2.0;
+//	Vector3d b_mid_point = (b_start + b_end)/2.0;
+//	btVector3 originA(a_mid_point(0), a_mid_point(1), a_mid_point(2));
+//	btVector3 originB(b_mid_point(0), b_mid_point(1), b_mid_point(2));
+//	tr[0].setOrigin(originA);
+//	tr[1].setOrigin(originB);	
+//	
+//	btCollisionShape*	shapePtr[2];
+//	
+//	btCapsuleShape capsuleA(btScalar(a_radius), btScalar((a_start-a_end).norm()));
+//	btCapsuleShape capsuleB(btScalar(b_radius), btScalar((b_start-b_end).norm()));
+//	shapePtr[0] = &capsuleA;
+//	shapePtr[1] = &capsuleB;
+
+//	btDefaultCollisionConfiguration collisionConfiguration;
+//	btCollisionDispatcher				dispatcher(&collisionConfiguration);
+//	btDbvtBroadphase pairCache;
+//	btCollisionWorld world (&dispatcher,&pairCache,&collisionConfiguration);
+//	world.getDispatchInfo().m_convexMaxDistanceUseCPT = true;
+//	MyContactResultCallback result;
+//	btCollisionObject obA;
+//	obA.setCollisionShape(shapePtr[0]);
+//	obA.setWorldTransform(tr[0]);
+//	btCollisionObject obB;
+//	obB.setCollisionShape(shapePtr[1]);
+//	obB.setWorldTransform(tr[1]);
+//	world.contactPairTest(&obA,&obB,result);
+
+//	direction = result.positionWorldOnB - result.positionWorldOnA;
+//	return result.distance;
+//}
+
+//double capsuleBoxDistance(const Vector3d& a_start, const Vector3d& a_end, const double a_radius, const Vector3d& b_center, const Vector3d& b_half_length, Vector3d& direction, Vector3d& positionWorldOnA, Vector3d& positionWorldOnB)
+//{
+//	btTransform tr[2];
+
+//	Matrix3d rotationA;
+//	rotation_from_tangent((a_start - a_end).normalized(), rotationA);
+//	btMatrix3x3 basisA;
+//	basisA.setValue(rotationA(0,1), rotationA(0,0), rotationA(0,2),
+//									rotationA(1,1), rotationA(1,0), rotationA(1,2),
+//									rotationA(2,1), rotationA(2,0), rotationA(2,2));
+//	btMatrix3x3 basisB;
+//	basisB.setIdentity();
+//	tr[0].setBasis(basisA);
+//	tr[1].setBasis(basisB);
+//	
+//	Vector3d mid_point = (a_start + a_end)/2.0;
+//	btVector3 originA(mid_point(0), mid_point(1), mid_point(2));
+//	btVector3 originB(b_center(0), b_center(1), b_center(2));
+//	tr[0].setOrigin(originA);
+//	tr[1].setOrigin(originB);	
+//	
+//	
+//	btCollisionShape*	shapePtr[2];
+//	
+//	btCompoundShape* compound = new btCompoundShape();
+//	
+//	btCapsuleShape capsule(btScalar(a_radius), btScalar((a_start-a_end).norm()));
+//	btTransform localTrans;
+//	localTrans.setIdentity();
+//	localTrans.setOrigin(btVector3(0,0,0));
+//	compound->addChildShape(localTrans, &capsule);
+//	
+//	btTransform localTransOrtho;
+//	btMatrix3x3 basisOrtho;
+//	basisOrtho.setEulerYPR(1.57,0,0);
+//	localTransOrtho.setBasis(basisOrtho);
+//	localTransOrtho.setOrigin(btVector3(0,0,0));
+//	
+//	compound->addChildShape(localTransOrtho, &capsule);
+//	
+//	btBoxShape box(btVector3(b_half_length(0), b_half_length(1), b_half_length(2)));
+//	
+//	shapePtr[0] = compound;
+//	shapePtr[1] = &box;
+
+//	btDefaultCollisionConfiguration collisionConfiguration;
+//	btCollisionDispatcher				dispatcher(&collisionConfiguration);
+//	btDbvtBroadphase pairCache;
+//	btCollisionWorld world (&dispatcher,&pairCache,&collisionConfiguration);
+//	world.getDispatchInfo().m_convexMaxDistanceUseCPT = true;
+//	MyContactResultCallback result;
+//	btCollisionObject obA;
+//	obA.setCollisionShape(shapePtr[0]);
+//	obA.setWorldTransform(tr[0]);
+//	btCollisionObject obB;
+//	obB.setCollisionShape(shapePtr[1]);
+//	obB.setWorldTransform(tr[1]);
+//	world.contactPairTest(&obA,&obB,result);
+//	
+//	btTransform childtr = compound->getChildTransform(1);
+//	cout << "transforms" << endl;
+//	cout << childtr.getOrigin().getX() << " " << childtr.getOrigin().getY() << " " << childtr.getOrigin().getZ() << endl;
+//	cout << tr[0].getOrigin().getX() << " " << tr[0].getOrigin().getY() << " " << tr[0].getOrigin().getZ() << endl;
+//	
+//	positionWorldOnA = result.positionWorldOnA;
+//	positionWorldOnB = result.positionWorldOnB;
+//	direction = result.positionWorldOnA - result.positionWorldOnB;
+//	return result.distance;
+//}
+
+double capsuleBoxDistance(const Vector3d& a_start, const Vector3d& a_end, const double a_radius, const Vector3d& b_center, const Vector3d& b_half_length, Vector3d& direction)
+{
+	btTransform tr[2];
+
+	Matrix3d rotationA;
+	rotation_from_tangent((a_start - a_end).normalized(), rotationA);
+	btMatrix3x3 basisA;
+	basisA.setValue(rotationA(0,1), rotationA(0,0), rotationA(0,2),
+									rotationA(1,1), rotationA(1,0), rotationA(1,2),
+									rotationA(2,1), rotationA(2,0), rotationA(2,2));
+	btMatrix3x3 basisB;
+	basisB.setIdentity();
+	tr[0].setBasis(basisA);
+	tr[1].setBasis(basisB);
+	
+	Vector3d mid_point = (a_start + a_end)/2.0;
+	btVector3 originA(mid_point(0), mid_point(1), mid_point(2));
+	btVector3 originB(b_center(0), b_center(1), b_center(2));
+	tr[0].setOrigin(originA);
+	tr[1].setOrigin(originB);	
+	
+	btCollisionShape*	shapePtr[2];
+	
+	btCapsuleShape capsule(btScalar(a_radius), btScalar((a_start-a_end).norm()));
+	btBoxShape box(btVector3(b_half_length(0), b_half_length(1), b_half_length(2)));
+	shapePtr[0] = &capsule;
+	shapePtr[1] = &box;
+
+	btDefaultCollisionConfiguration collisionConfiguration;
+	btCollisionDispatcher				dispatcher(&collisionConfiguration);
+	btDbvtBroadphase pairCache;
+	btCollisionWorld world (&dispatcher,&pairCache,&collisionConfiguration);
+	world.getDispatchInfo().m_convexMaxDistanceUseCPT = true;
+	MyContactResultCallback result;
+	btCollisionObject obA;
+	obA.setCollisionShape(shapePtr[0]);
+	obA.setWorldTransform(tr[0]);
+	btCollisionObject obB;
+	obB.setCollisionShape(shapePtr[1]);
+	obB.setWorldTransform(tr[1]);
+	world.contactPairTest(&obA,&obB,result);
+
+	direction = result.positionWorldOnB - result.positionWorldOnA;
+	return result.distance;
+}
+
+//Returns the minimun distance between a sphere and a box. If the distance is positive, the sphere is not colliding. If the distance is negative, the absolute value of it is the minimun intersecting distance.
+//direction is a vector describing the minimun movement the sphere needs to take in order to fix the interesection.
+double sphereBoxDistance(const Vector3d& a_center, const double a_radius, const Vector3d& b_center, const Vector3d& b_half_length, Vector3d& direction)
+{
+	btTransform tr[2];
+
+	btMatrix3x3 basisA;
+	basisA.setIdentity();
+	btMatrix3x3 basisB;
+	basisB.setIdentity();
+	tr[0].setBasis(basisA);
+	tr[1].setBasis(basisB);
+	
+	btVector3 originA(a_center(0), a_center(1), a_center(2));
+	btVector3 originB(b_center(0), b_center(1), b_center(2));
+	tr[0].setOrigin(originA);
+	tr[1].setOrigin(originB);	
+	
+	btConvexShape*	shapePtr[2];
+	
+	btCapsuleShape sphere(btScalar(a_radius), btScalar(0));
+	btBoxShape box(btVector3(b_half_length(0), b_half_length(1), b_half_length(2)));
+	shapePtr[0] = &sphere;
+	shapePtr[1] = &box;
+
+	btDefaultCollisionConfiguration collisionConfiguration;
+	btCollisionDispatcher				dispatcher(&collisionConfiguration);
+	btDbvtBroadphase pairCache;
+	btCollisionWorld world (&dispatcher,&pairCache,&collisionConfiguration);
+	world.getDispatchInfo().m_convexMaxDistanceUseCPT = true;
+	MyContactResultCallback result;
+	btCollisionObject obA;
+	obA.setCollisionShape(shapePtr[0]);
+	obA.setWorldTransform(tr[0]);
+	btCollisionObject obB;
+	obB.setCollisionShape(shapePtr[1]);
+	obB.setWorldTransform(tr[1]);
+	world.contactPairTest(&obA,&obB,result);
+	
+	direction = result.positionWorldOnB - result.positionWorldOnA;
+	return result.distance;
 }
 
 //Returns the minimun distance between capsules. If the distance is positive, the capsules are not colliding. If the distance is negative, the absolute value of it is the intersecting distance.

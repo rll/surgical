@@ -21,12 +21,16 @@
 #include <Eigen/Geometry>
 #include <math.h>
 #include <vector>
+#include <boost/thread.hpp>
+
 
 #include "../utils/drawUtils.h"
 #include "../Collisions/intersectionStructs.h"
-#include "../Collisions/collisionUtils.h"
+#include "../Collisions/CollisionWorld.h"
+#include "WorldManager.h"
 
 #include "ObjectTypes.h"
+#include "Object.h"
 #include "EnvObject.h"
 #include "Capsule.h"
 #include "Cursor.h"
@@ -48,22 +52,22 @@ USING_PART_OF_NAMESPACE_EIGEN
 	#define TYPE_CAST dynamic_cast
 #endif
 
+enum RenderMode { NORMAL, EXAMINE, DEBUG, COLLISION };
+
 class ThreadConstrained;
+
+extern WorldManager* test_world_manager;
 
 class World
 {
 	public:
-		World();
-		World(const World& rhs);
+		World(WorldManager* wm = NULL);
+		World(const World& rhs, WorldManager* wm = NULL);
 		~World();
 
 		//saving and loading from and to file
 		void writeToFile(ofstream& file);
-		World(ifstream& file);
-
-		//manipulate threads and objects in environment
-		//void addThread(ThreadConstrained* thread);
-		//void addEnvObj(EnvObject* obj);
+		World(ifstream& file, WorldManager* wm = NULL);
 
 		template <class T> void getObjects(vector<T*>& objects)
 		{
@@ -105,12 +109,9 @@ class World
 			return objects[object_ind];
 		}
 				
-		void clearObjs();
-
-		void initializeThreadsInEnvironment();
 		EndEffector* closestEndEffector(Vector3d tip_pos);
 	
-		void draw(bool examine_mode = false);
+		void draw(RenderMode examine_mode = NORMAL);
 
 		//applying control
 		//the controls should know to whom they are applying control.
@@ -119,8 +120,8 @@ class World
 		// for each control, there is 3 dof for translation, 3 for rotation, 2 for event
 		void setTransformFromController(const vector<ControllerBase*>& controls, bool limit_displacement = false); //applies controli to handle
 		void applyRelativeControl(const vector<Control*>& controls, double thresh=0.0, bool limit_displacement = false);
-		void applyRelativeControl(const VectorXd& relative_control, bool limit_displacement = false);
-    void applyRelativeControlJacobian(const VectorXd& relative_control); 
+		void applyRelativeControl(const VectorXd& relative_control, double thresh=0.0, bool limit_displacement = false);
+    void applyRelativeControlJacobian(const VectorXd& relative_control, double thresh=0.0);
 		
 		//state representation
     void getStates(vector<VectorXd>& states);
@@ -130,27 +131,57 @@ class World
     void getStateForJacobian(VectorXd& world_state);
     void setStateForJacobian(VectorXd& world_state);
     void projectLegalState();
-    void computeJacobian(MatrixXd& J); 
+    void computeJacobian(MatrixXd* J); 
+
+    //control representation
+    void VectorXdToControl(const VectorXd& relative_control, vector<Control*>& c) {
+      assert(cursors.size()*8 == relative_control.size());
+
+      c.resize(cursors.size());
+
+      for (int i = 0; i < cursors.size(); i++) { 
+        Vector3d translation = relative_control.segment(8*i, 3);
+        Matrix3d rotation;
+        rotation_from_euler_angles(rotation, relative_control(8*i+3), relative_control(8*i+4), relative_control(8*i+5));
+
+        Control* u = new Control(Vector3d::Zero(), Matrix3d::Identity());
+
+        u->setTranslate(translation);
+        u->setRotate(rotation);
+        c[i] = u;
+      }
+    }
+
+    VectorXd JacobianControlWrapper(const VectorXd& relative_control) { 
+
+      assert(cursors.size()*6 == relative_control.size());
+      VectorXd wrapper_control(16);
+      wrapper_control.setZero(); 
+      wrapper_control.segment(0, 6) = relative_control.segment(0,6);
+      wrapper_control.segment(8, 6) = relative_control.segment(6,6);
+      return wrapper_control;
+    }
     
-		
 		//backup
 		void backup();
 		void restore();
 		
 		//collision
-		bool capsuleObjectIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections);
-		double capsuleObjectRepulsionEnergy(const Vector3d& start, const Vector3d& end, const double radius);
-		void capsuleObjectRepulsionEnergyGradient(const Vector3d& start, const Vector3d& end, const double radius, Vector3d& gradient);
-		
+		CollisionWorld* collision_world;
+		WorldManager* world_manager;
+				
 		//Init thread
 		void initThread();
 		void initLongerThread();
-		void initRestingThread();
+		void initRestingThread(int opt);
 		
 	private:
 		vector<Cursor*> cursors; //control handler
 		vector<ThreadConstrained*> threads;
 		vector<EnvObject*> objs;
 };
+
+void computeJacCord(World* w, int i, int size_each_state, VectorXd *du, MatrixXd *J);
+
 
 #endif

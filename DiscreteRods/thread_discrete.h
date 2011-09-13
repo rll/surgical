@@ -8,6 +8,7 @@
 #include "../utils/drawUtils.h"
 #include "Collisions/collisionUtils.h"
 #include "Collisions/intersectionStructs.h"
+#include "Collisions/CollisionWorld.h"
 #include "EnvObjects/World.h"
 #include "threadpiece_discrete.h"
 #include <Eigen/Cholesky>
@@ -61,9 +62,8 @@
 //#define NUM_THREADS_PARALLEL_FOR 2
 #define num_iters_twist_est_max 0
 
-#define THREAD_RADIUS 0.2     /* MUST BE ATLEAST MAX_MOVEMENT_VERTICES */
-#define COLLISION_CHECKING true
-
+#define THREAD_RADIUS 0.4     /* MUST BE ATLEAST MAX_MOVEMENT_VERTICES */
+#define COLLISION_CHECKING false
 
 using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN
@@ -72,15 +72,15 @@ using namespace Eigen;
 class Thread
 {
   public:
-    Thread();
-    Thread(const VectorXd& vertices, const VectorXd& twists, const Matrix3d& start_rot);
-    Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot);
-    Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, Matrix3d& end_rot);
-    Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot);
-    Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, const double rest_length);
-    Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot);
-    Thread(const Thread& rhs);
-    Thread(ifstream& file);
+//    Thread();
+    Thread(const VectorXd& vertices, const VectorXd& twists, const Matrix3d& start_rot, World* w = NULL);
+    Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot, World* w = NULL);
+    Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, Matrix3d& end_rot, World* w = NULL);
+    Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, World* w = NULL);
+    Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, const double rest_length, World* w = NULL);
+    Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, World* w = NULL);
+    Thread(const Thread& rhs, World* w = NULL);
+    Thread(ifstream& file, World* w = NULL);
     virtual ~Thread();
     
     void writeToFile(ofstream& file);
@@ -137,7 +137,9 @@ class Thread
     void unviolate_total_length_constraint();
     void copy_data_from_vector(VectorXd& toCopy);
     void applyControl(const VectorXd& u);
-    void getState(VectorXd& state);
+    void getState(VectorXd& state, bool ignore_first_vertex = false);
+    void getPartialState(VectorXd& state);
+    void getCompleteState(VectorXd& state, bool ignore_first_vertex = false); 
     void setState(VectorXd& state); 
     
     //void project_length_constraint_old();
@@ -249,8 +251,8 @@ class Thread
     void restore_thread_pieces();
     void restore_thread_pieces(vector<ThreadPiece*>& to_restore);
     void save_thread_pieces(vector<ThreadPiece*>& to_save);
-    void save_thread_pieces_and_resize(vector<ThreadPiece*>& to_save);
-    void restore_thread_pieces_and_resize(vector<ThreadPiece*>& to_restore);
+//    void save_thread_pieces_and_resize(vector<ThreadPiece*>& to_save);
+//    void restore_thread_pieces_and_resize(vector<ThreadPiece*>& to_restore);
     void set_prev_next_pointers(vector<ThreadPiece*> pieces);
     void delete_current_threadpieces();
     void delete_threadpieces(vector<ThreadPiece*> thread_pieces);
@@ -271,11 +273,13 @@ class Thread
     void fix_intersections();
     
     World* world;
-    void setWorld(World* w);
     
     vector<Thread*> threads_in_env;
 		void add_thread_to_env(Thread* threads);
 		void clear_threads_in_env();
+
+		void setPieceIndices();
+		void updateCollisionObjectsTransform();
 
     //variable-length thread_pieces    
     void split_thread_piece(ThreadPiece* this_piece);

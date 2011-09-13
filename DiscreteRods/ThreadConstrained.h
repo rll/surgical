@@ -59,6 +59,7 @@ class ThreadConstrained {
 		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot, World* w);
 		ThreadConstrained(const ThreadConstrained& rhs, World* w);
     //ThreadConstrained& operator=(const ThreadConstrained& rhs);
+    virtual ~ThreadConstrained();
 		
 		//need to be initialized in constructor
 		//num_vertices
@@ -103,10 +104,13 @@ class ThreadConstrained {
 		void minimize_energy();
 		void adapt_links();
 		void updateConstraints (vector<Vector3d> poss, vector<Matrix3d> rots);
-		void updateConstrainedTransform(int constraint_ind, Vector3d& pos, Matrix3d& rot);
+		void updateConstrainedTransform(int constraint_ind, const Vector3d& pos, const Matrix3d& rot);
+		void updateConstrainedRawTransform(int constraint_ind, const Vector3d& pos, const Matrix3d& prev_rot, const Matrix3d& next_rot);
 		void getConstrainedTransform(int constraint_ind, Vector3d& pos, Matrix3d& rot);
-		Vector3d positionAtConstraint(int constraint_ind) const;
-		Matrix3d rotationAtConstraint(int constraint_ind) const;
+		const Vector3d& positionAtConstraint(int constraint_ind) const;
+		Matrix3d rotationAtConstraint(int constraint_ind);
+		Matrix3d rotationRawPrevAtConstraint(int constraint_ind);
+		Matrix3d rotationRawNextAtConstraint(int constraint_ind);
 		void applyMotionAtConstraints(vector<Vector3d> translations, vector<Matrix3d> rotations);
 		void applyControl(const VectorXd& u);
 		void getState(VectorXd& state);
@@ -118,7 +122,7 @@ class ThreadConstrained {
 		Vector3d position(int absolute_vertex_num);
 		Matrix3d rotation(int absolute_vertex_num);
 		void draw(bool mode = false);
-		void setWorld(World* w);
+		void drawDebug();
 		void getThreads(vector<Thread*>& ths);
 
 		//backup
