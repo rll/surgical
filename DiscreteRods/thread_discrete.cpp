@@ -3348,7 +3348,7 @@ void Thread::getCompleteState(VectorXd& state, bool ignore_first_vertex) {
   if (ignore_first_vertex) 
     state.resize(6*(_num_pieces-1));
   else 
-    state.resize(6*_num_pieces-3 + 1);
+    state.resize(6*_num_pieces-3);
 
   for (int piece_ind=0; piece_ind < _num_pieces; piece_ind++)
   {
@@ -3366,7 +3366,13 @@ void Thread::getCompleteState(VectorXd& state, bool ignore_first_vertex) {
       }
     }
   }
-  state(6*_num_pieces-3) = end_angle(); // TC is weird w/ pickup
+  /*
+  if (ignore_first_vertex) {
+		state(6*(_num_pieces-1)) = end_angle();
+	} else {
+		state(6*_num_pieces-3) = end_angle(); // TC is weird w/ pickup
+	}
+	*/
 }
 
 
@@ -3394,22 +3400,25 @@ void Thread::getState(VectorXd& state, bool ignore_first_vertex)
  //getPartialState(thread_state);
   getCompleteState(thread_state, ignore_first_vertex); 
 
-  if (ignore_first_vertex) {
-    state = thread_state;
-    return; 
-  }
-  state.resize(thread_state.size() + 1); 
-  state(0) = state.size();
-  state.segment(1, thread_state.size()) = thread_state; 
+//  if (ignore_first_vertex) {
+//  	state.resize(thread_state.size());
+//    state = thread_state;
+//    return; 
+//  }
+//  state.resize(thread_state.size() + 1); 
+//  state(0) = state.size();
+//  state.segment(1, thread_state.size()) = thread_state; 
+	state = thread_state;
 }
 
 void Thread::setState(VectorXd& state) {
-  assert(state(0) == state.size());
+  //assert(state(0) == state.size());
+  assert(state.size() == 6*num_pieces() - 3);
   VectorXd thread_state;
-  getCompleteState(thread_state); 
-  assert(thread_state.size() + 1 == state.size()); // setState only works for complete state
-  VectorXd data = state.segment(1, state.size() - 1);
-  copy_data_from_vector(data);
+  //getCompleteState(thread_state); 
+  //assert(thread_state.size() + 1 == state.size()); // setState only works for complete state
+  //VectorXd data = state.segment(1, state.size() - 1);
+  copy_data_from_vector(state);
 }
 
 void Thread::set_coeffs_normalized(double bend_coeff, double twist_coeff, double grav_coeff)

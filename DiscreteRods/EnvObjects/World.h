@@ -22,7 +22,7 @@
 #include <math.h>
 #include <vector>
 #include <boost/thread.hpp>
-
+#include <boost/random.hpp>
 
 #include "../utils/drawUtils.h"
 #include "../Collisions/intersectionStructs.h"

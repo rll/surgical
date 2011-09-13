@@ -319,12 +319,7 @@ double uniformRand()
   return ((drand48() - 0.5) * 2); 
 }
 
-
-double normRand() {
-  return uniformRand(); 
-}
-
-
+boost::variate_generator<boost::mt19937, boost::normal_distribution<> > normRand(boost::mt19937(time(0)), boost::normal_distribution<>(0.0, 1.0));
 
 void World::applyRelativeControl(const vector<Control*>& controls, double thresh, bool limit_displacement)
 {
