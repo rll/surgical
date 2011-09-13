@@ -220,15 +220,17 @@ void ThreadConstrained::restore()
 void ThreadConstrained::getState(VectorXd& state) {
 	vector<VectorXd> thread_states;
 	int thread_states_size = 0;
+  /*
   VectorXd constants;
   getThreadConstants(constants);
   thread_states.push_back(constants);
   thread_states_size += constants.size(); 
+  */
 
   for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
     VectorXd thread_state;
-    //bool ignore_first_vertex = thread_ind > 0;
-    bool ignore_first_vertex = false;
+    bool ignore_first_vertex = thread_ind > 0;
+    //bool ignore_first_vertex = false;
     threads[thread_ind]->getState(thread_state, ignore_first_vertex);
     thread_states.push_back(thread_state);
     thread_states_size += thread_state.size();
@@ -403,9 +405,11 @@ ThreadConstrained::~ThreadConstrained()
 }
 
 void ThreadConstrained::setState(VectorXd& state) {
+  /*
   int ind = 0;
   int thread_state_size = state(0); 
   assert(thread_state_size == state.size());
+
   num_vertices = state(1); 
   int num_threads = state(2); 
 
@@ -443,14 +447,29 @@ void ThreadConstrained::setState(VectorXd& state) {
   ind += 4*rot_offset.size();
   
   threads.resize(num_threads);
+  */
   
   //ind += 1;
-
-  for (int i = 0; i < threads.size(); i++) {
-    VectorXd data = state.segment(ind, state(ind));
-    threads[i]->setState(data); 
-    ind += state(ind); 
-  }
+	Vector3d last_vertex;
+	int ind = 1;
+  for (int i = 0; i < threads.size(); i++) {    
+    VectorXd data;
+		if (i == 0) {
+			data = state.segment(ind, 6*threads[i]->num_pieces() - 3);
+		  ind += 6*threads[i]->num_pieces() - 3;
+		  threads[i]->setState(data); 
+		} else {
+			data = state.segment(ind, 6*(threads[i]->num_pieces()-1));
+			ind += 6*(threads[i]->num_pieces()-1);
+			VectorXd thread_state(data.size() + 3);
+			//thread_state(0) = thread_state.size();
+			thread_state.segment(0, 3) = last_vertex;
+			thread_state.segment(3, data.size()) = data.segment(0, data.size());
+		  threads[i]->setState(thread_state); 
+		}
+	  last_vertex = threads[i]->end_pos();
+		//ind += state(ind);
+	}
 
   assert(ind == state.size());
 }

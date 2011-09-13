@@ -665,6 +665,12 @@ void processNormalKeys(unsigned char key, int x, int y)
   } else if (key == '`') {
   	World* world_ptr = new World(*world);
   	cout << "copy" << endl;
+  } else if (key == '~') {
+  	cout << "getting and setting state  ";
+  	VectorXd state;
+  	world->getStateForJacobian(state);
+  	world->setStateForJacobian(state);
+  	cout << state.size() << endl;
   }
 #ifdef VIEW3D
   else if(key == '=') {

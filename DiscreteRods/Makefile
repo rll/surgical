@@ -23,7 +23,7 @@ VISION_LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr
 VISION_INCLUDES = -I/usr/local/include/opencv/
 SOCKETS_DIR = ../utils/sockets/
 # OPT_COMP =
-OPT_COMP = -Os -DEIGEN_NO_DEBUG -Os -DNDEBUG
+OPT_COMP = -Os #-DEIGEN_NO_DEBUG -Os -DNDEBUG
 FOPENMP = -fopenmp
 PROFILER = #-L/usr/lib/ -lprofiler
 CC = g++ $(OPT_COMP) $(COMPILEFLAG) $(HOSTNAME) $(FOPENMP) $(PROFILER)
@@ -32,10 +32,13 @@ DEBUG = -ggdb
 NDEBUG = #-DNDEBUG
 ISOTROPIC=-DISOTROPIC
 
-target: testThreadDiscrete_pickUp
+target: testThreadDiscrete_pickUp runExperiment
 
 #oldTestThreadDiscrete: testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o Mouse.o Haptic.o World.o Capsule.o Control.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o Box.o Needle.o thread_socket_interface.o UDPSocket.o Socket.o StateRecorder.o StateReader.o TrajectoryRecorder.o TrajectoryReader.o worldSQP.o trajectory_recorder.o trajectory_reader.o
 #	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) $(NDEBUG) -o oldTestThreadDiscrete testThreadDiscrete.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o Mouse.o Haptic.o World.o Capsule.o Control.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o Box.o Needle.o thread_socket_interface.o UDPSocket.o Socket.o StateRecorder.o StateReader.o TrajectoryRecorder.o TrajectoryReader.o worldSQP.o trajectory_recorder.o trajectory_reader.o $(LIBS) $(PROFILER)
+
+runExperiment: runExperiment.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o Mouse.o Haptic.o World.o CollisionWorld.o WorldManager.o Capsule.o Control.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o Box.o Needle.o thread_socket_interface.o UDPSocket.o Socket.o StateRecorder.o StateReader.o TrajectoryRecorder.o TrajectoryReader.o worldSQP.o clock.o
+	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) $(NDEBUG) -o runExperiment runExperiment.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o Mouse.o Haptic.o World.o CollisionWorld.o WorldManager.o Capsule.o Control.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o Box.o Needle.o thread_socket_interface.o UDPSocket.o Socket.o StateRecorder.o StateReader.o TrajectoryRecorder.o TrajectoryReader.o worldSQP.o clock.o $(LIBS) $(PROFILER)
 
 testThreadDiscrete_pickUp: testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o Mouse.o Haptic.o World.o CollisionWorld.o WorldManager.o Capsule.o Control.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o Box.o Needle.o thread_socket_interface.o UDPSocket.o Socket.o StateRecorder.o StateReader.o TrajectoryRecorder.o TrajectoryReader.o worldSQP.o clock.o
 	$(LD) $(INCLUDES) $(ISOTROPIC) $(DEBUG) $(NDEBUG) -o testThreadDiscrete_pickUp testThreadDiscrete_pickUp.cpp threadutils_discrete.o threadpiece_discrete.o  thread_discrete.o ThreadConstrained.o drawUtils.o imageloader.o collisionUtils.o Mouse.o Haptic.o World.o CollisionWorld.o WorldManager.o Capsule.o Control.o Cursor.o EndEffector.o InfinitePlane.o TexturedSphere.o Box.o Needle.o thread_socket_interface.o UDPSocket.o Socket.o StateRecorder.o StateReader.o TrajectoryRecorder.o TrajectoryReader.o worldSQP.o clock.o $(LIBS) $(PROFILER)
