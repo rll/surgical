@@ -873,21 +873,21 @@ int main (int argc, char * argv[])
 	test_world_manager = new WorldManager();
 	world = new World(test_world_manager);
 	
-	for (int i = 0; i < 500; i++) {
-		cout << i << " ";
-		World* temp0 = new World(*world, test_world_manager);
-		World* temp1 = new World(*world, test_world_manager);
-		World* temp2 = new World(*world, test_world_manager);
-		World* temp3 = new World(*world, test_world_manager);
-		delete temp1;
-		delete temp2;
-		delete temp3;
-		delete world;
-		world = temp0;
-	}
-	cout << endl;
-	cout << "test_world_manager->numOfAllocatedWorlds(): " << test_world_manager->numOfAllocatedWorlds() << endl;
-	cout << "test_world_manager->numOfAllocatedCollisionWorlds(): " << test_world_manager->numOfAllocatedCollisionWorlds() << endl;
+//	for (int i = 0; i < 500; i++) {
+//		cout << i << " ";
+//		World* temp0 = new World(*world, test_world_manager);
+//		World* temp1 = new World(*world, test_world_manager);
+//		World* temp2 = new World(*world, test_world_manager);
+//		World* temp3 = new World(*world, test_world_manager);
+//		delete temp1;
+//		delete temp2;
+//		delete temp3;
+//		delete world;
+//		world = temp0;
+//	}
+//	cout << endl;
+//	cout << "test_world_manager->numOfAllocatedWorlds(): " << test_world_manager->numOfAllocatedWorlds() << endl;
+//	cout << "test_world_manager->numOfAllocatedCollisionWorlds(): " << test_world_manager->numOfAllocatedCollisionWorlds() << endl;
 	
 	//control0 = new Control(Vector3d::Zero(), Matrix3d::Identity());
 	//control1 = new Control(Vector3d::Zero(), Matrix3d::Identity());

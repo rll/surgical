@@ -50,6 +50,8 @@ USING_PART_OF_NAMESPACE_EIGEN
 	#define TYPE_CAST dynamic_cast
 #endif
 
+extern WorldManager* test_world_manager;
+
 enum RenderMode { NORMAL, EXAMINE, DEBUG, COLLISION };
 
 class ThreadConstrained;
