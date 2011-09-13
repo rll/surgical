@@ -56,6 +56,8 @@ enum RenderMode { NORMAL, EXAMINE, DEBUG, COLLISION };
 
 class ThreadConstrained;
 
+extern WorldManager* test_world_manager;
+
 class World
 {
 	public:
@@ -129,7 +131,7 @@ class World
     void getStateForJacobian(VectorXd& world_state);
     void setStateForJacobian(VectorXd& world_state);
     void projectLegalState();
-    void computeJacobian(MatrixXd& J); 
+    void computeJacobian(MatrixXd* J); 
 
     //control representation
     void VectorXdToControl(const VectorXd& relative_control, vector<Control*>& c) {
@@ -178,5 +180,8 @@ class World
 		vector<ThreadConstrained*> threads;
 		vector<EnvObject*> objs;
 };
+
+void computeJacCord(World* w, int i, int size_each_state, VectorXd *du, MatrixXd *J);
+
 
 #endif

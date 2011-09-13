@@ -100,7 +100,7 @@ def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, x_file, num_traj, num_states, s
   num_controls = num_states - 1
   max_trans = 2e-1
   max_rot = 5e-2
-  lmbda = 0.001
+  lmbda = 0.01
 
   control_const_vec = matrix([max_trans, max_trans, max_trans, max_rot, max_rot, max_rot, max_trans, max_trans, max_trans, max_rot, max_rot, max_rot], (12,1))
 

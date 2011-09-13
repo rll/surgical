@@ -510,53 +510,85 @@ void World::projectLegalState() {
 }
 
 
-void World::computeJacobian(MatrixXd& J) {
+void World::computeJacobian(MatrixXd* J) {
+  double t0 = GetClock();
 
-  World* world_copy = new World(*this,true);
+  World* world_copy = new World(*this, test_world_manager);
+
+  //cout << "copying took = " << GetClock() - t0 << endl;  
 
   VectorXd world_state;
+  //getStateForJacobian(world_state);
   world_copy->getStateForJacobian(world_state);
   int size_each_state = world_state.size();
   int size_each_control = 12; 
-  J.resize(world_state.size(), size_each_control);
-  J.setZero();
+  J->resize(world_state.size(), size_each_control);
+  J->setZero();
   double eps = 1e-1;
 
+  t0 = GetClock();
 
-  double t0 = GetClock(); 
-  //#pragma omp parallel for num_threads(NUM_CPU_THREADS)
+  boost::thread_group group;
+
+  /*for (int i = 0; i < 12; i++) {
+    VectorXd du(12);
+    du.setZero(); 
+    du(i) = eps;
+    if (i >= 3 && i <= 5) du(i) = 0.5 * eps; 
+    if (i >= 9 && i <= 11) du(i) = 0.5 * eps;
+
+    group.create_thread( boost::bind(computeJacCord,
+          this, i, size_each_state, &du, &J) ); 
+
+  }
+
+  group.join_all();
+  */
+  
   for (int i = 0 ; i < 12; i++) { 
     VectorXd du(12);
     du.setZero(); 
     du(i) = eps;
     if (i >= 3 && i <= 5) du(i) = 0.5 * eps; 
     if (i >= 9 && i <= 11) du(i) = 0.5 * eps; 
-    //World* world_copy = new World(*this, true); 
     world_copy->applyRelativeControlJacobian(du); 
     VectorXd new_state;
     world_copy->getStateForJacobian(new_state);
-    J.block(0,i, size_each_state, 1) = new_state;
+    J->block(0,i, size_each_state, 1) = new_state;
     world_copy->setStateForJacobian(world_state);
-    //delete world_copy;
 
     du(i) = -eps;
     if (i >= 3 && i <= 5) du(i) = 0.5 * -eps; 
     if (i >= 9 && i <= 11) du(i) = 0.5 * -eps; 
-    //world_copy = new World(*this, true); 
     world_copy->applyRelativeControlJacobian(du); 
     world_copy->getStateForJacobian(new_state);
-    J.block(0,i, size_each_state, 1) -= new_state;
+    J->block(0,i, size_each_state, 1) -= new_state;
     world_copy->setStateForJacobian(world_state);
-    //delete world_copy;
-  }
 
+  }
   //cout << GetClock() - t0 << endl; 
 
   delete world_copy;
   
-  J /= (2 * eps); 
+  (*J) /= (2 * eps); 
   //J /= eps; 
 
+}
+
+void computeJacCord(World* w, int i, int size_each_state, VectorXd* du, MatrixXd* J) {
+
+    World* world_copy = new World(*w, test_world_manager); 
+    world_copy->applyRelativeControlJacobian(*du); 
+    VectorXd new_state;
+    world_copy->getStateForJacobian(new_state);
+    J->block(0,i, size_each_state, 1) = new_state;
+    delete world_copy;
+    
+    world_copy = new World(*w, test_world_manager); 
+    world_copy->applyRelativeControlJacobian(-1*(*du)); 
+    world_copy->getStateForJacobian(new_state);
+    J->block(0,i, size_each_state, 1) -= new_state;
+    delete world_copy;
 }
 
 

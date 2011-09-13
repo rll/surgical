@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <vector>
+#include <boost/thread.hpp>
 
 #include <btBulletDynamicsCommon.h>
 
@@ -21,10 +22,13 @@ class WorldManager
 		void freeWorld(World* world);
 		int numOfAllocatedWorlds();
 		int numOfAllocatedCollisionWorlds();
-	
+
 	protected:
 		vector<World*> worlds;
 		vector<CollisionWorld*> collision_worlds;
+
+  private:
+    boost::mutex mymutex; 
 };
 
 #endif //WorldManager

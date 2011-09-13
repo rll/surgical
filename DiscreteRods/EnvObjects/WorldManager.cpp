@@ -23,6 +23,9 @@ WorldManager::~WorldManager()
 
 CollisionWorld* WorldManager::allocateWorld(World* world)
 {
+  boost::mutex::scoped_lock mylock(mymutex, boost::defer_lock);
+  mylock.lock();
+
 	assert(worlds.size() == collision_worlds.size());
 	int world_ind;
 	for (world_ind = 0; (world_ind < worlds.size()) && (worlds[world_ind] != NULL); world_ind++) {}
@@ -41,15 +44,21 @@ CollisionWorld* WorldManager::allocateWorld(World* world)
 #endif
 		return collision_worlds[world_ind];
 	}
+  mylock.unlock();
 }
 
 void WorldManager::freeWorld(World* world)
 {
+  boost::mutex::scoped_lock mylock(mymutex, boost::defer_lock);
+  mylock.lock();
+
 	assert(worlds.size() == collision_worlds.size());
 	int world_ind;
 	for (world_ind = 0; (world_ind < worlds.size()) && (worlds[world_ind] != world); world_ind++) {}
 	assert(world_ind != worlds.size());
 	worlds[world_ind] = NULL;
+
+  mylock.unlock();
 }
 
 int WorldManager::numOfAllocatedWorlds()

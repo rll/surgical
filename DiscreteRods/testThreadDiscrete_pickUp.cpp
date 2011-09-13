@@ -105,8 +105,8 @@ Mouse *mouse0, *mouse1;
 Control *control0, *control1;
 
 //Environment
-WorldManager* test_world_manager;
 World *world;
+WorldManager* test_world_manager;
 
 //drawing SQP results
 vector<vector<World*> > drawWorlds;
@@ -961,10 +961,10 @@ int main (int argc, char * argv[])
 	connectionInit();
 	
 	//Environment
-	test_world_manager = new WorldManager();
+  test_world_manager = new WorldManager();
 	world = new World(test_world_manager);
 	
-	for (int i = 0; i < 500; i++) {
+	/*for (int i = 0; i < 500; i++) {
 		cout << i << " ";
 		World* temp0 = new World(*world, test_world_manager);
 		World* temp1 = new World(*world, test_world_manager);
@@ -975,10 +975,10 @@ int main (int argc, char * argv[])
 		delete temp3;
 		delete world;
 		world = temp0;
-	}
-	cout << endl;
-	cout << "test_world_manager->numOfAllocatedWorlds(): " << test_world_manager->numOfAllocatedWorlds() << endl;
-	cout << "test_world_manager->numOfAllocatedCollisionWorlds(): " << test_world_manager->numOfAllocatedCollisionWorlds() << endl;
+	}*/
+	//cout << endl;
+	//cout << "test_world_manager->numOfAllocatedWorlds(): " << test_world_manager->numOfAllocatedWorlds() << endl;
+	//cout << "test_world_manager->numOfAllocatedCollisionWorlds(): " << test_world_manager->numOfAllocatedCollisionWorlds() << endl;
 	
 	//control0 = new Control(Vector3d::Zero(), Matrix3d::Identity());
 	//control1 = new Control(Vector3d::Zero(), Matrix3d::Identity());
@@ -1298,17 +1298,22 @@ VectorXd closedLoopSQPStepper(World* start, World* goal, WorldSQP* solver) {
   vector<World*> perturbations;
   perturbations.push_back(start);
   for (int i = 1; i < solver->num_traj(); i++) { 
-   World* perturbed_world = new World(*start, true);
+   World* perturbed_world = new World(*start, test_world_manager);
    VectorXd du(12);
    sample_on_sphere(du, NOISE_THRESHOLD);
    perturbed_world->applyRelativeControlJacobian(du);
    World* input = new World(*perturbed_world);
-   delete perturbed_world;
    perturbations.push_back(input);
+   delete perturbed_world;
   }
 
-  solver->pushStart(new World(*start)); 
-  solver->pushGoal(new World(*goal));
+  solver->pushStart(perturbations); 
+  solver->pushGoal(goal);
+
+  for (int i = 0; i < perturbations.size(); i++) {
+    //cout << &(*perturbations[i]) << endl; 
+    //delete perturbations[i];
+  }
 
   solver->solve();
   return solver->getStartControl();
@@ -1334,7 +1339,7 @@ void closedLoopSQPController(World* start, vector<World*>& target,
       vector<World*> openLoopWorlds; 
       openLoopWorlds.push_back(new World(*start));
 
-      World* OLcopy = new World(*start, true);
+      World* OLcopy = new World(*start, test_world_manager);
       for (int i = 1; i < max_ind; i++) { //state size change at 1088
         cout << "Step " << i << " / " << max_ind << endl;
         //if (interruptEnabled) break; 
@@ -1354,6 +1359,7 @@ void closedLoopSQPController(World* start, vector<World*>& target,
       sqp_init.push_back(init_worlds);
       sqp_init.push_back(init_worlds);
       sqp_init.push_back(init_worlds);
+      sqp_init.push_back(init_worlds);
 
       WorldSQP* solver; 
       solver = new WorldSQP(0,0,0); /// HACK!!
@@ -1361,14 +1367,14 @@ void closedLoopSQPController(World* start, vector<World*>& target,
       sprintf(namestring, "clsqp_stepper_h_%d", horizon[h]);
       cout << "namestring = " << namestring << endl; 
       solver->set_namestring(namestring);
-      solver->initializeClosedLoopStepper(new World(*start), sqp_init);
+      solver->initializeClosedLoopStepper(start, sqp_init);
       solver->solve();
 
       vector<World*> closedLoopWorlds;
       closedLoopWorlds.push_back(new World(*start));
       VectorXd ctrl_cl_0 = solver->getStartControl();
 
-      World* CLcopy = new World(*start, true); 
+      World* CLcopy = new World(*start, test_world_manager);
       //start_copy->applyRelativeControlJacobian(ctrl_cl_0);
       //closedLoopWorlds.push_back(new World(*start_copy));
 
@@ -1376,7 +1382,7 @@ void closedLoopSQPController(World* start, vector<World*>& target,
         cout << "Step " << i << " / " << max_ind << endl;
         //if (interruptEnabled) break; 
         if (i + T > target.size() - 1) T = target.size() - i - 1;
-        //CLcopy->applyRelativeControl(ctrls[i-1], NOISE_THRESHOLD, true);  
+        CLcopy->applyRelativeControl(ctrls[i-1], NOISE_THRESHOLD, true);  
         VectorXd cl_ctrl = closedLoopSQPStepper(CLcopy, target[i+T], solver);
         CLcopy->applyRelativeControlJacobian(cl_ctrl, NOISE_THRESHOLD);
         closedLoopWorlds.push_back(new World(*CLcopy));

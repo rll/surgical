@@ -61,7 +61,7 @@ void WorldSQP::initializeClosedLoopStepper(World* start, vector<vector<World*> >
       current_jacobians[i][j] = MatrixXd();
     }
   }
-  pushStart(new World(*start));
+  pushStart(start);
 }
 
 
@@ -69,9 +69,10 @@ void WorldSQP::pushGoal(vector<World*>& states) {
 #if COLOCATION_METHOD
   assert(states.size() == current_states.size());
   for (int i = 0; i < current_states.size(); i++) { 
-    current_states[i].push_back(states[i]);
+    current_states[i].push_back(new World(*states[i]));
     current_jacobians[i].push_back(MatrixXd());
   }
+  //cout << "Push Goal: " << current_states[0].size() << endl;
 #else
   assert(false);
 #endif
@@ -81,7 +82,7 @@ void WorldSQP::pushGoal(World* state) {
 #if COLOCATION_METHOD
   vector<World*> goal_states;
   for (int i = 0; i < current_states.size(); i++) {
-    goal_states.push_back(state);
+    goal_states.push_back(state); //other method handles memory
   }
   pushGoal(goal_states);
 #else 
@@ -92,16 +93,18 @@ void WorldSQP::pushGoal(World* state) {
 void WorldSQP::pushStart(vector<World*>& states) {
 #if COLOCATION_METHOD
   assert(states.size() == current_states.size());
-  pushGoal(states); // this is corrected for
+  pushGoal(states[0]); // this is corrected for
   for (int j = 0; j < current_states.size(); j++) { 
     int max_ind = current_states[j].size() - 1;
+    delete current_states[j][max_ind]; //fix memory leak
     for (int i = max_ind; i > 0; i--) {
       current_states[j][i]    = current_states[j][i-1];
       current_jacobians[j][i] = current_jacobians[j][i-1];
     }
-    current_states[j][0] = states[j];
+    current_states[j][0] = new World(*states[j]);
     current_jacobians[j][0] = MatrixXd();
   }
+  //cout << "Push Start: " << current_states[0].size() << endl;
 #else
   assert(false);
 #endif
@@ -111,7 +114,7 @@ void WorldSQP::pushStart(World* state) {
 #if COLOCATION_METHOD
   vector<World*> start_states;
   for (int i = 0; i < current_states.size(); i++) {
-    start_states.push_back(state);
+    start_states.push_back(state); //other method handles memory
   }
   pushStart(start_states);
 #else
@@ -123,6 +126,9 @@ void WorldSQP::popStart() {
 #if COLOCATION_METHOD
   for (int j = 0; j < current_states.size(); j++) { 
     int max_ind = current_states[j].size() - 1;
+    delete current_states[j][0];
+    current_states[j][0] = NULL;
+    
     for (int i = 0; i < max_ind - 1; i++) {
       current_states[j][i]    = current_states[j][i+1];
       current_jacobians[j][i] = current_jacobians[j][i+1];
@@ -131,6 +137,7 @@ void WorldSQP::popStart() {
     current_jacobians[j][max_ind - 1] = current_jacobians[j][max_ind]; 
   }
   popGoal();
+  //cout << "Pop Start: " << current_states[0].size() << endl;
 #else
   assert(false);
 #endif
@@ -138,11 +145,12 @@ void WorldSQP::popStart() {
 
 void WorldSQP::popGoal() {
 #if COLOCATION_METHOD
-  for (int i = 0; i < current_states.size(); i++) { 
+  for (int i = 0; i < current_states.size(); i++) {
+    delete current_states[i].back();
     current_states[i].pop_back();
     current_jacobians[i].pop_back();
   }
-
+  //cout << "Pop Goal: " << current_states[0].size() << endl;
 #else
   assert(false);
 #endif
@@ -263,10 +271,13 @@ void WorldSQP::solve() {
     newStates[j].resize(current_states[j].size());
     for (int i = 0; i < current_states[j].size(); i++) {
       newStates[j][i] = new World(*current_states[j][i]);
-      //delete current_states[j][i]; // TODO: Dependent on memory leak above
+      delete current_states[j][i]; // TODO: Dependent on memory leak above
+      current_states[j][i] = NULL;
 
     }
+    current_states[j].resize(0);
   }
+  current_states.resize(0);
 
   /* 
   cout << "Projecting SQP States into Legal States" << endl; 
@@ -380,7 +391,16 @@ void WorldSQP::compute_all_jacobians()
               &current_jacobians[traj_ind][i]) );
 
       }
+        /*if (group.size() >= 50) {
+          group.join_all();
+          for (int i = 0 ; i < boost_threads.size(); i++) {
+            group.remove_thread(boost_threads[i]);
+            delete boost_threads[i];
+          }
+          boost_threads.resize(0);
+        }*/
     }
+
   }
 
   group.join_all();
@@ -465,7 +485,7 @@ void block(DynamicSparseMatrix<double>& container, int start_row, int start_col,
 }
 
 void computeJacobian(World* w, MatrixXd* J) {
-  w->computeJacobian(*J);
+  w->computeJacobian(J);
 
 
 }
