@@ -35,6 +35,7 @@ On Ubuntu, try running the following commands:
         libgle3 libgle3-dev fortran-compiler libglut3 libglut3-dev subversion git-core
         build-essential libavformat-dev ffmpeg libcv2.1 libcvaux2.1 libhighgui2.1
         python-opencv opencv-doc libcv-dev libcvaux-dev libhighgui-dev libboost-dev
+        libdevil-dev libgoogle-perftools-dev
 
 On OS X, the easiest way to install libraries is through MacPorts
 
@@ -42,6 +43,4 @@ On OS X, the easiest way to install libraries is through MacPorts
 
   You will also need to install gle from source from http://linas.org/gle/. The code will not compile unless you modify the source to #include malloc/malloc.h instead of malloc.h.
 
-
-
-
+ Once all your dependencies are installed, simply ```cd DiscreteRods``` and then run ```make``` to build.

@@ -2,9 +2,11 @@
 #define _threadpiece_discrete_h
 
 #include <math.h>
+#include <btBulletDynamicsCommon.h>
 
 #include "threadutils_discrete.h"
-#include "Collisions/collisionUtils.h"
+#include "EnvObjects/ObjectTypes.h"
+#include "EnvObjects/Object.h"
 
 using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN
@@ -14,10 +16,12 @@ static Matrix2d B = Matrix2d::Identity()*BEND_COEFF;
 static double TWIST_COEFF = BEND_COEFF*3.00;
 static double STRETCH_COEFF = 0.1 * BEND_COEFF;
 static double GRAV_COEFF = BEND_COEFF*1e-4;
-static double REPULSION_COEFF = 100.0 * BEND_COEFF;
+static double REPULSION_COEFF = 0.5 * BEND_COEFF;
 
 static Matrix2d J = Matrix2d(Eigen::Rotation2Dd(M_PI/2.0));
 static Matrix2d JB = J*B;
+
+#include "Collisions/collisionUtils.h"
 
 const double grad_eps = 1e-4;
 
@@ -25,15 +29,15 @@ static Vector3d grad_offsets[3];
 
 class Thread;
 
-class ThreadPiece
+class ThreadPiece : public Object
 {
   public:
-    ThreadPiece(const Vector3d& vertex, const double angle_twist, const double rest_length, Thread* my_thread);
-    ThreadPiece(const Vector3d& vertex, const double angle_twist, const double rest_length, ThreadPiece* prev, ThreadPiece* next, Thread* my_thread);
-    ThreadPiece(const ThreadPiece& rhs);
-    ThreadPiece(const ThreadPiece& rhs, Thread* my_thread);
+    ThreadPiece(const Vector3d& vertex, const double angle_twist, const double rest_length, Thread* my_thread, bool add_col_obj);
+    ThreadPiece(const Vector3d& vertex, const double angle_twist, const double rest_length, ThreadPiece* prev, ThreadPiece* next, Thread* my_thread, bool add_col_obj);
+    ThreadPiece(const ThreadPiece& rhs, bool add_col_obj);
+    ThreadPiece(const ThreadPiece& rhs, Thread* my_thread, bool add_col_obj);
 
-    ThreadPiece();
+    ThreadPiece(bool add_col_obj);
     virtual ~ThreadPiece();
 
     //Data Structures
@@ -81,7 +85,6 @@ class ThreadPiece
     double energy_twist();
     double energy_stretch();
 		double energy_grav();
-    double energy_repulsion();
 
 		//Energy Params
 		void set_bend_coeff(double bend_coeff);
@@ -96,6 +99,7 @@ class ThreadPiece
     //Gradients
     void gradient_twist(double& grad);
     void gradient_vertex(Vector3d& grad);
+    void stretch_gradient_vertex(Vector3d& grad);
     void gradient_vertex_numeric(Vector3d& grad);
     void calc_del_kb_k(Matrix3d& del_kb_k, const ThreadPiece* other_piece, Matrix3d& edge_skew_prev, Matrix3d& edge_skew_next);
     void add_sum_writhe(ThreadPiece* other_piece, Vector3d& curr_sum);
@@ -139,6 +143,12 @@ class ThreadPiece
 
     Thread* _my_thread;
 
+		//collision
+		int _piece_ind;
+		void setPieceInd(int piece_ind) { _piece_ind = piece_ind; }
+		bool isPieceIndConsistent();
+		btCollisionObject* _col_obj;
+		void updateCollisionObjectTransform();
 
 		Matrix3d skew_i;
 		Matrix3d skew_i_im1;
