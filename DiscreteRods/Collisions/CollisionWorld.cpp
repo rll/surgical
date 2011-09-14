@@ -59,7 +59,7 @@ bool CollisionWorld::needCollision(btCollisionObject* obA, btCollisionObject* ob
   		ThreadPiece* thread_pieceB = dynamic_cast<ThreadPiece*>(objB);
   		
   		if (thread_pieceA->_my_thread == thread_pieceB->_my_thread) {
-  			collides = collides && (abs(thread_pieceA->_piece_ind - thread_pieceB->_piece_ind) > 1);
+  			collides = collides && (abs(thread_pieceA->_piece_ind - thread_pieceB->_piece_ind) > 2);
   		}
   		
   		collides = collides && !(((thread_pieceA->_piece_ind == 0) || (thread_pieceA->_piece_ind == thread_pieceA->_my_thread->_thread_pieces.size()-2)) &&
@@ -70,10 +70,10 @@ bool CollisionWorld::needCollision(btCollisionObject* obA, btCollisionObject* ob
   	}
   } else if ((objA->getType() == THREAD_PIECE) && (objB->getType() == END_EFFECTOR)) {
   	ThreadPiece* thread_pieceA = dynamic_cast<ThreadPiece*>(objA);
-  	collides = collides && (thread_pieceA->_piece_ind > 1) && (thread_pieceA->_piece_ind < thread_pieceA->_my_thread->_thread_pieces.size()-3);      	
+  	collides = collides && (thread_pieceA->_piece_ind > 2) && (thread_pieceA->_piece_ind < thread_pieceA->_my_thread->_thread_pieces.size()-4); 	
   } else if ((objA->getType() == END_EFFECTOR) && (objB->getType() == THREAD_PIECE)) {
   	ThreadPiece* thread_pieceB = dynamic_cast<ThreadPiece*>(objB);
-  	collides = collides && (thread_pieceB->_piece_ind > 1) && (thread_pieceB->_piece_ind < thread_pieceB->_my_thread->_thread_pieces.size()-3);
+  	collides = collides && (thread_pieceB->_piece_ind > 2) && (thread_pieceB->_piece_ind < thread_pieceB->_my_thread->_thread_pieces.size()-4);
   } else {
   	assert(0);
   }

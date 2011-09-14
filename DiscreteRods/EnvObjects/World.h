@@ -166,7 +166,6 @@ class World
             relative_control(i*8+4), relative_control(i*8+5));
 
       }
-      cout << relative_control.transpose() << endl; 
     }
 
     VectorXd JacobianControlStripper(const VectorXd& relative_control) {
@@ -199,6 +198,7 @@ class World
 		void initThread();
 		void initLongerThread();
 		void initRestingThread(int opt);
+		void initRestingFinerThread(int opt);
 		
 	private:
 		vector<Cursor*> cursors; //control handler

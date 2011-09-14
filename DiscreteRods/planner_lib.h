@@ -1,5 +1,5 @@
 #define NUM_ITERS_SQP_PLANNER 1
-#define NUM_ITERS_SQP_SMOOTHER 1
+#define NUM_ITERS_SQP_SMOOTHER 3
 #define SQP_BREAK_THRESHOLD 2
 #define NOISE_THRESHOLD 0.0
 
@@ -119,13 +119,13 @@ void openLoopController(World* start, vector<World*> follow_traj, vector<vector<
 
   for (int i = 0; i < controls_in.size(); i++) {
     traj_out.push_back(new World(*world));
-    cout << cost_metric(world, follow_traj[i]) << endl;
+    //cout << cost_metric(world, follow_traj[i]) << endl;
     world->applyRelativeControl(controls_in[i], NOISE_THRESHOLD, true);
     ++progress; 
 
   }
   traj_out.push_back(new World(*world));
-  cout << cost_metric(world, follow_traj.back()) << endl; 
+  //cout << cost_metric(world, follow_traj.back()) << endl; 
 
 }
 
