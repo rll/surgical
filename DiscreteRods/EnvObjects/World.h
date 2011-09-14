@@ -152,6 +152,30 @@ class World
       }
     }
 
+    void ControlToVectorXd(const vector<Control*>& c, VectorXd& relative_control) {
+      assert(cursors.size() == c.size());
+
+      relative_control.resize(cursors.size()*8);
+      relative_control.setZero();
+      cout << relative_control.size() << endl;
+      for (int i = 0; i < cursors.size(); i++) { 
+        Vector3d translation = c[i]->getTranslate();
+        Matrix3d rotation = c[i]->getRotation();
+        relative_control.segment(i*8, 3) = translation;
+        euler_angles_from_rotation(rotation, relative_control(i*8+3),
+            relative_control(i*8+4), relative_control(i*8+5));
+
+      }
+    }
+
+    VectorXd JacobianControlStripper(const VectorXd& relative_control) {
+      assert(cursors.size()*8 == relative_control.size());
+      VectorXd stripped_control(12);
+      stripped_control.segment(0,6) = relative_control.segment(0,6);
+      stripped_control.segment(6,6) = relative_control.segment(8,6);
+      return stripped_control;
+    }
+
     VectorXd JacobianControlWrapper(const VectorXd& relative_control) { 
 
       assert(cursors.size()*6 == relative_control.size());

@@ -28,20 +28,27 @@ USING_PART_OF_NAMESPACE_EIGEN
 
 WorldManager* test_world_manager;
 
-void chunkSmoother(vector<World*>& traj_in, vector<World*>& traj_out, vector<vector<Control*> >& controls_out, int size_each_chunk, char * namestring) {
+void chunkSmoother(vector<World*>& traj_in, vector<vector<Control*> >& controls_in, vector<World*>& traj_out, vector<vector<Control*> >& controls_out, int size_each_chunk, char *namestring) {
 	cout << traj_in.size() << " " << size_each_chunk << endl;
 	assert((traj_in.size()%size_each_chunk) == 0);
 	int num_chunks = traj_in.size() / size_each_chunk;
 
 	vector<vector<World*> > chunks;
+  vector<vector<VectorXd> >chunk_ctrls;
 
-	for (int i = 0; i < num_chunks; i++) {
-	  vector<World*> individual_chunk;
-	  for (int j = 0; j < size_each_chunk; j++) {
-	    individual_chunk.push_back(traj_in[i*size_each_chunk + j]);
-	  }
-	  chunks.push_back(individual_chunk);
-	}
+  for (int i = 0; i < num_chunks; i++) {
+    vector<World*> individual_chunk;
+    vector<VectorXd> individual_ctrls; 
+    for (int j = 0; j < size_each_chunk; j++) {
+      individual_chunk.push_back(traj_in[i*size_each_chunk + j]);
+      VectorXd u; 
+      individual_chunk.back()->ControlToVectorXd(controls_in[i*size_each_chunk + j], u);
+      u = individual_chunk.back()->JacobianControlStripper(u);
+      individual_ctrls.push_back(u);
+    }
+    chunks.push_back(individual_chunk);
+    chunk_ctrls.push_back(individual_ctrls);
+  }
 
 	vector<vector<World*> > smooth_chunks;
 	vector<vector<VectorXd> > smooth_controls;
@@ -56,8 +63,9 @@ void chunkSmoother(vector<World*>& traj_in, vector<World*>& traj_out, vector<vec
 	  vector<VectorXd> smooth_control;
 	  vector<vector<World*> > sqp_init;
 	  sqp_init.push_back(chunks[i]);
+    chunk_ctrls[i].pop_back();
 
-	  solveSQP(sqp_init, smooth_chunk, smooth_control, namestring, false);
+	  solveSQP(sqp_init, chunk_ctrls[i], smooth_chunk, smooth_control, namestring, false);
 	  VectorXd du(12);
 	  du.setZero(); 
 	  smooth_chunks[i] = smooth_chunk[0];
@@ -94,22 +102,24 @@ int main (int argc, char * argv[])
 {
   test_world_manager = new WorldManager();
   
-  if (argc != 7) {
+  if (argc != 8) {
     cout << argc << " is the wrong number of arguments. There should be 8:" << endl;
-    cout << "traj_out_filename control_out_filename traj_in_filename start_ind end_ind size_each_chunk." << endl;
+    cout << "traj_out_filename control_out_filename traj_in_filename control_in_filename start_ind end_ind size_each_chunk." << endl;
     return 0;
   }
   
   char *traj_out_filename = new char[256];
   char *control_out_filename = new char[256];
   char *traj_in_filename = new char[256];
+  char *control_in_filename = new char[256];
   sprintf(traj_out_filename, "%s%s", "environmentFiles/", argv[1]);
   sprintf(control_out_filename, "%s%s", "environmentFiles/", argv[2]);  
   sprintf(traj_in_filename, "%s%s", "environmentFiles/", argv[3]);
+  sprintf(control_in_filename, "%s%s", "environmentFiles/", argv[4]);
   
-  int start_ind = atoi(argv[4]);
-  int end_ind = atoi(argv[5]);
-  int size_each_chunk = atoi(argv[6]);
+  int start_ind = atoi(argv[5]);
+  int end_ind = atoi(argv[6]);
+  int size_each_chunk = atoi(argv[7]);
 
   TrajectoryReader traj_in_reader(traj_in_filename);
   vector<World*> traj_in;
@@ -120,6 +130,14 @@ int main (int argc, char * argv[])
     return 0;
   }
 
+  vector<vector<Control*> > controls_in;
+  TrajectoryReader control_traj_reader(control_in_filename); 
+  if (control_traj_reader.readControlsFromFile(controls_in)) {
+    cout << "Loading input controls was successful. " << controls_in.size() << " controls were loaded." << endl;
+  } else {
+    cout << "Failed to lead controls from file " << control_in_filename << endl;
+    return 0;
+  }
   start_ind = start_ind % traj_in.size();
   end_ind = (traj_in.size()+end_ind) % traj_in.size();
   
@@ -131,16 +149,18 @@ int main (int argc, char * argv[])
   }
   
   vector<World*> traj_in_subset;
+  vector<vector<Control*> > control_in_subset; 
   for (int i = start_ind; i <= end_ind; i++) {
   	traj_in_subset.push_back(traj_in[i]);
+    control_in_subset.push_back(controls_in[i]);
   }
   
   vector<World*> traj_out;
   vector<vector<Control*> > controls_out;
   char namestring[1024];
-  sprintf(namestring, "sqp_smoother_chunk_%s_%s_%s_%s_%s_%s", argv[1], argv[2], argv[3], argv[4], argv[5], argv[6]);
+  sprintf(namestring, "sqp_smoother_chunk_%s_%s_%s_%s_%s_%s_%s", argv[1], argv[2], argv[3], argv[4], argv[5], argv[6], argv[7]);
   
-	chunkSmoother(traj_in_subset, traj_out, controls_out, size_each_chunk, namestring);
+	chunkSmoother(traj_in_subset, control_in_subset, traj_out, controls_out, size_each_chunk, namestring);
 
   TrajectoryRecorder traj_out_recorder(traj_out_filename);
   traj_out_recorder.start();
