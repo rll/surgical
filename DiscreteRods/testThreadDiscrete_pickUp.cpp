@@ -526,8 +526,8 @@ void processNormalKeys(unsigned char key, int x, int y)
         vector<World*> waypoints;
         vector<vector<Control*> > waypoint_controls;
         //for (int i = 0; i < 100; i++) {
-        for (int i = 0; i < 100; i++) {
-        //for (int i = 0; i < temp_worlds.size()-1; i++) {
+        //for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < temp_worlds.size()-1; i++) {
           waypoints.push_back(new World(*temp_worlds[i]));
           waypoint_controls.push_back(controls[i]);
         }
@@ -539,16 +539,16 @@ void processNormalKeys(unsigned char key, int x, int y)
         //    controls, traj_out, nameString);
         //closedLoopSQPController(new World(*initialWorld), waypoints,
          //   controls, traj_out, nameString);
-        //openLoopController(new World(*initialWorld), waypoints, controls, traj_out);
-        //vector<vector<World*> > vis_data;
-        //vis_data.push_back(traj_out);
+        openLoopController(new World(*initialWorld), waypoints, controls, traj_out);
+        vector<vector<World*> > vis_data;
+        vis_data.push_back(traj_out);
         //vis_data.push_back(waypoints);
-        //setVisualizationData(vis_data);
+        setVisualizationData(vis_data);
         //closedLoopSQPController(initialWorld, waypoints, waypoint_controls);
         vector<World*> smooth_traj;
         vector<vector<Control*> > smooth_controls;
         
-        chunkSmoother(waypoints, smooth_traj, smooth_controls);
+        //chunkSmoother(waypoints, smooth_traj, smooth_controls);
         //chunkSmoother(waypoints, smooth_traj, smooth_controls);
         //closedLoopSQPController(initialWorld, smooth_traj, smooth_controls);
 
@@ -1116,14 +1116,42 @@ void processInput(ControllerBase* controller0, ControllerBase* controller1)
 
 			if (trajectory_recorder_world.hasStarted())
 				trajectory_recorder_world.writeWorldToFile(world);
-			if (trajectory_recorder.hasStarted())
-				trajectory_recorder.writeControlToFile(control0, control1);
+//			if (trajectory_recorder.hasStarted())
+//				trajectory_recorder.writeControlToFile(control0, control1);
 
 			vector<Control*> controls;
 			controls.push_back(control0);
 			controls.push_back(control1);
 
+			Control* c0;
+			Control* c1;
+			Vector3d old_pos0;
+			Vector3d old_pos1;
+			Matrix3d old_rot0;
+			Matrix3d old_rot1;
+			
+			if (trajectory_recorder.hasStarted()) {
+				c0 = new Control(Vector3d::Zero(), Matrix3d::Identity());
+				c1 = new Control(Vector3d::Zero(), Matrix3d::Identity());
+				old_pos0 = world->objectAtIndex<Cursor>(0)->end_eff->getPosition();
+				old_pos1 = world->objectAtIndex<Cursor>(1)->end_eff->getPosition();
+				old_rot0 = world->objectAtIndex<Cursor>(0)->end_eff->getRotation();
+				old_rot1 = world->objectAtIndex<Cursor>(1)->end_eff->getRotation();
+				c0->setButton(UP, control0->getButton(UP));
+				c1->setButton(UP, control1->getButton(UP));
+				c0->setButton(DOWN, control0->getButton(DOWN));
+				c1->setButton(DOWN, control1->getButton(DOWN));
+			}
+			
 			world->applyRelativeControl(controls, NOISE_THRESHOLD, limit_displacement);
+			
+			if (trajectory_recorder.hasStarted()) {
+				c0->setTranslate(world->objectAtIndex<Cursor>(0)->end_eff->getPosition() - old_pos0);
+				c1->setTranslate(world->objectAtIndex<Cursor>(1)->end_eff->getPosition() - old_pos1);
+				c0->setRotate(old_rot0.transpose() * world->objectAtIndex<Cursor>(0)->end_eff->getRotation());
+				c1->setRotate(old_rot1.transpose() * world->objectAtIndex<Cursor>(1)->end_eff->getRotation());
+				trajectory_recorder.writeControlToFile(c0, c1);
+			}
 			
 		}
 	}

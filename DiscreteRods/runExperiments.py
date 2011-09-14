@@ -1,7 +1,7 @@
 import os, sys
 
 #control_in_filename = ["t7", "t6", "t5", "t4", "t3", "t2", "t1"]
-control_in_filename = ["d1_smooth"]
+control_in_filename = ["s1"]
 start_ind = 0
 end_ind = -1
 single_horizon = [0]
