@@ -29,7 +29,7 @@ EndEffector::EndEffector(const Vector3d& pos, const Matrix3d& rot, World* w, Thr
 	short_handle->setUserPointer(this);
 	col_objs.push_back(short_handle);
 	
-	btCapsuleShapeX* capsule_handle = new btCapsuleShapeX(btScalar(handle_r+REPULSION_DIST), btScalar(handle_h));
+	btCapsuleShapeX* capsule_handle = new btCapsuleShapeX(btScalar(handle_r+4.0*REPULSION_DIST), btScalar(handle_h));
 	capsule_handle->setMargin(0.f);
 	btCollisionObject* handle = new btCollisionObject();
 	handle->setCollisionShape(capsule_handle);
@@ -136,7 +136,7 @@ EndEffector::EndEffector(const EndEffector& rhs, World* w)
   short_handle->setUserPointer(this);
 	col_objs.push_back(short_handle);
   
-	btCapsuleShapeX* capsule_handle = new btCapsuleShapeX(btScalar(handle_r+REPULSION_DIST), btScalar(handle_h));
+	btCapsuleShapeX* capsule_handle = new btCapsuleShapeX(btScalar(handle_r+4.0*REPULSION_DIST), btScalar(handle_h));
 	capsule_handle->setMargin(0.f);
 	btCollisionObject* handle = new btCollisionObject();
   handle->setCollisionShape(capsule_handle);
@@ -219,7 +219,7 @@ EndEffector::EndEffector(ifstream& file, World* w)
   short_handle->setUserPointer(this);
   col_objs.push_back(short_handle);
   
-	btCapsuleShapeX* capsule_handle = new btCapsuleShapeX(btScalar(handle_r+REPULSION_DIST), btScalar(handle_h));
+	btCapsuleShapeX* capsule_handle = new btCapsuleShapeX(btScalar(handle_r+4.0*REPULSION_DIST), btScalar(handle_h));
 	capsule_handle->setMargin(0.f);
 	btCollisionObject* handle = new btCollisionObject();
   handle->setCollisionShape(capsule_handle);

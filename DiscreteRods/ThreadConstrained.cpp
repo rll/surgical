@@ -1047,6 +1047,9 @@ void ThreadConstrained::draw(bool mode) {
 	    pts_cpy,
 	    0x0,
 	    twist_cpy);
+	 
+	 glColor3f (1.0, 0.0, 0.0);
+	 drawSphere(points[points.size()/2], 1.5);
 
   if (examine_mode) {
 		glColor3f (0.0, 0.5, 0.5);

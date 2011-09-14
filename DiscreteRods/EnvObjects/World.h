@@ -174,6 +174,7 @@ class World
 		void initThread();
 		void initLongerThread();
 		void initRestingThread(int opt);
+		void initRestingFinerThread(int opt);
 		
 	private:
 		vector<Cursor*> cursors; //control handler

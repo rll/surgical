@@ -98,13 +98,13 @@ int main (int argc, char * argv[])
     return 0;
   }
 
+  start_ind = start_ind % traj_in.size();
+  end_ind = (traj_in.size()+end_ind) % traj_in.size();
+  
+  cout << "Using start_ind = " << start_ind << " and end_ind = " << end_ind << endl;
+  
   if (start_ind > end_ind) {
     cout << "The index of the start state is higher than the index of the end state." << endl;
-    return 0;
-  }
-
-  if (start_ind < 0 || end_ind < 0 || start_ind >= traj_in.size() || end_ind >= traj_in.size()) {
-    cout << "The index for the input trajectory is out of bounds." << endl;
     return 0;
   }
 
@@ -144,14 +144,15 @@ int main (int argc, char * argv[])
       }
       vector<vector<World*> > sqp_init;
       sqp_init.push_back(init_worlds);
-      sqp_init.push_back(init_worlds);
-      sqp_init.push_back(init_worlds);
-      sqp_init.push_back(init_worlds);
+//      sqp_init.push_back(init_worlds);
+//      sqp_init.push_back(init_worlds);
+//      sqp_init.push_back(init_worlds);
 
       WorldSQP* solver; 
       solver = new WorldSQP(0,0,0); /// HACK!!
-      char namestring[128];
-      sprintf(namestring, "clsqp_stepper_h_%d", horizon[h]);
+      char namestring[1024];
+      sprintf(namestring, "clsqp_stepper_%s_%s_%s_%s_%s_%s_%s", argv[1], argv[2], argv[3], argv[4], argv[5], argv[6], argv[7]);
+      //sprintf(namestring, "clsqp_stepper_h_%d", horizon[h]);
       cout << "namestring = " << namestring << endl; 
       solver->set_namestring(namestring);
       solver->initializeClosedLoopStepper(start, sqp_init);
@@ -169,10 +170,12 @@ int main (int argc, char * argv[])
         cout << "Step " << i << " / " << end_ind << endl;
         //if (interruptEnabled) break; 
         if (i + T > traj_in.size() - 1) T = traj_in.size() - i - 1;
-        CLcopy->applyRelativeControl(ctrls[i-1], noise_thresh, true);  
-        VectorXd cl_ctrl = closedLoopSQPStepper(CLcopy, traj_in[i+T], solver, noise_thresh);
-        CLcopy->applyRelativeControlJacobian(cl_ctrl, noise_thresh);
-        closedLoopWorlds.push_back(new World(*CLcopy));
+        CLcopy->applyRelativeControl(ctrls[i-1], noise_thresh, true); 
+        if (i % 2 == 0) {  
+          VectorXd cl_ctrl = closedLoopSQPStepper(CLcopy, traj_in[i+T], solver, noise_thresh);
+          CLcopy->applyRelativeControlJacobian(cl_ctrl, noise_thresh);
+          closedLoopWorlds.push_back(new World(*CLcopy));
+        }
       }
       delete CLcopy;
 

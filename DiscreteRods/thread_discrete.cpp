@@ -704,7 +704,7 @@ double Thread::calculate_energy()
   //double energy = _thread_pieces[2]->get_twist_coeff() * (pow(_thread_pieces[_thread_pieces.size() - 2]->angle_twist() - _thread_pieces.front()->angle_twist(),2)) / (2.0 * _rest_length * (_thread_pieces.size() - 2));
 	double energy = _thread_pieces[2]->get_twist_coeff() * (pow(end_angle() - start_angle(),2)) / (2.0*total_length() - start_rest_length() - end_rest_length());
 	
-	//std::cout << _thread_pieces[2]->get_twist_coeff() << " " << _thread_pieces.size() << " " << _thread_pieces[_thread_pieces.size()-2]->angle_twist() << " " << _thread_pieces.front()->angle_twist() << " " << 2.0*_rest_length*(_thread_pieces.size()-2) << std::endl;
+	//std::cout << _thread_pieces[2]->get_twist_coeff() << " " << _thread_pieces.size() << " " << _thread_pieces[_thread_pieces.size()-2]->angle_twist() << " " << _thread_pieces.front()->angle_twist() << std::endl;
 
   if (REPULSION_COEFF>0) {
   	updateCollisionObjectsTransform();
@@ -1986,7 +1986,7 @@ void Thread::calculate_gradient_vertices(vector<Vector3d>& vertex_gradients)
     //std::cout << "piece ind " << piece_ind << " new grad: " << vertex_gradients[piece_ind].transpose() << std::endl;
 
   }
-  
+
   if (REPULSION_COEFF>0) {
   	updateCollisionObjectsTransform();
   	if (world->collision_world != NULL) {
@@ -3301,7 +3301,7 @@ void Thread::copy_data_from_vector(VectorXd& toCopy)
   set_start_constraint(_thread_pieces.front()->vertex(), this->start_rot());
   
   set_end_constraint(_thread_pieces.back()->vertex(), this->end_rot());
-  _thread_pieces[_thread_pieces.size()-2]->set_angle_twist(toCopy(toCopy.rows()-1));
+  //_thread_pieces[_thread_pieces.size()-2]->set_angle_twist(toCopy(toCopy.rows()-1));
   _thread_pieces[_thread_pieces.size()-2]->update_material_frame();
   set_end_constraint(_thread_pieces.back()->vertex(), this->end_rot());
 }

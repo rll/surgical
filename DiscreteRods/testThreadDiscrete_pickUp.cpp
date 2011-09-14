@@ -98,6 +98,7 @@ double zero_angle;
 bool limit_displacement = false;
 bool haptics = false;
 RenderMode examine_mode = NORMAL;
+int downsample = 0;
 
 //IO
 Haptic *haptic0, *haptic1;
@@ -1075,44 +1076,55 @@ int main (int argc, char * argv[])
 
 void processInput(ControllerBase* controller0, ControllerBase* controller1)
 {	
-	
-  if (absoluteControl) {
+	if (absoluteControl) {
 		vector<ControllerBase*> controllers;
 		controllers.push_back(controller0);
 		controllers.push_back(controller1);
-	
+
 		world->setTransformFromController(controllers, limit_displacement);
-		
+	
 		if (trajectory_recorder.hasStarted())
 			trajectory_recorder.writeWorldToFile(world);
 	} else {
 		control0->setControl(controller0);
 		control1->setControl(controller1);
-		
-		if (haptics) { //TODO fix this hack
-			control0->setTranslate(haptic0->getPosition() - world->objectAtIndex<Cursor>(0)->getPosition());
-			control0->setRotate(world->objectAtIndex<Cursor>(0)->getRotation().transpose() * haptic0->getRotation());
-			control1->setTranslate(haptic1->getPosition() - world->objectAtIndex<Cursor>(1)->getPosition());
-			control1->setRotate(world->objectAtIndex<Cursor>(1)->getRotation().transpose() * haptic1->getRotation());
-		} else {
-			control0->setTranslate(mouse0->getPosition() - world->objectAtIndex<Cursor>(0)->getPosition());
-			control0->setRotate(world->objectAtIndex<Cursor>(0)->getRotation().transpose() * mouse0->getRotation());
-			control1->setTranslate(mouse1->getPosition() - world->objectAtIndex<Cursor>(1)->getPosition());
-			control1->setRotate(world->objectAtIndex<Cursor>(1)->getRotation().transpose() * mouse1->getRotation());
-		}
 	
-		if (trajectory_recorder_world.hasStarted())
-			trajectory_recorder_world.writeWorldToFile(world);
-		if (trajectory_recorder.hasStarted())
-			trajectory_recorder.writeControlToFile(control0, control1);
-	
-		vector<Control*> controls;
-		controls.push_back(control0);
-		controls.push_back(control1);
-	
-		world->applyRelativeControl(controls, NOISE_THRESHOLD, limit_displacement);
+		bool button_change = control0->getButton(UP) ||
+												 control0->getButton(DOWN) ||
+												 control1->getButton(UP) ||
+												 control1->getButton(DOWN);
 
-		
+		if (button_change)
+			downsample = 0;
+		else
+			downsample = (downsample+1) % 10;
+			
+		if (downsample == 0) {
+
+			if (haptics) { //TODO fix this hack
+				control0->setTranslate(haptic0->getPosition() - world->objectAtIndex<Cursor>(0)->getPosition());
+				control0->setRotate(world->objectAtIndex<Cursor>(0)->getRotation().transpose() * haptic0->getRotation());
+				control1->setTranslate(haptic1->getPosition() - world->objectAtIndex<Cursor>(1)->getPosition());
+				control1->setRotate(world->objectAtIndex<Cursor>(1)->getRotation().transpose() * haptic1->getRotation());
+			} else {
+				control0->setTranslate(mouse0->getPosition() - world->objectAtIndex<Cursor>(0)->getPosition());
+				control0->setRotate(world->objectAtIndex<Cursor>(0)->getRotation().transpose() * mouse0->getRotation());
+				control1->setTranslate(mouse1->getPosition() - world->objectAtIndex<Cursor>(1)->getPosition());
+				control1->setRotate(world->objectAtIndex<Cursor>(1)->getRotation().transpose() * mouse1->getRotation());
+			}
+
+			if (trajectory_recorder_world.hasStarted())
+				trajectory_recorder_world.writeWorldToFile(world);
+			if (trajectory_recorder.hasStarted())
+				trajectory_recorder.writeControlToFile(control0, control1);
+
+			vector<Control*> controls;
+			controls.push_back(control0);
+			controls.push_back(control1);
+
+			world->applyRelativeControl(controls, NOISE_THRESHOLD, limit_displacement);
+			
+		}
 	}
 }
 
@@ -1420,6 +1432,7 @@ void closedLoopSQPController(World* start, vector<World*>& target,
 
 void chunkSmoother(vector<World*>& traj_in, vector<World*>& traj_out, vector<vector<Control*> >& controls_out) {
   int size_each_chunk = 200;
+	assert((traj_in.size()%size_each_chunk) == 0);
   int num_chunks = traj_in.size() / size_each_chunk;
 
   vector<vector<World*> > chunks;
