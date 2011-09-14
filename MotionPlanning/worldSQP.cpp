@@ -13,7 +13,9 @@ WorldSQP::WorldSQP(int num_worlds, int size_each_state, int num_traj)
 {
   _num_worlds = 0;
   _size_each_state = 0;
-  _num_traj = 0; 
+  _num_traj = 0;
+  _wsqp_manager = new WorldManager();
+  
   resize_controller(num_worlds, size_each_state, num_traj);
   strcpy(_namestring, "");
 }
@@ -265,7 +267,7 @@ void WorldSQP::solve() {
 
 #if COLOCATION_METHOD
   //take sqp takes, transform to real states, and iterate
-  vector< vector<World*> > newStates;
+  /*vector< vector<World*> > newStates;
   newStates.resize(current_states.size());
   for (int j = 0; j < newStates.size(); j++) { 
     newStates[j].resize(current_states[j].size());
@@ -277,10 +279,23 @@ void WorldSQP::solve() {
     }
     current_states[j].resize(0);
   }
-  current_states.resize(0);
+  current_states.resize(0);*/
 
-   
-  cout << "Projecting SQP States into Legal States" << endl; 
+  //TODO: MOVE THIS OUT OF COLOCATION METHOD!!!
+
+  for (int j = 0; j < current_states.size(); j++) {
+    vector<World*> openLoopWorlds;
+    openLoopController(current_states[j], current_controls, openLoopWorlds);
+    openLoopWorlds.pop_back();
+    openLoopWorlds.push_back(new World(*current_states[j].back()));
+    for (int i = 0; i < current_states[j].size(); i++) { 
+      delete current_states[j][i];
+    }
+    current_states[j] = openLoopWorlds;
+  }
+  
+
+  /*cout << "Projecting SQP States into Legal States" << endl; 
   boost::thread_group group; 
 
   for (int j = 0; j < sqp_intermediate_states.size(); j++) { 
@@ -292,6 +307,11 @@ void WorldSQP::solve() {
   group.join_all();
   
   current_states = newStates;
+  */
+
+
+
+
   /*
   for (int i = 0; i < current_jacobians.size(); i++) { 
     current_jacobians[i] = MatrixXd();
