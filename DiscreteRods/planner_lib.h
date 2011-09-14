@@ -1,7 +1,7 @@
 #define NUM_ITERS_SQP_PLANNER 1
 #define NUM_ITERS_SQP_SMOOTHER 1
 #define SQP_BREAK_THRESHOLD 2
-#define NOISE_THRESHOLD 0.3
+#define NOISE_THRESHOLD 0.0
 
 
 #include "../MotionPlanning/worldSQP.h"
