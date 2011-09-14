@@ -53,6 +53,7 @@ void WorldSQP::initializeClosedLoopStepper(World* start, vector<vector<World*> >
 
   current_states.resize(target.size());
   current_jacobians.resize(target.size());
+  current_controls.resize(target[0].size());
 
   #pragma omp parallel for
   for (int i = 0; i < target.size(); i++) {
@@ -61,6 +62,10 @@ void WorldSQP::initializeClosedLoopStepper(World* start, vector<vector<World*> >
     for (int j = 0; j < target[i].size(); j++) {
       current_states[i][j]    = new World(*target[i][j]);
       current_jacobians[i][j] = MatrixXd();
+      VectorXd du(12);
+      du.setZero();
+      current_controls[j] = du; 
+
     }
   }
   pushStart(start);
@@ -212,7 +217,8 @@ void WorldSQP::solve() {
 
   //write out all controls to file 
   VectorXd init_controls(_size_each_control*(_num_worlds-1));
-  for (int j = 0; j < current_controls.size(); j++) {
+  for (int j = 0; j < current_controls.size(); j++) 
+	{
     assert(current_controls[j].size() == _size_each_control);
     init_controls.segment(j*_size_each_control, _size_each_control) = current_controls[j];
   }
@@ -363,6 +369,10 @@ bool WorldSQP::iterative_control_opt(vector<vector<World*> >& trajectory, vector
   
   assert(controls.size() == _num_worlds-1);
   current_controls = controls; 
+	for (int i = 0; i < current_controls.size(); i++) { 
+		cout << current_controls[i].transpose() << endl; 
+
+	}
 
   for (int opt_iter = 0; opt_iter < num_opts; opt_iter++) {
     solve();
