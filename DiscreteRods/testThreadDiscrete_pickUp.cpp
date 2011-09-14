@@ -51,12 +51,12 @@ void bitmap_output(int x, int y, char *string, void *font);
 void glutMenu(int ID);
 void initGL();
 void interruptHandler(int sig);
-void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_trajectory);
+//void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_trajectory);
 //void sqpPlanner(World* start, World* goal, vector<World*>& trajectory);
 void closedLoopSQPController(World* start, vector<World*>& target,
     vector<vector<Control*> >& ctrls);
 VectorXd closedLoopSQPStepper(World* start, World* goal, WorldSQP* solver);
-void chunkSmoother(vector<World*>& dirty, vector<World*>& smooth, vector<vector<Control*> >& smooth_controls);
+void chunkSmoother(vector<World*>& dirty, vector<vector<Control*> >& ctrl_in, vector<World*>& smooth, vector<vector<Control*> >& smooth_controls);
 
   static const GLfloat light_model_ambient[] = {0.3f, 0.3f, 0.3f, 1.0f};    
   static const GLfloat lightOnePosition[] = {140.0, 0.0, 200.0, 0.0};
@@ -526,8 +526,8 @@ void processNormalKeys(unsigned char key, int x, int y)
         vector<World*> waypoints;
         vector<vector<Control*> > waypoint_controls;
         //for (int i = 0; i < 100; i++) {
-        //for (int i = 0; i < 100; i++) {
-        for (int i = 0; i < temp_worlds.size()-1; i++) {
+        for (int i = 0; i < 10; i++) {
+        //for (int i = 0; i < temp_worlds.size()-1; i++) {
           waypoints.push_back(new World(*temp_worlds[i]));
           waypoint_controls.push_back(controls[i]);
         }
@@ -539,16 +539,15 @@ void processNormalKeys(unsigned char key, int x, int y)
         //    controls, traj_out, nameString);
         //closedLoopSQPController(new World(*initialWorld), waypoints,
          //   controls, traj_out, nameString);
-        openLoopController(new World(*initialWorld), waypoints, controls, traj_out);
-        vector<vector<World*> > vis_data;
-        vis_data.push_back(traj_out);
+        //openLoopController(new World(*initialWorld), waypoints, controls, traj_out);
+        //vector<vector<World*> > vis_data;
+        //vis_data.push_back(traj_out);
         //vis_data.push_back(waypoints);
-        setVisualizationData(vis_data);
+        //setVisualizationData(vis_data);
         //closedLoopSQPController(initialWorld, waypoints, waypoint_controls);
         vector<World*> smooth_traj;
         vector<vector<Control*> > smooth_controls;
-        
-        //chunkSmoother(waypoints, smooth_traj, smooth_controls);
+        chunkSmoother(waypoints, waypoint_controls, smooth_traj, smooth_controls);
         //chunkSmoother(waypoints, smooth_traj, smooth_controls);
         //closedLoopSQPController(initialWorld, smooth_traj, smooth_controls);
 
@@ -607,7 +606,7 @@ void processNormalKeys(unsigned char key, int x, int y)
         traj_to_smooth.push_back(new World(*worlds[i*20+j]));
       }
       vector<World*> smooth_traj; 
-      sqpSmoother(traj_to_smooth, smooth_traj);
+      //sqpSmoother(traj_to_smooth, smooth_traj);
       for (int j = 0; j < smooth_traj.size(); j++) { 
         completeOpenLoopTrajectory.push_back(new World(*smooth_traj[j]));
       }
@@ -1318,7 +1317,7 @@ void interruptHandler(int sig) {
     //setVisualizationData(completeOpenLoopTrajectory);
 }*/
 
-void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_trajectory) {
+/*void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_trajectory) {
 
   //getTrajectoryStatistics(trajectory_to_smooth);
 
@@ -1338,7 +1337,7 @@ void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_tr
   openLoopController(trajectory_to_smooth, sqpControls, smooth_trajectory);
 
   //setVisualizationData(openLoopWorlds);
-}
+}*/
 
 VectorXd closedLoopSQPStepper(World* start, World* goal, WorldSQP* solver) { 
   if (solver == NULL) assert(false); //initialize your shit
@@ -1459,19 +1458,26 @@ void closedLoopSQPController(World* start, vector<World*>& target,
 
 }
 
-void chunkSmoother(vector<World*>& traj_in, vector<World*>& traj_out, vector<vector<Control*> >& controls_out) {
-  int size_each_chunk = 20;
+void chunkSmoother(vector<World*>& traj_in, vector<vector<Control*> >& controls_in, vector<World*>& traj_out, vector<vector<Control*> >& controls_out) {
+  int size_each_chunk = 10;
 	assert((traj_in.size()%size_each_chunk) == 0);
   int num_chunks = traj_in.size() / size_each_chunk;
 
   vector<vector<World*> > chunks;
+  vector<vector<VectorXd> > chunk_ctrls; 
 
   for (int i = 0; i < num_chunks; i++) {
     vector<World*> individual_chunk;
+    vector<VectorXd> individual_ctrls; 
     for (int j = 0; j < size_each_chunk; j++) {
       individual_chunk.push_back(traj_in[i*size_each_chunk + j]);
+      VectorXd u; 
+      individual_chunk.back()->ControlToVectorXd(controls_in[i*size_each_chunk + j], u);
+      u = individual_chunk.back()->JacobianControlStripper(u);
+      individual_ctrls.push_back(u);
     }
     chunks.push_back(individual_chunk);
+    chunk_ctrls.push_back(individual_ctrls);
   }
 
   vector<vector<World*> > smooth_chunks;
@@ -1488,8 +1494,8 @@ void chunkSmoother(vector<World*>& traj_in, vector<World*>& traj_out, vector<vec
     vector<VectorXd> smooth_control;
     vector<vector<World*> > sqp_init;
     sqp_init.push_back(chunks[i]);
-
-    solveSQP(sqp_init, smooth_chunk, smooth_control, namestring, false);
+    chunk_ctrls[i].pop_back();
+    solveSQP(sqp_init, chunk_ctrls[i], smooth_chunk, smooth_control, namestring, false);
     VectorXd du(12);
     du.setZero(); 
     smooth_control.push_back(du);
