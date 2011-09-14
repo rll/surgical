@@ -291,7 +291,7 @@ def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, u_file, x_file, num_traj, num_s
   lambda_2 = 0.001
   lambda_3 = 0.0001
   state_const = 0.3
-  transl_const = 0.3
+  transl_const = 0.3 ##FIX FOR SMOOTHING
   rot_const = 100
 
   control_const_vec = matrix([max_trans, max_trans, max_trans, max_rot, max_rot, max_rot, max_trans, max_trans, max_trans, max_rot, max_rot, max_rot], (12,1))
