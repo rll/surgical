@@ -151,6 +151,12 @@ class Thread
     const Matrix3d& end_bishop(void) const {return _thread_pieces[_thread_pieces.size()-2]->bishop_frame();}
     const double start_angle(void) const {return _thread_pieces.front()->angle_twist();}
     const double end_angle(void) const {return _thread_pieces[_thread_pieces.size()-2]->angle_twist();}
+    void set_end_angle(double twist_angle) {
+    	_thread_pieces[_thread_pieces.size()-2]->set_angle_twist(twist_angle);
+  		_thread_pieces[_thread_pieces.size()-2]->update_material_frame();
+  		set_end_constraint(_thread_pieces.back()->vertex(), this->end_rot());
+  		minimize_energy_twist_angles();
+    }
     const double angle_at_ind(int i) const {return _thread_pieces[i]->angle_twist();}
     const double total_length(void) const {return _total_length;}
     const double start_rest_length(void) const {return _thread_pieces.front()->rest_length();}

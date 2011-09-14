@@ -14,7 +14,8 @@ World::World(WorldManager* wm)
 	//any of these pushes two threads into threads.
 	//initThread();
   //initLongerThread();
-  initRestingThread(0);
+  //initRestingThread(0);
+  initRestingFinerThread(0);
 	
 	//setting up control handles
 	cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));
@@ -519,7 +520,7 @@ void World::computeJacobian(MatrixXd* J) {
   int size_each_control = 12; 
   J->resize(world_state.size(), size_each_control);
   J->setZero();
-  double eps = 1e-1;
+  double eps = 5e-2;
 
   t0 = GetClock();
 
@@ -546,7 +547,7 @@ void World::computeJacobian(MatrixXd* J) {
     du(i) = eps;
     if (i >= 3 && i <= 5) du(i) = 0.5 * eps; 
     if (i >= 9 && i <= 11) du(i) = 0.5 * eps; 
-    world_copy->applyRelativeControlJacobian(du); 
+    world_copy->applyRelativeControlJacobian(du,0.0); 
     VectorXd new_state;
     world_copy->getStateForJacobian(new_state);
     J->block(0,i, size_each_state, 1) = new_state;
@@ -555,7 +556,7 @@ void World::computeJacobian(MatrixXd* J) {
     du(i) = -eps;
     if (i >= 3 && i <= 5) du(i) = 0.5 * -eps; 
     if (i >= 9 && i <= 11) du(i) = 0.5 * -eps; 
-    world_copy->applyRelativeControlJacobian(du); 
+    world_copy->applyRelativeControlJacobian(du,0.0); 
     world_copy->getStateForJacobian(new_state);
     J->block(0,i, size_each_state, 1) -= new_state;
     world_copy->setStateForJacobian(world_state);
@@ -968,3 +969,200 @@ void World::initRestingThread(int opt)
 	}
 }
 
+void World::initRestingFinerThread(int opt)
+{
+  int numInit = 10;
+
+	double first_length = 3.0; //FIRST_REST_LENGTH;
+	double second_length = SECOND_REST_LENGTH;
+	double middle_length = DEFAULT_REST_LENGTH/2.0;
+
+  vector<Vector3d> vertices;
+  vector<double> angles;
+  vector<double> lengths;
+  vector<Vector3d> directions;
+  
+  if (opt == 0 || opt == 1) {
+		for (int i=0; i < 4*numInit + 5; i++)
+			angles.push_back(0.0);
+		
+		lengths.push_back(first_length);
+		lengths.push_back(second_length);
+		for (int i=0; i < 4*numInit; i++)
+			lengths.push_back(middle_length);
+		lengths.push_back(second_length);
+		lengths.push_back(first_length);
+		lengths.push_back(first_length);
+		
+		directions.push_back(Vector3d::UnitX());
+		directions.push_back(Vector3d::UnitX());
+		
+		Vector3d direction = Vector3d(1.0, 1.0, 0.0);
+		direction.normalize();
+		for (int i=0; i < numInit; i++)
+			directions.push_back(direction);
+		
+		direction = Vector3d(1.0, -1.0, 0.4);
+		direction.normalize();
+		for (int i=0; i < numInit; i++)
+			directions.push_back(direction);
+		
+		direction = Vector3d(-1.0, -1.0, -0.4);
+		direction.normalize();
+		for (int i=0; i < numInit; i++)
+			directions.push_back(direction);
+		
+		direction = Vector3d(0.0, -1.0, 0.0);
+		direction.normalize();
+		for (int i=0; i < numInit; i++)
+			directions.push_back(direction);
+		
+		directions.push_back(-Vector3d::UnitY());
+		directions.push_back(-Vector3d::UnitY());
+		
+		vertices.push_back(Vector3d::Zero());
+		for (int i=1; i < 4*numInit + 5; i++) {
+			Vector3d next_vertex;
+			next_vertex(0) = vertices[i-1](0) + directions[i-1](0) * lengths[i-1];
+			next_vertex(1) = vertices[i-1](1) + directions[i-1](1) * lengths[i-1];
+			next_vertex(2) = vertices[i-1](2) + directions[i-1](2) * lengths[i-1];
+		  vertices.push_back(next_vertex);
+		}
+		
+		Vector3d last_pos = Vector3d(-10.0, -30.0, 0.0);
+		for (int i=0; i<vertices.size(); i++)
+			vertices[i] += -vertices.back() + last_pos;
+
+		Matrix3d start_rotation0 = Matrix3d::Identity();
+		Matrix3d end_rotation0 = (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitZ());
+
+		ThreadConstrained* thread0 = new ThreadConstrained(vertices, angles, lengths, start_rotation0, end_rotation0, this);
+		threads.push_back(thread0);
+  }
+  
+  if (opt == 0 || opt == 2) {
+		int numInit1 = 2;
+		first_length = 3.0; //FIRST_REST_LENGTH;
+	  second_length = SECOND_REST_LENGTH;
+	  middle_length = DEFAULT_REST_LENGTH;
+		angles.clear();
+		for (int i=0; i < 12*numInit1 + 5 + 16 + 8; i++)
+			angles.push_back(0.0);
+		
+		lengths.clear();
+		lengths.push_back(first_length);
+		lengths.push_back(second_length);
+		for (int i=0; i < 6*numInit1 + 4; i++)
+			lengths.push_back(middle_length);
+		for (int i=6*numInit1 + 4; i < 6*numInit1 + 16 + 4; i++)
+			lengths.push_back(middle_length/2.0);
+		for (int i=6*numInit1 + 16 + 4; i < 12*numInit1 + 16 + 8; i++)
+			lengths.push_back(middle_length);
+		lengths.push_back(second_length);
+		lengths.push_back(first_length);
+		lengths.push_back(first_length);
+		
+		directions.clear();
+		directions.push_back(-Vector3d::UnitX());
+		directions.push_back(-Vector3d::UnitX());
+		
+		Vector3d direction = Vector3d(-1.0, 0.0, 1.0);
+		direction.normalize();
+		for (int i=0; i < numInit1; i++)
+			directions.push_back(direction);
+		
+		direction = Vector3d(0.0, 0.0, 2.0);
+		direction.normalize();
+		for (int i=0; i < 4; i++)
+			directions.push_back(direction);
+		
+		direction = Vector3d(0.0, -1.0, 2.0);
+		direction.normalize();
+		for (int i=0; i < numInit1; i++)
+			directions.push_back(direction);
+		
+		direction = Vector3d(-2.0, 1.0, 0.0);
+		direction.normalize();
+		for (int i=0; i < numInit1; i++)
+			directions.push_back(direction);
+		
+		direction = Vector3d(-2.0, -1.0, 0.0);
+		direction.normalize();
+		for (int i=0; i < numInit1; i++)
+			directions.push_back(direction);
+		
+		direction = Vector3d(0.0, 1.0, -2.0);
+		direction.normalize();
+		for (int i=0; i < 2*numInit1; i++)
+			directions.push_back(direction);
+		
+		direction = Vector3d(0.0, 0.0, -2.0);
+		direction.normalize();
+		for (int i=0; i < 16; i++)
+			directions.push_back(direction);
+		
+		direction = Vector3d(0.0, -1.0, -2.0);
+		direction.normalize();		
+		for (int i=0; i < 2*numInit1; i++)
+			directions.push_back(direction);
+		
+		direction = Vector3d(2.0, 1.0, 0.0);
+		direction.normalize();
+		for (int i=0; i < numInit1; i++)
+			directions.push_back(direction);
+		
+		direction = Vector3d(2.0, -1.0, 0.0);
+		direction.normalize();
+		for (int i=0; i < numInit1; i++)
+			directions.push_back(direction);
+		
+		direction = Vector3d(0.0, 1.0, 2.0);
+		direction.normalize();
+		for (int i=0; i < numInit1; i++)
+			directions.push_back(direction);
+		
+		direction = Vector3d(0.0, 0.0, 2.0);
+		direction.normalize();
+		for (int i=0; i < 4; i++)
+			directions.push_back(direction);
+		
+		direction = Vector3d(0.0, -1.0, 2.0);
+		direction.normalize();
+		for (int i=0; i < numInit1; i++)
+			directions.push_back(direction);
+		
+		directions.push_back(-Vector3d::UnitY());
+		directions.push_back(-Vector3d::UnitY());
+		
+		vertices.clear();
+		vertices.push_back(Vector3d::Zero());
+		for (int i=1; i < 12*numInit1 + 5 + 16 + 8; i++) {
+			Vector3d next_vertex;
+			next_vertex(0) = vertices[i-1](0) + directions[i-1](0) * lengths[i-1];
+			next_vertex(1) = vertices[i-1](1) + directions[i-1](1) * lengths[i-1];
+			next_vertex(2) = vertices[i-1](2) + directions[i-1](2) * lengths[i-1];
+		  vertices.push_back(next_vertex);
+		}
+		
+		Vector3d last_pos = Vector3d(14.0, -30.0, 0.0);
+		for (int i=0; i<vertices.size(); i++)
+			vertices[i] += -vertices.back() + last_pos;
+		
+		Matrix3d start_rotation1 = (Matrix3d) AngleAxisd(M_PI, Vector3d::UnitZ());
+		Matrix3d end_rotation1 = (Matrix3d) AngleAxisd(M_PI/2.0, Vector3d::UnitZ());
+		ThreadConstrained* thread1 = new ThreadConstrained(vertices, angles, lengths, start_rotation1, this);
+
+		threads.push_back(thread1);
+	}
+  
+	for (int thread_ind=0; thread_ind < threads.size(); thread_ind++) {
+#ifndef ISOTROPIC
+		Matrix2d B = Matrix2d::Zero();
+		B(0,0) = 10.0;
+		B(1,1) = 1.0;
+		threads[thread_ind]->set_coeffs_normalized(B, 3.0, 1e-4);
+#else
+  	threads[thread_ind]->set_coeffs_normalized(1.0, 3.0, 1e-4);
+#endif
+	}
+}

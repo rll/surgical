@@ -36,6 +36,7 @@ public:
 	void setControl(ControllerBase* controller);
 	void setTranslate(const Vector3d& t);
 	void setRotate(const Matrix3d& r);
+	void setButton(button_type bttn_type, bool value);
 	void getControlVector(VectorXd& control);
 	void setInitialTransform(const Vector3d& pos, const Matrix3d& rot);
 	void setNoMotion();

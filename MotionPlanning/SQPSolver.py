@@ -233,12 +233,12 @@ def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, x_file, num_traj, num_states, s
   #read A file to get J
 
   num_controls = num_states - 1
-  max_trans = 2e-1
+  max_trans = 3e-1
   max_rot = 5e-2
-  lambda_1 = 0.001
-  lambda_2 = 0.001
-  lambda_3 = 0.0001
-  state_const = 0.3
+  lambda_1 = 0.000001
+  lambda_2 = 0.000001
+  lambda_3 = 0.001
+  state_const = 1.0
 
   control_const_vec = matrix([max_trans, max_trans, max_trans, max_rot, max_rot, max_rot, max_trans, max_trans, max_trans, max_rot, max_rot, max_rot], (12,1))
   
