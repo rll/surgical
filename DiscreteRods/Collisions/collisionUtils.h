@@ -12,7 +12,7 @@
 #include "../threadutils_discrete.h"
 #include "../threadpiece_discrete.h"
 
-#define REPULSION_DIST 0.6
+#define REPULSION_DIST 0.2 //do not make more than 0.2 for InitFinerThread
 
 using namespace std;
 USING_PART_OF_NAMESPACE_EIGEN
@@ -93,15 +93,15 @@ inline Vector3d repulsionEnergyGradientLinear(const double& dist, const double& 
 //dist is the distance between two objects. dist is negative if they are penetrating.
 inline double repulsionEnergy(const double& dist, const double& range)
 {
-	return repulsionEnergyLog(dist, range);
-	//return repulsionEnergyLinear(dist, range);
+	//return repulsionEnergyLog(dist, range);
+	return repulsionEnergyLinear(dist, range);
 	//return repulsionEnergyInverse(dist, range);
 }
 
 inline Vector3d repulsionEnergyGradient(const double& dist, const double& range, const Vector3d& direction)
 {
-	return repulsionEnergyGradientLog(dist, range, direction);
-	//return repulsionEnergyGradientLinear(dist, range, direction);
+	//return repulsionEnergyGradientLog(dist, range, direction);
+	return repulsionEnergyGradientLinear(dist, range, direction);
 	//return repulsionEnergyGradientInverse(dist, range, direction);
 }
 

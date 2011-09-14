@@ -306,6 +306,7 @@ void WorldSQP::solve() {
   }
   group.join_all();
   
+  
   current_states = newStates;
   */
 

@@ -78,7 +78,7 @@ class Cursor
 		static const double height = 3.0;
 		static const double radius = 1.2;
 		
-	protected:
+	//protected:
 		void drawColoredCapsule(const Vector3d& start_pos, const Vector3d& end_pos);
 	
 		Vector3d position;
