@@ -3,7 +3,15 @@ from cvxopt.solvers import qp
 #from qp import qp
 from time import clock
 from sys import argv
-import pymosek
+
+MOSEK_VERSION = 5.0
+
+try:
+  import pymosek
+except ImportError:
+  import mosek
+  MOSEK_VERSION = 6.0
+
 
 from cvxopt import printing
 from cvxopt import solvers
@@ -12,7 +20,12 @@ from cvxopt import solvers
 printing.options['dformat'] = '%.5f'
 printing.options['width'] = -1
 solvers.options['show_progress'] = False
-solvers.options['MOSEK'] = {pymosek.iparam.log: 0 }
+
+if MOSEK_VERSION == 5.0:
+  solvers.options['MOSEK'] = {pymosek.iparam.log: 0 }
+
+if MOSEK_VERSION == 6.0:
+  solvers.options['MOSEK'] = {mosek.iparam.log: 0 }
 
 def sparseIdentity(n):
   return spmatrix(1.0, range(n), range(n))

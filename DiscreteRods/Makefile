@@ -7,7 +7,7 @@ COLLISIONS_DIR = Collisions
 MP_DIR = ../MotionPlanning
 
 ifeq ($(MACHINE),Darwin)
-    LIBS = -L/usr/lib/ -lglut -lgle -lIL -lGLU -L/opt/local/lib/ -lBulletCollision -lBulletDynamics -lLinearMath
+    LIBS = -L/usr/lib/ -lglut -lgle -lIL -lGLU -L/opt/local/lib/ -lBulletCollision -lBulletDynamics -lLinearMath -lboost_thread-mt
 
     COMPILEFLAG=-DMAC
     LDFLAG=$(COMPILEFLAG) -L"/System/Library/Frameworks/OpenGL.framework/Libraries" -L"/System/Library/Frameworks/GLUT.framework" -framework GLUT -framework OpenGL -lGL -lGLU -L/usr/X11R6/lib
