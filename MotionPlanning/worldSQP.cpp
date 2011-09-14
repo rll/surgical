@@ -279,16 +279,18 @@ void WorldSQP::solve() {
   }
   current_states.resize(0);
 
-  /* 
+   
   cout << "Projecting SQP States into Legal States" << endl; 
-  boost::progress_display progress(sqp_intermediate_states.size());
-#pragma omp parallel for 
-  for (int i = 0; i < sqp_intermediate_states.size(); i++) { 
-    newStates[i+1]->setStateForJacobian(sqp_intermediate_states[i]);
-    newStates[i+1]->projectLegalState();
-    ++progress; 
-  } 
-  */
+  boost::thread_group group; 
+
+  for (int j = 0; j < sqp_intermediate_states.size(); j++) { 
+    for (int i = 0; i < sqp_intermediate_states[j].size(); i++) {
+      group.create_thread(boost::bind(setWorldFromState,
+            newStates[j][i+1], &sqp_intermediate_states[j][i]));
+    }
+  }
+  group.join_all();
+  
   current_states = newStates;
   /*
   for (int i = 0; i < current_jacobians.size(); i++) { 
@@ -331,6 +333,7 @@ bool WorldSQP::iterative_control_opt(vector<vector<World*> >& trajectory, vector
 
   for (int i = 0; i < trajectory.size(); i++) {
     current_states[i].resize(trajectory[i].size());
+    current_jacobians[i].resize(trajectory[i].size());
     for (int j = 0; j < trajectory[i].size(); j++) { 
       current_states[i][j] = new World(*trajectory[i][j]);
       current_jacobians[i][j] = MatrixXd();
@@ -486,7 +489,10 @@ void block(DynamicSparseMatrix<double>& container, int start_row, int start_col,
 
 void computeJacobian(World* w, MatrixXd* J) {
   w->computeJacobian(J);
+}
 
-
+void setWorldFromState(World* w, VectorXd* s) {
+  w->setStateForJacobian(*s);
+  w->projectLegalState();
 }
 

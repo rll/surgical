@@ -114,5 +114,5 @@ void Vector_To_File(VectorXd& vec, const char* filename);
 void block(DynamicSparseMatrix<double>& c, int s_row, int s_col, DynamicSparseMatrix<double>& data);
 void block(DynamicSparseMatrix<double>& c, int s_row, int s_col, MatrixXd& data);
 void computeJacobian(World* w, MatrixXd* J);
-
+void setWorldFromState(World* w, VectorXd* s);
 #endif
