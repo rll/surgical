@@ -311,7 +311,7 @@ void WorldSQP::solve() {
   */
 
   for (int j = 0; j < current_jacobians.size(); j++) { 
-    for (int i = 0; i < current_jacobians[i].size(); i++) {
+    for (int i = 0; i < current_jacobians[j].size(); i++) {
       current_jacobians[j][i] = MatrixXd();
     }
   }
