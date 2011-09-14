@@ -188,17 +188,8 @@ void WorldSQP::solve() {
   sprintf(filename_goalvec, "%s/%s_%s", SQP_BASE_FOLDER, _namestring, FILENAME_GOALVEC);
   char filename_alltrans[256];
   sprintf(filename_alltrans, "%s/%s_%s", SQP_BASE_FOLDER, _namestring, FILENAME_ALLTRANS);
-
-  /* Memory leak, fix later. Needed to get jacobian computation done in parallel */ 
-  /*vector<World*> trajectory_local;
-  trajectory_local.resize(current_states.size());
-  
-#pragma omp parallel for
-  for (int i = 0; i < current_states.size(); i++) { 
-    trajectory_local[i] = new World(*current_states[i]);
-  }
-
-  current_states = trajectory_local;*/
+  char filename_initctrls[256];
+  sprintf(filename_initctrls, "%s/%s_%s", SQP_BASE_FOLDER, _namestring, FILENAME_INIT_CTRLS);
 
   //compute Jacobians
   compute_all_jacobians();
@@ -218,6 +209,16 @@ void WorldSQP::solve() {
     }
   }
   Vector_To_File(goal_vector, filename_goalvec);
+
+  //write out all controls to file 
+  VectorXd init_controls(_size_each_control*(_num_worlds-1));
+  for (int j = 0; j < current_controls.size(); j++) {
+    assert(current_controls[j].size() == _size_each_control);
+    init_controls.segment(j*_size_each_control, _size_each_control) = current_controls[j];
+  }
+  Vector_To_File(init_controls, filename_initctrls);
+
+
   //prepare to execute solver (MATLAB)
   char filename_statevec_thisiter[256];
   sprintf(filename_statevec_thisiter, "%s/%s_%s%d.txt", SQP_BASE_FOLDER, _namestring, FILENAME_STATEVEC_BASE, 1);
@@ -227,7 +228,7 @@ void WorldSQP::solve() {
   //sprintf(matlab_command, "java -jar MatlabClient.jar \"solve_sparse(%d, %d, \'%s\', %d, %d, \'%s\', \'%s\', %d, %d, %d)\"", _all_trans.rows(), _all_trans.cols(), filename_alltrans, goal_vector.rows(), goal_vector.cols(), filename_goalvec, filename_statevec_thisiter, _num_worlds, _size_each_state, _size_each_control);
 
   char python_command[1024];
-  sprintf(python_command, "python ../MotionPlanning/SQPSolver.py solver %d %d \'%s\' %d %d \'%s\' \'%s\' %d %d %d %d", _all_trans.rows(), _all_trans.cols(), filename_alltrans, goal_vector.rows(), goal_vector.cols(), filename_goalvec, filename_statevec_thisiter, _num_traj, _num_worlds, _size_each_state, _size_each_control);
+  sprintf(python_command, "python ../MotionPlanning/SQPSolver.py solver %d %d \'%s\' %d %d \'%s\' \'%s\' \'%s\' %d %d %d %d", _all_trans.rows(), _all_trans.cols(), filename_alltrans, goal_vector.rows(), goal_vector.cols(), filename_goalvec, filename_initctrls, filename_statevec_thisiter, _num_traj, _num_worlds, _size_each_state, _size_each_control);
   std::cout << "command: " << python_command << std::endl;
 
 #if TIMER_ENABLED
@@ -309,13 +310,12 @@ void WorldSQP::solve() {
   current_states = newStates;
   */
 
+  for (int j = 0; j < current_jacobians.size(); j++) { 
+    for (int i = 0; i < current_jacobians[i].size(); i++) {
+      current_jacobians[j][i] = MatrixXd();
+    }
+  }
 
-
-
-  /*
-  for (int i = 0; i < current_jacobians.size(); i++) { 
-    current_jacobians[i] = MatrixXd();
-  }*/
 #else
   assert(false); // not implemented for SHOOTING_METHOD
 
@@ -359,6 +359,9 @@ bool WorldSQP::iterative_control_opt(vector<vector<World*> >& trajectory, vector
       current_jacobians[i][j] = MatrixXd();
     }
   }
+  
+  assert(controls.size() == _num_worlds-1);
+  current_controls = controls; 
 
   for (int opt_iter = 0; opt_iter < num_opts; opt_iter++) {
     solve();
@@ -414,16 +417,7 @@ void WorldSQP::compute_all_jacobians()
               &current_jacobians[traj_ind][i]) );
 
       }
-        /*if (group.size() >= 50) {
-          group.join_all();
-          for (int i = 0 ; i < boost_threads.size(); i++) {
-            group.remove_thread(boost_threads[i]);
-            delete boost_threads[i];
-          }
-          boost_threads.resize(0);
-        }*/
     }
-
   }
 
   group.join_all();

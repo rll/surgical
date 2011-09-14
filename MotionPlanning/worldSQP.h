@@ -21,6 +21,7 @@
 #define FILENAME_ALLTRANS "alltrans.txt"
 #define FILENAME_GOALVEC "goalvec.txt"
 #define FILENAME_STATEVEC_BASE "newstate"
+#define FILENAME_INIT_CTRLS "controlvec.txt"
 
 using namespace Eigen;
 
