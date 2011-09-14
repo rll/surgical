@@ -3302,8 +3302,8 @@ void Thread::copy_data_from_vector(VectorXd& toCopy)
   
   set_end_constraint(_thread_pieces.back()->vertex(), this->end_rot());
   //_thread_pieces[_thread_pieces.size()-2]->set_angle_twist(toCopy(toCopy.rows()-1));
-  _thread_pieces[_thread_pieces.size()-2]->update_material_frame();
-  set_end_constraint(_thread_pieces.back()->vertex(), this->end_rot());
+  //_thread_pieces[_thread_pieces.size()-2]->update_material_frame();
+  //set_end_constraint(_thread_pieces.back()->vertex(), this->end_rot());
 }
 
 void Thread::applyControl(const VectorXd& u)

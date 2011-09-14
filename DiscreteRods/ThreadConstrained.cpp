@@ -464,8 +464,10 @@ void ThreadConstrained::setState(VectorXd& state) {
 			VectorXd thread_state(data.size() + 3);
 			//thread_state(0) = thread_state.size();
 			thread_state.segment(0, 3) = last_vertex;
+			double twist_angle = threads[i]->end_angle();
 			thread_state.segment(3, data.size()) = data.segment(0, data.size());
 		  threads[i]->setState(thread_state); 
+		  threads[i]->set_end_angle(twist_angle);
 		}
 	  last_vertex = threads[i]->end_pos();
 		//ind += state(ind);
@@ -1011,6 +1013,12 @@ void ThreadConstrained::draw(bool mode) {
 	vector<Vector3d> points;
 	vector<double> twist_angles;	
 	get_thread_data(points, twist_angles);
+
+//	cout << "twist angles: ";
+//	for (int i = 0; i < twist_angles.size(); i++) {
+//		cout << twist_angles[i] << " ";
+//	}
+//	cout << endl;
 
   glPushMatrix();
   glColor3f (0.5, 0.5, 0.2);

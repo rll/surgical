@@ -170,7 +170,9 @@ int main (int argc, char * argv[])
         cout << "Step " << i << " / " << end_ind << endl;
         //if (interruptEnabled) break; 
         if (i + T > traj_in.size() - 1) T = traj_in.size() - i - 1;
-        CLcopy->applyRelativeControl(ctrls[i-1], noise_thresh, true); 
+        //if (ctrls[i-1][0]->getButton(UP) || ctrls[i-1][1]->getButton(UP)) {
+          CLcopy->applyRelativeControl(ctrls[i-1], noise_thresh, true); 
+        //}
         if (i % 2 == 0) {  
           VectorXd cl_ctrl = closedLoopSQPStepper(CLcopy, traj_in[i+T], solver, noise_thresh);
           CLcopy->applyRelativeControlJacobian(cl_ctrl, noise_thresh);

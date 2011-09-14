@@ -291,6 +291,7 @@ void WorldSQP::solve() {
   }
   group.join_all();
   
+  
   current_states = newStates;
   /*
   for (int i = 0; i < current_jacobians.size(); i++) { 

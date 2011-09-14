@@ -113,13 +113,13 @@ void openLoopController(World* start, vector<World*> follow_traj, vector<vector<
 
   for (int i = 0; i < controls_in.size(); i++) {
     traj_out.push_back(new World(*world));
-    cout << cost_metric(world, follow_traj[i]) << endl;
+    //cout << cost_metric(world, follow_traj[i]) << endl;
     world->applyRelativeControl(controls_in[i], NOISE_THRESHOLD, true);
     ++progress; 
 
   }
   traj_out.push_back(new World(*world));
-  cout << cost_metric(world, follow_traj.back()) << endl; 
+  //cout << cost_metric(world, follow_traj.back()) << endl; 
 
 }
 

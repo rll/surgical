@@ -33,6 +33,11 @@ void Control::setRotate(const Matrix3d& r)
 	rotate = r;
 }
 
+void Control::setButton(button_type bttn_type, bool value)
+{
+	button[bttn_type] = value;
+}
+
 void Control::setInitialTransform(const Vector3d& pos, const Matrix3d& rot)
 {
 	position = pos;

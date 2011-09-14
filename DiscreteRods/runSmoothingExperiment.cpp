@@ -29,6 +29,7 @@ USING_PART_OF_NAMESPACE_EIGEN
 WorldManager* test_world_manager;
 
 void chunkSmoother(vector<World*>& traj_in, vector<World*>& traj_out, vector<vector<Control*> >& controls_out, int size_each_chunk, char * namestring) {
+	cout << traj_in.size() << " " << size_each_chunk << endl;
 	assert((traj_in.size()%size_each_chunk) == 0);
 	int num_chunks = traj_in.size() / size_each_chunk;
 
@@ -49,6 +50,7 @@ void chunkSmoother(vector<World*>& traj_in, vector<World*>& traj_out, vector<vec
 
 	//#pragma omp parallel for
 	for (int i = 0; i < chunks.size(); i++) {
+		cout << "On chunk " << i << " of " << chunks.size() << endl; 
 	  //smooth each chunk
 	  vector<vector<World*> > smooth_chunk;
 	  vector<VectorXd> smooth_control;
@@ -58,13 +60,13 @@ void chunkSmoother(vector<World*>& traj_in, vector<World*>& traj_out, vector<vec
 	  solveSQP(sqp_init, smooth_chunk, smooth_control, namestring, false);
 	  VectorXd du(12);
 	  du.setZero(); 
-	  smooth_control.push_back(du);
 	  smooth_chunks[i] = smooth_chunk[0];
 	  smooth_controls[i] = smooth_control;
+	  smooth_controls[i].push_back(du);
 	}
 
 	for (int i = 0; i < smooth_chunks.size(); i++) { 
-	  for (int j = 0; j < smooth_chunks[i].size(); j++) {
+	  for (int j = 1; j < smooth_chunks[i].size()-1; j++) {
 	    traj_out.push_back(smooth_chunks[i][j]);
 	    vector<Control*> du;
 	    VectorXd full_control = smooth_chunks[i][j]->JacobianControlWrapper(smooth_controls[i][j]);
@@ -72,6 +74,20 @@ void chunkSmoother(vector<World*>& traj_in, vector<World*>& traj_out, vector<vec
 	    controls_out.push_back(du);
 	  }
 	}
+	
+	for (int i = 0; i < traj_out.size() - 1; i++) {
+		vector<Cursor*> pre_cursors;
+		traj_out[i]->getObjects<Cursor>(pre_cursors);
+		vector<Cursor*> post_cursors;
+		traj_out[i+1]->getObjects<Cursor>(post_cursors);
+		assert(pre_cursors.size() == post_cursors.size());
+		assert(controls_out[i].size() == pre_cursors.size());
+		for (int j = 0; j < pre_cursors.size(); j++) {
+			if (pre_cursors[j]->isOpen() != post_cursors[j]->isOpen())
+				controls_out[i][j]->setButton(UP, true);
+		}
+	}
+	controls_out.pop_back();
 }
 
 int main (int argc, char * argv[])

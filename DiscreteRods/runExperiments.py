@@ -1,11 +1,11 @@
 import os, sys
 
 #control_in_filename = ["t7", "t6", "t5", "t4", "t3", "t2", "t1"]
-control_in_filename = ["s1"]
+control_in_filename = ["s1_small"]
 start_ind = 0
 end_ind = -1
 single_horizon = [0, 5]
-noise_thresh = [0.01, 0.025, 0.05, 0.075, 0.1, 0.125, 0.15, 0.2]
+noise_thresh = [0.0, 0.01, 0.025] #, 0.05, 0.075, 0.1, 0.125, 0.15, 0.2]
 
 for control_in in control_in_filename:
   for horizon in single_horizon:
