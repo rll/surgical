@@ -491,12 +491,11 @@ void processNormalKeys(unsigned char key, int x, int y)
 			vector<Control*> ctrls;
 			ctrls.push_back(&ctrl0);
 			ctrls.push_back(&ctrl1);
-      World* initialWorld = new World(*temp_worlds[0]);
       //initialWorld->applyRelativeControl(ctrls,0.0,false);
 			//temp_worlds[0]->applyRelativeControl(ctrls, false);
-			cout << "Saving initial condition state in " << ic_pert_path << endl;
-			StateRecorder ic_state_recorder(ic_pert_path);
-		  ic_state_recorder.writeWorldToFile(temp_worlds[0]);
+			//cout << "Saving initial condition state in " << ic_pert_path << endl;
+			//StateRecorder ic_state_recorder(ic_pert_path);
+		  //ic_state_recorder.writeWorldToFile(temp_worlds[0]);
 			
 			
 
@@ -526,9 +525,8 @@ void processNormalKeys(unsigned char key, int x, int y)
         vector<World*> waypoints;
         vector<vector<Control*> > waypoint_controls;
         //for (int i = 0; i < 100; i++) {
-        for (int i = 0; i < temp_worlds.size()-100; i++) {
-          delete initialWorld;
-          initialWorld = new World(*temp_worlds[0]);
+        for (int i = 0; i < 600; i++) {
+        //for (int i = 0; i < temp_worlds.size()-1; i++) {
           waypoints.push_back(new World(*temp_worlds[i]));
           waypoint_controls.push_back(controls[i]);
         }
@@ -540,9 +538,15 @@ void processNormalKeys(unsigned char key, int x, int y)
         //closedLoopSQPController(new World(*initialWorld), waypoints,
          //   controls, traj_out, nameString);
         //openLoopController(new World(*initialWorld), temp_worlds, controls, traj_out);
-        closedLoopSQPController(initialWorld, waypoints, waypoint_controls);
+        vector<vector<World*> > vis_data;
+        vis_data.push_back(waypoints);
+        setVisualizationData(vis_data);
+        World* initialWorld = new World(*waypoints[0]);
+        //closedLoopSQPController(initialWorld, waypoints, waypoint_controls);
         vector<World*> smooth_traj;
         vector<vector<Control*> > smooth_controls;
+        
+        chunkSmoother(waypoints, smooth_traj, smooth_controls);
         //chunkSmoother(waypoints, smooth_traj, smooth_controls);
         //closedLoopSQPController(initialWorld, smooth_traj, smooth_controls);
 
@@ -1328,7 +1332,7 @@ VectorXd closedLoopSQPStepper(World* start, World* goal, WorldSQP* solver) {
 void closedLoopSQPController(World* start, vector<World*>& target,
     vector<vector<Control*> >& ctrls) { 
   vector<int> horizon;
-  horizon.push_back(5);
+  //horizon.push_back(5);
   horizon.push_back(0);
   //horizon.push_back(30);
   //horizon.push_back(20);
@@ -1340,11 +1344,10 @@ void closedLoopSQPController(World* start, vector<World*>& target,
   for (int h = 0; h < horizon.size(); h++) { 
     cout << horizon[h] << endl; 
 
-    int max_ind = min(target.size(), 1050); //1088 
+    int max_ind = target.size();
     if (horizon[h] == 0) { 
       vector<World*> openLoopWorlds; 
       openLoopWorlds.push_back(new World(*start));
-
       World* OLcopy = new World(*start, test_world_manager);
       for (int i = 1; i < max_ind; i++) { //state size change at 1088
         cout << "Step " << i << " / " << max_ind << endl;
@@ -1363,9 +1366,9 @@ void closedLoopSQPController(World* start, vector<World*>& target,
       }
       vector<vector<World*> > sqp_init;
       sqp_init.push_back(init_worlds);
-      sqp_init.push_back(init_worlds);
-      sqp_init.push_back(init_worlds);
-      sqp_init.push_back(init_worlds);
+      //sqp_init.push_back(init_worlds);
+      //sqp_init.push_back(init_worlds);
+      //sqp_init.push_back(init_worlds);
 
       WorldSQP* solver; 
       solver = new WorldSQP(0,0,0); /// HACK!!
@@ -1416,7 +1419,7 @@ void closedLoopSQPController(World* start, vector<World*>& target,
 }
 
 void chunkSmoother(vector<World*>& traj_in, vector<World*>& traj_out, vector<vector<Control*> >& controls_out) {
-  int size_each_chunk = 20;
+  int size_each_chunk = 200;
   int num_chunks = traj_in.size() / size_each_chunk;
 
   vector<vector<World*> > chunks;
@@ -1463,8 +1466,8 @@ void chunkSmoother(vector<World*>& traj_in, vector<World*>& traj_out, vector<vec
     }
   }
 
-  //vector<vector<World *> > visualization_data;
-  //visualization_data.push_back(traj_in);
-  //visualization_data.push_back(traj_out);
-  //setVisualizationData(visualization_data);
+  vector<vector<World *> > visualization_data;
+  visualization_data.push_back(traj_in);
+  visualization_data.push_back(traj_out);
+  setVisualizationData(visualization_data);
 }
