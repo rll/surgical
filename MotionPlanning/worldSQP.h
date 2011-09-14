@@ -15,6 +15,7 @@
 #include <string.h>
 #include <float.h>
 #include "../utils/clock2.h"
+#include "../DiscreteRods/EnvObjects/WorldManager.h"
 
 #define SQP_BASE_FOLDER "../MotionPlanning/SQP_DATA"
 #define FILENAME_ALLTRANS "alltrans.txt"
@@ -68,12 +69,13 @@ class WorldSQP
      * Assumes start thread is traj_in[0]
      */
     void openLoopController(vector<World*>& traj_in, vector<VectorXd>& controls_in, vector<World*>& traj_out) {
-      World* world = new World(*traj_in[0]);
+      World* world = new World(*traj_in[0], _wsqp_manager);
       for (int i = 0; i < controls_in.size(); i++) {
         traj_out.push_back(new World(*world));
         world->applyRelativeControlJacobian(controls_in[i]);
       }
       traj_out.push_back(new World(*world));
+      delete world; 
     }
 
     double l2PointsDifference(World* a, World* b) { 
@@ -103,6 +105,7 @@ class WorldSQP
     vector<vector<World*> >   current_states;
     vector<VectorXd> current_controls;
     vector<vector<MatrixXd> > current_jacobians;
+    WorldManager* _wsqp_manager;
 
     char _namestring[256];
 
