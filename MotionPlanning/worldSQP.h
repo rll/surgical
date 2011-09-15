@@ -16,6 +16,7 @@
 #include <float.h>
 #include "../utils/clock2.h"
 #include "../DiscreteRods/EnvObjects/WorldManager.h"
+#include "../DiscreteRods/IO/Control.h"
 
 #define SQP_BASE_FOLDER "../MotionPlanning/SQP_DATA"
 #define FILENAME_ALLTRANS "alltrans.txt"
@@ -38,7 +39,7 @@ class WorldSQP
 
     void resize_controller(int num_worlds, int size_each_state, int num_traj);
 
-    bool iterative_control_opt(vector<vector<World*> >& trajectory, vector<VectorXd>& controls, int num_opts = 5, bool return_best_opt = true, double threshold = 2);
+    bool iterative_control_opt(vector<vector<World*> >& trajectory, vector<vector<Control *> >& controls, int num_opts = 5, bool return_best_opt = true, double threshold = 2);
 
     void set_namestring(const char* str)
     {
@@ -69,7 +70,7 @@ class WorldSQP
      * Open loop controller applies controls in controls_in at every time step
      * Assumes start thread is traj_in[0]
      */
-    void openLoopController(vector<World*>& traj_in, vector<VectorXd>& controls_in, vector<World*>& traj_out) {
+    /*void openLoopController(vector<World*>& traj_in, vector<VectorXd>& controls_in, vector<World*>& traj_out) {
       World* world = new World(*traj_in[0], _wsqp_manager);
       for (int i = 0; i < controls_in.size(); i++) {
         traj_out.push_back(new World(*world));
@@ -77,7 +78,20 @@ class WorldSQP
       }
       traj_out.push_back(new World(*world));
       delete world; 
+    }*/
+    
+    void openLoopController(vector<World*>& traj_in, vector<vector<Control*> >& controls_in, vector<World*>& traj_out) {
+      World* world = new World(*traj_in[0], _wsqp_manager);
+      for (int i = 0; i < controls_in.size(); i++) {
+        traj_out.push_back(new World(*world));
+        world->applyRelativeControl(controls_in[i], 0.0, true);
+      }
+      traj_out.push_back(new World(*world));
+      delete world; 
+
     }
+
+
 
     double l2PointsDifference(World* a, World* b) { 
       VectorXd state_a, state_b;
@@ -104,7 +118,7 @@ class WorldSQP
     int _cols_all_unknown_states;
     int _num_traj;
     vector<vector<World*> >   current_states;
-    vector<VectorXd> current_controls;
+    vector<vector<Control*> > current_controls;
     vector<vector<MatrixXd> > current_jacobians;
     WorldManager* _wsqp_manager;
 
