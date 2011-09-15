@@ -53,17 +53,17 @@ void chunkSmoother(vector<World*>& traj_in, vector<vector<Control*> >& controls_
   smooth_chunks.resize(chunks.size());
   smooth_controls.resize(chunks.size());
 
-  //#pragma omp parallel for NEED TO SET NAMESTRING
+  #pragma omp parallel for 
   for (int i = 0; i < chunks.size(); i++) {
     //smooth each chunk
-    char namestring[128];
-    sprintf(namestring, "sqp_smoother_chunk_%d", i);
+    char full_namestring[1024];
+    sprintf(full_namestring, "%s_%d", namestring, i);
     vector<vector<World*> > smooth_chunk;
     vector<vector<Control*> > smooth_control;
     vector<vector<World*> > sqp_init;
     sqp_init.push_back(chunks[i]);
     chunk_ctrls[i].pop_back();
-    solveSQP(sqp_init, chunk_ctrls[i], smooth_chunk, smooth_control, namestring, false);
+    solveSQP(sqp_init, chunk_ctrls[i], smooth_chunk, smooth_control, full_namestring, false);
     vector<Control *>  du;
     for (int j = 0; j < 2; j++) {
       du.push_back(new Control(Vector3d::Zero(), Matrix3d::Identity()));

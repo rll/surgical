@@ -5,11 +5,12 @@
 #define MATLAB_INSTALL "matlab"
 #define COLOCATION_METHOD true
 #define TIMER_ENABLED true 
-#define LAMBDA_U 0.001
-#define LAMBDA_U_DOT 0.001
-#define LAMBDA_DIST_FROM_GOAL 0.000001
+#define LAMBDA_U 0.0
+#define LAMBDA_U_DOT 0.0001
+#define LAMBDA_DIST_FROM_GOAL 0.0
+#define LAMBDA_DIST_FROM_PAIR 0.0001
 #define STATE_INIT_CONSTRAINT 0.3
-#define TRANSL_INIT_CONSTRAINT 0.07
+#define TRANSL_INIT_CONSTRAINT 0.01
 #define ROT_INIT_CONSTRAINT 100.0 
 
 
@@ -249,7 +250,7 @@ void WorldSQP::solve() {
   //char matlab_command[1024];
   //sprintf(matlab_command, "java -jar MatlabClient.jar \"solve_sparse(%d, %d, \'%s\', %d, %d, \'%s\', \'%s\', %d, %d, %d)\"", _all_trans.rows(), _all_trans.cols(), filename_alltrans, goal_vector.rows(), goal_vector.cols(), filename_goalvec, filename_statevec_thisiter, _num_worlds, _size_each_state, _size_each_control);
   char python_command[1024];
-  sprintf(python_command, "python ../MotionPlanning/SQPSolver.py solver %d %d \'%s\' %d %d \'%s\' \'%s\' \'%s\' %d %d %d %d %f %f %f %f %f %f", _all_trans.rows(), _all_trans.cols(), filename_alltrans, goal_vector.rows(), goal_vector.cols(), filename_goalvec, filename_initctrls, filename_statevec_thisiter, _num_traj, _num_worlds, _size_each_state, _size_each_control, LAMBDA_U, LAMBDA_U_DOT, LAMBDA_DIST_FROM_GOAL, STATE_INIT_CONSTRAINT, TRANSL_INIT_CONSTRAINT, ROT_INIT_CONSTRAINT );
+  sprintf(python_command, "python ../MotionPlanning/SQPSolver.py solver %d %d \'%s\' %d %d \'%s\' \'%s\' \'%s\' %d %d %d %d %f %f %f %f %f %f %f", _all_trans.rows(), _all_trans.cols(), filename_alltrans, goal_vector.rows(), goal_vector.cols(), filename_goalvec, filename_initctrls, filename_statevec_thisiter, _num_traj, _num_worlds, _size_each_state, _size_each_control, LAMBDA_U, LAMBDA_U_DOT, LAMBDA_DIST_FROM_GOAL, LAMBDA_DIST_FROM_PAIR, STATE_INIT_CONSTRAINT, TRANSL_INIT_CONSTRAINT, ROT_INIT_CONSTRAINT );
   std::cout << "command: " << python_command << std::endl;
 
 #if TIMER_ENABLED
