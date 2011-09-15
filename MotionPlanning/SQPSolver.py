@@ -281,23 +281,20 @@ def generateH(num_traj, num_states, control_const_vec, state_const_vec, control_
 
   return H;
 
-def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, u_file, x_file, num_traj, num_states, size_each_state, size_each_control):
+def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, u_file, x_file, num_traj, num_states, size_each_state, size_each_control, lambda_u, lambda_u_dot, lambda_dist_from_goal, state_init_const, transl_init_const, rot_init_const):
   #read A file to get J
 
   num_controls = num_states - 1
   max_trans = 3e-1
   max_rot = 5e-2
-  lambda_1 = 0.0000001
-  lambda_2 = 0.0001
-  lambda_3 = 0.000000001
-  state_const = 0.3
-  transl_const = 0.07 ##FIX FOR SMOOTHING
-  rot_const = 100
+  lambda_1 = lambda_u
+  lambda_2 = lambda_u_dot
+  lambda_3 = lambda_dist_from_goal
 
   control_const_vec = matrix([max_trans, max_trans, max_trans, max_rot, max_rot, max_rot, max_trans, max_trans, max_trans, max_rot, max_rot, max_rot], (12,1))
   
-  state_const_vec = matrix([state_const for i in range(size_each_state)])
-  control_diff_const_vec = matrix([transl_const, transl_const, transl_const, rot_const, rot_const, rot_const, transl_const, transl_const, transl_const, rot_const, rot_const, rot_const])
+  state_init_const_vec = matrix([state_init_const for i in range(size_each_state)])
+  control_diff_init_const_vec = matrix([transl_init_const, transl_init_const, transl_init_const, rot_init_const, rot_init_const, rot_init_const, transl_init_const, transl_init_const, transl_init_const, rot_init_const, rot_init_const, rot_init_const])
 
 
   t0 = clock();
@@ -348,7 +345,7 @@ def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, u_file, x_file, num_traj, num_s
   A = generateA(num_traj, num_states, size_each_state, size_each_control, all_trans)
   b = generateB(num_traj, num_states, size_each_state, size_each_control, b_data, u_data)
   G = generateG(num_traj, num_states, size_each_state, size_each_control)
-  h = generateH(num_traj, num_states, control_const_vec, state_const_vec, control_diff_const_vec)
+  h = generateH(num_traj, num_states, control_const_vec, state_init_const_vec, control_diff_init_const_vec)
 
   print "generating took %f" % (clock() - t0)
   t0 = clock()
@@ -395,19 +392,26 @@ def debug():
 def main():
 
   if argv[1] == 'solver':
-    A_m =                 int(argv[2])
-    A_n =                 int(argv[3])
-    A_file =                  argv[4]
-    b_m =                 int(argv[5])
-    b_n =                 int(argv[6])
-    b_file =                  argv[7]
-    u_file =                  argv[8]
-    x_file =                  argv[9]
-    num_traj =            int(argv[10])
-    num_states =          int(argv[11])
-    size_each_state =     int(argv[12])
-    size_each_control =   int(argv[13])
-    solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, u_file, x_file, num_traj, num_states, size_each_state, size_each_control)
+    A_m =                      int(argv[2])
+    A_n =                      int(argv[3])
+    A_file =                       argv[4]
+    b_m =                      int(argv[5])
+    b_n =                      int(argv[6])
+    b_file =                       argv[7]
+    u_file =                       argv[8]
+    x_file =                       argv[9]
+    num_traj =                int(argv[10])
+    num_states =              int(argv[11])
+    size_each_state =         int(argv[12])
+    size_each_control =       int(argv[13])
+    lambda_u =              float(argv[14])
+    lambda_u_dot =          float(argv[15])
+    lambda_dist_from_goal = float(argv[16])
+    state_init_const =      float(argv[17])
+    transl_init_const =     float(argv[18])
+    rot_init_const =        float(argv[19])
+
+    solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, u_file, x_file, num_traj, num_states, size_each_state, size_each_control, lambda_u, lambda_u_dot, lambda_dist_from_goal, state_init_const, transl_init_const, rot_init_const)
 
   elif argv[1] == 'debug':
     debug()
