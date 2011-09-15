@@ -20,10 +20,12 @@ printing.options['width'] = -1
 solvers.options['show_progress'] = True
 
 if MOSEK_VERSION == 5.0 and not solvers.options['show_progress']:
-  solvers.options['MOSEK'] = {pymosek.iparam.log: 0 }
+  solvers.options['MOSEK'] = {pymosek.iparam.log: 0, 
+      pymosek.iparam.intpnt_num_threads: 0}
 
 if MOSEK_VERSION == 6.0 and not solvers.options['show_progress']:
-  solvers.options['MOSEK'] = {mosek.iparam.log: 0 }
+  solvers.options['MOSEK'] = {mosek.iparam.log: 0,
+      mosek.iparam.intpnt_num_threads: 0}
 
 def sparseIdentity(n):
   return spmatrix(1.0, range(n), range(n))
@@ -48,10 +50,11 @@ def calculate_state_size(num_traj, num_states, size_each_state, size_each_contro
   size = size + num_traj*(num_states-2)*size_each_state # D
   size = size + num_traj*(num_states-2)*size_each_state # XI
   size = size + num_controls*(size_each_control) # UI
+  size = size + num_traj*(num_states-1)*size_each_state # B
   return size
 
 def generateP(num_traj, num_states, size_each_state, size_each_control, 
-    lambda_1, lambda_2, lambda_3):
+    lambda_1, lambda_2, lambda_3, lambda_4):
   num_controls = num_states - 1
   all_matrices = []
   
@@ -83,6 +86,10 @@ def generateP(num_traj, num_states, size_each_state, size_each_control,
   for i in range(num_controls):
     all_matrices.append(sparseZero(size_each_control,size_each_control))
 
+  # min ||x_i - x_i-1|| = ||Bu|| transformation variables B
+  for i in range(num_traj*(num_states-1)):
+    all_matrices.append(2*lambda_4*sparseIdentity(size_each_state));
+
   P = spdiag(all_matrices)
   return P
 
@@ -99,8 +106,10 @@ def generateA(num_traj, num_states, size_each_state, size_each_control, all_tran
       num_traj*(num_states-2)*size_each_state)
   UI_block = sparseZero(num_traj*(num_states-1)*size_each_state,
       num_controls*size_each_control)
+  B_block = sparseZero(num_traj*(num_states-1)*size_each_state,
+      num_traj*(num_states-1)*size_each_state)
 
-  trans_A = sparse([[XU_block], [L_block], [E_block], [D_block], [XI_block], [UI_block]])
+  trans_A = sparse([[XU_block], [L_block], [E_block], [D_block], [XI_block], [UI_block], [B_block]])
 
   X_block = sparseZero(size_each_control*(num_controls-1), 
       num_traj*(num_states-2)*size_each_state)
@@ -114,8 +123,10 @@ def generateA(num_traj, num_states, size_each_state, size_each_control, all_tran
       num_traj*(num_states-2)*size_each_state)
   UI_block = sparseZero(size_each_control*(num_controls-1),
       num_controls*size_each_control)
+  B_block = sparseZero(size_each_control*(num_controls-1),
+      num_traj*(num_states-1)*size_each_state)
 
-  udot_A = sparse([[X_block], [U_block], [L_block], [E_block], [D_block], [XI_block], [UI_block]])
+  udot_A = sparse([[X_block], [U_block], [L_block], [E_block], [D_block], [XI_block], [UI_block], [B_block]])
 
   X_block = sparseIdentity(num_traj*(num_states-2)*size_each_state);
   U_block = sparseZero(num_traj*(num_states-2)*size_each_state, 
@@ -129,8 +140,10 @@ def generateA(num_traj, num_states, size_each_state, size_each_control, all_tran
       num_traj*(num_states-2)*size_each_state)
   UI_block = sparseZero(num_traj*(num_states-2)*size_each_state,
       num_controls*size_each_control)
+  B_block = sparseZero(num_traj*(num_states-2)*size_each_state,
+      num_traj*(num_states-1)*size_each_state)
 
-  dist_to_goal_A = sparse([[X_block], [U_block], [L_block], [E_block], [D_block], [XI_block], [UI_block]])
+  dist_to_goal_A = sparse([[X_block], [U_block], [L_block], [E_block], [D_block], [XI_block], [UI_block], [B_block]])
 
   X_block = sparseZero(num_traj*(num_states-2)*size_each_state, 
       num_traj*(num_states-2)*size_each_state);
@@ -145,8 +158,10 @@ def generateA(num_traj, num_states, size_each_state, size_each_control, all_tran
   XI_block = sparseIdentity(num_traj*(num_states-2)*size_each_state)
   UI_block = sparseZero(num_traj*(num_states-2)*size_each_state,
       num_controls*size_each_control)
+  B_block = sparseZero(num_traj*(num_states-2)*size_each_state,
+      num_traj*(num_states-1)*size_each_state)
 
-  dist_from_Xinit = sparse([[X_block], [U_block], [L_block], [E_block], [D_block], [XI_block], [UI_block]])
+  dist_from_Xinit = sparse([[X_block], [U_block], [L_block], [E_block], [D_block], [XI_block], [UI_block], [B_block]])
 
   X_block = sparseZero(num_controls*size_each_control, 
       num_traj*(num_states-2)*size_each_state);
@@ -161,10 +176,31 @@ def generateA(num_traj, num_states, size_each_state, size_each_control, all_tran
   XI_block = sparseZero(num_controls*size_each_control,
       num_traj*(num_states-2)*size_each_state);
   UI_block = sparseIdentity(num_controls*size_each_control)
+  B_block = sparseZero(num_controls*size_each_control, 
+      num_traj*(num_states-1)*size_each_state)
 
-  dist_from_Uinit = sparse([[X_block], [U_block], [L_block], [E_block], [D_block], [XI_block], [UI_block]])
+  dist_from_Uinit = sparse([[X_block], [U_block], [L_block], [E_block], [D_block], [XI_block], [UI_block], [B_block]])
 
-  A = sparse([trans_A, udot_A, dist_to_goal_A, dist_from_Xinit, dist_from_Uinit])
+  X_block = sparseZero(num_traj*(num_states-1)*size_each_state, 
+      num_traj*(num_states-2)*size_each_state);
+  U_block = all_trans[:,num_traj*(num_states-2)*size_each_state:]
+  L_block = sparseZero(num_traj*(num_states-1)*size_each_state, 
+      num_traj*(num_states-1)*size_each_state);
+  E_block = sparseZero(num_traj*(num_states-1)*size_each_state, 
+      size_each_control*(num_controls-1));
+  D_block = sparseZero(num_traj*(num_states-1)*size_each_state, 
+      num_traj*(num_states-2)*size_each_state);
+  XI_block = sparseZero(num_traj*(num_states-1)*size_each_state,
+      num_traj*(num_states-2)*size_each_state);
+  UI_block = sparseZero(num_traj*(num_states-1)*size_each_state,
+      num_controls*size_each_control)
+  B_block = sparseIdentity(num_traj*(num_states-1)*size_each_state)
+
+
+  dist_from_pairs = sparse([[X_block], [U_block], [L_block], [E_block], [D_block], [XI_block], [UI_block], [B_block]])
+  
+
+  A = sparse([trans_A, udot_A, dist_to_goal_A, dist_from_Xinit, dist_from_Uinit, dist_from_pairs])
 
   return A
    
@@ -192,6 +228,9 @@ def generateB(num_traj, num_states, size_each_state, size_each_control, b_data, 
     print u_data[i*size_each_control:(i)*size_each_control+3]
     print u_data[i*size_each_control+6:(i)*size_each_control+9]
     B.append(u_data[i*size_each_control:(i+1)*size_each_control])
+
+  for i in range(num_traj):
+    B.append(sparseZero(size_each_state*(num_controls),1))
 
   B = matrix(B);
   return B; 
@@ -229,8 +268,9 @@ def generateG(num_traj, num_states, size_each_state, size_each_control):
   D_block = sparseZero(num_ctrl_ineq, num_traj*(num_states-2)*size_each_state)
   XI_block = sparseZero(num_ctrl_ineq, num_traj*(num_states-2)*size_each_state)
   UI_block = sparseZero(num_ctrl_ineq, num_controls*size_each_control)
+  B_block = sparseZero(num_ctrl_ineq, num_traj*(num_states-1)*size_each_state)
 
-  ctrl_ineq = sparse([[X_block], [U_block], [L_block], [E_block], [D_block], [XI_block], [UI_block]])
+  ctrl_ineq = sparse([[X_block], [U_block], [L_block], [E_block], [D_block], [XI_block], [UI_block], [B_block]])
   
   num_state_ineq = 2*(num_traj*(num_states-2)*size_each_state)
   X_upper_block = sparseIdentity(num_traj*(num_states-2)*size_each_state)
@@ -244,8 +284,9 @@ def generateG(num_traj, num_states, size_each_state, size_each_control):
   XI_lower_block = sparseIdentity(num_traj*(num_states-2)*size_each_state)
   XI_block = sparse([XI_upper_block, XI_lower_block])
   UI_block = sparseZero(num_state_ineq, num_controls*size_each_control)
+  B_block = sparseZero(num_state_ineq, num_traj*(num_states-1)*size_each_state)
 
-  state_ineq = sparse([[X_block], [U_block], [L_block], [E_block], [D_block], [XI_block], [UI_block]])
+  state_ineq = sparse([[X_block], [U_block], [L_block], [E_block], [D_block], [XI_block], [UI_block], [B_block]])
 
   num_ctrl_init_ineq = 2 * (size_each_control * num_controls)
 
@@ -260,8 +301,9 @@ def generateG(num_traj, num_states, size_each_state, size_each_control):
   UI_upper_block = -1 * sparseIdentity(num_controls*size_each_control)
   UI_lower_block = sparseIdentity(num_controls*size_each_control)
   UI_block = sparse([UI_upper_block, UI_lower_block])
+  B_block = sparseZero(num_ctrl_init_ineq, num_traj*(num_states-1)*size_each_state)
 
-  ctrl_init_ineq = sparse([[X_block], [U_block], [L_block], [E_block], [D_block], [XI_block], [UI_block]])
+  ctrl_init_ineq = sparse([[X_block], [U_block], [L_block], [E_block], [D_block], [XI_block], [UI_block], [B_block]])
 
   G = sparse([ctrl_ineq, state_ineq, ctrl_init_ineq])
 
@@ -281,7 +323,7 @@ def generateH(num_traj, num_states, control_const_vec, state_const_vec, control_
 
   return H;
 
-def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, u_file, x_file, num_traj, num_states, size_each_state, size_each_control, lambda_u, lambda_u_dot, lambda_dist_from_goal, state_init_const, transl_init_const, rot_init_const):
+def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, u_file, x_file, num_traj, num_states, size_each_state, size_each_control, lambda_u, lambda_u_dot, lambda_dist_from_goal, lambda_dist_from_pairs, state_init_const, transl_init_const, rot_init_const):
   #read A file to get J
 
   num_controls = num_states - 1
@@ -290,6 +332,7 @@ def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, u_file, x_file, num_traj, num_s
   lambda_1 = lambda_u
   lambda_2 = lambda_u_dot
   lambda_3 = lambda_dist_from_goal
+  lambda_4 = lambda_dist_from_pairs
 
   control_const_vec = matrix([max_trans, max_trans, max_trans, max_rot, max_rot, max_rot, max_trans, max_trans, max_trans, max_rot, max_rot, max_rot], (12,1))
   
@@ -340,7 +383,7 @@ def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, u_file, x_file, num_traj, num_s
 
   #setup matrices
   P = generateP(num_traj, num_states, size_each_state, size_each_control, 
-      lambda_1, lambda_2, lambda_3)
+      lambda_1, lambda_2, lambda_3, lambda_4)
   q = generateQ(num_traj, num_states, size_each_state, size_each_control)
   A = generateA(num_traj, num_states, size_each_state, size_each_control, all_trans)
   b = generateB(num_traj, num_states, size_each_state, size_each_control, b_data, u_data)
@@ -369,26 +412,6 @@ def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, u_file, x_file, num_traj, num_s
   print "writing took %f" % (clock()-t0)
   t0 = clock()
 
-def debug():
-  t0 = clock()
-  size_each_state = 50
-  size_each_control = 12
-  num_states = 5
-  num_controls = num_states - 1
-  lmbda = 0.01
-  max_trans = 2e-1
-  max_rot = 5e-2
-  control_const_vec = matrix([max_trans, max_trans, max_trans, max_rot, max_rot, max_rot, max_trans, max_trans, max_trans, max_rot, max_rot, max_rot], (12,1))
-
-  solveSQP(3880,3612,'SQP_DATA/_alltrans.txt',4268,1,'SQP_DATA/_goalvec.txt','SQP_DATA/_newstate1.txt',1,11,388,12)
-
-
-  print "Setup took: %f. Starting qp" % (clock() - t0)
-  t0 = clock();
-  #qp(P,q,G,h,A,b,solver='mosek')['x']
-  print clock() - t0
-
-
 def main():
 
   if argv[1] == 'solver':
@@ -407,15 +430,12 @@ def main():
     lambda_u =              float(argv[14])
     lambda_u_dot =          float(argv[15])
     lambda_dist_from_goal = float(argv[16])
-    state_init_const =      float(argv[17])
-    transl_init_const =     float(argv[18])
-    rot_init_const =        float(argv[19])
+    lambda_dist_from_pair = float(argv[17])
+    state_init_const =      float(argv[18])
+    transl_init_const =     float(argv[19])
+    rot_init_const =        float(argv[20])
 
-    solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, u_file, x_file, num_traj, num_states, size_each_state, size_each_control, lambda_u, lambda_u_dot, lambda_dist_from_goal, state_init_const, transl_init_const, rot_init_const)
-
-  elif argv[1] == 'debug':
-    debug()
-  
+    solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, u_file, x_file, num_traj, num_states, size_each_state, size_each_control, lambda_u, lambda_u_dot, lambda_dist_from_goal, lambda_dist_from_pair, state_init_const, transl_init_const, rot_init_const)
 
 if __name__ == "__main__":
   main()

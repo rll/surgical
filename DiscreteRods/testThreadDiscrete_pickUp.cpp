@@ -589,8 +589,8 @@ void processNormalKeys(unsigned char key, int x, int y)
         openLoopController(new World(*initialWorld), waypoints, controls, traj_out);
         vector<vector<World*> > vis_data;
 
-        vis_data.push_back(waypoints);
         vis_data.push_back(traj_out);
+        vis_data.push_back(waypoints);
         setVisualizationData(vis_data);
         //closedLoopSQPController(initialWorld, waypoints, waypoint_controls);
         //vector<World*> smooth_traj;
