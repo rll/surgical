@@ -137,7 +137,10 @@ int world_ind = 0;
 //for collecting data
 DIR *dir = NULL;
 struct dirent *ent;
-
+ofstream data_file;
+char* data_raw_filename;
+vector<vector<World*> > world_data;
+		
 vector<string> samples_problems;
 vector<string> samples_initial_conditions1;
 vector<string> samples_problems1;
@@ -219,50 +222,84 @@ void processMouse(int button, int state, int x, int y)
 	}
 }
 
-string problem;
+void loadNextTrajectory()
+{
+
+}
 
 void processNormalKeys(unsigned char key, int x, int y)
 {
-//	if (key == 'o') {
-//		dir = opendir ("./environmentFiles");
-//		if (dir != NULL) {
-//			cout << "Sucessfully opened directory" << endl;
-//			
-//			cout << "Please enter destination file name (without extension): ";
-//    char *dstFileName = new char[256];
-//    cin >> dstFileName;
-//    char *full_data_filenamePath = new char[256];
-//    sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
-//			
-//			char *data_filename = new char[256];
-//			sprintf(data_filename, "%s", "x1_data");
-//			std::cout << "Writing data to: " << _fileName << std::endl;
+	if (key == 'o') {
+		dir = opendir ("./environmentFiles");
+		if (dir != NULL) {
+			cout << "Sucessfully opened directory" << endl;
+			cout << "Please enter problem name (without extension) (i.e. x1): ";
+		  data_raw_filename = new char[256];
+		  cin >> data_raw_filename;
+		  char *fullPath = new char[256];
+		  sprintf(fullPath, "%s%s%s", "environmentFiles/", data_raw_filename, "_data.txt");
+			cout << "Writing data to: " << fullPath << endl;
+			data_file.precision(20);
+			data_file.open(fullPath);
+			
+			processNormalKeys('b', x, y);
+			return;
+		} else {
+			cout << "Failed to open directory" << endl;
+		}
+	} else if (key == 'b') {
+		cout << "--------------------------------------------" << endl;
+		if (dir != NULL) {
+			if ((ent = readdir (dir)) != NULL) {
+				char *filename = new char[256];
+				sprintf(filename, "%s", ent->d_name);
+				vector<string> parameters;
+				boost::split(parameters, filename, boost::is_any_of("_"));
+				if (parameters.size() != 6 || parameters[0]!=string(data_raw_filename)) {
+					cout << "Ignoring file " << filename << endl;
+					processNormalKeys('b', x, y);
+					return;
+				}
+				string str_filename = "environmentFiles/";
+				str_filename.append(filename);
+				str_filename = str_filename.substr(0, str_filename.size()-4);
+				data_file << str_filename << " ";
+				vector<World*> temp_worlds;
+				TrajectoryReader read(str_filename.c_str());
+				if (read.readWorldsFromFile(temp_worlds)) {
+					cout << "Trajectory loading from " << str_filename << " was sucessful." << endl;
+					cout << "Displaying last world." << endl;
+				} else {
+					cout << "Trajectory loading failed. Unable to load " << str_filename << "." << endl;
+					assert(0);
+				}
+				world_data.push_back(temp_worlds);
+				setVisualizationData(world_data);
+    		drawWorldInd = drawWorlds.size()-1;
+    		drawInd = drawWorlds[drawWorldInd].size()-1;
+				cout << "Press y or n." << endl;
+			} else {
+				closedir (dir);
+				dir = NULL;
+				data_file.close();
+			  cout << "Writing data file Done\n";
+			}
+		} else {
+			cout << "No directory is open" << endl;
+		}
+	} else if (key == 'y') {
+		data_file << "1 \n";
+		cout << "You answered yes" << endl;
+		processNormalKeys('b', x, y);
+		return;
+	} else if (key == 'n') {
+		data_file << "0 \n";
+		cout << "You answered no" << endl;
+		processNormalKeys('b', x, y);
+		return;
+	}
 
-//  file.precision(20);
-//  file.open(_fileName);
-//			
-//		} else {
-//			cout << "Failed to open directory" << endl;
-//		}
-//	} else if (key == 'y') {
-//		if (dir != NULL) {
-//			if ((ent = readdir (dir)) != NULL) {
-//				char *filename = new char[256];
-//				sprintf(filename, "%s", ent->d_name);
-//				printf ("%s\n", filename);
-//				cout << "New trajectory loaded. Press y or n" << endl;
-//			} else {
-//				closedir (dir);
-//				dir = NULL;
-//			}
-//		} else {
-//			cout << "No directory is open" << endl;
-//		}
-//	}
-//	
-//	boost::split(vectbuf, buf, boost::is_any_of("_"));
-
-	if (key == 't')
+	else if (key == 't')
 	  mouse0->setKeyPressed(MOVETAN);
   else if (key == 'm')
     mouse0->setKeyPressed(MOVEPOS);
@@ -682,12 +719,12 @@ void processNormalKeys(unsigned char key, int x, int y)
   } else if (key == '<') {
     if (drawWorldInd < drawWorlds.size()) { 
       drawInd = max(0, drawInd - 1);
-      cout << drawInd << endl;
+      cout << drawInd << "/" << drawWorlds[drawWorldInd].size()-1 << endl;
     }
   } else if (key == '>') {
     if (drawWorldInd < drawWorlds.size()) { 
       drawInd = min((int) drawWorlds[drawWorldInd].size()-1, drawInd + 1);
-      cout << drawInd << endl;
+      cout << drawInd << "/" << drawWorlds[drawWorldInd].size()-1 << endl;
     }
   } else if (key == ',') {
     //drawStartWorld = !drawStartWorld;
