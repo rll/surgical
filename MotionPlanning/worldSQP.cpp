@@ -10,7 +10,7 @@
 #define LAMBDA_DIST_FROM_GOAL 0.0
 #define LAMBDA_DIST_FROM_PAIR 0.0001
 #define STATE_INIT_CONSTRAINT 0.3
-#define TRANSL_INIT_CONSTRAINT 0.01
+#define TRANSL_INIT_CONSTRAINT 0.4 // 0.01
 #define ROT_INIT_CONSTRAINT 100.0 
 
 
@@ -69,7 +69,9 @@ void WorldSQP::initializeClosedLoopStepper(World* start, vector<vector<World*> >
       current_jacobians[i][j] = MatrixXd();
     }
   }
-  for (int k = 0; k < target.size()-1; k++) {
+  
+  for (int k = 0; k < target[0].size(); k++) {
+    current_controls[k].resize(2);
     for (int j = 0; j < 2; j++) { //hack
       current_controls[k][j] = new Control(Vector3d::Zero(), Matrix3d::Identity());
     }
@@ -233,7 +235,7 @@ void WorldSQP::solve() {
   for (int j = 0; j < current_controls.size(); j++) 
 	{
     vector<Control*> cu = current_controls[j];
-    VectorXd vu; 
+    VectorXd vu;
     current_states[0][j]->ControlToVectorXd(cu, vu);
     vu = current_states[0][j]->JacobianControlStripper(vu);
     assert(vu.size() == _size_each_control);
