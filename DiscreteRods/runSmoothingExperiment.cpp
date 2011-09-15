@@ -33,68 +33,53 @@ void chunkSmoother(vector<World*>& traj_in, vector<vector<Control*> >& controls_
 	assert((traj_in.size()%size_each_chunk) == 0);
 	int num_chunks = traj_in.size() / size_each_chunk;
 
-	vector<vector<World*> > chunks;
-  vector<vector<VectorXd> >chunk_ctrls;
+  vector<vector<World*> > chunks;
+  vector<vector<vector<Control*> > > chunk_ctrls; 
 
   for (int i = 0; i < num_chunks; i++) {
     vector<World*> individual_chunk;
-    vector<VectorXd> individual_ctrls; 
+    vector<vector<Control*> > individual_ctrls; 
     for (int j = 0; j < size_each_chunk; j++) {
       individual_chunk.push_back(traj_in[i*size_each_chunk + j]);
-      VectorXd u; 
-      individual_chunk.back()->ControlToVectorXd(controls_in[i*size_each_chunk + j], u);
-      u = individual_chunk.back()->JacobianControlStripper(u);
-      individual_ctrls.push_back(u);
+      individual_ctrls.push_back(controls_in[i*size_each_chunk +j]);
     }
     chunks.push_back(individual_chunk);
     chunk_ctrls.push_back(individual_ctrls);
   }
 
-	vector<vector<World*> > smooth_chunks;
-	vector<vector<VectorXd> > smooth_controls;
-	smooth_chunks.resize(chunks.size());
-	smooth_controls.resize(chunks.size());
+  vector<vector<World*> > smooth_chunks;
+  vector<vector<vector<Control *> > > smooth_controls;
 
-	//#pragma omp parallel for
-	for (int i = 0; i < chunks.size(); i++) {
-		cout << "On chunk " << i << " of " << chunks.size() << endl; 
-	  //smooth each chunk
-	  vector<vector<World*> > smooth_chunk;
-	  vector<VectorXd> smooth_control;
-	  vector<vector<World*> > sqp_init;
-	  sqp_init.push_back(chunks[i]);
+  smooth_chunks.resize(chunks.size());
+  smooth_controls.resize(chunks.size());
+
+  //#pragma omp parallel for NEED TO SET NAMESTRING
+  for (int i = 0; i < chunks.size(); i++) {
+    //smooth each chunk
+    char namestring[128];
+    sprintf(namestring, "sqp_smoother_chunk_%d", i);
+    vector<vector<World*> > smooth_chunk;
+    vector<vector<Control*> > smooth_control;
+    vector<vector<World*> > sqp_init;
+    sqp_init.push_back(chunks[i]);
     chunk_ctrls[i].pop_back();
+    solveSQP(sqp_init, chunk_ctrls[i], smooth_chunk, smooth_control, namestring, false);
+    vector<Control *>  du;
+    for (int j = 0; j < 2; j++) {
+      du.push_back(new Control(Vector3d::Zero(), Matrix3d::Identity()));
+    }
+    smooth_control.push_back(du);
+    smooth_chunks[i] = smooth_chunk[0];
+    smooth_controls[i] = smooth_control;
+  }
 
-	  solveSQP(sqp_init, chunk_ctrls[i], smooth_chunk, smooth_control, namestring, false);
-	  VectorXd du(12);
-	  du.setZero(); 
-	  smooth_chunks[i] = smooth_chunk[0];
-	  smooth_controls[i] = smooth_control;
-	  smooth_controls[i].push_back(du);
-	}
+  for (int i = 0; i < smooth_chunks.size(); i++) { 
+    for (int j = 1; j < smooth_chunks[i].size()-1; j++) {
+      traj_out.push_back(smooth_chunks[i][j]);
+      controls_out.push_back(smooth_controls[i][j]);
+    }
+  }
 
-	for (int i = 0; i < smooth_chunks.size(); i++) { 
-	  for (int j = 1; j < smooth_chunks[i].size()-1; j++) {
-	    traj_out.push_back(smooth_chunks[i][j]);
-	    vector<Control*> du;
-	    VectorXd full_control = smooth_chunks[i][j]->JacobianControlWrapper(smooth_controls[i][j]);
-	    smooth_chunks[i][j]->VectorXdToControl(full_control, du);
-	    controls_out.push_back(du);
-	  }
-	}
-	
-	for (int i = 0; i < traj_out.size() - 1; i++) {
-		vector<Cursor*> pre_cursors;
-		traj_out[i]->getObjects<Cursor>(pre_cursors);
-		vector<Cursor*> post_cursors;
-		traj_out[i+1]->getObjects<Cursor>(post_cursors);
-		assert(pre_cursors.size() == post_cursors.size());
-		assert(controls_out[i].size() == pre_cursors.size());
-		for (int j = 0; j < pre_cursors.size(); j++) {
-			if (pre_cursors[j]->isOpen() != post_cursors[j]->isOpen())
-				controls_out[i][j]->setButton(UP, true);
-		}
-	}
 	controls_out.pop_back();
 }
 

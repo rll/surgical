@@ -526,8 +526,8 @@ void processNormalKeys(unsigned char key, int x, int y)
         vector<World*> waypoints;
         vector<vector<Control*> > waypoint_controls;
         //for (int i = 0; i < 100; i++) {
-        for (int i = 0; i < 10; i++) {
-        //for (int i = 0; i < temp_worlds.size()-1; i++) {
+        //for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < temp_worlds.size()-1; i++) {
           waypoints.push_back(new World(*temp_worlds[i]));
           waypoint_controls.push_back(controls[i]);
         }
@@ -539,15 +539,16 @@ void processNormalKeys(unsigned char key, int x, int y)
         //    controls, traj_out, nameString);
         //closedLoopSQPController(new World(*initialWorld), waypoints,
          //   controls, traj_out, nameString);
-        //openLoopController(new World(*initialWorld), waypoints, controls, traj_out);
-        //vector<vector<World*> > vis_data;
-        //vis_data.push_back(traj_out);
-        //vis_data.push_back(waypoints);
-        //setVisualizationData(vis_data);
+        openLoopController(new World(*initialWorld), waypoints, controls, traj_out);
+        vector<vector<World*> > vis_data;
+
+        vis_data.push_back(waypoints);
+        vis_data.push_back(traj_out);
+        setVisualizationData(vis_data);
         //closedLoopSQPController(initialWorld, waypoints, waypoint_controls);
-        vector<World*> smooth_traj;
-        vector<vector<Control*> > smooth_controls;
-        chunkSmoother(waypoints, waypoint_controls, smooth_traj, smooth_controls);
+        //vector<World*> smooth_traj;
+        //vector<vector<Control*> > smooth_controls;
+        //chunkSmoother(waypoints, waypoint_controls, smooth_traj, smooth_controls);
         //chunkSmoother(waypoints, smooth_traj, smooth_controls);
         //closedLoopSQPController(initialWorld, smooth_traj, smooth_controls);
 
@@ -1464,24 +1465,22 @@ void chunkSmoother(vector<World*>& traj_in, vector<vector<Control*> >& controls_
   int num_chunks = traj_in.size() / size_each_chunk;
 
   vector<vector<World*> > chunks;
-  vector<vector<VectorXd> > chunk_ctrls; 
+  vector<vector<vector<Control*> > > chunk_ctrls; 
 
   for (int i = 0; i < num_chunks; i++) {
     vector<World*> individual_chunk;
-    vector<VectorXd> individual_ctrls; 
+    vector<vector<Control*> > individual_ctrls; 
     for (int j = 0; j < size_each_chunk; j++) {
       individual_chunk.push_back(traj_in[i*size_each_chunk + j]);
-      VectorXd u; 
-      individual_chunk.back()->ControlToVectorXd(controls_in[i*size_each_chunk + j], u);
-      u = individual_chunk.back()->JacobianControlStripper(u);
-      individual_ctrls.push_back(u);
+      individual_ctrls.push_back(controls_in[i*size_each_chunk +j]);
     }
     chunks.push_back(individual_chunk);
     chunk_ctrls.push_back(individual_ctrls);
   }
 
   vector<vector<World*> > smooth_chunks;
-  vector<vector<VectorXd> > smooth_controls;
+  vector<vector<vector<Control *> > > smooth_controls;
+
   smooth_chunks.resize(chunks.size());
   smooth_controls.resize(chunks.size());
 
@@ -1491,13 +1490,15 @@ void chunkSmoother(vector<World*>& traj_in, vector<vector<Control*> >& controls_
     char namestring[128];
     sprintf(namestring, "sqp_smoother_chunk_%d", i);
     vector<vector<World*> > smooth_chunk;
-    vector<VectorXd> smooth_control;
+    vector<vector<Control*> > smooth_control;
     vector<vector<World*> > sqp_init;
     sqp_init.push_back(chunks[i]);
     chunk_ctrls[i].pop_back();
     solveSQP(sqp_init, chunk_ctrls[i], smooth_chunk, smooth_control, namestring, false);
-    VectorXd du(12);
-    du.setZero(); 
+    vector<Control *>  du;
+    for (int j = 0; j < 2; j++) {
+      du.push_back(new Control(Vector3d::Zero(), Matrix3d::Identity()));
+    }
     smooth_control.push_back(du);
     smooth_chunks[i] = smooth_chunk[0];
     smooth_controls[i] = smooth_control;
@@ -1506,11 +1507,7 @@ void chunkSmoother(vector<World*>& traj_in, vector<vector<Control*> >& controls_
   for (int i = 0; i < smooth_chunks.size(); i++) { 
     for (int j = 1; j < smooth_chunks[i].size()-1; j++) {
       traj_out.push_back(smooth_chunks[i][j]);
-      vector<Control*> du;
-      VectorXd full_control = smooth_chunks[i][j]->JacobianControlWrapper(smooth_controls[i][j]);
-      smooth_chunks[i][j]->VectorXdToControl(full_control, du);
-      controls_out.push_back(du);
-
+      controls_out.push_back(smooth_controls[i][j]);
     }
   }
 

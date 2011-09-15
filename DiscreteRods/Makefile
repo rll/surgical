@@ -200,6 +200,6 @@ worldSQP.o: $(MP_DIR)/worldSQP.cpp $(MP_DIR)/worldSQP.h
 	$(CC) $(INCLUDES) $(DEBUG) $(NDEBUG) -c $(MP_DIR)/worldSQP.cpp $(PROFILER)
 
 clean:
-	rm -r *.o *.gch testThreadDiscrete testThreadDiscrete_noniso testThreadDiscrete_phantom testThreadDiscrete_pickUp saveThreadTrajectory recordThreadVideo thread_visualize_and_save thread_visualize_and_save_noniso oldTestThreadDiscrete *.dSYM
+	rm -r *.o *.gch testThreadDiscrete testThreadDiscrete_noniso testThreadDiscrete_phantom testThreadDiscrete_pickUp saveThreadTrajectory recordThreadVideo thread_visualize_and_save thread_visualize_and_save_noniso oldTestThreadDiscrete runExperiment runSmoothingExperiment *.dSYM
 
 

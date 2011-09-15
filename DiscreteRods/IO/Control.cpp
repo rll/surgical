@@ -11,6 +11,16 @@ Control::Control(Vector3d start_position, Matrix3d start_rotation)
 	button[1] = false;
 }
 
+Control::Control(const Control& rhs)  
+  : position(rhs.position)
+  , rotation(rhs.rotation)
+  , translate(rhs.translate)
+  , rotate(rhs.rotate)
+{
+  button[0] = rhs.button[0];
+  button[1] = rhs.button[1];
+}
+
 Control::~Control() {}
 
 void Control::setControl(ControllerBase* controller)
