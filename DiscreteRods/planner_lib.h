@@ -44,7 +44,7 @@ double cost_metric(World* a, World* b) {
 /*
  * Use SQP solver given traj_in. Puts results in traj_out and control_out
  */
-void solveSQP(vector<vector<World*> >& traj_in, vector<VectorXd>& control_in, vector<vector<World*> >& traj_out, vector<VectorXd>& control_out, const char* namestring, bool planner = true)
+void solveSQP(vector<vector<World*> >& traj_in, vector<vector<Control *> >& control_in, vector<vector<World*> >& traj_out, vector<vector<Control *> >& control_out, const char* namestring, bool planner = true)
 {
   int num_iters;
   if (planner) {
@@ -62,8 +62,11 @@ void solveSQP(vector<vector<World*> >& traj_in, vector<VectorXd>& control_in, ve
     }
   }
 
-  for (int i = 0; i < control_in.size(); i++) { 
-    control_out[i] = control_in[i]; 
+  for (int i = 0; i < control_in.size(); i++) {
+    control_out[i].resize(control_in[i].size());
+    for (int j = 0; j < control_in[j].size(); j++) { 
+      control_out[i][j] = new Control(*control_in[i][j]);
+    }
   }
 
   VectorXd initialState;

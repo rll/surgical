@@ -31,6 +31,7 @@ class Control
 public:
 
 	Control(Vector3d start_position, Matrix3d start_rotation);
+  Control(const Control& rhs);
 	~Control();
 	
 	void setControl(ControllerBase* controller);
