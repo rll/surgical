@@ -22,6 +22,8 @@
 #include <Eigen/Geometry>
 #include <math.h>
 
+#include <dirent.h>
+
 #include "IO/ControllerBase.h"
 #include "IO/Mouse.h"
 #include "IO/Haptic.h"
@@ -132,6 +134,10 @@ TrajectoryRecorder trajectory_recorder_world;
 vector<World*> worlds;
 int world_ind = 0;
 
+//for collecting data
+DIR *dir = NULL;
+struct dirent *ent;
+
 vector<string> samples_problems;
 vector<string> samples_initial_conditions1;
 vector<string> samples_problems1;
@@ -213,8 +219,49 @@ void processMouse(int button, int state, int x, int y)
 	}
 }
 
+string problem;
+
 void processNormalKeys(unsigned char key, int x, int y)
 {
+//	if (key == 'o') {
+//		dir = opendir ("./environmentFiles");
+//		if (dir != NULL) {
+//			cout << "Sucessfully opened directory" << endl;
+//			
+//			cout << "Please enter destination file name (without extension): ";
+//    char *dstFileName = new char[256];
+//    cin >> dstFileName;
+//    char *full_data_filenamePath = new char[256];
+//    sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
+//			
+//			char *data_filename = new char[256];
+//			sprintf(data_filename, "%s", "x1_data");
+//			std::cout << "Writing data to: " << _fileName << std::endl;
+
+//  file.precision(20);
+//  file.open(_fileName);
+//			
+//		} else {
+//			cout << "Failed to open directory" << endl;
+//		}
+//	} else if (key == 'y') {
+//		if (dir != NULL) {
+//			if ((ent = readdir (dir)) != NULL) {
+//				char *filename = new char[256];
+//				sprintf(filename, "%s", ent->d_name);
+//				printf ("%s\n", filename);
+//				cout << "New trajectory loaded. Press y or n" << endl;
+//			} else {
+//				closedir (dir);
+//				dir = NULL;
+//			}
+//		} else {
+//			cout << "No directory is open" << endl;
+//		}
+//	}
+//	
+//	boost::split(vectbuf, buf, boost::is_any_of("_"));
+
 	if (key == 't')
 	  mouse0->setKeyPressed(MOVETAN);
   else if (key == 'm')
