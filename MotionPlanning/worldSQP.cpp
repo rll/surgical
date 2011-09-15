@@ -62,12 +62,14 @@ void WorldSQP::initializeClosedLoopStepper(World* start, vector<vector<World*> >
     for (int j = 0; j < target[i].size(); j++) {
       current_states[i][j]    = new World(*target[i][j]);
       current_jacobians[i][j] = MatrixXd();
-      VectorXd du(12);
-      du.setZero();
-      current_controls[j] = du; 
-
     }
   }
+  for (int k = 0; k < target.size()-1; k++) {
+    for (int j = 0; j < 2; j++) { //hack
+      current_controls[k][j] = new Control(Vector3d::Zero(), Matrix3d::Identity());
+    }
+  }
+
   pushStart(start);
 }
 
@@ -165,7 +167,11 @@ void WorldSQP::popGoal() {
 
 VectorXd WorldSQP::getStartControl() {
 #if COLOCATION_METHOD
-  return current_controls[0];
+  vector<Control*> cu = current_controls[0];
+  VectorXd vu; 
+  current_states[0][0]->ControlToVectorXd(cu, vu);
+  vu = current_states[0][0]->JacobianControlStripper(vu);
+  return vu; 
 #else
   assert(false);
 #endif
@@ -178,6 +184,8 @@ void WorldSQP::solve() {
 
 #if COLOCATION_METHOD
   assert(current_states.size() == _num_traj);
+  cout << current_controls.size() << " " << _num_worlds - 1 << endl;
+  assert(current_controls.size() == _num_worlds-1);
   for (int i = 0; i < current_states.size(); i++) {
     assert(current_states[i].size() == _num_worlds); // memory leak if false
   }
@@ -219,8 +227,12 @@ void WorldSQP::solve() {
   VectorXd init_controls(_size_each_control*(_num_worlds-1));
   for (int j = 0; j < current_controls.size(); j++) 
 	{
-    assert(current_controls[j].size() == _size_each_control);
-    init_controls.segment(j*_size_each_control, _size_each_control) = current_controls[j];
+    vector<Control*> cu = current_controls[j];
+    VectorXd vu; 
+    current_states[0][j]->ControlToVectorXd(cu, vu);
+    vu = current_states[0][j]->JacobianControlStripper(vu);
+    assert(vu.size() == _size_each_control);
+    init_controls.segment(j*_size_each_control, _size_each_control) = vu;
   }
   Vector_To_File(init_controls, filename_initctrls);
 
@@ -265,12 +277,28 @@ void WorldSQP::solve() {
     }
   }
 
-  //copy out control
-  current_controls.resize(_num_worlds-1);
+  //update controls
+  vector<VectorXd> new_controls;
+  new_controls.resize(_num_worlds-1);
   for (int i=0; i < _num_worlds-1; i++)
   {
-    current_controls[i] = new_states.segment(_num_traj*_size_each_state*(_num_worlds-2) + i*_size_each_control, _size_each_control);
+    new_controls[i] = new_states.segment(_num_traj*_size_each_state*(_num_worlds-2) + i*_size_each_control, _size_each_control);
   }
+
+  vector<vector<Control*> > c_new_controls; 
+  for (int i = 0; i < current_controls.size(); i++) {
+    vector<Control*> cu ;
+    cu.resize(2); 
+    VectorXd vu = current_states[0][i]->JacobianControlWrapper(new_controls[i]);
+    current_states[0][i]->VectorXdToControl(vu, cu);
+    for (int j = 0; j < 2; j++) {
+      cu[j]->setButton(UP, current_controls[i][j]->getButton(UP));
+      delete current_controls[i][j];
+    }
+    current_controls[i].clear();
+    c_new_controls.push_back(cu);
+  }
+  current_controls = c_new_controls;
 
 #if COLOCATION_METHOD
   //take sqp takes, transform to real states, and iterate
@@ -326,21 +354,6 @@ void WorldSQP::solve() {
 #else
   assert(false); // not implemented for SHOOTING_METHOD
 
-  /*//compute OLC Trajectory using controls 
-  vector<World*> trajectory_copy;  
-  trajectory_copy.push_back(new World(*current_states[0]));
-  vector<World*> OLTrajectory;
-  openLoopController(trajectory_copy, controls, OLTrajectory);
-  //evalulate open loop trajectory score 
-  double sqp_olc_score = l2PointsDifference(OLTrajectory.back(), current_states.back());
-  cout << "SQP OLC score = " << sqp_olc_score << endl;
-  //set trajectory = OLTrajectory for next iteration 
-  OLTrajectory[OLTrajectory.size()-1] = current_states[current_states.size()-1];
-  current_states = OLTrajectory;
-  trajectory = OLTrajectory;
-  for (int i = 0; i < current_jacobians.size(); i++) { 
-    current_jacobians[i] = MatrixXd();
-  }*/
 #endif
 
 #if TIMER_ENABLED
@@ -352,7 +365,7 @@ void WorldSQP::solve() {
 
 
 
-bool WorldSQP::iterative_control_opt(vector<vector<World*> >& trajectory, vector<VectorXd>& controls, int num_opts, bool return_best_opt, double threshold) 
+bool WorldSQP::iterative_control_opt(vector<vector<World*> >& trajectory, vector<vector<Control*> >& controls, int num_opts, bool return_best_opt, double threshold) 
 {
 
   current_states.resize(trajectory.size());
@@ -369,16 +382,17 @@ bool WorldSQP::iterative_control_opt(vector<vector<World*> >& trajectory, vector
   
   assert(controls.size() == _num_worlds-1);
   current_controls = controls; 
-	for (int i = 0; i < current_controls.size(); i++) { 
-		cout << current_controls[i].transpose() << endl; 
-
-	}
 
   for (int opt_iter = 0; opt_iter < num_opts; opt_iter++) {
     solve();
   }
+ 
+  
+  
   trajectory = current_states;
   controls = current_controls;
+
+  
 
   return true;
 }
@@ -417,16 +431,12 @@ void WorldSQP::compute_all_jacobians()
 
   for (int traj_ind = 0; traj_ind < _num_traj; traj_ind++) {
     cout << "Computing Jacobians on traj = " << traj_ind << endl; ;
-    //boost::progress_display progress(current_states[traj_ind].size()-1);
-
-
     for (int i=0; i < current_states[traj_ind].size()-1; i++)
     {
       if (current_jacobians[traj_ind][i].rows() == 0) {
         group.create_thread( boost::bind(computeJacobian, 
               current_states[traj_ind][i],
               &current_jacobians[traj_ind][i]) );
-
       }
     }
   }
@@ -452,13 +462,6 @@ void WorldSQP::compute_all_jacobians()
     block(_all_trans,traj_ind*_size_each_state*(_num_worlds-1), _cols_all_unknown_states, J);
   }
 }
-
-/*void WorldSQP::computeJacobian(World* w, MatrixXd* J) {
-  w->computeJacobian(J);
-  current_states[traj_ind][world_ind]->computeJacobian(trans);
-  current_jacobians[traj_ind][world_ind] = trans; 
-}*/
-
 
 void WorldSQP::world_to_state(World* world, VectorXd& state)
 {
