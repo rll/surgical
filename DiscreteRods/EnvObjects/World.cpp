@@ -356,7 +356,8 @@ void World::applyRelativeControl(const vector<Control*>& controls, double thresh
 	vector<EndEffector*> end_effs;
 	getObjects<EndEffector>(end_effs);
 	for (int ee_ind = 0; ee_ind < end_effs.size(); ee_ind++) {
-		end_effs[ee_ind]->updateTransformFromAttachment();
+		if (!(controls[0]->getButton(UP)) && !(controls[1]->getButton(UP)))
+			end_effs[ee_ind]->updateTransformFromAttachment();
 	}
 }
 
@@ -971,7 +972,7 @@ void World::initRestingThread(int opt)
 
 void World::initRestingFinerThread(int opt)
 {
-  int numInit = 10;
+  int numInit = 11;
 
 	double first_length = 3.0; //FIRST_REST_LENGTH;
 	double second_length = SECOND_REST_LENGTH;

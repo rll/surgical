@@ -1147,6 +1147,22 @@ void processInput(ControllerBase* controller0, ControllerBase* controller1)
 			if (trajectory_recorder.hasStarted()) {
 				c0->setTranslate(world->objectAtIndex<Cursor>(0)->end_eff->getPosition() - old_pos0);
 				c1->setTranslate(world->objectAtIndex<Cursor>(1)->end_eff->getPosition() - old_pos1);
+				
+				if (abs(c0->getTranslate()(0)) > 0.2000001)
+					cout << "exceeded max displacement: " << c0->getTranslate()(0) << endl;
+				if (abs(c0->getTranslate()(1)) > 0.2000001)
+					cout << "exceeded max displacement: " << c0->getTranslate()(1) << endl;
+				if (abs(c0->getTranslate()(2)) > 0.2000001)
+					cout << "exceeded max displacement: " << c0->getTranslate()(2) << endl;
+				if (abs(c1->getTranslate()(0)) > 0.2000001)
+					cout << "exceeded max displacement: " << c1->getTranslate()(0) << endl;
+				if (abs(c1->getTranslate()(1)) > 0.2000001)
+					cout << "exceeded max displacement: " << c1->getTranslate()(1) << endl;
+				if (abs(c1->getTranslate()(2)) > 0.2000001)
+					cout << "exceeded max displacement: " << c1->getTranslate()(2) << endl;
+				
+//				cout << "testThreadDiscrete c0: " << c0->getTranslate().transpose() << endl;
+//				cout << "testThreadDiscrete c1: " << c1->getTranslate().transpose() << endl;
 				c0->setRotate(old_rot0.transpose() * world->objectAtIndex<Cursor>(0)->end_eff->getRotation());
 				c1->setRotate(old_rot1.transpose() * world->objectAtIndex<Cursor>(1)->end_eff->getRotation());
 				trajectory_recorder.writeControlToFile(c0, c1);
