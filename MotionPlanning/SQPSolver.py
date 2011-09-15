@@ -225,8 +225,6 @@ def generateB(num_traj, num_states, size_each_state, size_each_control, b_data, 
     B.append(init[i])
 
   for i in range(num_controls):
-    print u_data[i*size_each_control:(i)*size_each_control+3]
-    print u_data[i*size_each_control+6:(i)*size_each_control+9]
     B.append(u_data[i*size_each_control:(i+1)*size_each_control])
 
   for i in range(num_traj):
@@ -328,7 +326,7 @@ def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, u_file, x_file, num_traj, num_s
 
   num_controls = num_states - 1
   max_trans = 2e-1
-  max_rot = 5e-2
+  max_rot = 1e-3
   lambda_1 = lambda_u
   lambda_2 = lambda_u_dot
   lambda_3 = lambda_dist_from_goal
