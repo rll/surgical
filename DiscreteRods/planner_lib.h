@@ -97,7 +97,7 @@ void sample_on_sphere(VectorXd& u, const double norm) {
 }
 
 void openLoopController(vector<World*> traj_in, vector<VectorXd>& controls_in, vector<World*>& traj_out) {
-  World* world = new World(*traj_in[0]);
+  World* world = new World(*traj_in[0], test_world_manager);
   for (int i = 0; i < controls_in.size(); i++) {
     traj_out.push_back(new World(*world));
     world->applyRelativeControlJacobian(controls_in[i]);
@@ -106,7 +106,7 @@ void openLoopController(vector<World*> traj_in, vector<VectorXd>& controls_in, v
 }
 
 void openLoopController(vector<World*> traj_in, vector<vector<Control*> >& controls_in, vector<World*>& traj_out) {
-  World* world = new World(*traj_in[0]);
+  World* world = new World(*traj_in[0], test_world_manager);
   boost::progress_display progress(controls_in.size());
   for (int i = 0; i < controls_in.size(); i++) {
     traj_out.push_back(new World(*world));
@@ -117,7 +117,7 @@ void openLoopController(vector<World*> traj_in, vector<vector<Control*> >& contr
 }
 
 void openLoopController(World* start, vector<World*> follow_traj, vector<vector<Control*> >& controls_in, vector<World*>& traj_out) { 
-  World* world = new World(*start);
+  World* world = new World(*start, test_world_manager);
   boost::progress_display progress(controls_in.size());
 
   for (int i = 0; i < controls_in.size(); i++) {
