@@ -225,8 +225,6 @@ def generateB(num_traj, num_states, size_each_state, size_each_control, b_data, 
     B.append(init[i])
 
   for i in range(num_controls):
-    print u_data[i*size_each_control:(i)*size_each_control+3]
-    print u_data[i*size_each_control+6:(i)*size_each_control+9]
     B.append(u_data[i*size_each_control:(i+1)*size_each_control])
 
   for i in range(num_traj):
