@@ -1,10 +1,10 @@
 import os, sys
 
-control_in_filename = ["x1"]
+control_in_filename = ["w2"]
 start_ind = 0
 end_ind = -1
-single_horizon = [0, 5]
-noise_thresh = [0.0, 0.05, 0.1, 0.2, 0.3, 0.4]
+single_horizon = [0]
+noise_thresh = [10.0]
 
 for control_in in control_in_filename:
   for horizon in single_horizon:

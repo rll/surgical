@@ -322,8 +322,18 @@ double uniformRand()
 
 double normRand(double mean, double sigma)
 {
-	boost::variate_generator<boost::mt19937, boost::normal_distribution<> > rand_num(boost::mt19937(time(0)), boost::normal_distribution<>(mean, sigma));
-	return rand_num();
+  // Create a Mersenne twister random number generator
+  // that is seeded once with #seconds since 1970
+  static boost::mt19937 rng(static_cast<unsigned> (std::time(0)));
+
+  // select Gaussian probability distribution
+  boost::normal_distribution<double> norm_dist(mean, sigma);
+
+  // bind random number generator to distribution, forming a function
+  boost::variate_generator<boost::mt19937&, boost::normal_distribution<double> >  normal_sampler(rng, norm_dist);
+
+  // sample from the distribution
+	return normal_sampler();
 }
 
 void World::applyRelativeControl(const vector<Control*>& controls, double thresh, bool limit_displacement)
@@ -332,19 +342,17 @@ void World::applyRelativeControl(const vector<Control*>& controls, double thresh
 	for (int i = 0; i < cursors.size(); i++) {
 		Cursor* cursor = cursors[i];
     Matrix3d rotate(controls[i]->getRotate());
-    
-    
-    AngleAxisd noise_rot = AngleAxisd(normRand(0, thresh * norm) * M_PI/180.0,
-        Vector3d(normRand(0, 1.0), normRand(0, 1.0), normRand(0, 1.0)).normalized());
+
+    AngleAxisd rotate_aa(rotate);
+    AngleAxisd noise_rot = AngleAxisd(normRand(0, thresh * rotate_aa.angle()), Vector3d(normRand(0, 1.0), normRand(0, 1.0), normRand(0, 1.0)).normalized());
 		const Matrix3d cursor_rot = cursor->rotation * rotate * noise_rot;
 
+		const double trans_norm = controls[i]->getTranslate().norm();
 
-		const double norm = controls[i]->getTranslate().norm();
-    const Vector3d noise_vec = Vector3d(normRand(0, thresh * norm),
-                                        normRand(0, thresh * norm),
-                                        normRand(0, thresh * norm));
+    const Vector3d noise_vec = Vector3d(normRand(0, thresh * trans_norm),
+                                        normRand(0, thresh * trans_norm),
+                                        normRand(0, thresh * trans_norm));
 		const Vector3d cursor_pos = cursor->position + controls[i]->getTranslate() + EndEffector::grab_offset * cursor_rot.col(0) + noise_vec;
-
 
 		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement);
 		
