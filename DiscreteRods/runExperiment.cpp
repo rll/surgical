@@ -119,6 +119,9 @@ int main (int argc, char * argv[])
   vector<vector<World*> > horizon_trajs;
   horizon_trajs.resize(horizon.size());
 
+	Timer* experiment_timer = new Timer();
+	experiment_timer->restart();
+
   for (int h = 0; h < horizon.size(); h++) { 
     cout << "horizon: " << horizon[h] << endl; 
 
@@ -187,6 +190,8 @@ int main (int argc, char * argv[])
 
   }
   //solver->getCurrentStates(closedLoopWorlds);
+
+	sprintf(traj_out_filename, "%s_%.1f", traj_out_filename, experiment_timer->elapsed());
 
   TrajectoryRecorder traj_out_recorder(traj_out_filename);
   traj_out_recorder.start();
