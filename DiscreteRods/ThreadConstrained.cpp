@@ -1021,7 +1021,8 @@ void ThreadConstrained::draw(bool mode) {
 //	cout << endl;
 
   glPushMatrix();
-  glColor3f (0.5, 0.5, 0.2);
+  //glColor3f (0.5, 0.5, 0.2);
+  glColor3f(184.0/255.0, 134.0/255.0, 11.0/255.0);
   double pts_cpy[points.size()+2][3];
   double twist_cpy[points.size()+2]; 
   for (int i=0; i < points.size(); i++)
@@ -1055,9 +1056,11 @@ void ThreadConstrained::draw(bool mode) {
 	    pts_cpy,
 	    0x0,
 	    twist_cpy);
-	 
+
+#ifndef PICTURE
 	 glColor3f (1.0, 0.0, 0.0);
 	 drawSphere(points[points.size()/2], 1.5);
+#endif
 
   if (examine_mode) {
 		glColor3f (0.0, 0.5, 0.5);

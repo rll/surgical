@@ -25,7 +25,8 @@ World::World(WorldManager* wm)
 	//InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), "../utils/textures/checkerBoardSquare32.bmp", this);
 	//InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), 0.6, 0.6, 0.6, this);
 	//InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), 0.42, 0.48, 0.55, this);
-	InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), 159.0/255.0, 182.0/255.0, 205.0/255.0, this);
+	InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), 139.0/255.0, 137.0/255.0, 137.0/255.0, this);
+	
 	objs.push_back(plane);
 	//objs.push_back(new TexturedSphere(Vector3d::Zero(), 150.0, "../utils/textures/checkerBoardRect16.bmp", this));
 	
@@ -38,14 +39,14 @@ World::World(WorldManager* wm)
 	objs.push_back(new EndEffector(threads[0]->positionAtConstraint(0), threads[0]->rotationAtConstraint(0), this, threads[0], 0));
 	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 0);
 
-//	objs.push_back(new EndEffector(threads[0]->positionAtConstraint(1), threads[0]->rotationAtConstraint(1), this, threads[0], threads[0]->numVertices()-1));
-//	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
+	objs.push_back(new EndEffector(threads[0]->positionAtConstraint(1), threads[0]->rotationAtConstraint(1), this, threads[0], threads[0]->numVertices()-1));
+	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
 
 	objs.push_back(new EndEffector(threads[1]->positionAtConstraint(0), threads[1]->rotationAtConstraint(0), this, threads[1], 0));
 	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 0);
 	
-//	objs.push_back(new EndEffector(threads[1]->positionAtConstraint(1), threads[1]->rotationAtConstraint(1), this, threads[1], threads[1]->numVertices()-1));
-//	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
+	objs.push_back(new EndEffector(threads[1]->positionAtConstraint(1), threads[1]->rotationAtConstraint(1), this, threads[1], threads[1]->numVertices()-1));
+	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
 	
 	objs.push_back(new EndEffector(plane->getPosition() + Vector3d(30.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()), this));
 	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == -1);
@@ -262,10 +263,25 @@ EndEffector* World::closestEndEffector(Vector3d tip_pos)
 void World::draw(RenderMode render_mode)
 {
 	if (render_mode == NORMAL) {
+#ifndef PICTURE
 		for (int i = 0; i<cursors.size(); i++)
 			cursors[i]->draw();
 		for (int i = 0; i<objs.size(); i++)
 			objs[i]->draw();
+#else
+		vector<EndEffector*> end_effs;
+		getObjects<EndEffector>(end_effs);
+		if (end_effs.size() > 0)
+			end_effs[0]->draw();
+		if (end_effs.size() > 2)
+			end_effs[2]->draw();
+		if (end_effs.size() > 4)
+			end_effs[4]->draw();
+		vector<InfinitePlane*> planes;
+		getObjects<InfinitePlane>(planes);
+		if (planes.size() > 0)
+			planes[0]->draw();
+#endif
 		for (int i = 0; i<threads.size(); i++)
 			threads[i]->draw(false);
 	} else if (render_mode == EXAMINE) {
@@ -345,12 +361,15 @@ void World::applyRelativeControl(const vector<Control*>& controls, double thresh
 		Cursor* cursor = cursors[i];
     Matrix3d rotate(controls[i]->getRotate());
 
-    AngleAxisd noise_rot = AngleAxisd(normRand(0, thresh) * M_PI/180.0, Vector3d(normRand(0, 1.0), normRand(0, 1.0), normRand(0, 1.0)).normalized());
+		AngleAxisd rotate_aa(rotate);
+    AngleAxisd noise_rot = AngleAxisd(normRand(0, thresh*rotate_aa.angle()) * M_PI/180.0, Vector3d(normRand(0, 1.0), normRand(0, 1.0), normRand(0, 1.0)).normalized());
 		const Matrix3d cursor_rot = cursor->rotation * rotate * noise_rot;
 		
-    const Vector3d noise_vec = Vector3d(normRand(0, thresh),
-                                        normRand(0, thresh),
-                                        normRand(0, thresh));
+    double trans_norm = controls[i]->getTranslate().norm();
+    
+    const Vector3d noise_vec = Vector3d(normRand(0, thresh*trans_norm),
+                                        normRand(0, thresh*trans_norm),
+                                        normRand(0, thresh*trans_norm));
 		const Vector3d cursor_pos = cursor->position + controls[i]->getTranslate() + EndEffector::grab_offset * cursor_rot.col(0) + noise_vec;
 
 		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement);

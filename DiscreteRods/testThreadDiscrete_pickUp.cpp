@@ -280,7 +280,7 @@ void processNormalKeys(unsigned char key, int x, int y)
 				world_data.push_back(temp_worlds);
 				setVisualizationData(world_data);
     		drawWorldInd = drawWorlds.size()-1;
-    		drawInd = 0;//drawWorlds[drawWorldInd].size()-1;
+    		drawInd = drawWorlds[drawWorldInd].size()-1;
 				cout << "Press y or n." << endl;
 			} else {
 				closedir (dir);
@@ -887,6 +887,7 @@ void drawStuff()
 #endif
   
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glClearColor(1.0, 1.0, 1.0, 0.0);
   glColor3f(1.0, 1.0, 1.0);
 	glPushMatrix ();
   /* set up some matrices so that the object spins with the mouse */
