@@ -71,9 +71,9 @@ int main (int argc, char * argv[])
   char *traj_out_filename = new char[256];
   char *control_in_filename = new char[256];
   char *traj_in_filename = new char[256];
-  sprintf(traj_out_filename, "%s%s", "environmentFiles/", argv[1]);
-  sprintf(control_in_filename, "%s%s", "environmentFiles/", argv[2]);  
-  sprintf(traj_in_filename, "%s%s", "environmentFiles/", argv[3]);
+  sprintf(traj_out_filename, "%s%s%s%s", "environmentFiles/", argv[2], "/", argv[1]);
+  sprintf(control_in_filename, "%s%s%s%s", "environmentFiles/", argv[2], "/", argv[2]);  
+  sprintf(traj_in_filename, "%s%s%s%s", "environmentFiles/", argv[2], "/", argv[3]);
   
   int start_ind = atoi(argv[4]);
   int end_ind = atoi(argv[5]);
