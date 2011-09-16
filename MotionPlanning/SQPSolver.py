@@ -326,7 +326,7 @@ def solveSQP(A_m, A_n, A_file, b_m, b_n, b_file, u_file, x_file, num_traj, num_s
 
   num_controls = num_states - 1
   max_trans = 2e-1
-  max_rot = 1e-3
+  max_rot = 5e-2
   lambda_1 = lambda_u
   lambda_2 = lambda_u_dot
   lambda_3 = lambda_dist_from_goal
