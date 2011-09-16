@@ -36,14 +36,14 @@ World::World(WorldManager* wm)
 	objs.push_back(new EndEffector(threads[0]->positionAtConstraint(0), threads[0]->rotationAtConstraint(0), this, threads[0], 0));
 	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 0);
 
-	objs.push_back(new EndEffector(threads[0]->positionAtConstraint(1), threads[0]->rotationAtConstraint(1), this, threads[0], threads[0]->numVertices()-1));
-	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
+//	objs.push_back(new EndEffector(threads[0]->positionAtConstraint(1), threads[0]->rotationAtConstraint(1), this, threads[0], threads[0]->numVertices()-1));
+//	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
 
 	objs.push_back(new EndEffector(threads[1]->positionAtConstraint(0), threads[1]->rotationAtConstraint(0), this, threads[1], 0));
 	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 0);
 	
-	objs.push_back(new EndEffector(threads[1]->positionAtConstraint(1), threads[1]->rotationAtConstraint(1), this, threads[1], threads[1]->numVertices()-1));
-	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
+//	objs.push_back(new EndEffector(threads[1]->positionAtConstraint(1), threads[1]->rotationAtConstraint(1), this, threads[1], threads[1]->numVertices()-1));
+//	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
 	
 	objs.push_back(new EndEffector(plane->getPosition() + Vector3d(30.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()), this));
 	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == -1);
@@ -320,7 +320,11 @@ double uniformRand()
   return ((drand48() - 0.5) * 2); 
 }
 
-boost::variate_generator<boost::mt19937, boost::normal_distribution<> > normRand(boost::mt19937(time(0)), boost::normal_distribution<>(0.0, 1.0));
+double normRand(double mean, double sigma)
+{
+	boost::variate_generator<boost::mt19937, boost::normal_distribution<> > rand_num(boost::mt19937(time(0)), boost::normal_distribution<>(mean, sigma));
+	return rand_num();
+}
 
 void World::applyRelativeControl(const vector<Control*>& controls, double thresh, bool limit_displacement)
 {
@@ -330,15 +334,15 @@ void World::applyRelativeControl(const vector<Control*>& controls, double thresh
     Matrix3d rotate(controls[i]->getRotate());
     
     
-    AngleAxisd noise_rot = AngleAxisd(thresh * normRand() * M_PI/180.0,
-        Vector3d(normRand(), normRand(), normRand()).normalized());
+    AngleAxisd noise_rot = AngleAxisd(normRand(0, thresh * norm) * M_PI/180.0,
+        Vector3d(normRand(0, 1.0), normRand(0, 1.0), normRand(0, 1.0)).normalized());
 		const Matrix3d cursor_rot = cursor->rotation * rotate * noise_rot;
 
 
-
-    const Vector3d noise_vec = Vector3d(thresh * normRand(),
-                                        thresh * normRand(),
-                                        thresh * normRand());
+		const double norm = controls[i]->getTranslate().norm();
+    const Vector3d noise_vec = Vector3d(normRand(0, thresh * norm),
+                                        normRand(0, thresh * norm),
+                                        normRand(0, thresh * norm));
 		const Vector3d cursor_pos = cursor->position + controls[i]->getTranslate() + EndEffector::grab_offset * cursor_rot.col(0) + noise_vec;
 
 
