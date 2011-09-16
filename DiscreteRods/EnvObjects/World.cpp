@@ -521,7 +521,7 @@ void World::computeJacobian(MatrixXd* J) {
   int size_each_control = 12; 
   J->resize(world_state.size(), size_each_control);
   J->setZero();
-  double eps = 5e-2;
+  double eps = 1e-1;//5e-2;
 
   t0 = GetClock();
 
