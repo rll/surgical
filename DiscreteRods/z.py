@@ -5,15 +5,16 @@ set = int(sys.argv[2])
 
 print control_in_filename, set
 
-#control_in_filename = ["w2", "w2s", "w3", "w3s", "w4", "w4s"]
 start_ind = 0
 end_ind = -1
 single_horizon = [5]
 
 if set == 1:
-  noise_thresh = [1.0, 1.2, 1.4, 1.6, 1.8]
-else:
-  noise_thresh = [2.0, 2.2, 2.4, 2.6, 2.8, 3.0]
+  noise_thresh = [0.0, 0.2]
+elif set == 2:
+  noise_thresh = [0.4, 0.6]
+else
+  noise_thresh = [0.8, 1.0]
 
 for control_in in control_in_filename:
   for horizon in single_horizon:
