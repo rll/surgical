@@ -34,7 +34,7 @@ class InfinitePlane : public EnvObject
 	protected:
 		Vector3d normal;
 		World* world;
-		static const double side = 100.0;
+		static const double side = 1000.0;
 		string file_name;
 		
 		//backup

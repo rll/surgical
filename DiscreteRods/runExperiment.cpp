@@ -71,9 +71,9 @@ int main (int argc, char * argv[])
   char *traj_out_filename = new char[256];
   char *control_in_filename = new char[256];
   char *traj_in_filename = new char[256];
-  sprintf(traj_out_filename, "%s%s", "environmentFiles/", argv[1]);
-  sprintf(control_in_filename, "%s%s", "environmentFiles/", argv[2]);  
-  sprintf(traj_in_filename, "%s%s", "environmentFiles/", argv[3]);
+  sprintf(traj_out_filename, "%s%s%s%s", "environmentFiles/", argv[2], "/", argv[1]);
+  sprintf(control_in_filename, "%s%s%s%s", "environmentFiles/", argv[2], "/", argv[2]);  
+  sprintf(traj_in_filename, "%s%s%s%s", "environmentFiles/", argv[2], "/", argv[3]);
   
   int start_ind = atoi(argv[4]);
   int end_ind = atoi(argv[5]);
@@ -118,6 +118,9 @@ int main (int argc, char * argv[])
 
   vector<vector<World*> > horizon_trajs;
   horizon_trajs.resize(horizon.size());
+
+	Timer* experiment_timer = new Timer();
+	experiment_timer->restart();
 
   for (int h = 0; h < horizon.size(); h++) { 
     cout << "horizon: " << horizon[h] << endl; 
@@ -187,6 +190,8 @@ int main (int argc, char * argv[])
 
   }
   //solver->getCurrentStates(closedLoopWorlds);
+
+	sprintf(traj_out_filename, "%s_%.1f", traj_out_filename, experiment_timer->elapsed());
 
   TrajectoryRecorder traj_out_recorder(traj_out_filename);
   traj_out_recorder.start();

@@ -85,7 +85,8 @@ class EndEffector : public EnvObject
 		void backup();
 		void restore();
 	
-		static const double default_color0 = 0.7, default_color1 = 0.7, default_color2 = 0.7;
+		//static const double default_color0 = 0.7, default_color1 = 0.7, default_color2 = 0.7;
+		static const double default_color0 = 120.0/255.0, default_color1 = 150.0/255.0, default_color2 = 120.0/255.0;
 		static const double pieces = 3.0; //4.0;
 		static const double h = 9.0/3.0; //9.0/4.0; // (end-start)/pieces
 		static const double start = -3.0;

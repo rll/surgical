@@ -62,13 +62,13 @@ void chunkSmoother(vector<World*>& dirty, vector<vector<Control*> >& ctrl_in, ve
 
   static const GLfloat light_model_ambient[] = {0.3f, 0.3f, 0.3f, 1.0f};    
   static const GLfloat lightOnePosition[] = {140.0, 0.0, 200.0, 0.0};
-  static const GLfloat lightOneColor[] = {0.99, 0.99, 0.99, 1.0};
+  static const GLfloat lightOneColor[] = {0.5, 0.5, 0.5, 1.0};
   static const GLfloat lightTwoPosition[] = {-140.0, 0.0, 200.0, 0.0};
-  static const GLfloat lightTwoColor[] = {0.99, 0.99, 0.99, 1.0};
+  static const GLfloat lightTwoColor[] = {0.9, 0.9, 0.9, 1.0};
   static const GLfloat lightThreePosition[] = {140.0, 0.0, -200.0, 0.0};
-  static const GLfloat lightThreeColor[] = {0.99, 0.99, 0.99, 1.0};
+  static const GLfloat lightThreeColor[] = {0.5, 0.5, 0.5, 1.0};
   static const GLfloat lightFourPosition[] = {-140.0, 0.0, -200.0, 0.0};
-  static const GLfloat lightFourColor[] = {0.99, 0.99, 0.99, 1.0};
+  static const GLfloat lightFourColor[] = {0.9, 0.9, 0.9, 1.0};
 
 //#define VIEW3D
 
@@ -230,14 +230,16 @@ void loadNextTrajectory()
 void processNormalKeys(unsigned char key, int x, int y)
 {
 	if (key == 'o') {
-		dir = opendir ("./environmentFiles");
+		cout << "Please enter problem name (without extension) (i.e. x1): ";
+	  data_raw_filename = new char[256];
+	  cin >> data_raw_filename;
+	  char *directory = new char[256];
+	  sprintf(directory, "%s%s", "environmentFiles/", data_raw_filename);
+		dir = opendir (directory);
 		if (dir != NULL) {
 			cout << "Sucessfully opened directory" << endl;
-			cout << "Please enter problem name (without extension) (i.e. x1): ";
-		  data_raw_filename = new char[256];
-		  cin >> data_raw_filename;
 		  char *fullPath = new char[256];
-		  sprintf(fullPath, "%s%s%s", "environmentFiles/", data_raw_filename, "_data.txt");
+		  sprintf(fullPath, "%s%s%s%s%s", "environmentFiles/", data_raw_filename, "/", data_raw_filename, "_data.txt");
 			cout << "Writing data to: " << fullPath << endl;
 			data_file.precision(20);
 			data_file.open(fullPath);
@@ -255,12 +257,14 @@ void processNormalKeys(unsigned char key, int x, int y)
 				sprintf(filename, "%s", ent->d_name);
 				vector<string> parameters;
 				boost::split(parameters, filename, boost::is_any_of("_"));
-				if (parameters.size() != 6 || parameters[0]!=string(data_raw_filename)) {
+				if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename)) {
 					cout << "Ignoring file " << filename << endl;
 					processNormalKeys('b', x, y);
 					return;
 				}
 				string str_filename = "environmentFiles/";
+				str_filename.append(data_raw_filename);
+				str_filename.append("/");
 				str_filename.append(filename);
 				str_filename = str_filename.substr(0, str_filename.size()-4);
 				data_file << str_filename << " ";
@@ -883,6 +887,7 @@ void drawStuff()
 #endif
   
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glClearColor(1.0, 1.0, 1.0, 0.0);
   glColor3f(1.0, 1.0, 1.0);
 	glPushMatrix ();
   /* set up some matrices so that the object spins with the mouse */
@@ -1331,7 +1336,7 @@ void initGL()
   glLightModelfv(GL_LIGHT_MODEL_AMBIENT, light_model_ambient);
   glLightfv (GL_LIGHT0, GL_POSITION, lightOnePosition);
 	glLightfv (GL_LIGHT0, GL_DIFFUSE, lightOneColor);
-	//glEnable (GL_LIGHT0);		// uncomment this if you want another source of light
+	glEnable (GL_LIGHT0);		// uncomment this if you want another source of light
 	glLightfv (GL_LIGHT1, GL_POSITION, lightTwoPosition);
 	glLightfv (GL_LIGHT1, GL_DIFFUSE, lightTwoColor);
 	glEnable (GL_LIGHT1);

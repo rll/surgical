@@ -355,6 +355,7 @@ void EndEffector::updateTransformFromAttachment()
 void EndEffector::draw()
 {
 	glColor3f(color0, color1, color2);
+#ifndef PICTURE
 	for (int i = 1; i < 8; i++) {
 		if (i == 2 || i == 5) { continue; }
 		drawCapsule(col_objs[i]);
@@ -362,6 +363,11 @@ void EndEffector::draw()
 	glColor3f(0.3, 0.3, 0.0);
 	drawCapsule(col_objs[2]);
 	drawCapsule(col_objs[5]);
+#else
+	for (int i = 1; i < 8; i++) {
+		drawCapsule(col_objs[i]);
+	}
+#endif
 }
 
 void EndEffector::drawDebug()
