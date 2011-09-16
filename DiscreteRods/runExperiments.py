@@ -1,10 +1,10 @@
 import os, sys
 
-control_in_filename = ["w4", "w4s"]
+control_in_filename = ["w3s", "w3"]
 start_ind = 0
 end_ind = -1
 single_horizon = [0]
-noise_thresh = [0.5]
+noise_thresh = [1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0]
 
 for control_in in control_in_filename:
   for horizon in single_horizon:
