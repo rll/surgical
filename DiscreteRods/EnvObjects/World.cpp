@@ -23,7 +23,9 @@ World::World(WorldManager* wm)
 	
 	//setting up objects in environment
 	//InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), "../utils/textures/checkerBoardSquare32.bmp", this);
-	InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), 0.6, 0.6, 0.6, this);
+	//InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), 0.6, 0.6, 0.6, this);
+	//InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), 0.42, 0.48, 0.55, this);
+	InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), 159.0/255.0, 182.0/255.0, 205.0/255.0, this);
 	objs.push_back(plane);
 	//objs.push_back(new TexturedSphere(Vector3d::Zero(), 150.0, "../utils/textures/checkerBoardRect16.bmp", this));
 	
@@ -343,15 +345,12 @@ void World::applyRelativeControl(const vector<Control*>& controls, double thresh
 		Cursor* cursor = cursors[i];
     Matrix3d rotate(controls[i]->getRotate());
 
-    AngleAxisd rotate_aa(rotate);
-    AngleAxisd noise_rot = AngleAxisd(normRand(0, thresh * rotate_aa.angle()), Vector3d(normRand(0, 1.0), normRand(0, 1.0), normRand(0, 1.0)).normalized());
+    AngleAxisd noise_rot = AngleAxisd(normRand(0, thresh) * M_PI/180.0, Vector3d(normRand(0, 1.0), normRand(0, 1.0), normRand(0, 1.0)).normalized());
 		const Matrix3d cursor_rot = cursor->rotation * rotate * noise_rot;
-
-		const double trans_norm = controls[i]->getTranslate().norm();
-
-    const Vector3d noise_vec = Vector3d(normRand(0, thresh * trans_norm),
-                                        normRand(0, thresh * trans_norm),
-                                        normRand(0, thresh * trans_norm));
+		
+    const Vector3d noise_vec = Vector3d(normRand(0, thresh),
+                                        normRand(0, thresh),
+                                        normRand(0, thresh));
 		const Vector3d cursor_pos = cursor->position + controls[i]->getTranslate() + EndEffector::grab_offset * cursor_rot.col(0) + noise_vec;
 
 		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement);
