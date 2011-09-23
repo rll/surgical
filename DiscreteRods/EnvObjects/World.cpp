@@ -273,10 +273,19 @@ void World::draw(RenderMode render_mode)
 		getObjects<EndEffector>(end_effs);
 		if (end_effs.size() > 0)
 			end_effs[0]->draw();
+		if (end_effs.size() > 1) {
+			glColor3f(0.3, 0.3, 0.3);
+			drawSphere(end_effs[1]->getPosition(), 4.0);
+		}
 		if (end_effs.size() > 2)
 			end_effs[2]->draw();
+		if (end_effs.size() > 3) {
+			glColor3f(0.3, 0.3, 0.3);
+			drawSphere(end_effs[3]->getPosition(), 4.0);
+		}
 		if (end_effs.size() > 4)
 			end_effs[4]->draw();
+		
 		vector<InfinitePlane*> planes;
 		getObjects<InfinitePlane>(planes);
 		if (planes.size() > 0)
@@ -388,6 +397,71 @@ void World::applyRelativeControl(const vector<Control*>& controls, double thresh
 	for (int ee_ind = 0; ee_ind < end_effs.size(); ee_ind++) {
 		if (!(controls[0]->getButton(UP)) && !(controls[1]->getButton(UP)))
 			end_effs[ee_ind]->updateTransformFromAttachment();
+	}
+}
+
+void World::applyRelativeControl(const vector<Control*>& controls, vector<double>& displacements, double thresh, bool limit_displacement)
+{
+	assert(cursors.size() == controls.size());
+	
+	vector<Vector3d> pre_positions;
+		
+	if ((cursors.size() == 2) || (displacements.size() == 2)) {
+		pre_positions.resize(2);
+		for (int i = 0; i < cursors.size(); i++) {
+			assert(cursors[i]->isAttached());
+			if (cursors[i]->isAttached())
+				pre_positions[i] = cursors[i]->end_eff->getPosition();
+		}
+	} else {
+		for (int i = 0; i < displacements.size(); i++) {
+			displacements[i] = -1;
+		}
+	}
+	
+	for (int i = 0; i < cursors.size(); i++) {
+		Cursor* cursor = cursors[i];
+    Matrix3d rotate(controls[i]->getRotate());
+
+		AngleAxisd rotate_aa(rotate);
+    AngleAxisd noise_rot = AngleAxisd(normRand(0, thresh*rotate_aa.angle()) * M_PI/180.0, Vector3d(normRand(0, 1.0), normRand(0, 1.0), normRand(0, 1.0)).normalized());
+		const Matrix3d cursor_rot = cursor->rotation * rotate * noise_rot;
+		
+    double trans_norm = controls[i]->getTranslate().norm();
+    
+    const Vector3d noise_vec = Vector3d(normRand(0, thresh*trans_norm),
+                                        normRand(0, thresh*trans_norm),
+                                        normRand(0, thresh*trans_norm));
+		const Vector3d cursor_pos = cursor->position + controls[i]->getTranslate() + EndEffector::grab_offset * cursor_rot.col(0) + noise_vec;
+
+		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement);
+		
+		if (controls[i]->getButton(UP))
+			cursor->openClose(limit_displacement);
+		if (controls[i]->getButton(DOWN))
+			cursor->attachDettach(limit_displacement);
+	}
+	
+	for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
+		threads[thread_ind]->minimize_energy();
+	}
+	vector<EndEffector*> end_effs;
+	getObjects<EndEffector>(end_effs);
+	for (int ee_ind = 0; ee_ind < end_effs.size(); ee_ind++) {
+		if (!(controls[0]->getButton(UP)) && !(controls[1]->getButton(UP)))
+			end_effs[ee_ind]->updateTransformFromAttachment();
+	}
+	
+	if ((cursors.size() == 2) || (displacements.size() == 3)) {
+		Matrix<double,6,1> u_tran;
+		for (int i = 0; i < cursors.size(); i++) {
+			assert(cursors[i]->isAttached());
+			if (cursors[i]->isAttached())
+				//cout << "norm of end effector " << i << ": " << (cursors[i]->end_eff->getPosition() - pre_positions[i]).norm() << endl;
+				displacements[i] = (cursors[i]->end_eff->getPosition() - pre_positions[i]).norm();
+				u_tran.segment(i*3,3) = (cursors[i]->end_eff->getPosition() - pre_positions[i]);
+		}
+		displacements[2] = u_tran.norm();
 	}
 }
 

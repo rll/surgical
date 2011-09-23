@@ -360,13 +360,16 @@ void EndEffector::draw()
 		if (i == 2 || i == 5) { continue; }
 		drawCapsule(col_objs[i]);
 	}
-	glColor3f(0.3, 0.3, 0.0);
+	glColor3f(0.0, 0.5, 0.0);
 	drawCapsule(col_objs[2]);
 	drawCapsule(col_objs[5]);
 #else
 	for (int i = 1; i < 8; i++) {
 		drawCapsule(col_objs[i]);
 	}
+	glColor3f(0.0, 0.5, 0.0);
+	drawCapsule(col_objs[2]);
+	drawCapsule(col_objs[5]);
 #endif
 }
 

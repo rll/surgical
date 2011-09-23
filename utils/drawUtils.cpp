@@ -29,6 +29,9 @@ void drawCapsule(btCollisionObject* col_obj, bool include_repulsion_dist)
 	float radius = capsule_shape->getRadius() - ((include_repulsion_dist) ? 0.0 : REPULSION_DIST);
 	double cylinder[4][3] = { {-half_height-1.0, 0.0, 0.0} , {-half_height, 0.0, 0.0} , {half_height, 0.0, 0.0} ,
 															 {half_height+1.0, 0.0, 0.0} };
+#ifdef PICTURE
+	gleSetNumSides(60);
+#endif
 	glePolyCylinder(4, cylinder, NULL, radius);
 	glTranslated(-half_height, 0.0, 0.0);
 	glutSolidSphere(radius, 20, 16);
