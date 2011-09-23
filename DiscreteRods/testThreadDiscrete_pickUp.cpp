@@ -43,6 +43,11 @@
 #include "TrajectoryRecorder.h"
 #include "TrajectoryReader.h"
 
+#include <opencv/cv.h>
+#include <opencv/highgui.h>
+
+using namespace cv;
+
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
@@ -52,11 +57,11 @@ void displayTextInScreen(const char* textline, ...);
 void bitmap_output(int x, int y, char *string, void *font);
 void glutMenu(int ID);
 void initGL();
+void save_opengl_image(char* filename);
 void interruptHandler(int sig);
 //void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_trajectory);
 //void sqpPlanner(World* start, World* goal, vector<World*>& trajectory);
-void closedLoopSQPController(World* start, vector<World*>& target,
-    vector<vector<Control*> >& ctrls);
+void closedLoopSQPController(World* start, vector<World*>& target, vector<vector<Control*> >& ctrls);
 VectorXd closedLoopSQPStepper(World* start, World* goal, WorldSQP* solver);
 void chunkSmoother(vector<World*>& dirty, vector<vector<Control*> >& ctrl_in, vector<World*>& smooth, vector<vector<Control*> >& smooth_controls);
 
@@ -133,6 +138,9 @@ TrajectoryRecorder trajectory_recorder;
 TrajectoryRecorder trajectory_recorder_world;
 vector<World*> worlds;
 int world_ind = 0;
+
+#define IMAGE_BASE_NAME "./environmentFiles/images/"
+int im_save_ind = 1;
 
 //for collecting data
 DIR *dir = NULL;
@@ -257,7 +265,8 @@ void processNormalKeys(unsigned char key, int x, int y)
 				sprintf(filename, "%s", ent->d_name);
 				vector<string> parameters;
 				boost::split(parameters, filename, boost::is_any_of("_"));
-				if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename)) {
+				if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename) || parameters[4]!="2.0") {
+				//if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename) || parameters[3] == "5") {
 					cout << "Ignoring file " << filename << endl;
 					processNormalKeys('b', x, y);
 					return;
@@ -301,6 +310,11 @@ void processNormalKeys(unsigned char key, int x, int y)
 		cout << "You answered no" << endl;
 		processNormalKeys('b', x, y);
 		return;
+	} else if (key == 'i') {
+		cout << "Please enter image destination file name (without extension): ";
+    char *dstFileName = new char[256];
+    cin >> dstFileName;
+		save_opengl_image(dstFileName);
 	}
 
 	else if (key == 't')
@@ -887,12 +901,13 @@ void drawStuff()
 #endif
   
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glClearColor(1.0, 1.0, 1.0, 0.0);
+  glClearColor(0.4, 0.4, 0.4, 0.0);
   glColor3f(1.0, 1.0, 1.0);
 	glPushMatrix ();
   /* set up some matrices so that the object spins with the mouse */
   glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
 
+#ifndef PICTURE
   glDisable(GL_LIGHTING);
 	if (drawWorldInd < drawWorlds.size() &&
       drawInd < drawWorlds[drawWorldInd].size() &&
@@ -910,6 +925,7 @@ void drawStuff()
     bitmap_output(50, 40, "Goal (.)", GLUT_BITMAP_TIMES_ROMAN_24);
   }
   glEnable(GL_LIGHTING);
+#endif
 
 #ifdef VIEW3D
 	glTranslatef(0.0, 0.0, +eye_focus_depth);
@@ -1444,6 +1460,48 @@ void interruptHandler(int sig) {
 
   //setVisualizationData(openLoopWorlds);
 }*/
+
+void save_opengl_image(char* filename)
+{
+    const int IMG_COLS_TOTAL = 900;
+    const int IMG_ROWS_TOTAL = 900;
+  //playback and save images
+    Mat img(900, 900, CV_8UC3);
+    vector<Mat> img_planes;
+    split(img, img_planes);
+
+    uchar tmp_data[3][900*900];
+
+    GLenum read_formats[3];
+    read_formats[0] = GL_BLUE;
+    read_formats[1] = GL_GREEN;
+    read_formats[2] = GL_RED;
+
+    for (int i=0; i < 3; i++)
+    {
+        glReadPixels(0, 0, IMG_COLS_TOTAL, IMG_ROWS_TOTAL, read_formats[i], GL_UNSIGNED_BYTE, tmp_data[i]);
+        img_planes[i].data = tmp_data[i];
+    }
+
+
+    vector<int> p(3);
+
+    p[0] = CV_IMWRITE_PNG_COMPRESSION;
+    p[1] = 20;
+    p[2] = 0;
+
+
+    merge(img_planes, img);
+    flip(img, img, 0);
+
+    char im_name[256];
+    sprintf(im_name, "%s%s.png", IMAGE_BASE_NAME, filename);
+    cout << "Image written to " << im_name << endl;
+    im_save_ind++;
+    imwrite(im_name, img, p);
+    waitKey(1);
+  //sleep(0);
+} 
 
 VectorXd closedLoopSQPStepper(World* start, World* goal, WorldSQP* solver) { 
   if (solver == NULL) assert(false); //initialize your shit

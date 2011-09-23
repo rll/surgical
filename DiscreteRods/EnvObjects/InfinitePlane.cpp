@@ -88,6 +88,7 @@ void InfinitePlane::draw()
 	glPushMatrix();
 	glEnable(GL_COLOR_MATERIAL);
 	glColor3f(color0, color1, color2);
+	
 	glDisable(GL_CULL_FACE);
 	
 	bool tex = (file_name != "notexture");
