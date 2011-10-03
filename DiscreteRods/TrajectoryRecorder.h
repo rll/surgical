@@ -2,6 +2,7 @@
 #define _TrajectoryRecorder_h
 
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef MAC
 #include <OpenGL/gl.h>
@@ -30,20 +31,24 @@ USING_PART_OF_NAMESPACE_EIGEN
 class TrajectoryRecorder
 {
 	public:
-		TrajectoryRecorder();
-		TrajectoryRecorder(const char* fileName);
-    void setFileName(const char* newFileName);
+		TrajectoryRecorder(const char* new_base_name = "environmentFiles/");
+		TrajectoryRecorder(const char* new_file_name, const char* new_base_name);
+    void setBaseName(const char* new_base_name);
+    void setFileName(const char* new_file_name);
+    void getFileName(char* name);
+    void queryFileName();
 
-		void start();
+		void start(StateType type);
 		void stop();
 		void writeWorldToFile(World* world);
 		void writeControlToFile(Control* control0, Control* control1);
-		bool hasStarted() { return started; }
+		bool hasStarted() { return (state_type != NO_STATE); }
 
 	private:
-		char _fileName[256];
+		char base_name[256];
+		char file_name[256];
 		ofstream file;
-		bool started;
+		StateType state_type;
 };
 
 #endif

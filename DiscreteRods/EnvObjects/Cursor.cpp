@@ -316,7 +316,7 @@ void Cursor::setOpen(bool limit_displacement)
 			open = true;
 			end_eff->setOpen();
 		}
-		end_eff->setTransform(position - EndEffector::grab_offset * rotation.col(0), rotation, limit_displacement);
+		//end_eff->setTransform(position - EndEffector::grab_offset * rotation.col(0), rotation, limit_displacement);
 	} else {
 		open = true;
 	}
@@ -372,14 +372,15 @@ void Cursor::setClose(bool limit_displacement)
 						world_end_effs[ee_ind]->updateConstraint();
 					}
 
+					Vector3d pre_pos = end_eff->getPosition();
 					thread->updateRotationOffset(end_eff->constraint_ind, rotation);	// the end effector's orientation matters when it grips the thread. This updates the offset rotation.
-				  end_eff->setTransform(tip_pos, rotation, limit_displacement);
+				  //end_eff->setTransform(tip_pos, rotation, limit_displacement);
 				}
 			} else {
 				if ((nearest_position - tip_pos).squaredNorm() < 8.0) {												// cursor has an end effector which just started holding the needle
 					end_eff->attach(needle);
-					needle->setTransformOffsetFromEndEffector(nearest_position, rotation);
-					end_eff->setTransform(tip_pos, rotation, limit_displacement);
+					//needle->setTransformOffsetFromEndEffector(nearest_position, rotation);
+					//end_eff->setTransform(tip_pos, rotation, limit_displacement);
 				}
 			}
 		}	else {
@@ -388,7 +389,7 @@ void Cursor::setClose(bool limit_displacement)
 		}
 		open = false;
 		end_eff->setClose();
-		end_eff->setTransform(tip_pos, rotation, limit_displacement);
+		//end_eff->setTransform(tip_pos, rotation, limit_displacement);
 	} else {
 		open = false;
 	}

@@ -217,6 +217,73 @@ void ThreadConstrained::restore()
 	initContour();
 }
 
+void ThreadConstrained::getState(VectorXd& state) {
+	vector<VectorXd> thread_states;
+	int thread_states_size = 0;
+  /*
+  VectorXd constants;
+  getThreadConstants(constants);
+  thread_states.push_back(constants);
+  thread_states_size += constants.size(); 
+  */
+
+  for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
+    VectorXd thread_state;
+    bool ignore_first_vertex = thread_ind > 0;
+    //bool ignore_first_vertex = false;
+    threads[thread_ind]->getState(thread_state, ignore_first_vertex);
+    thread_states.push_back(thread_state);
+    thread_states_size += thread_state.size();
+  }
+
+  // transform from vector<VectorXd> to one long VectorXd
+	state.resize(thread_states_size+1);
+	int vector_start = 0;
+  state(0) = thread_states_size + 1;
+  vector_start += 1;
+	for (int i = 0; i < thread_states.size(); i++) {
+		state.segment(vector_start, thread_states[i].size()) = thread_states[i];
+		vector_start += thread_states[i].size();
+	}
+}
+
+void ThreadConstrained::getThreadConstants(VectorXd& constants) {
+  assert(threads.size() + 1 == rot_diff.size());
+  assert(threads.size() + 1 == constrained_vertices_nums.size());
+  assert(threads.size() + 1 == rot_offset.size());
+
+  int N = 2 + 4*rot_diff.size() + 4*constrained_vertices_nums.size() 
+    + constrained_vertices_nums.size();
+ 
+  int ind = 0; 
+  constants.resize(N);
+  constants(0) = num_vertices;
+  constants(1) = threads.size(); 
+  ind += 2; 
+  for (int i = 0; i < rot_diff.size(); i++) { 
+    Quaterniond rot_diff_q(rot_diff[i]);
+    constants(i*4+ind+0) = rot_diff_q.w();   
+    constants(i*4+ind+1) = rot_diff_q.x();
+    constants(i*4+ind+2) = rot_diff_q.y();
+    constants(i*4+ind+3) = rot_diff_q.z();
+  }
+  
+  ind += 4*rot_diff.size();
+  for (int i = 0; i < constrained_vertices_nums.size(); i++) { 
+    constants(ind+i) = constrained_vertices_nums[i];
+  }
+
+  ind += constrained_vertices_nums.size(); 
+  for (int i = 0; i < rot_offset.size(); i++) {
+    Quaterniond rot_off_q(rot_offset[i]);
+    constants(i*4+ind+0) = rot_off_q.w();
+    constants(i*4+ind+1) = rot_off_q.x();
+    constants(i*4+ind+2) = rot_off_q.y();
+    constants(i*4+ind+3) = rot_off_q.z();
+  }
+
+}
+
 void ThreadConstrained::writeToFile(ofstream& file)
 {
 	file << type << " ";
@@ -335,6 +402,78 @@ ThreadConstrained::~ThreadConstrained()
 		delete threads[i];
 	}
 	threads.clear();
+}
+
+void ThreadConstrained::setState(VectorXd& state) {
+  /*
+  int ind = 0;
+  int thread_state_size = state(0); 
+  assert(thread_state_size == state.size());
+
+  num_vertices = state(1); 
+  int num_threads = state(2); 
+
+  ind += 3; 
+  rot_diff.resize(num_threads+1);
+  rot_offset.resize(num_vertices);
+
+  for (int i = 0; i < num_threads+1; i++) {
+    Quaterniond rot_diff_q( state(i*4+ind+0),
+                            state(i*4+ind+1),
+                            state(i*4+ind+2),
+                            state(i*4+ind+3) );
+    Matrix3d rot_diff_i = rot_diff_q.toRotationMatrix();
+    rot_diff[i] = rot_diff_i;
+  }
+
+  ind += 4*rot_diff.size();
+
+  constrained_vertices_nums.resize(num_threads+1); 
+  for (int i = 0; i < num_threads+1; i++) {
+    constrained_vertices_nums[i] = state(ind + i); 
+  }
+
+  ind += constrained_vertices_nums.size(); 
+
+  rot_offset.resize(num_threads+1); 
+  for (int i = 0; i < rot_offset.size(); i++) {
+    Quaterniond rot_off_q(state(i*4+ind+0),
+                          state(i*4+ind+1),
+                          state(i*4+ind+2),
+                          state(i*4+ind+3));
+    Matrix3d rot_off_i = rot_off_q.toRotationMatrix();
+    rot_offset[i] = rot_off_i;
+  }
+  ind += 4*rot_offset.size();
+  
+  threads.resize(num_threads);
+  */
+  
+  //ind += 1;
+	Vector3d last_vertex;
+	int ind = 1;
+  for (int i = 0; i < threads.size(); i++) {    
+    VectorXd data;
+		if (i == 0) {
+			data = state.segment(ind, 6*threads[i]->num_pieces() - 3);
+		  ind += 6*threads[i]->num_pieces() - 3;
+		  threads[i]->setState(data); 
+		} else {
+			data = state.segment(ind, 6*(threads[i]->num_pieces()-1));
+			ind += 6*(threads[i]->num_pieces()-1);
+			VectorXd thread_state(data.size() + 3);
+			//thread_state(0) = thread_state.size();
+			thread_state.segment(0, 3) = last_vertex;
+			double twist_angle = threads[i]->end_angle();
+			thread_state.segment(3, data.size()) = data.segment(0, data.size());
+		  threads[i]->setState(thread_state); 
+		  threads[i]->set_end_angle(twist_angle);
+		}
+	  last_vertex = threads[i]->end_pos();
+		//ind += state(ind);
+	}
+
+  assert(ind == state.size());
 }
 
 int ThreadConstrained::numVertices()
@@ -819,23 +958,6 @@ void ThreadConstrained::applyControl(const VectorXd& u)
 	}
 }
 
-void ThreadConstrained::getState(VectorXd& state) {
-	vector<VectorXd> thread_states;
-	int thread_states_size = 0;
-	for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
-		VectorXd thread_state;
-		threads[thread_ind]->getState(thread_state);
-		thread_states.push_back(thread_state);
-		thread_states_size += thread_state.size();
-	}
-	state.resize(thread_states_size);
-	int vector_start = 0;
-	for (int i = 0; i < thread_states.size(); i++) {
-		state.segment(vector_start, thread_states[i].size()) = thread_states[i];
-		vector_start += thread_states[i].size();
-	}
-}
-
 // returns the constraint_ind of the new added constraint.
 int ThreadConstrained::addConstraint (int absolute_vertex_num) {
 	int thread_num = insertSorted(constrained_vertices_nums, absolute_vertex_num)-1;
@@ -892,8 +1014,14 @@ void ThreadConstrained::draw(bool mode) {
 	vector<double> twist_angles;	
 	get_thread_data(points, twist_angles);
 
+//	cout << "twist angles: ";
+//	for (int i = 0; i < twist_angles.size(); i++) {
+//		cout << twist_angles[i] << " ";
+//	}
+//	cout << endl;
+
   glPushMatrix();
-  glColor3f (0.5, 0.5, 0.2);
+  glColor3f (0.8, 0.2, 0.2);
   double pts_cpy[points.size()+2][3];
   double twist_cpy[points.size()+2]; 
   for (int i=0; i < points.size(); i++)
@@ -927,6 +1055,11 @@ void ThreadConstrained::draw(bool mode) {
 	    pts_cpy,
 	    0x0,
 	    twist_cpy);
+
+//#ifndef PICTURE
+//	 glColor3f (1.0, 0.0, 0.0);
+//	 drawSphere(points[points.size()/2], 1.5);
+//#endif
 
   if (examine_mode) {
 		glColor3f (0.0, 0.5, 0.5);
