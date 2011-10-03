@@ -96,17 +96,43 @@ public:
 
   virtual void getState(VectorXd& state)
   {
-  	state.resize(6);
+  	state.resize(8);
   	double angZ, angY, angX;
+    int ind = 0; 
+    state(ind) = 8;
+    ind += 1;
   	euler_angles_from_rotation(rotation, angZ, angY, angX);
   	for (int i = 0; i < 3; i++) {
-  		state(i) = position(i);
+  		state(i+ind) = position(i);
   	}
-  	state(3) = angZ;
-  	state(4) = angY;
-  	state(5) = angX;
+    ind += 3;
+    Quaterniond quat_rotation(rotation);
+    state(ind+0) = quat_rotation.w();
+    state(ind+1) = quat_rotation.x();
+    state(ind+2) = quat_rotation.y();
+    state(ind+3) = quat_rotation.z(); 
+
+    //state.segment(ind, 3) = 50 * rotation.col(0);
+  	//state(ind+0) = angZ;
+  	//state(ind+1) = angY;
+  	//state(ind+2) = angX;
+  }
+
+  virtual void setState(VectorXd& state) 
+  {
+    assert(state(0) == state.size());
+    double angZ, angY, angX;
+    Matrix3d rot;
+    Vector3d pos; 
+    pos(0) = state(1);
+    pos(1) = state(2);
+    pos(2) = state(3);
+
+    Quaterniond quat_rotation(state(4), state(5), state(6), state(7));
+    rot = quat_rotation.toRotationMatrix(); 
+
+    setTransform(pos, rot); 
   }  
-    
   /*virtual void applyControl(const VectorXd& u)
 	{
 		double max_ang = max( max(abs(u(3)), abs(u(4))), abs(u(5)));

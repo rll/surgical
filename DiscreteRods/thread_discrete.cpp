@@ -704,7 +704,7 @@ double Thread::calculate_energy()
   //double energy = _thread_pieces[2]->get_twist_coeff() * (pow(_thread_pieces[_thread_pieces.size() - 2]->angle_twist() - _thread_pieces.front()->angle_twist(),2)) / (2.0 * _rest_length * (_thread_pieces.size() - 2));
 	double energy = _thread_pieces[2]->get_twist_coeff() * (pow(end_angle() - start_angle(),2)) / (2.0*total_length() - start_rest_length() - end_rest_length());
 	
-	//std::cout << _thread_pieces[2]->get_twist_coeff() << " " << _thread_pieces.size() << " " << _thread_pieces[_thread_pieces.size()-2]->angle_twist() << " " << _thread_pieces.front()->angle_twist() << " " << 2.0*_rest_length*(_thread_pieces.size()-2) << std::endl;
+	//std::cout << _thread_pieces[2]->get_twist_coeff() << " " << _thread_pieces.size() << " " << _thread_pieces[_thread_pieces.size()-2]->angle_twist() << " " << _thread_pieces.front()->angle_twist() << std::endl;
 
   if (REPULSION_COEFF>0) {
   	updateCollisionObjectsTransform();
@@ -1073,7 +1073,7 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
   */
 	
 	//if (opt_iter!=-1)
-		//std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
+	//	std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
 
 	return (opt_iter != num_opt_iters);
 } // end minimize_energy
@@ -1986,7 +1986,7 @@ void Thread::calculate_gradient_vertices(vector<Vector3d>& vertex_gradients)
     //std::cout << "piece ind " << piece_ind << " new grad: " << vertex_gradients[piece_ind].transpose() << std::endl;
 
   }
-  
+
   if (REPULSION_COEFF>0) {
   	updateCollisionObjectsTransform();
   	if (world->collision_world != NULL) {
@@ -2046,7 +2046,6 @@ void Thread::calculate_gradient_vertices(vector<Vector3d>& vertex_gradients)
 //	}
   
 }
-
 
 //void Thread::calculate_hessian_vertices(MatrixXd& hessian)
 //{
@@ -2150,7 +2149,6 @@ void Thread::calculate_gradient_vertices(vector<Vector3d>& vertex_gradients)
 //  //std::cout << hess_times_inv << "\n\n\n";
 //  //std::cout << inv_times_hess << "\n\n\n";
 //  //exit(0);
-
 
 //}
 
@@ -3291,7 +3289,7 @@ void Thread::copy_data_from_vector(VectorXd& toCopy)
   for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
     //std::cout << "before vertex: " << _thread_pieces[piece_ind]->vertex().transpose() << "\t\t";
-    _thread_pieces[piece_ind]->set_vertex(toCopy.segment(piece_ind*3,3));
+    _thread_pieces[piece_ind]->set_vertex(toCopy.segment(piece_ind*6,3));
     //std::cout << "after vertex: " << _thread_pieces[piece_ind]->vertex().transpose() << std::endl;
   }
 
@@ -3303,9 +3301,9 @@ void Thread::copy_data_from_vector(VectorXd& toCopy)
   set_start_constraint(_thread_pieces.front()->vertex(), this->start_rot());
   
   set_end_constraint(_thread_pieces.back()->vertex(), this->end_rot());
-  _thread_pieces[_thread_pieces.size()-2]->set_angle_twist(toCopy(toCopy.rows()-1));
-  _thread_pieces[_thread_pieces.size()-2]->update_material_frame();
-  set_end_constraint(_thread_pieces.back()->vertex(), this->end_rot());
+  //_thread_pieces[_thread_pieces.size()-2]->set_angle_twist(toCopy(toCopy.rows()-1));
+  //_thread_pieces[_thread_pieces.size()-2]->update_material_frame();
+  //set_end_constraint(_thread_pieces.back()->vertex(), this->end_rot());
 }
 
 void Thread::applyControl(const VectorXd& u)
@@ -3343,19 +3341,84 @@ void Thread::applyControl(const VectorXd& u)
   }
 }
 
-void Thread::getState(VectorXd& state)
-{
+
+void Thread::getCompleteState(VectorXd& state, bool ignore_first_vertex) {
   const int _num_pieces = num_pieces();
-  state.resize(6*_num_pieces-3+1);
+  
+  if (ignore_first_vertex) 
+    state.resize(6*(_num_pieces-1));
+  else 
+    state.resize(6*_num_pieces-3);
+
   for (int piece_ind=0; piece_ind < _num_pieces; piece_ind++)
   {
+    
+    if (ignore_first_vertex) {
+      if(piece_ind < _num_pieces-1) {
+        state.segment(piece_ind*6, 3) = edge_at_ind(piece_ind);
+        state.segment(piece_ind*6+3, 3) = vertex_at_ind(piece_ind+1);
+      }
+    }
+    else {
+      state.segment(piece_ind*6, 3) = vertex_at_ind(piece_ind);
+      if (piece_ind < _num_pieces-1) { 
+        state.segment(piece_ind*6 + 3, 3) = edge_at_ind(piece_ind);
+      }
+    }
+  }
+  /*
+  if (ignore_first_vertex) {
+		state(6*(_num_pieces-1)) = end_angle();
+	} else {
+		state(6*_num_pieces-3) = end_angle(); // TC is weird w/ pickup
+	}
+	*/
+}
+
+
+void Thread::getPartialState(VectorXd& state) { 
+  const int _num_pieces = num_pieces(); 
+  state.resize(3*(6+6)); // check indices
+
+  for (int piece_ind=0; piece_ind < 6; piece_ind++) {
     state.segment(piece_ind*3, 3) = vertex_at_ind(piece_ind);
   }
-  for (int piece_ind=0; piece_ind < _num_pieces-1; piece_ind++)
-  {
-    state.segment(3*_num_pieces + piece_ind*3, 3) = edge_at_ind(piece_ind);
+
+  int ind = 3*6; 
+  for (int piece_ind=0; piece_ind < 6; piece_ind++) {
+    state.segment(ind + piece_ind*3, 3) = edge_at_ind(piece_ind);
   }
-  state(6*_num_pieces-3) = end_angle();
+  //state(6) = end_angle();
+}
+
+void Thread::getState(VectorXd& state, bool ignore_first_vertex)
+{
+  const int _num_pieces = num_pieces();
+  assert(_num_pieces == _thread_pieces.size());
+
+  VectorXd thread_state;
+ //getPartialState(thread_state);
+  getCompleteState(thread_state, ignore_first_vertex); 
+
+//  if (ignore_first_vertex) {
+//  	state.resize(thread_state.size());
+//    state = thread_state;
+//    return; 
+//  }
+//  state.resize(thread_state.size() + 1); 
+//  state(0) = state.size();
+//  state.segment(1, thread_state.size()) = thread_state; 
+	state = thread_state;
+}
+
+void Thread::setState(VectorXd& state) {
+  //assert(state(0) == state.size());
+  assert(state.size() == 6*num_pieces() - 3);
+  VectorXd thread_state;
+  //getCompleteState(thread_state); 
+  //assert(thread_state.size() + 1 == state.size()); // setState only works for complete state
+  //VectorXd data = state.segment(1, state.size() - 1);
+  copy_data_from_vector(state);
 }
 
 void Thread::set_coeffs_normalized(double bend_coeff, double twist_coeff, double grav_coeff)

@@ -7,6 +7,7 @@
 
 #define MAX_DISPLACEMENT 0.2 //THREAD_RADIUS
 #define MAX_ANGLE_CHANGE 0.0036667160503703967 //arcsin(MAX_DISPLACEMENT/end_effector_length)
+//#define MAX_ANGLE_CHANGE 0.0000001
 
 class ThreadConstrained;
 class Needle;
@@ -84,7 +85,8 @@ class EndEffector : public EnvObject
 		void backup();
 		void restore();
 	
-		static const double default_color0 = 0.7, default_color1 = 0.7, default_color2 = 0.7;
+		//static const double default_color0 = 0.7, default_color1 = 0.7, default_color2 = 0.7;
+		static const double default_color0 = 184.0/255.0, default_color1 = 134.0/255.0, default_color2 = 11.0/255.0;
 		static const double pieces = 3.0; //4.0;
 		static const double h = 9.0/3.0; //9.0/4.0; // (end-start)/pieces
 		static const double start = -3.0;

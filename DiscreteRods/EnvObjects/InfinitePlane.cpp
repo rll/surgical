@@ -1,5 +1,5 @@
 #include "InfinitePlane.h"
-#include "../threadpiece_discrete.h"
+#include "World.h"
 
 InfinitePlane::InfinitePlane(const Vector3d& pos, const Vector3d& norm, float c0, float c1, float c2, World* w)
 	: EnvObject(pos, Matrix3d::Identity(), c0, c1, c2, INFINITE_PLANE)
@@ -8,6 +8,16 @@ InfinitePlane::InfinitePlane(const Vector3d& pos, const Vector3d& norm, float c0
 	, file_name("notexture")
 {
 	rotation_from_tangent(norm.normalized(), rotation);
+
+	btStaticPlaneShape* plane = new btStaticPlaneShape(tobtVector3(normal), btScalar(1.0));
+	plane->setMargin(0.f);
+	col_obj = new btCollisionObject();
+	col_obj->setCollisionShape(plane);
+	col_obj->setUserPointer(this);
+//	if (world->collision_world != NULL)
+//		world->collision_world->addCollisionObject(col_obj);
+
+	setTransform(position, rotation);
 }
 
 //Image should be saved as BMP 24 bits R8 G8 B8, RGB mode
@@ -18,6 +28,17 @@ InfinitePlane::InfinitePlane(const Vector3d& pos, const Vector3d& norm, string f
 	, file_name(filename)
 {
 	rotation_from_tangent(norm.normalized(), rotation);
+
+	btStaticPlaneShape* plane = new btStaticPlaneShape(tobtVector3(normal), btScalar(1.0));
+	plane->setMargin(0.f);
+	col_obj = new btCollisionObject();
+	col_obj->setCollisionShape(plane);
+	col_obj->setUserPointer(this);
+//	if (world->collision_world != NULL)
+//		world->collision_world->addCollisionObject(col_obj);
+
+	setTransform(position, rotation);
+
 	ilInit();
   if (! LoadImageDevIL ((char*) filename.c_str(), &texture) )
   	cerr << "Failed to load texture from filename " << filename << endl;
@@ -31,6 +52,17 @@ InfinitePlane::InfinitePlane(const InfinitePlane& rhs, World* w)
 {
 	assert(type == INFINITE_PLANE);
 	rotation_from_tangent(normal.normalized(), rotation);
+
+	btStaticPlaneShape* plane = new btStaticPlaneShape(tobtVector3(normal), btScalar(1.0));
+	plane->setMargin(0.f);
+	col_obj = new btCollisionObject();
+	col_obj->setCollisionShape(plane);
+	col_obj->setUserPointer(this);
+//	if (world->collision_world != NULL)
+//		world->collision_world->addCollisionObject(col_obj);
+
+	setTransform(position, rotation);
+
 	if (file_name != "notexture") {
 		ilInit();
 		if (! LoadImageDevIL ((char*) file_name.c_str(), &texture) )
@@ -67,6 +99,17 @@ InfinitePlane::InfinitePlane(ifstream& file, World* w)
 
   file >> normal(0) >> normal(1) >> normal(2) >> color0 >> color1 >> color2 >> file_name;
   rotation_from_tangent(normal.normalized(), rotation);
+
+	btStaticPlaneShape* plane = new btStaticPlaneShape(tobtVector3(normal), btScalar(1.0));
+	plane->setMargin(0.f);
+	col_obj = new btCollisionObject();
+	col_obj->setCollisionShape(plane);
+	col_obj->setUserPointer(this);
+//	if (world->collision_world != NULL)
+//		world->collision_world->addCollisionObject(col_obj);
+
+	setTransform(position, rotation);
+
   if (file_name != "notexture") {
   	ilInit();
 		if (! LoadImageDevIL ((char*) file_name.c_str(), &texture) )
@@ -78,6 +121,9 @@ void InfinitePlane::setTransform(const Vector3d& pos, const Matrix3d& rot)
 {
 	position = pos;
 	normal = rot.col(0);
+	
+	col_obj->getWorldTransform().setOrigin(tobtVector3(pos));
+	//col_obj->getWorldTransform().setBasis(tobtMatrix3x3(rot));
 }
 
 void InfinitePlane::draw()
@@ -88,6 +134,7 @@ void InfinitePlane::draw()
 	glPushMatrix();
 	glEnable(GL_COLOR_MATERIAL);
 	glColor3f(color0, color1, color2);
+	
 	glDisable(GL_CULL_FACE);
 	
 	bool tex = (file_name != "notexture");
@@ -130,37 +177,6 @@ void InfinitePlane::restore()
 	position = backup_position;
 	normal = backup_normal;
 	rotation_from_tangent(normal.normalized(), rotation);
-}
-
-bool InfinitePlane::capsuleIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections)
-{
-  Vector3d direction;
-  double intersection_dist = capsuleInfinitePlaneDistance(start, end, radius, position, normal, direction);
-  if(intersection_dist < 0) {
-    intersections.push_back(Intersection(capsule_ind, -intersection_dist, direction));
-    return true;
-  }
-	return false;
-}
-
-double InfinitePlane::capsuleRepulsionEnergy(const Vector3d& start, const Vector3d& end, const double radius)
-{
-	if (REPULSION_COEFF <= 0.0) { return 0.0; }
-	Vector3d direction;
-	double dist = capsuleInfinitePlaneDistance(start, end, radius, position, normal, direction);
-	if (dist < 0 || dist > radius)
-		return 0.0;
-	return REPULSION_COEFF/2.0 * pow(dist-radius,2);
-}
-
-void InfinitePlane::capsuleRepulsionEnergyGradient(const Vector3d& start, const Vector3d& end, const double radius, Vector3d& gradient)
-{
-	if (REPULSION_COEFF <= 0.0) { return; }
-	Vector3d direction;
-	double dist = capsuleInfinitePlaneDistance(start, end, radius, position, normal, direction);
-	if (dist < 0 || dist > radius)
-		return;
-	gradient -= REPULSION_COEFF * (radius - dist) * normal;
 }
 
 ILuint InfinitePlane::LoadImageDevIL (char *szFileName, struct TextureHandle *T)

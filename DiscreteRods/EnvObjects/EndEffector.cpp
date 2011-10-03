@@ -1,6 +1,5 @@
 #include "EndEffector.h"
 #include "World.h"
-#include "../threadpiece_discrete.h" //TODO for repulsion coefficient. should be removed if collision is checked in world.
 #include "../ThreadConstrained.h"
 
 EndEffector::EndEffector(const Vector3d& pos, const Matrix3d& rot, World* w, ThreadConstrained* t, int constrained_vertex_num)
@@ -29,7 +28,7 @@ EndEffector::EndEffector(const Vector3d& pos, const Matrix3d& rot, World* w, Thr
 	short_handle->setUserPointer(this);
 	col_objs.push_back(short_handle);
 	
-	btCapsuleShapeX* capsule_handle = new btCapsuleShapeX(btScalar(handle_r+REPULSION_DIST), btScalar(handle_h));
+	btCapsuleShapeX* capsule_handle = new btCapsuleShapeX(btScalar(handle_r+4.0*REPULSION_DIST), btScalar(handle_h));
 	capsule_handle->setMargin(0.f);
 	btCollisionObject* handle = new btCollisionObject();
 	handle->setCollisionShape(capsule_handle);
@@ -136,7 +135,7 @@ EndEffector::EndEffector(const EndEffector& rhs, World* w)
   short_handle->setUserPointer(this);
 	col_objs.push_back(short_handle);
   
-	btCapsuleShapeX* capsule_handle = new btCapsuleShapeX(btScalar(handle_r+REPULSION_DIST), btScalar(handle_h));
+	btCapsuleShapeX* capsule_handle = new btCapsuleShapeX(btScalar(handle_r+4.0*REPULSION_DIST), btScalar(handle_h));
 	capsule_handle->setMargin(0.f);
 	btCollisionObject* handle = new btCollisionObject();
   handle->setCollisionShape(capsule_handle);
@@ -219,7 +218,7 @@ EndEffector::EndEffector(ifstream& file, World* w)
   short_handle->setUserPointer(this);
   col_objs.push_back(short_handle);
   
-	btCapsuleShapeX* capsule_handle = new btCapsuleShapeX(btScalar(handle_r+REPULSION_DIST), btScalar(handle_h));
+	btCapsuleShapeX* capsule_handle = new btCapsuleShapeX(btScalar(handle_r+4.0*REPULSION_DIST), btScalar(handle_h));
 	capsule_handle->setMargin(0.f);
 	btCollisionObject* handle = new btCollisionObject();
   handle->setCollisionShape(capsule_handle);
@@ -256,13 +255,18 @@ EndEffector::EndEffector(ifstream& file, World* w)
 void EndEffector::setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_displacement, double max_displacement, double max_angle_change)
 {
 	if (limit_displacement) {
-		double displacement = (pos-position).norm();
+		Vector3d displacement = pos - position;
+		//double displacement_norm = displacement.norm();
+		double max_coor_displacement = max(max(abs(displacement(0)), abs(displacement(1))), abs(displacement(2)));
+		
 		double angle_change	= angle_between(rot.col(0), rotation.col(0));
+				
+		Vector3d old_pos = position;
 		
 		Quaterniond new_q(rot);
 		Quaterniond last_q(rotation);
-		if (displacement > max_displacement) {
-			position = position + (max_displacement/displacement) * (pos-position);
+		if (max_coor_displacement > max_displacement) {
+			position = position + (max_displacement/max_coor_displacement) * (pos-position);
 		} else {
 			position = pos;
 		}
@@ -273,6 +277,12 @@ void EndEffector::setTransform(const Vector3d& pos, const Matrix3d& rot, bool li
 			rotation = rot;
 		}
 		rotation = (Matrix3d) AngleAxisd(rotation); // orthonormalizes the rotation matrix due to numerical errors
+		
+		Vector3d disp = old_pos - position;
+		if ((abs(disp(0)) > 0.2000001) || (abs(disp(1)) > 0.2000001) || (abs(disp(2)) > 0.2000001)) {
+			cout << disp.transpose() << endl;
+		}
+		
 	} else {
 		position = pos;
     rotation = rot;
@@ -318,8 +328,9 @@ void EndEffector::updateCollisionObjects()
 void EndEffector::updateTransformFromAttachment()
 {
 	if (isThreadAttached()) {
-		position = thread->positionAtConstraint(constraint_ind);
-		rotation = thread->rotationAtConstraint(constraint_ind);
+//		position = thread->positionAtConstraint(constraint_ind);
+//		rotation = thread->rotationAtConstraint(constraint_ind);
+		setTransform(thread->positionAtConstraint(constraint_ind), thread->rotationAtConstraint(constraint_ind), true);
 		updateCollisionObjects();
 	}
 	if (isNeedleAttached()) {
@@ -343,13 +354,22 @@ void EndEffector::updateTransformFromAttachment()
 void EndEffector::draw()
 {
 	glColor3f(color0, color1, color2);
+#ifndef PICTURE
 	for (int i = 1; i < 8; i++) {
 		if (i == 2 || i == 5) { continue; }
 		drawCapsule(col_objs[i]);
 	}
-	glColor3f(0.3, 0.3, 0.0);
+	glColor3f(0.0, 0.5, 0.0);
 	drawCapsule(col_objs[2]);
 	drawCapsule(col_objs[5]);
+#else
+	for (int i = 1; i < 8; i++) {
+		drawCapsule(col_objs[i]);
+	}
+	glColor3f(0.0, 0.5, 0.0);
+	drawCapsule(col_objs[2]);
+	drawCapsule(col_objs[5]);
+#endif
 }
 
 void EndEffector::drawDebug()
