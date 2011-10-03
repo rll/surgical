@@ -21,6 +21,8 @@
 #include <Eigen/Geometry>
 #include <math.h>
 #include <vector>
+#include <boost/thread.hpp>
+#include <boost/random.hpp>
 
 #include "../utils/drawUtils.h"
 #include "../Collisions/intersectionStructs.h"
@@ -55,6 +57,8 @@ extern WorldManager* test_world_manager;
 enum RenderMode { NORMAL, EXAMINE, DEBUG, COLLISION };
 
 class ThreadConstrained;
+
+extern WorldManager* test_world_manager;
 
 class World
 {
@@ -116,18 +120,74 @@ class World
 		//if the control doesn't have an ee attachment, world should solve that; i.e. find the closest ee for the control.
 		//cursors are used as a handle for controls and the objects in the world
 		// for each control, there is 3 dof for translation, 3 for rotation, 2 for event
-		void setTransformFromController(const vector<ControllerBase*>& controls, bool limit_displacement = false); //applies controli to handlei
-		void applyRelativeControl(const vector<Control*>& controls, bool limit_displacement = false);
-		void applyRelativeControl(const VectorXd& relative_control, bool limit_displacement = false);
-    void applyRelativeControlJacobian(const VectorXd& relative_control); 
+		void setTransformFromController(const vector<ControllerBase*>& controls, bool limit_displacement = false); //applies controli to handle
+		void applyRelativeControl(const vector<Control*>& controls, double thresh=0.0, bool limit_displacement = false);
+		void applyRelativeControl(const vector<Control*>& controls, vector<double>& displacements, double thresh=0.0, bool limit_displacement = false);
+		void applyRelativeControl(const VectorXd& relative_control, double thresh=0.0, bool limit_displacement = false);
+    void applyRelativeControlJacobian(const VectorXd& relative_control, double thresh=0.0);
 		
 		//state representation
     void getStates(vector<VectorXd>& states);
     void printStates();
 
     // Jacobian
-    void getStateForJacobian(VectorXd& world_state); 
-    void computeJacobian(MatrixXd& J); 
+    void getStateForJacobian(VectorXd& world_state);
+    void setStateForJacobian(VectorXd& world_state);
+    void projectLegalState();
+    void computeJacobian(MatrixXd* J); 
+
+    //control representation
+    void VectorXdToControl(const VectorXd& relative_control, vector<Control*>& c) {
+      assert(cursors.size()*8 == relative_control.size());
+
+      c.resize(cursors.size());
+
+      for (int i = 0; i < cursors.size(); i++) { 
+        Vector3d translation = relative_control.segment(8*i, 3);
+        Matrix3d rotation;
+        rotation_from_euler_angles(rotation, relative_control(8*i+3), relative_control(8*i+4), relative_control(8*i+5));
+
+        Control* u = new Control(Vector3d::Zero(), Matrix3d::Identity());
+
+        u->setTranslate(translation);
+        u->setRotate(rotation);
+        c[i] = u;
+      }
+    }
+
+    void ControlToVectorXd(const vector<Control*>& c, VectorXd& relative_control) {
+      assert(cursors.size() == c.size());
+
+      relative_control.resize(cursors.size()*8);
+      relative_control.setZero();
+      cout << relative_control.size() << endl;
+      for (int i = 0; i < cursors.size(); i++) { 
+        Vector3d translation = c[i]->getTranslate();
+        Matrix3d rotation = c[i]->getRotation();
+        relative_control.segment(i*8, 3) = translation;
+        euler_angles_from_rotation(rotation, relative_control(i*8+3),
+            relative_control(i*8+4), relative_control(i*8+5));
+
+      }
+    }
+
+    VectorXd JacobianControlStripper(const VectorXd& relative_control) {
+      assert(cursors.size()*8 == relative_control.size());
+      VectorXd stripped_control(12);
+      stripped_control.segment(0,6) = relative_control.segment(0,6);
+      stripped_control.segment(6,6) = relative_control.segment(8,6);
+      return stripped_control;
+    }
+
+    VectorXd JacobianControlWrapper(const VectorXd& relative_control) { 
+
+      assert(cursors.size()*6 == relative_control.size());
+      VectorXd wrapper_control(16);
+      wrapper_control.setZero(); 
+      wrapper_control.segment(0, 6) = relative_control.segment(0,6);
+      wrapper_control.segment(8, 6) = relative_control.segment(6,6);
+      return wrapper_control;
+    }
     
 		//backup
 		void backup();
@@ -139,13 +199,18 @@ class World
 				
 		//Init thread
 		void initThread();
+		void initThreadSingle();
 		void initLongerThread();
 		void initRestingThread(int opt);
+		void initRestingFinerThread(int opt);
 		
 	private:
 		vector<Cursor*> cursors; //control handler
 		vector<ThreadConstrained*> threads;
 		vector<EnvObject*> objs;
 };
+
+void computeJacCord(World* w, int i, int size_each_state, VectorXd *du, MatrixXd *J);
+
 
 #endif

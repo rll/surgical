@@ -17,3 +17,5 @@ vision/captures/*
 MotionPlanning/SQP_DATA/*.txt
 MotionPlanning/ims_for_vids/*
 *.pem
+DiscreteRods/environmentFiles
+DiscreteRods/videoImages

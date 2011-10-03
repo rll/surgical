@@ -22,6 +22,8 @@
 #include <Eigen/Geometry>
 #include <math.h>
 
+#include <dirent.h>
+
 #include "IO/ControllerBase.h"
 #include "IO/Mouse.h"
 #include "IO/Haptic.h"
@@ -41,28 +43,38 @@
 #include "TrajectoryRecorder.h"
 #include "TrajectoryReader.h"
 
+#include <opencv/cv.h>
+#include <opencv/highgui.h>
+
+using namespace cv;
+
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
 void processInput(ControllerBase* controller0, ControllerBase* controller1);
 void moveMouseToClosestEE(Mouse* mouse);
+void drawStuff();
 void displayTextInScreen(const char* textline, ...);
-void bitmap_output(int x, int y, char *string, void *font);
+void bitmap_output(int x, int y, const char* str, void *font);
 void glutMenu(int ID);
 void initGL();
+void save_opengl_image(char* filename);
 void interruptHandler(int sig);
-void sqpSmoother(vector<World*>& trajectory_to_smooth);
-void sqpPlanner();
+//void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_trajectory);
+//void sqpPlanner(World* start, World* goal, vector<World*>& trajectory);
+void closedLoopSQPController(World* start, vector<World*>& target, vector<vector<Control*> >& ctrls);
+VectorXd closedLoopSQPStepper(World* start, World* goal, WorldSQP* solver);
+void chunkSmoother(vector<World*>& dirty, vector<vector<Control*> >& ctrl_in, vector<World*>& smooth, vector<vector<Control*> >& smooth_controls);
 
-  static const GLfloat light_model_ambient[] = {0.3f, 0.3f, 0.3f, 1.0f};    
-  static const GLfloat lightOnePosition[] = {140.0, 0.0, 200.0, 0.0};
-  static const GLfloat lightOneColor[] = {0.99, 0.99, 0.99, 1.0};
-  static const GLfloat lightTwoPosition[] = {-140.0, 0.0, 200.0, 0.0};
-  static const GLfloat lightTwoColor[] = {0.99, 0.99, 0.99, 1.0};
-  static const GLfloat lightThreePosition[] = {140.0, 0.0, -200.0, 0.0};
-  static const GLfloat lightThreeColor[] = {0.99, 0.99, 0.99, 1.0};
-  static const GLfloat lightFourPosition[] = {-140.0, 0.0, -200.0, 0.0};
-  static const GLfloat lightFourColor[] = {0.99, 0.99, 0.99, 1.0};
+static const GLfloat light_model_ambient[] = {0.3f, 0.3f, 0.3f, 1.0f};    
+static const GLfloat lightOnePosition[] = {140.0, 0.0, 200.0, 0.0};
+static const GLfloat lightOneColor[] = {0.5, 0.5, 0.5, 1.0};
+static const GLfloat lightTwoPosition[] = {-140.0, 0.0, 200.0, 0.0};
+static const GLfloat lightTwoColor[] = {0.9, 0.9, 0.9, 1.0};
+static const GLfloat lightThreePosition[] = {140.0, 0.0, -200.0, 0.0};
+static const GLfloat lightThreeColor[] = {0.5, 0.5, 0.5, 1.0};
+static const GLfloat lightFourPosition[] = {-140.0, 0.0, -200.0, 0.0};
+static const GLfloat lightFourColor[] = {0.9, 0.9, 0.9, 1.0};
 
 //#define VIEW3D
 
@@ -92,8 +104,9 @@ double zero_angle;
 
 // interactive variables
 bool limit_displacement = false;
-bool haptics = true;
+bool haptics = false;
 RenderMode examine_mode = NORMAL;
+int downsample = 0;
 
 //IO
 Haptic *haptic0, *haptic1;
@@ -101,12 +114,13 @@ Mouse *mouse0, *mouse1;
 Control *control0, *control1;
 
 //Environment
-WorldManager* test_world_manager;
 World *world;
+WorldManager* test_world_manager;
 
 //drawing SQP results
-vector<World*> drawWorlds;
-int drawInd = 0; 
+vector<vector<World*> > drawWorlds;
+int drawInd = 0;
+int drawWorldInd = 0; 
 
 World* start_world = NULL;
 World* goal_world = NULL;
@@ -114,6 +128,7 @@ bool drawStartWorld = false;
 bool drawGoalWorld = false; 
 bool drawVisualizationData = false;
 bool drawInteractiveWorld = true; 
+
 
 bool interruptEnabled = false;
 bool smoothingEnabled = false;
@@ -125,16 +140,27 @@ TrajectoryRecorder trajectory_recorder_world;
 vector<World*> worlds;
 int world_ind = 0;
 
-vector<string> samples_problems;
-vector<string> samples_initial_conditions1;
-vector<string> samples_problems1;
+#define IMAGE_BASE_NAME "./videoImages/"
+int im_save_ind = 1;
 
-bool absoluteControl = false;
+//for collecting data
+DIR *dir = NULL;
+struct dirent *ent;
+ofstream data_file;
+char* data_raw_filename;
+vector<vector<World*> > world_data;
+
+void setVisualizationData(vector<vector<World*> > vis_data) {
+  drawWorlds = vis_data;
+  drawWorldInd = 0; 
+  drawInd = 0; 
+}
 
 void setVisualizationData(vector<World*>& visualize_worlds)
 {
-	drawWorlds = visualize_worlds;
-	drawInd = 0;
+  vector<vector<World*> > all_vis_data;
+  all_vis_data.push_back(visualize_worlds);
+  setVisualizationData(all_vis_data);
 }
 
 void processLeft(int x, int y)
@@ -199,8 +225,125 @@ void processMouse(int button, int state, int x, int y)
 	}
 }
 
+void loadNextTrajectory()
+{
+
+}
+
 void processNormalKeys(unsigned char key, int x, int y)
 {
+	/*
+	if (key == 'o') {
+		cout << "Please enter problem name (without extension) (i.e. x1): ";
+	  data_raw_filename = new char[256];
+	  cin >> data_raw_filename;
+	  char *directory = new char[256];
+	  sprintf(directory, "environmentFiles/%s/video_trajs/", data_raw_filename);
+	  //sprintf(directory, "environmentFiles/%s/", data_raw_filename);
+		dir = opendir (directory);
+		if (dir != NULL) {
+			cout << "Sucessfully opened directory" << endl;
+//		  char *fullPath = new char[256];
+//		  sprintf(fullPath, "%s%s%s%s%s", "environmentFiles/", data_raw_filename, "/", data_raw_filename, "_data.txt");
+//			cout << "Writing data to: " << fullPath << endl;
+//			data_file.precision(20);
+//			data_file.open(fullPath);
+			
+			processNormalKeys('b', x, y);
+			return;
+		} else {
+			cout << "Failed to open directory" << endl;
+		}
+	} else if (key == 'b') {
+		cout << "--------------------------------------------" << endl;
+		if (dir != NULL) {
+			if ((ent = readdir (dir)) != NULL) {
+				char *filename = new char[256];
+				sprintf(filename, "%s", ent->d_name);
+				vector<string> parameters;
+				boost::split(parameters, filename, boost::is_any_of("_"));
+				if (parameters.size() != 8 || parameters[0]!=string(data_raw_filename) || parameters[4]!="1.0") {
+				//if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename) || parameters[4]!="0.6" || parameters[3] != "0") {
+				//if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename) || parameters[3] == "5") {
+					cout << "Ignoring file " << filename << endl;
+					processNormalKeys('b', x, y);
+					return;
+				}
+				string base_name = "environmentFiles/";
+				base_name.append(data_raw_filename);
+				//base_name.append("/");
+				base_name.append("/video_trajs/");
+				vector<World*> temp_worlds;
+				TrajectoryReader read(filename, base_name.c_str());
+				if (read.readWorldsFromFile(temp_worlds)) {
+					cout << "Displaying last world." << endl;
+				} else {
+					assert(0);
+				}
+				world_data.push_back(temp_worlds);
+				setVisualizationData(world_data);
+    		drawWorldInd = drawWorlds.size()-1;
+    		drawInd = drawWorlds[drawWorldInd].size()-1;
+				cout << "Press y or n." << endl;
+			} else {
+				closedir (dir);
+				dir = NULL;
+//				data_file.close();
+			  cout << "Writing data file Done\n";
+			}
+		} else {
+			cout << "No directory is open" << endl;
+		}
+	} else if (key == 'y') {
+//		data_file << "1 \n";
+		cout << "You answered yes" << endl;
+		processNormalKeys('b', x, y);
+		return;
+	} else if (key == 'n') {
+//		data_file << "0 \n";
+		cout << "You answered no" << endl;
+		processNormalKeys('b', x, y);
+		return;
+	} else if (key == 'i') {
+		cout << "Please enter image destination file name (without extension): ";
+    char *dstFileName = new char[256];
+    cin >> dstFileName;
+		save_opengl_image(dstFileName);
+	} else if (key == 'I') {
+		TrajectoryReader trajectory_reader();
+		trajectory_reader.queryFileName();
+		
+		cout << "Please enter image destination file path (without extension): ";
+    char *dstPath = new char[256];
+    cin >> dstPath;
+    cout << "Image destination file path is " << dstPath << endl;
+    
+    vector<string> srcFullFileName_vect;
+    string srcFullFileName_string = string(srcFullFileName);
+    boost::split(srcFullFileName_vect, srcFullFileName_string, boost::is_any_of("/"));
+    string srcFileName = srcFullFileName_vect.back();
+
+		TrajectoryReader trajectory_reader(srcRawFileName);
+		vector<World*> worlds_to_save;
+		if (trajectory_reader.readWorldsFromFile(worlds_to_save)) {
+			for (int i = 0; i < worlds_to_save.size(); i++) {
+				world_data.push_back(worlds_to_save);
+				setVisualizationData(world_data);
+    		drawWorldInd = drawWorlds.size()-1;
+    		drawInd = i; //drawWorlds[drawWorldInd].size()-1;
+    		
+    		drawStuff();
+    		
+    		char *dstFullFileName = new char[256];
+    		sprintf(dstFullFileName, "%s%s_%.4d", dstPath, srcFileName.c_str(), i);
+    		
+				save_opengl_image(dstFullFileName);
+			}
+		} else {
+			cout << "Unable to save images" << endl;
+		}
+	}
+	*/
 	if (key == 't')
 	  mouse0->setKeyPressed(MOVETAN);
   else if (key == 'm')
@@ -226,304 +369,57 @@ void processNormalKeys(unsigned char key, int x, int y)
     	moveMouseToClosestEE(mouse1);
 		glutIgnoreKeyRepeat(1);
 	} else if(key == 's') {
-    cout << "Saving...\n";
-    cout << "Please enter destination file name (without extension): ";
-    char *dstFileName = new char[256];
-    cin >> dstFileName;
-    char *fullPath = new char[256];
-    sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
-		StateRecorder state_recorder(fullPath);
+    StateRecorder state_recorder;
+    state_recorder.queryFileName();
     state_recorder.writeWorldToFile(world);
-  } else if((key == 'a') || (key >= '0' && key <= '9')) {
-  	cout << "Loading...\n";
-  	char *fullPath = new char[256];
+  } else if((key == 'a') || (key >= '0' && key <= '9')) { // loads a world state and puts it in the visualize drawing
+  	StateReader state_reader;
   	if (key == 'a') {
-  		cout << "Please enter destination file name (without extension): ";
-	  	char *dstFileName = new char[256];
-    	cin >> dstFileName;
-    	sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
+  		state_reader.queryFileName();
   	} else {
-	    sprintf(fullPath, "%s%s%c", "environmentFiles/", "s", key);
-	  }
-    StateReader state_reader(fullPath);
+	    char *file_name = new char[256];
+	    sprintf(file_name, "%s%c", "s", key);
+	    state_reader.setFileName(file_name);
+	  }    
     if (state_reader.readWorldFromFile(world)) {
-			cout << "State loading was sucessful." << endl;
-			World* temp_world = new World(*world);
 			vector<World*> vis_data;
-			vis_data.push_back(temp_world);
+			vis_data.push_back(new World(*world));
 			setVisualizationData(vis_data); 
-		} else {
-			//TODO safely handle this case
-			cout << "State loading was unsucessful. Finishing program because this case is not safely handled (in terms of pointers)." << endl;
-			assert(0);
-		}
-	} else if(key == '?') {
-		TrajectoryReader traj(string(samples_problems1.back()).c_str());
-		samples_problems1.pop_back();
-		vector<World*> traj_out;
-		if (traj.readWorldsFromFile(traj_out)) {
-			cout << "Trajectory loading was sucessful. " << traj_out.size() << " worlds were loaded." << endl;
-			setVisualizationData(traj_out);
 		}
 	} else if(key == 'c') { // records control trajectory and world trajectory
 		if (trajectory_recorder.hasStarted()) {
-			cout << "Trajectory was already started. Stop it first before starting to save a new trajectory." << endl;
+			cout << "Trajectory has already started. Stop it first before starting it." << endl;
 		} else {
-			cout << "Starting trajectory and saving...\n";
-		  cout << "Please enter destination file name (without extension): ";
-		  char *dstFileName = new char[256];
-		  cin >> dstFileName;
-		  char *fullPath = new char[256];
-		  sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
-			trajectory_recorder.setFileName(fullPath);
-			trajectory_recorder.start();
-			char *fullPath_world  = new char[256];
-			sprintf(fullPath_world, "%s%s%s", "environmentFiles/", dstFileName, "_world");
-			trajectory_recorder_world.setFileName(fullPath_world);
-			trajectory_recorder_world.start();
-			start_world = new World(*world); 
+			trajectory_recorder.queryFileName();
+			trajectory_recorder.start(CONTROL);
+			char *file_name_world  = new char[256];
+			trajectory_recorder.getFileName(file_name_world);
+			//strcat(file_name_world, "_world");
+			trajectory_recorder_world.setFileName(file_name_world);
+			trajectory_recorder_world.start(STATE);
 		}
 	} else if(key == 'x') { // stops recording control trajectory and world trajectory
 		if (!trajectory_recorder.hasStarted()) {
-			cout << "Trajectory have not been started. Start it first before stopping it." << endl;
+			cout << "Trajectory has not been started. Start it first before stopping it." << endl;
 		} else {
-			cout << "Finished saving trajectory.\n";
 			trajectory_recorder.stop();
 			trajectory_recorder_world.stop();
 		}
 	} else if(key == 'k') { // loads a world trajectory and puts it in the visualize drawing
-		cout << "Loading trajectory from Worlds file...\n";
-		cout << "Please enter destination file name (without extension): ";
-  	char *fullPath = new char[256];
-		char *dstFileName = new char[256];
-  	cin >> dstFileName;
-  	sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
-		TrajectoryReader trajectory_reader(fullPath);
+		TrajectoryReader trajectory_reader;
+		trajectory_reader.queryFileName();
 		vector<World*> vis_data;
 		if (trajectory_reader.readWorldsFromFile(vis_data)) {
-			cout << "Trajectory loading was sucessful. " << vis_data.size() << " worlds were loaded." << endl;
 			setVisualizationData(vis_data);
-		} else {
-			cout << "Failed to load trajectory. Specified file might not exist." << endl;
 		}
-	} else if(key == '=') { // loads the initial conditions and puts it in the visualize drawing
-		char *fullPath = new char[256];
-		cout << "Please enter control file (i.e. c8): ";
-  	char *dstFileName = new char[256];
-  	cin >> dstFileName;
-  	sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
-  	
-  	vector<vector<double> > dof_perts;
-  	vector<double> scale;
-  	scale.push_back(-2.0);
-  	scale.push_back(-4.0);
-  	scale.push_back(2.0);
-  	scale.push_back(4.0);
-  	
-  	for (int scale_ind = 0; scale_ind < scale.size(); scale_ind++) {
-			for (int dof = 0; dof < 12; dof++) {
-				vector<double > dof_pert(12,0);
-				dof_pert[dof] = scale[scale_ind];
-				dof_perts.push_back(dof_pert);
-			}
-		}
-		
-		
-		vector<World*> vis_data;
-		for (int p = 0; p < dof_perts.size(); p++)
-		{
-			char *ic_pert_path = new char[256];
-  		sprintf(ic_pert_path, "%s%s%s%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f", "environmentFiles/ic/ic_", dstFileName, "_dof_",
-  													dof_perts[p][0], dof_perts[p][1], dof_perts[p][2], dof_perts[p][3], dof_perts[p][4], dof_perts[p][5],
-  												  dof_perts[p][6], dof_perts[p][7], dof_perts[p][8], dof_perts[p][9], dof_perts[p][10], dof_perts[p][11]);
-			//load initial condition from a worlds trajectory
-			StateReader state_reader(ic_pert_path);
-		  World* temp_world = new World();
-		  if (state_reader.readWorldFromFile(temp_world)) {
-		  	vis_data.push_back(temp_world);
-		  	cout << "State loading was sucessful." << endl;
-			} else {
-				cout << "State loading was unsucessful." << endl;
-				assert(0);
-			}
-		}		
-		setVisualizationData(vis_data);
-
-	} else if(key == '-') { // loads the last states of an icc_traj and puts it in the visualize drawing
-		char *fullPath = new char[256];
-		cout << "Please enter control file (i.e. c8): ";
-  	char *dstFileName = new char[256];
-  	cin >> dstFileName;
-  	sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
-  	
-  	vector<vector<double> > dof_perts;
-  	vector<double> scale;
-  	scale.push_back(-2.0);
-  	scale.push_back(-4.0);
-  	scale.push_back(2.0);
-  	scale.push_back(4.0);
-  	
-  	for (int scale_ind = 0; scale_ind < scale.size(); scale_ind++) {
-			for (int dof = 0; dof < 12; dof++) {
-				vector<double > dof_pert(12,0);
-				dof_pert[dof] = scale[scale_ind];
-				dof_perts.push_back(dof_pert);
-			}
-		}
-		
-		
-		vector<World*> vis_data;
-		for (int p = 0; p < dof_perts.size(); p++)
-		{
-			char *icc_traj_pert_path = new char[256];
-  		sprintf(icc_traj_pert_path, "%s%s%s%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f", "environmentFiles/icc_traj/traj_", dstFileName, "_dof_",
-  													dof_perts[p][0], dof_perts[p][1], dof_perts[p][2], dof_perts[p][3], dof_perts[p][4], dof_perts[p][5],
-  												  dof_perts[p][6], dof_perts[p][7], dof_perts[p][8], dof_perts[p][9], dof_perts[p][10], dof_perts[p][11]);
-			//load last state's many a worlds trajectory
-			vector<World*> temp_worlds;
-			TrajectoryReader read(icc_traj_pert_path);
-			if (read.readWorldsFromFile(temp_worlds)) {
-				vis_data.push_back(temp_worlds.back());
-				cout << "Trajectory loading was sucessful. Putting last state into the trajectory." << endl;
-			} else {
-				assert(0);
-			}
-		}	
-		setVisualizationData(vis_data);
-		
-		TrajectoryRecorder rec("c8_last_states");
-		rec.start();
-		for (int i=0; i<vis_data.size(); i++) {
-			rec.writeWorldToFile(vis_data[i]);
-		}
-		rec.stop();
-
-	} else if(key == '+') { // loads a world and puts it in the start drawing
-		vector<World*> temp_worlds;
-		TrajectoryReader read("environmentFiles/c2_world");
-		if (read.readWorldsFromFile(temp_worlds)) {
-			cout << "Trajectory loading was sucessful. Using first world as initial condition." << endl;
-			start_world = temp_worlds[0];
-		} else {
-			assert(0);
-		}
-	} else if (key == 'z') { // generate a world trajectory from an initial condition and control trajectory
-													 // puts the generated world trajectory in the visualiaze drawing
-		
-		cout << "Loading trajectory from Controls file...\n";
-  	char *fullPath = new char[256];
-  	char *fullPath_world = new char[256];
-		cout << "Please enter control file (i.e. c8): ";
-  	char *dstFileName = new char[256];
-  	cin >> dstFileName;
-  	sprintf(fullPath, "%s%s", "environmentFiles/", dstFileName);
-  	sprintf(fullPath_world, "%s%s%s", "environmentFiles/", dstFileName, "_world");
-  	
-  	vector<vector<double> > dof_perts;
-  	vector<double> scale;
-  	scale.push_back(-2.0);
-  	scale.push_back(-4.0);
-  	scale.push_back(2.0);
-  	scale.push_back(4.0);
-  	
-  	for (int scale_ind = 0; scale_ind < scale.size(); scale_ind++) {
-			for (int dof = 0; dof < 12; dof++) {
-				vector<double > dof_pert(12,0);
-				dof_pert[dof] = scale[scale_ind];
-				dof_perts.push_back(dof_pert);
-			}
-		}
-  	
-		//for (int p = 0; p < dof_perts.size(); p++)
-		for (int p = 0; p < 1; p++)
-		{
-			//load initial condition from a worlds trajectory
-			vector<World*> temp_worlds;
-			TrajectoryReader read(fullPath_world); //TODO input world trajectory to extract initial condition
-			if (read.readWorldsFromFile(temp_worlds)) {
-				cout << "Trajectory loading was sucessful. Using first world as initial condition." << endl;
-			} else {
-				assert(0);
-			}
-			
-			char *ic_pert_path = new char[256];
-  		sprintf(ic_pert_path, "%s%s%s%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f", "environmentFiles/ic/ic_", dstFileName, "_dof_",
-  													dof_perts[p][0], dof_perts[p][1], dof_perts[p][2], dof_perts[p][3], dof_perts[p][4], dof_perts[p][5],
-  												  dof_perts[p][6], dof_perts[p][7], dof_perts[p][8], dof_perts[p][9], dof_perts[p][10], dof_perts[p][11]);
-  		char *icc_traj_pert_path = new char[256];
-  		sprintf(icc_traj_pert_path, "%s%s%s%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f%.0f", "environmentFiles/icc_traj/traj_", dstFileName, "_dof_",
-  													dof_perts[p][0], dof_perts[p][1], dof_perts[p][2], dof_perts[p][3], dof_perts[p][4], dof_perts[p][5],
-  												  dof_perts[p][6], dof_perts[p][7], dof_perts[p][8], dof_perts[p][9], dof_perts[p][10], dof_perts[p][11]);
-			
-			//perturb initial condition
-			Control ctrl0(Vector3d::Zero(), Matrix3d::Identity());
-			ctrl0.setTranslate(Vector3d(dof_perts[p][0],dof_perts[p][1],dof_perts[p][2]));
-			ctrl0.setRotate((Matrix3d) (AngleAxisd(dof_perts[p][3]*2.0*M_PI/180.0, (temp_worlds[0]->objectAtIndex<Cursor>(0)->getRotation()).col(0))
-											* AngleAxisd(dof_perts[p][4]*2.0*M_PI/180.0, (temp_worlds[0]->objectAtIndex<Cursor>(0)->getRotation()).col(1))
-											* AngleAxisd(dof_perts[p][5]*2.0*M_PI/180.0, (temp_worlds[0]->objectAtIndex<Cursor>(0)->getRotation()).col(2))));
-			
-			Control ctrl1(Vector3d::Zero(), Matrix3d::Identity());
-			ctrl1.setTranslate(Vector3d(dof_perts[p][6],dof_perts[p][7],dof_perts[p][8]));
-			ctrl1.setRotate((Matrix3d) (AngleAxisd(dof_perts[p][9]*2.0*M_PI/180.0, (temp_worlds[0]->objectAtIndex<Cursor>(1)->getRotation()).col(0))
-											* AngleAxisd(dof_perts[p][10]*2.0*M_PI/180.0, (temp_worlds[0]->objectAtIndex<Cursor>(1)->getRotation()).col(1))
-											* AngleAxisd(dof_perts[p][11]*2.0*M_PI/180.0, (temp_worlds[0]->objectAtIndex<Cursor>(1)->getRotation()).col(2))));
-						
-			vector<Control*> ctrls;
-			ctrls.push_back(&ctrl0);
-			ctrls.push_back(&ctrl1);
-			//temp_worlds[0]->applyRelativeControl(ctrls, false);
-			
-			cout << "Saving initial condition state in " << ic_pert_path << endl;
-			StateRecorder ic_state_recorder(ic_pert_path);
-		  ic_state_recorder.writeWorldToFile(temp_worlds[0]);
-			
-			
-
-//			//load initial condition from a world state
-//			World* initial_world = new World();
-//			//char *icpath = new char[256];
-//			//sprintf(icpath, "%s%s", "environmentFiles/", samples_initial_conditions1[p].c_str());
-//			StateReader read(samples_initial_conditions1[p].c_str()); //TODO input initial condition
-//			if (read.readWorldFromFile(initial_world)) {
-//				cout << "State loading was sucessful. Using this state as initial condition." << endl;
-//				start_world = initial_world;
-//			} else {
-//				assert(0);
-//			}
-
-
-
-			vector<vector<Control*> > controls;
-			TrajectoryReader control_traj_reader(fullPath); //TODO input control trajectory
-			if (control_traj_reader.readControlsFromFile(controls)) {
-				cout << "Trajectory loading was sucessful. " << controls.size() << " controls were loaded." << endl;
-				vector<World*> traj_in;
-				traj_in.push_back(new World(*temp_worlds[0]));
-				vector<World*> traj_out; 			
-				openLoopController(temp_worlds[0], temp_worlds, controls, traj_out);
-				setVisualizationData(traj_out);
-				break;
-				
-//				VectorXd u(12);
-//				u.setZero();
-//				for(int i =0; i<temp_worlds.size(); i++) {
-//					temp_worlds[i]->applyRelativeControlJacobian(u);
-//				}
-//				setVisualizationData(temp_worlds);
-				
-				//TrajectoryRecorder rec(icc_traj_pert_path); //TODO output world trajectory file generated from control trajectory
-				TrajectoryRecorder rec("c2_test");
-				rec.start();
-				for (int i=0; i<traj_out.size(); i++) {
-					rec.writeWorldToFile(traj_out[i]);
-				}
-				rec.stop();
-			} else {
-				cout << "Failed to load trajectory. Specified file might not exist." << endl;
-				assert(0);
-			}
-			
-		}
+	} else if(key == 'd') { // puts the current world in start_world
+		start_world = new World(*world);
+	} else if(key == 'f') { // puts the current world in goal_world
+		goal_world = new World(*world);
+	} else if(key == '[') {
+		drawStartWorld = !drawStartWorld;
+	} else if(key == ']') {
+		drawGoalWorld = !drawGoalWorld;
 	} else if(key == 'l') {
 		limit_displacement = !limit_displacement;
   } else if(key == 'h') {
@@ -535,6 +431,7 @@ void processNormalKeys(unsigned char key, int x, int y)
   		mouse0->setTransform(haptic0);
   		mouse1->setTransform(haptic1);
   	}*/
+
   } else if(key == 'e') {
   	examine_mode = (RenderMode) ((examine_mode+1)%4);
   } else if(key == 'w') {
@@ -542,45 +439,67 @@ void processNormalKeys(unsigned char key, int x, int y)
 		translate_frame[0] = translate_frame[1] = 0.0;
 		translate_frame[2] = -110.0;
   } else if(key == 'g') {
-    sqpPlanner();
+    vector<World*> plan; 
+    //sqpPlanner(start_world, goal_world, plan);
+    setVisualizationData(plan);
   } else if (key == 'G') {
-    cout << "Changing smoothing enabled clears worlds" << endl;
-    for (int i = 0; i < worlds.size(); i++) delete worlds[i];
-    worlds.clear(); 
+    vector<World*> traj_to_smooth;
+    vector<World*> completeOpenLoopTrajectory;
+    //completeOpenLoopTrajectory.push_back(new World(*worlds.front()));
+    completeOpenLoopTrajectory.push_back(worlds[200]);
+    for (int i = 10; i < 25; i++) {
+      cout << "Running set: " << i << endl; 
+      traj_to_smooth.clear();
+      traj_to_smooth.push_back(completeOpenLoopTrajectory.back());
+      for (int j = 0; j < 20; j++) { 
+        traj_to_smooth.push_back(new World(*worlds[i*20+j]));
+      }
+      vector<World*> smooth_traj; 
+      //sqpSmoother(traj_to_smooth, smooth_traj);
+      for (int j = 0; j < smooth_traj.size(); j++) { 
+        completeOpenLoopTrajectory.push_back(new World(*smooth_traj[j]));
+      }
+    }
+    setVisualizationData(completeOpenLoopTrajectory);
     //smoothingEnabled = !smoothingEnabled;
   } else if (key == 'v') { 
     getTrajectoryStatistics(worlds);
-  } else if (key == '<') { 
-    drawInd = max(0, drawInd - 1);
-    cout << drawInd << endl; 
-  } else if (key == '>') { 
-    drawInd = min((int) drawWorlds.size()-1, drawInd + 1);
-    cout << drawInd << endl; 
+    //drawWorlds.clear(); 
+    vector<World*> temp_worlds;
+    getWaypoints(worlds, temp_worlds);
+    setVisualizationData(temp_worlds);
+    //cout << "number of waypoints = " << drawWorlds.size() << endl; 
+  } else if (key == 'V') {
+    vector<World*> waypoints;
+    getWaypoints(worlds, waypoints);
+    vector<World*> completeOpenLoopTrajectory;
+    completeOpenLoopTrajectory.push_back(worlds[0]);
+    for (int i = 0; i < 10; i++) {
+      World* start = completeOpenLoopTrajectory.back();
+      World* goal = waypoints[i];
+      //sqpPlanner(start, goal, completeOpenLoopTrajectory);
+    }
+    setVisualizationData(completeOpenLoopTrajectory);
+  } else if (key == '<') {
+    if (drawWorldInd < drawWorlds.size()) { 
+      drawInd = max(0, drawInd - 1);
+      cout << drawInd << "/" << drawWorlds[drawWorldInd].size()-1 << endl;
+    }
+  } else if (key == '>') {
+    if (drawWorldInd < drawWorlds.size()) { 
+      drawInd = min((int) drawWorlds[drawWorldInd].size()-1, drawInd + 1);
+      cout << drawInd << "/" << drawWorlds[drawWorldInd].size()-1 << endl;
+    }
   } else if (key == ',') {
-    drawStartWorld = !drawStartWorld;
-  } else if (key == '.') { 
-    drawGoalWorld = !drawGoalWorld;
+    drawWorldInd = max(0, drawWorldInd - 1);
+    cout << "drawWorldInd = " << drawWorldInd << endl; 
+  } else if (key == '.') {
+    drawWorldInd = min((int) drawWorlds.size()-1, drawWorldInd + 1);
+    cout << "drawWorldInd = " << drawWorldInd << endl;
   } else if (key == ';') { 
   	drawInteractiveWorld = !drawInteractiveWorld;
   }	else if (key == '\'') {
   	drawVisualizationData = !drawVisualizationData;
-  } else if (key == 'b') { 
-    start_world = new World(*world);
-  } else if (key == 'n') { 
-    goal_world = new World(*world);
-  } else if (key == 'c') {
-    cout << "Deleting " << worlds.size() << " worlds" << endl;  
-    for (int i = 0; i < worlds.size(); i++) delete worlds[i];
-    worlds.clear();
-  } else if(key == 'd') {
-  	cout << "saving to backup" << endl;
-  	world->backup();
-  } else if(key == 'f') {
-  	cout << "restoring from backup" << endl;
-  	world->restore();
-  } else if (key == '`') {
-  	World* world_ptr = new World(*world);
-  	cout << "copy" << endl;
   }
 #ifdef VIEW3D
   else if(key == '=') {
@@ -693,7 +612,7 @@ void checkMouseUpdate()
 void processIdle()
 {
 	processHapticDevice();
-	//checkMouseUpdate();
+	checkMouseUpdate();
 }
 
 void drawStuff()
@@ -703,25 +622,31 @@ void drawStuff()
 #endif
   
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glClearColor(0.4, 0.4, 0.4, 0.0);
   glColor3f(1.0, 1.0, 1.0);
 	glPushMatrix ();
   /* set up some matrices so that the object spins with the mouse */
   glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
-	
-	glDisable(GL_LIGHTING);
-	if (drawInd < drawWorlds.size() && drawWorlds[drawInd] && drawVisualizationData) { 
+
+#ifndef PICTURE
+  glDisable(GL_LIGHTING);
+	if (drawWorldInd < drawWorlds.size() &&
+      drawInd < drawWorlds[drawWorldInd].size() &&
+      drawWorlds[drawWorldInd][drawInd] != NULL &&
+      drawVisualizationData) { 
     bitmap_output(50, 55, "Viz (')", GLUT_BITMAP_TIMES_ROMAN_24);
   }
   if (world && drawInteractiveWorld) {
     bitmap_output(50, 50, "Int (;)", GLUT_BITMAP_TIMES_ROMAN_24);
   }
   if (start_world && drawStartWorld) {
-  	bitmap_output(50, 45, "Start (,)", GLUT_BITMAP_TIMES_ROMAN_24);
+    bitmap_output(50, 45, "Start ([)", GLUT_BITMAP_TIMES_ROMAN_24);
   }
   if (goal_world && drawGoalWorld) {
-  	bitmap_output(50, 40, "Goal (.)", GLUT_BITMAP_TIMES_ROMAN_24);
+    bitmap_output(50, 40, "Goal (])", GLUT_BITMAP_TIMES_ROMAN_24);
   }
   glEnable(GL_LIGHTING);
+#endif
 
 #ifdef VIEW3D
 	glTranslatef(0.0, 0.0, +eye_focus_depth);
@@ -743,8 +668,12 @@ void drawStuff()
   glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
 	glGetDoublev(GL_PROJECTION_MATRIX, projection);
 	glGetIntegerv(GL_VIEWPORT, viewport);
-  if (drawInd < drawWorlds.size() && drawWorlds[drawInd] && drawVisualizationData) { 
-  	drawWorlds[drawInd]->draw(examine_mode);
+  
+	if (drawWorldInd < drawWorlds.size() &&
+      drawInd < drawWorlds[drawWorldInd].size() &&
+      drawWorlds[drawWorldInd][drawInd] != NULL &&
+      drawVisualizationData) { 
+  	drawWorlds[drawWorldInd][drawInd]->draw(examine_mode);
   }
   if (world && drawInteractiveWorld) {
    	world->draw(examine_mode);
@@ -870,27 +799,9 @@ int main (int argc, char * argv[])
 	connectionInit();
 	
 	//Environment
-	test_world_manager = new WorldManager();
+  test_world_manager = new WorldManager();
 	world = new World(test_world_manager);
 	
-//	for (int i = 0; i < 500; i++) {
-//		cout << i << " ";
-//		World* temp0 = new World(*world, test_world_manager);
-//		World* temp1 = new World(*world, test_world_manager);
-//		World* temp2 = new World(*world, test_world_manager);
-//		World* temp3 = new World(*world, test_world_manager);
-//		delete temp1;
-//		delete temp2;
-//		delete temp3;
-//		delete world;
-//		world = temp0;
-//	}
-//	cout << endl;
-//	cout << "test_world_manager->numOfAllocatedWorlds(): " << test_world_manager->numOfAllocatedWorlds() << endl;
-//	cout << "test_world_manager->numOfAllocatedCollisionWorlds(): " << test_world_manager->numOfAllocatedCollisionWorlds() << endl;
-	
-	//control0 = new Control(Vector3d::Zero(), Matrix3d::Identity());
-	//control1 = new Control(Vector3d::Zero(), Matrix3d::Identity());
 	control0 = new Control(world->objectAtIndex<Cursor>(0)->getPosition(), world->objectAtIndex<Cursor>(0)->getRotation());	
 	control1 = new Control(world->objectAtIndex<Cursor>(1)->getPosition(), world->objectAtIndex<Cursor>(1)->getRotation());	
 
@@ -906,89 +817,29 @@ int main (int argc, char * argv[])
 		processInput(mouse0, mouse1);
 
   
-  worlds.push_back(new World(*world));
   interruptTimer = new Timer();
   interruptTimer->restart();
-  
-//  samples_problems.push_back("environmentFiles/TWIST_COEFF = BEND_COEFF*2.9");
-//	samples_problems.push_back("environmentFiles/TWIST_COEFF = BEND_COEFF*2.8");
-//	samples_problems.push_back("environmentFiles/STRETCH_COEFF = 0.05 * BEND_COEFF");
-//	samples_problems.push_back("environmentFiles/STRETCH_COEFF = 0.2 * BEND_COEFF");
-//	samples_problems.push_back("environmentFiles/REPULSION_COEFF = 10.0 * BEND_COEFF");
-//	samples_problems.push_back("environmentFiles/REPULSION_COEFF = 1.0 * BEND_COEFF");
-//	samples_problems.push_back("environmentFiles/REPULSION_COEFF = 0.1 * BEND_COEFF");
-//	samples_problems.push_back("environmentFiles/REPULSION_COEFF = 0.0 * BEND_COEFF");
-//	samples_problems.push_back("environmentFiles/initial_condition_problem_leftee_right");
-//	samples_problems.push_back("environmentFiles/initial_condition_problem_rightee_left");
-//	samples_problems.push_back("environmentFiles/initial_condition_problem_rightee_down");
-//	samples_problems.push_back("environmentFiles/initial_condition_problem_rightee_up");
-//	samples_problems.push_back("environmentFiles/initial_condition_problem_rightee_mdeg");
-//	samples_problems.push_back("environmentFiles/initial_condition_problem_rightee_pdeg");
-//	samples_problems.push_back("environmentFiles/initial_condition_problem_rightee_pdegup");
-//	
-	samples_initial_conditions1.push_back("environmentFiles/ic_left_tan_m_large");
-	samples_initial_conditions1.push_back("environmentFiles/ic_left_tan_m_small");
-	samples_initial_conditions1.push_back("environmentFiles/ic_left_tan_p_large");
-	samples_initial_conditions1.push_back("environmentFiles/ic_left_tan_p_small");
-	samples_initial_conditions1.push_back("environmentFiles/ic_left_tran_left_small");
-	samples_initial_conditions1.push_back("environmentFiles/ic_left_tran_right_small");
-	samples_initial_conditions1.push_back("environmentFiles/ic_right_roll_med");
-	samples_initial_conditions1.push_back("environmentFiles/ic_right_roll_opposite");
-	samples_initial_conditions1.push_back("environmentFiles/ic_right_roll_small");
-	samples_initial_conditions1.push_back("environmentFiles/ic_right_tan_m_large");
-	samples_initial_conditions1.push_back("environmentFiles/ic_right_tan_m_small");
-	samples_initial_conditions1.push_back("environmentFiles/ic_right_tan_p_large");
-	samples_initial_conditions1.push_back("environmentFiles/ic_right_tan_p_small");
-	samples_initial_conditions1.push_back("environmentFiles/ic_right_tran_down_small");
-	samples_initial_conditions1.push_back("environmentFiles/ic_right_tran_left_large");
-	samples_initial_conditions1.push_back("environmentFiles/ic_right_tran_left_small");
-	samples_initial_conditions1.push_back("environmentFiles/ic_right_tran_right_large");
-	samples_initial_conditions1.push_back("environmentFiles/ic_right_tran_right_small");
-	samples_initial_conditions1.push_back("environmentFiles/ic_right_tran_up_large");
-	samples_initial_conditions1.push_back("environmentFiles/ic_right_tran_up_small");
-	samples_initial_conditions1.push_back("environmentFiles/ic_small");
-	
-	samples_problems1.push_back("environmentFiles/ic_left_tan_m_large_traj");
-	samples_problems1.push_back("environmentFiles/ic_left_tan_m_small_traj");
-	samples_problems1.push_back("environmentFiles/ic_left_tan_p_large_traj");
-	samples_problems1.push_back("environmentFiles/ic_left_tan_p_small_traj");
-	samples_problems1.push_back("environmentFiles/ic_left_tran_left_small_traj");
-	samples_problems1.push_back("environmentFiles/ic_left_tran_right_small_traj");
-	samples_problems1.push_back("environmentFiles/ic_right_roll_med_traj");
-	samples_problems1.push_back("environmentFiles/ic_right_roll_opposite_traj");
-	samples_problems1.push_back("environmentFiles/ic_right_roll_small_traj");
-	samples_problems1.push_back("environmentFiles/ic_right_tan_m_large_traj");
-	samples_problems1.push_back("environmentFiles/ic_right_tan_m_small_traj");
-	samples_problems1.push_back("environmentFiles/ic_right_tan_p_large_traj");
-	samples_problems1.push_back("environmentFiles/ic_right_tan_p_small_traj");
-	samples_problems1.push_back("environmentFiles/ic_right_tran_down_small_traj");
-	samples_problems1.push_back("environmentFiles/ic_right_tran_left_large_traj");
-	samples_problems1.push_back("environmentFiles/ic_right_tran_left_small_traj");
-	samples_problems1.push_back("environmentFiles/ic_right_tran_right_large_traj");
-	samples_problems1.push_back("environmentFiles/ic_right_tran_right_small_traj");
-	samples_problems1.push_back("environmentFiles/ic_right_tran_up_large_traj");
-	samples_problems1.push_back("environmentFiles/ic_right_tran_up_small_traj");
-	samples_problems1.push_back("environmentFiles/ic_small_traj");
 
   glutMainLoop ();
 }
 
 void processInput(ControllerBase* controller0, ControllerBase* controller1)
 {	
-	
-  if (absoluteControl) {
-		vector<ControllerBase*> controllers;
-		controllers.push_back(controller0);
-		controllers.push_back(controller1);
-	
-		world->setTransformFromController(controllers, limit_displacement);
+	control0->setControl(controller0);
+	control1->setControl(controller1);
+
+	bool button_change = control0->getButton(UP) ||
+											 control0->getButton(DOWN) ||
+											 control1->getButton(UP) ||
+											 control1->getButton(DOWN);
+
+	if (button_change)
+		downsample = 0;
+	else
+		downsample = (downsample+1) % 10;
 		
-		if (trajectory_recorder.hasStarted())
-			trajectory_recorder.writeWorldToFile(world);
-	} else {
-		control0->setControl(controller0);
-		control1->setControl(controller1);
-		
+	if (downsample == 0) {
+
 		if (haptics) { //TODO fix this hack
 			control0->setTranslate(haptic0->getPosition() - world->objectAtIndex<Cursor>(0)->getPosition());
 			control0->setRotate(world->objectAtIndex<Cursor>(0)->getRotation().transpose() * haptic0->getRotation());
@@ -1000,26 +851,48 @@ void processInput(ControllerBase* controller0, ControllerBase* controller1)
 			control1->setTranslate(mouse1->getPosition() - world->objectAtIndex<Cursor>(1)->getPosition());
 			control1->setRotate(world->objectAtIndex<Cursor>(1)->getRotation().transpose() * mouse1->getRotation());
 		}
-	
+
 		if (trajectory_recorder_world.hasStarted())
 			trajectory_recorder_world.writeWorldToFile(world);
-		if (trajectory_recorder.hasStarted())
-			trajectory_recorder.writeControlToFile(control0, control1);
-	
+//			if (trajectory_recorder.hasStarted())
+//				trajectory_recorder.writeControlToFile(control0, control1);
+
 		vector<Control*> controls;
 		controls.push_back(control0);
 		controls.push_back(control1);
-	
-		world->applyRelativeControl(controls, limit_displacement);
+
+		Control* c0;
+		Control* c1;
+		Vector3d old_pos0;
+		Vector3d old_pos1;
+		Matrix3d old_rot0;
+		Matrix3d old_rot1;
+		
+		if (trajectory_recorder.hasStarted()) {
+			c0 = new Control(Vector3d::Zero(), Matrix3d::Identity());
+			c1 = new Control(Vector3d::Zero(), Matrix3d::Identity());
+			old_pos0 = world->objectAtIndex<Cursor>(0)->end_eff->getPosition();
+			old_pos1 = world->objectAtIndex<Cursor>(1)->end_eff->getPosition();
+			old_rot0 = world->objectAtIndex<Cursor>(0)->end_eff->getRotation();
+			old_rot1 = world->objectAtIndex<Cursor>(1)->end_eff->getRotation();
+			c0->setButton(UP, control0->getButton(UP));
+			c1->setButton(UP, control1->getButton(UP));
+			c0->setButton(DOWN, control0->getButton(DOWN));
+			c1->setButton(DOWN, control1->getButton(DOWN));
+		}
+		
+		world->applyRelativeControl(controls, NOISE_THRESHOLD, limit_displacement);
+		
+		if (trajectory_recorder.hasStarted()) {
+			c0->setTranslate(world->objectAtIndex<Cursor>(0)->end_eff->getPosition() - old_pos0);
+			c1->setTranslate(world->objectAtIndex<Cursor>(1)->end_eff->getPosition() - old_pos1);
+			
+			c0->setRotate(old_rot0.transpose() * world->objectAtIndex<Cursor>(0)->end_eff->getRotation());
+			c1->setRotate(old_rot1.transpose() * world->objectAtIndex<Cursor>(1)->end_eff->getRotation());
+			trajectory_recorder.writeControlToFile(c0, c1);
+		}
 		
 	}
-
-  //worlds.push_back(new World(*world));
-  if (worlds.size() > 10 && smoothingEnabled) { 
-    sqpSmoother(worlds);
-    worlds.clear();
-    worlds.push_back(drawWorlds.back());
-  }
 }
 
 void moveMouseToClosestEE(Mouse* mouse)
@@ -1046,29 +919,19 @@ void displayTextInScreen(const char* textline, ...)
   glPopMatrix();
 }
 
-void bitmap_output(int x, int y, char *string, void *font)
+void bitmap_output(int x, int y, const char* str, void *font)
 {
   int len, i;
 
   glRasterPos2f(x, y);
-  len = (int) strlen(string);
+  len = (int) strlen(str);
   for (i = 0; i < len; i++) {
-    glutBitmapCharacter(font, string[i]);
+    glutBitmapCharacter(font, str[i]);
   }
 }
 
 void initGL()        
 {
-//  static const GLfloat light_model_ambient[] = {0.3f, 0.3f, 0.3f, 1.0f};    
-//  static const GLfloat lightOnePosition[] = {140.0, 0.0, 200.0, 0.0};
-//  static const GLfloat lightOneColor[] = {0.99, 0.99, 0.99, 1.0};
-//  static const GLfloat lightTwoPosition[] = {-140.0, 0.0, 200.0, 0.0};
-//  static const GLfloat lightTwoColor[] = {0.99, 0.99, 0.99, 1.0};
-//  static const GLfloat lightThreePosition[] = {140.0, 0.0, -200.0, 0.0};
-//  static const GLfloat lightThreeColor[] = {0.99, 0.99, 0.99, 1.0};
-//  static const GLfloat lightFourPosition[] = {-140.0, 0.0, -200.0, 0.0};
-//  static const GLfloat lightFourColor[] = {0.99, 0.99, 0.99, 1.0};
-  
 	// Change background color.
 	glClearColor (0.0, 0.0, 0.0, 0.0);
   
@@ -1096,7 +959,7 @@ void initGL()
   glLightModelfv(GL_LIGHT_MODEL_AMBIENT, light_model_ambient);
   glLightfv (GL_LIGHT0, GL_POSITION, lightOnePosition);
 	glLightfv (GL_LIGHT0, GL_DIFFUSE, lightOneColor);
-	//glEnable (GL_LIGHT0);		// uncomment this if you want another source of light
+	glEnable (GL_LIGHT0);		// uncomment this if you want another source of light
 	glLightfv (GL_LIGHT1, GL_POSITION, lightTwoPosition);
 	glLightfv (GL_LIGHT1, GL_DIFFUSE, lightTwoColor);
 	glEnable (GL_LIGHT1);
@@ -1125,28 +988,27 @@ void glutMenu(int ID) {
 
 void interruptHandler(int sig) {
   cout << "Time since last interrupt: " << interruptTimer->elapsed() << endl; 
-  if (interruptTimer->elapsed() < 10) exit(0);
+  if (interruptTimer->elapsed() < 0.1) exit(0);
   cout << "You need to hold ctrl-c to forcefully exit the program!" << endl;
 
   interruptTimer->restart();
   interruptEnabled = true;
 }
 
-void sqpPlanner() { 
+/*void sqpPlanner(World* start, World* goal, vector<World*>& completeOpenLoopTrajectory) { 
 
-    int num_worlds = 5;
+    int num_worlds = 15;
     string namestring = "world_sqp_debug";
     VectorXd du(12);
     double norm = 1e-1;
-    if (!start_world || !goal_world) return;  
+    if (!start || !goal) return;  
 
-    World* initial_world = new World(*start_world);
-    vector<World*> completeOpenLoopTrajectory;
+    World* initial_world = new World(*start);
     cout << "Planning over " << num_worlds << " worlds" << endl;
     cout << "Initial SQP score: " <<
-      cost_metric(initial_world, goal_world) << endl; 
+      cost_metric(initial_world, goal) << endl; 
 
-    while (cost_metric(initial_world, goal_world) > SQP_BREAK_THRESHOLD && !interruptEnabled) {
+    while (cost_metric(initial_world, goal) > SQP_BREAK_THRESHOLD && !interruptEnabled) {
       // Generate initial trajectory
       vector<World*> initialization_worlds;
       
@@ -1159,7 +1021,7 @@ void sqpPlanner() {
         initialization_worlds.push_back(new World(*initial_world));
       }
 
-      initialization_worlds.push_back(new World(*goal_world));
+      initialization_worlds.push_back(new World(*goal));
 
       vector<World*> sqpWorlds;
       vector<VectorXd> sqpControls;
@@ -1177,29 +1039,250 @@ void sqpPlanner() {
     }
     
     //for smoothing, put objective in there
-    completeOpenLoopTrajectory.push_back(new World(*goal_world));
-    sqpSmoother(completeOpenLoopTrajectory);
+    //completeOpenLoopTrajectory.push_back(new World(*goal_world));
     //drawWorlds.clear();
     //drawWorlds = worlds;
     //drawWorlds = openLoopWorlds;
-    setVisualizationData(completeOpenLoopTrajectory);
-}
+    //setVisualizationData(completeOpenLoopTrajectory);
+}*/
 
-void sqpSmoother(vector<World*>& trajectory_to_smooth) {
+/*void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_trajectory) {
 
-  getTrajectoryStatistics(trajectory_to_smooth);
+  //getTrajectoryStatistics(trajectory_to_smooth);
 
   if (trajectory_to_smooth.size() == 0) return;
   cout << "Smoothing over " << trajectory_to_smooth.size() << " worlds" << endl; 
 
-  vector<World*> sqpWorlds;
+  vector<vector<World*> > traj_in;
+  traj_in.push_back(trajectory_to_smooth);
+
+  vector<vector<World*> > sqpWorlds;
   vector<VectorXd> sqpControls;
 
   string namestring = "world_sqp_debug";
-  solveSQP(trajectory_to_smooth, sqpWorlds, sqpControls, namestring.c_str(), false);
+  solveSQP(traj_in, sqpWorlds, sqpControls, namestring.c_str(), false);
 
-  vector<World*> openLoopWorlds;
-  openLoopController(trajectory_to_smooth, sqpControls, openLoopWorlds);
+  smooth_trajectory.clear();
+  openLoopController(trajectory_to_smooth, sqpControls, smooth_trajectory);
 
-  setVisualizationData(openLoopWorlds);
+  //setVisualizationData(openLoopWorlds);
+}*/
+
+void save_opengl_image(char* filename)
+{
+    const int IMG_COLS_TOTAL = 900;
+    const int IMG_ROWS_TOTAL = 900;
+  //playback and save images
+    Mat img(900, 900, CV_8UC3);
+    vector<Mat> img_planes;
+    split(img, img_planes);
+
+    uchar tmp_data[3][900*900];
+
+    GLenum read_formats[3];
+    read_formats[0] = GL_BLUE;
+    read_formats[1] = GL_GREEN;
+    read_formats[2] = GL_RED;
+
+    for (int i=0; i < 3; i++)
+    {
+        glReadPixels(0, 0, IMG_COLS_TOTAL, IMG_ROWS_TOTAL, read_formats[i], GL_UNSIGNED_BYTE, tmp_data[i]);
+        img_planes[i].data = tmp_data[i];
+    }
+
+
+    vector<int> p(3);
+
+    p[0] = CV_IMWRITE_PNG_COMPRESSION;
+    p[1] = 20;
+    p[2] = 0;
+
+
+    merge(img_planes, img);
+    flip(img, img, 0);
+
+    char im_name[256];
+    sprintf(im_name, "%s%s.png", IMAGE_BASE_NAME, filename);
+    cout << "Image written to " << im_name << endl;
+    im_save_ind++;
+    imwrite(im_name, img, p);
+    waitKey(1);
+  //sleep(0);
+} 
+
+VectorXd closedLoopSQPStepper(World* start, World* goal, WorldSQP* solver) { 
+  if (solver == NULL) assert(false); //initialize your shit
+  
+  solver->popStart(); //pop the initial start 
+  solver->popStart(); //pop the target start
+
+  vector<World*> perturbations;
+  perturbations.push_back(start);
+  for (int i = 1; i < solver->num_traj(); i++) { 
+   World* perturbed_world = new World(*start, test_world_manager);
+   VectorXd du(12);
+   sample_on_sphere(du, NOISE_THRESHOLD);
+   perturbed_world->applyRelativeControlJacobian(du);
+   World* input = new World(*perturbed_world);
+   perturbations.push_back(input);
+   delete perturbed_world;
+  }
+
+  solver->pushStart(perturbations); 
+  solver->pushGoal(goal);
+
+  for (int i = 0; i < perturbations.size(); i++) {
+    //cout << &(*perturbations[i]) << endl; 
+    //delete perturbations[i];
+  }
+
+  solver->solve();
+  return solver->getStartControl();
+}
+
+void closedLoopSQPController(World* start, vector<World*>& target,
+    vector<vector<Control*> >& ctrls) { 
+  vector<int> horizon;
+  //horizon.push_back(5);
+  horizon.push_back(0);
+  //horizon.push_back(30);
+  //horizon.push_back(20);
+
+  vector<vector<World*> > horizon_trajs;
+  horizon_trajs.resize(horizon.size());
+
+
+  for (int h = 0; h < horizon.size(); h++) { 
+    cout << horizon[h] << endl; 
+
+    int max_ind = target.size();
+    if (horizon[h] == 0) { 
+      vector<World*> openLoopWorlds; 
+      openLoopWorlds.push_back(new World(*start));
+      World* OLcopy = new World(*start, test_world_manager);
+      for (int i = 1; i < max_ind; i++) { //state size change at 1088
+        cout << "Step " << i << " / " << max_ind << endl;
+        //if (interruptEnabled) break; 
+        OLcopy->applyRelativeControl(ctrls[i-1], NOISE_THRESHOLD, true);
+        openLoopWorlds.push_back(new World(*OLcopy));
+      }
+      delete OLcopy; 
+      horizon_trajs[h] = openLoopWorlds;
+
+    } else { 
+      int T = horizon[h];
+      vector<World*> init_worlds;
+      for (int i = 0; i < T; i++) {
+        init_worlds.push_back(target[i]); // solver will make copies
+      }
+      vector<vector<World*> > sqp_init;
+      sqp_init.push_back(init_worlds);
+      //sqp_init.push_back(init_worlds);
+      //sqp_init.push_back(init_worlds);
+      //sqp_init.push_back(init_worlds);
+
+      WorldSQP* solver; 
+      solver = new WorldSQP(0,0,0); /// HACK!!
+      char namestring[128];
+      sprintf(namestring, "clsqp_stepper_h_%d", horizon[h]);
+      cout << "namestring = " << namestring << endl; 
+      solver->set_namestring(namestring);
+      solver->initializeClosedLoopStepper(start, sqp_init);
+      solver->solve();
+
+      vector<World*> closedLoopWorlds;
+      closedLoopWorlds.push_back(new World(*start));
+      VectorXd ctrl_cl_0 = solver->getStartControl();
+
+      World* CLcopy = new World(*start, test_world_manager);
+      //start_copy->applyRelativeControlJacobian(ctrl_cl_0);
+      //closedLoopWorlds.push_back(new World(*start_copy));
+
+      for (int i = 1; i < max_ind; i++) { //state size change at 1088
+        cout << "Step " << i << " / " << max_ind << endl;
+        //if (interruptEnabled) break; 
+        if (i + T > target.size() - 1) T = target.size() - i - 1;
+        CLcopy->applyRelativeControl(ctrls[i-1], NOISE_THRESHOLD, true);  
+        VectorXd cl_ctrl = closedLoopSQPStepper(CLcopy, target[i+T], solver);
+        CLcopy->applyRelativeControlJacobian(cl_ctrl, NOISE_THRESHOLD);
+        closedLoopWorlds.push_back(new World(*CLcopy));
+      }
+      delete CLcopy;
+
+      horizon_trajs[h] = closedLoopWorlds;
+    }
+    //if (interruptEnabled) break; 
+
+  }
+
+
+    //solver->getCurrentStates(closedLoopWorlds);
+  
+  vector< vector<World*> > visualization_data; 
+
+  visualization_data.push_back(target);
+  for (int h = 0; h < horizon_trajs.size(); h++) {
+    visualization_data.push_back(horizon_trajs[h]);
+  }
+
+  setVisualizationData(visualization_data);
+
+}
+
+void chunkSmoother(vector<World*>& traj_in, vector<vector<Control*> >& controls_in, vector<World*>& traj_out, vector<vector<Control*> >& controls_out) {
+  int size_each_chunk = 10;
+	assert((traj_in.size()%size_each_chunk) == 0);
+  int num_chunks = traj_in.size() / size_each_chunk;
+
+  vector<vector<World*> > chunks;
+  vector<vector<vector<Control*> > > chunk_ctrls; 
+
+  for (int i = 0; i < num_chunks; i++) {
+    vector<World*> individual_chunk;
+    vector<vector<Control*> > individual_ctrls; 
+    for (int j = 0; j < size_each_chunk; j++) {
+      individual_chunk.push_back(traj_in[i*size_each_chunk + j]);
+      individual_ctrls.push_back(controls_in[i*size_each_chunk +j]);
+    }
+    chunks.push_back(individual_chunk);
+    chunk_ctrls.push_back(individual_ctrls);
+  }
+
+  vector<vector<World*> > smooth_chunks;
+  vector<vector<vector<Control *> > > smooth_controls;
+
+  smooth_chunks.resize(chunks.size());
+  smooth_controls.resize(chunks.size());
+
+  //#pragma omp parallel for
+  for (int i = 0; i < chunks.size(); i++) {
+    //smooth each chunk
+    char namestring[128];
+    sprintf(namestring, "sqp_smoother_chunk_%d", i);
+    vector<vector<World*> > smooth_chunk;
+    vector<vector<Control*> > smooth_control;
+    vector<vector<World*> > sqp_init;
+    sqp_init.push_back(chunks[i]);
+    chunk_ctrls[i].pop_back();
+    solveSQP(sqp_init, chunk_ctrls[i], smooth_chunk, smooth_control, namestring, false);
+    vector<Control *>  du;
+    for (int j = 0; j < 2; j++) {
+      du.push_back(new Control(Vector3d::Zero(), Matrix3d::Identity()));
+    }
+    smooth_control.push_back(du);
+    smooth_chunks[i] = smooth_chunk[0];
+    smooth_controls[i] = smooth_control;
+  }
+
+  for (int i = 0; i < smooth_chunks.size(); i++) { 
+    for (int j = 1; j < smooth_chunks[i].size()-1; j++) {
+      traj_out.push_back(smooth_chunks[i][j]);
+      controls_out.push_back(smooth_controls[i][j]);
+    }
+  }
+
+  vector<vector<World *> > visualization_data;
+  visualization_data.push_back(traj_in);
+  visualization_data.push_back(traj_out);
+  setVisualizationData(visualization_data);
 }

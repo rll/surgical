@@ -11,6 +11,16 @@ Control::Control(Vector3d start_position, Matrix3d start_rotation)
 	button[1] = false;
 }
 
+Control::Control(const Control& rhs)  
+  : position(rhs.position)
+  , rotation(rhs.rotation)
+  , translate(rhs.translate)
+  , rotate(rhs.rotate)
+{
+  button[0] = rhs.button[0];
+  button[1] = rhs.button[1];
+}
+
 Control::~Control() {}
 
 void Control::setControl(ControllerBase* controller)
@@ -31,6 +41,11 @@ void Control::setTranslate(const Vector3d& t)
 void Control::setRotate(const Matrix3d& r)
 {
 	rotate = r;
+}
+
+void Control::setButton(button_type bttn_type, bool value)
+{
+	button[bttn_type] = value;
 }
 
 void Control::setInitialTransform(const Vector3d& pos, const Matrix3d& rot)

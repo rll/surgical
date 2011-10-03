@@ -395,18 +395,18 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
 
 	grad += Vector3d::UnitZ()*GRAV_COEFF;
 
-	if (STRETCH_COEFF > 0.0) {
-		double factor;
-		if ((_next_piece != NULL && _next_piece->_next_piece != NULL && _next_piece->_next_piece->_next_piece != NULL) ||
-				 (_prev_piece != NULL && _prev_piece->_prev_piece != NULL && _prev_piece->_prev_piece->_prev_piece != NULL))	//(_my_thread->_thread_pieces.size()-3) ||	piece_ind == 2)
-			factor = 0.25;
-		else
-			factor = 1.0;
-		if (_next_piece != NULL && _next_piece->_next_piece != NULL) //piece_ind < _my_thread->_thread_pieces.size()-2)
-			grad -= factor * STRETCH_COEFF * (_edge_norm/_rest_length - 1.0) * _edge.normalized();
-		if (_prev_piece != NULL && _prev_piece->_prev_piece != NULL) //(piece_ind > 1)
-			grad += factor * STRETCH_COEFF * (_prev_piece->_edge_norm/_prev_piece->_rest_length - 1.0) * _prev_piece->_edge.normalized();
-	}
+//	if (STRETCH_COEFF > 0.0) {
+//		double factor;
+//		if ((_next_piece != NULL && _next_piece->_next_piece != NULL && _next_piece->_next_piece->_next_piece != NULL) ||
+//				 (_prev_piece != NULL && _prev_piece->_prev_piece != NULL && _prev_piece->_prev_piece->_prev_piece != NULL))	//(_my_thread->_thread_pieces.size()-3) ||	piece_ind == 2)
+//			factor = 0.25;
+//		else
+//			factor = 1.0;
+//		if (_next_piece != NULL && _next_piece->_next_piece != NULL) //piece_ind < _my_thread->_thread_pieces.size()-2)
+//			grad -= factor * STRETCH_COEFF * (_edge_norm/_rest_length - 1.0) * _edge.normalized();
+//		if (_prev_piece != NULL && _prev_piece->_prev_piece != NULL) //(piece_ind > 1)
+//			grad += factor * STRETCH_COEFF * (_prev_piece->_edge_norm/_prev_piece->_rest_length - 1.0) * _prev_piece->_edge.normalized();
+//	}
 #else
   grad.setZero();
 

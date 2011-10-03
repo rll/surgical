@@ -2,6 +2,7 @@
 #define _StateRecorder_h
 
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef MAC
 #include <OpenGL/gl.h>
@@ -31,14 +32,18 @@ USING_PART_OF_NAMESPACE_EIGEN
 class StateRecorder
 {
 	public:
-		StateRecorder();
-		StateRecorder(const char* fileName);
-    void setFileName(const char* newFileName);
+    StateRecorder(const char* new_base_name = "environmentFiles/");
+		StateRecorder(const char* new_file_name, const char* new_base_name);
+    void setBaseName(const char* new_base_name);
+    void setFileName(const char* new_file_name);
+    void getFileName(char* name);
+    void queryFileName();
 
 		void writeWorldToFile(World* world);
 
 	private:
-		char _fileName[256];		
+		char base_name[256];
+		char file_name[256];		
 };
 
 #endif
