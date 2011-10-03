@@ -400,6 +400,7 @@ void World::applyRelativeControl(const vector<Control*>& controls, double thresh
 	}
 }
 
+//This is hack to easily determine the displacement of each control
 void World::applyRelativeControl(const vector<Control*>& controls, vector<double>& displacements, double thresh, bool limit_displacement)
 {
 	assert(cursors.size() == controls.size());

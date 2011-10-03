@@ -22,7 +22,7 @@
 
 #include <btBulletDynamicsCommon.h>
 
-#define PICTURE
+//#define PICTURE
 
 #include "../DiscreteRods/threadutils_discrete.h"
 #include "../DiscreteRods/Collisions/collisionUtils.h"
