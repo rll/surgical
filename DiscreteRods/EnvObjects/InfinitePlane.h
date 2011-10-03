@@ -1,6 +1,8 @@
 #ifndef _InfinitePlane_h
 #define _InfinitePlane_h
 
+#include <btBulletDynamicsCommon.h>
+
 #include <IL/ilut.h>
 #include "imageloader.h"
 
@@ -27,9 +29,7 @@ class InfinitePlane : public EnvObject
 		void restore();
 		
 		//collision
-		bool capsuleIntersection(int capsule_ind, const Vector3d& start, const Vector3d& end, const double radius, vector<Intersection>& intersections);
-  	double capsuleRepulsionEnergy(const Vector3d& start, const Vector3d& end, const double radius);
-  	void capsuleRepulsionEnergyGradient(const Vector3d& start, const Vector3d& end, const double radius, Vector3d& gradient);
+		btCollisionObject* col_obj;
 	
 	protected:
 		Vector3d normal;

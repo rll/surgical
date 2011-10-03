@@ -197,6 +197,7 @@ class World
 				
 		//Init thread
 		void initThread();
+		void initThreadSingle();
 		void initLongerThread();
 		void initRestingThread(int opt);
 		void initRestingFinerThread(int opt);

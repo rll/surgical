@@ -13,9 +13,10 @@ World::World(WorldManager* wm)
 
 	//any of these pushes two threads into threads.
 	//initThread();
+	initThreadSingle();
   //initLongerThread();
   //initRestingThread(0);
-  initRestingFinerThread(0);
+  //initRestingFinerThread(0);
 	
 	//setting up control handles
 	cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));
@@ -36,17 +37,13 @@ World::World(WorldManager* wm)
 //	objs.push_back(new Needle(threads[0]->positionAtConstraint(0), threads[0]->rotationAtConstraint(0), 120.0, 10.0, 0.3, 0.3, 0.3, this, threads[0], 0));
 	
 	//setting up end effectors
-	objs.push_back(new EndEffector(threads[0]->positionAtConstraint(0), threads[0]->rotationAtConstraint(0), this, threads[0], 0));
-	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 0);
+	for (int i = 0; i < threads.size(); i++) {
+		objs.push_back(new EndEffector(threads[i]->positionAtConstraint(0), threads[i]->rotationAtConstraint(0), this, threads[i], 0));
+		assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 0);
 
-	objs.push_back(new EndEffector(threads[0]->positionAtConstraint(1), threads[0]->rotationAtConstraint(1), this, threads[0], threads[0]->numVertices()-1));
-	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
-
-	objs.push_back(new EndEffector(threads[1]->positionAtConstraint(0), threads[1]->rotationAtConstraint(0), this, threads[1], 0));
-	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 0);
-	
-	objs.push_back(new EndEffector(threads[1]->positionAtConstraint(1), threads[1]->rotationAtConstraint(1), this, threads[1], threads[1]->numVertices()-1));
-	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
+		objs.push_back(new EndEffector(threads[i]->positionAtConstraint(1), threads[i]->rotationAtConstraint(1), this, threads[i], threads[i]->numVertices()-1));
+		assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
+	}
 	
 	objs.push_back(new EndEffector(plane->getPosition() + Vector3d(30.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()), this));
 	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == -1);
@@ -784,6 +781,75 @@ void World::initThread()
   ThreadConstrained* thread1 = new ThreadConstrained(vertices, angles, lengths, start_rotation1, end_rotation1, this);
   threads.push_back(thread1);
   
+	for (int thread_ind=0; thread_ind < threads.size(); thread_ind++) {
+#ifndef ISOTROPIC
+		Matrix2d B = Matrix2d::Zero();
+		B(0,0) = 10.0;
+		B(1,1) = 1.0;
+		threads[thread_ind]->set_coeffs_normalized(B, 3.0, 1e-4);
+#else
+  	threads[thread_ind]->set_coeffs_normalized(1.0, 3.0, 1e-4);
+#endif
+	}
+}
+
+void World::initThreadSingle()
+{
+  int numInit = 12;
+
+	double first_length = 3.0; //FIRST_REST_LENGTH;
+	double second_length = SECOND_REST_LENGTH;
+	double middle_length = DEFAULT_REST_LENGTH;
+
+  vector<Vector3d> vertices;
+  vector<double> angles;
+  vector<double> lengths;
+  vector<Vector3d> directions;
+  
+	for (int i=0; i < 2*numInit + 5; i++)
+		angles.push_back(0.0);
+  
+  lengths.push_back(first_length);
+  lengths.push_back(second_length);
+  for (int i=0; i < 2*numInit; i++)
+  	lengths.push_back(middle_length);
+  lengths.push_back(second_length);
+  lengths.push_back(first_length);
+  lengths.push_back(first_length);
+  
+  directions.push_back(Vector3d::UnitX());
+  directions.push_back(Vector3d::UnitX());
+  Vector3d direction = Vector3d(1.0, -1.0, 0.0);
+  direction.normalize();
+  for (int i=0; i < numInit; i++)
+  	directions.push_back(direction);
+  direction = Vector3d(1.0, 1.0, 0.0);
+  direction.normalize();
+  for (int i=0; i < numInit; i++)
+  	directions.push_back(direction);
+  directions.push_back(Vector3d::UnitX());
+  directions.push_back(Vector3d::UnitX());
+  
+  vertices.push_back(Vector3d::Zero());
+  for (int i=1; i < 2*numInit + 5; i++) {
+  	Vector3d next_vertex;
+  	next_vertex(0) = vertices[i-1](0) + directions[i-1](0) * lengths[i-1];
+  	next_vertex(1) = vertices[i-1](1) + directions[i-1](1) * lengths[i-1];
+  	next_vertex(2) = vertices[i-1](2) + directions[i-1](2) * lengths[i-1];
+    vertices.push_back(next_vertex);
+  }
+  
+	Vector3d middle_desired_pos = Vector3d(0.0, -28.0, 0.0);
+	Vector3d middle_vertex_pos = vertices[vertices.size()/2];
+	for (int i=0; i<vertices.size(); i++)
+		vertices[i] += -middle_vertex_pos + middle_desired_pos;
+
+  Matrix3d start_rotation0 = Matrix3d::Identity();
+  Matrix3d end_rotation0 = Matrix3d::Identity();
+
+  ThreadConstrained* thread0 = new ThreadConstrained(vertices, angles, lengths, start_rotation0, end_rotation0, this);
+  threads.push_back(thread0);
+
 	for (int thread_ind=0; thread_ind < threads.size(); thread_ind++) {
 #ifndef ISOTROPIC
 		Matrix2d B = Matrix2d::Zero();
