@@ -179,8 +179,8 @@ int main (int argc, char * argv[])
         if (i % 2 == 0) {  
           VectorXd cl_ctrl = closedLoopSQPStepper(CLcopy, traj_in[i+T], solver, noise_thresh);
           CLcopy->applyRelativeControlJacobian(cl_ctrl, noise_thresh);
-          closedLoopWorlds.push_back(new World(*CLcopy));
         }
+        closedLoopWorlds.push_back(new World(*CLcopy));
       }
       delete CLcopy;
 

@@ -53,6 +53,7 @@ USING_PART_OF_NAMESPACE_EIGEN
 
 void processInput(ControllerBase* controller0, ControllerBase* controller1);
 void moveMouseToClosestEE(Mouse* mouse);
+void drawStuff();
 void displayTextInScreen(const char* textline, ...);
 void bitmap_output(int x, int y, char *string, void *font);
 void glutMenu(int ID);
@@ -139,7 +140,7 @@ TrajectoryRecorder trajectory_recorder_world;
 vector<World*> worlds;
 int world_ind = 0;
 
-#define IMAGE_BASE_NAME "./environmentFiles/images/"
+#define IMAGE_BASE_NAME "./videoImages/"
 int im_save_ind = 1;
 
 //for collecting data
@@ -242,15 +243,16 @@ void processNormalKeys(unsigned char key, int x, int y)
 	  data_raw_filename = new char[256];
 	  cin >> data_raw_filename;
 	  char *directory = new char[256];
-	  sprintf(directory, "%s%s", "environmentFiles/", data_raw_filename);
+	  sprintf(directory, "environmentFiles/%s/video_trajs/", data_raw_filename);
+	  //sprintf(directory, "environmentFiles/%s/", data_raw_filename);
 		dir = opendir (directory);
 		if (dir != NULL) {
 			cout << "Sucessfully opened directory" << endl;
-		  char *fullPath = new char[256];
-		  sprintf(fullPath, "%s%s%s%s%s", "environmentFiles/", data_raw_filename, "/", data_raw_filename, "_data.txt");
-			cout << "Writing data to: " << fullPath << endl;
-			data_file.precision(20);
-			data_file.open(fullPath);
+//		  char *fullPath = new char[256];
+//		  sprintf(fullPath, "%s%s%s%s%s", "environmentFiles/", data_raw_filename, "/", data_raw_filename, "_data.txt");
+//			cout << "Writing data to: " << fullPath << endl;
+//			data_file.precision(20);
+//			data_file.open(fullPath);
 			
 			processNormalKeys('b', x, y);
 			return;
@@ -265,7 +267,8 @@ void processNormalKeys(unsigned char key, int x, int y)
 				sprintf(filename, "%s", ent->d_name);
 				vector<string> parameters;
 				boost::split(parameters, filename, boost::is_any_of("_"));
-				if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename) || parameters[4]!="2.0") {
+				if (parameters.size() != 8 || parameters[0]!=string(data_raw_filename) || parameters[4]!="1.0") {
+				//if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename) || parameters[4]!="0.6" || parameters[3] != "0") {
 				//if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename) || parameters[3] == "5") {
 					cout << "Ignoring file " << filename << endl;
 					processNormalKeys('b', x, y);
@@ -273,10 +276,11 @@ void processNormalKeys(unsigned char key, int x, int y)
 				}
 				string str_filename = "environmentFiles/";
 				str_filename.append(data_raw_filename);
-				str_filename.append("/");
+				//str_filename.append("/");
+				str_filename.append("/video_trajs/");
 				str_filename.append(filename);
 				str_filename = str_filename.substr(0, str_filename.size()-4);
-				data_file << str_filename << " ";
+//				data_file << str_filename << " ";
 				vector<World*> temp_worlds;
 				TrajectoryReader read(str_filename.c_str());
 				if (read.readWorldsFromFile(temp_worlds)) {
@@ -294,19 +298,19 @@ void processNormalKeys(unsigned char key, int x, int y)
 			} else {
 				closedir (dir);
 				dir = NULL;
-				data_file.close();
+//				data_file.close();
 			  cout << "Writing data file Done\n";
 			}
 		} else {
 			cout << "No directory is open" << endl;
 		}
 	} else if (key == 'y') {
-		data_file << "1 \n";
+//		data_file << "1 \n";
 		cout << "You answered yes" << endl;
 		processNormalKeys('b', x, y);
 		return;
 	} else if (key == 'n') {
-		data_file << "0 \n";
+//		data_file << "0 \n";
 		cout << "You answered no" << endl;
 		processNormalKeys('b', x, y);
 		return;
@@ -315,6 +319,46 @@ void processNormalKeys(unsigned char key, int x, int y)
     char *dstFileName = new char[256];
     cin >> dstFileName;
 		save_opengl_image(dstFileName);
+	} else if (key == 'I') {
+		cout << "Please enter source trajectory file name (without extension): ";
+  	char *srcRawFullFileName = new char[256];
+  	char *srcFullFileName = new char[256];
+  	cin >> srcRawFullFileName;
+  	sprintf(srcFullFileName, "environmentFiles/%s", srcRawFullFileName);
+  	cout << "Source trajectory file name is " << srcFullFileName << endl;
+
+		cout << "Please enter image destination file path (without extension): ";
+    char *dstPath = new char[256];
+    cin >> dstPath;
+    cout << "Image destination file path is " << dstPath << endl;
+    
+    vector<string> srcFullFileName_vect;
+    string srcFullFileName_string = string(srcFullFileName);
+    boost::split(srcFullFileName_vect, srcFullFileName_string, boost::is_any_of("/"));
+    string srcFileName = srcFullFileName_vect.back();
+
+		cout << "Loading trajectory from Worlds file..." << endl;		
+		TrajectoryReader trajectory_reader(srcFullFileName);
+		vector<World*> worlds_to_save;
+		if (trajectory_reader.readWorldsFromFile(worlds_to_save)) {
+			cout << "Trajectory loading was sucessful. " << worlds_to_save.size() << " worlds were loaded." << endl;
+			for (int i = 0; i < worlds_to_save.size(); i++) {
+				world_data.push_back(worlds_to_save);
+				setVisualizationData(world_data);
+    		drawWorldInd = drawWorlds.size()-1;
+    		drawInd = i; //drawWorlds[drawWorldInd].size()-1;
+    		
+    		drawStuff();
+    		
+    		char *dstFullFileName = new char[256];
+    		sprintf(dstFullFileName, "%s%s_%.4d", dstPath, srcFileName.c_str(), i);
+    		
+				save_opengl_image(dstFullFileName);
+			}
+		} else {
+			cout << "Failed to load trajectory. Specified file might not exist." << endl;
+			cout << "Unable to save images" << endl;
+		}
 	}
 
 	else if (key == 't')
