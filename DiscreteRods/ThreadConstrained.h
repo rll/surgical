@@ -86,7 +86,7 @@ class ThreadConstrained {
 		void updateRotationOffset(int constraint_ind, Matrix3d rotation);
 		void getAllTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations);
 		void setAllTransforms(vector<Vector3d> positions, vector<Matrix3d> rotations);
-		// parameters have to be of the right size.
+		// parameters have to be of the right size. ??
     void getThreadConstants(VectorXd& constants);
 		void getConstrainedNormals(vector<Vector3d> &normals);
 		void getConstrainedVerticesNums(vector<int> &vertices_num);
@@ -114,7 +114,8 @@ class ThreadConstrained {
 		void applyMotionAtConstraints(vector<Vector3d> translations, vector<Matrix3d> rotations);
 		void applyControl(const VectorXd& u);
 		void getState(VectorXd& state);
-    void setState(VectorXd& state); 
+    void setState(VectorXd& state);
+    void getVertices(VectorXd& vertices);
 		int addConstraint (int absolute_vertex_num);
 		void removeConstraint (int absolute_vertex_num);
 		// Returns the number of the vertex that is nearest to pos. The chosen vertex have to be a free operable vertex.
