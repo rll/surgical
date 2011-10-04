@@ -287,9 +287,9 @@ void ThreadConstrained::getThreadConstants(VectorXd& constants) {
 void ThreadConstrained::getVertices(VectorXd& vertices) {
 	vector<Vector3d> absolute_vertices;
   get_thread_data(absolute_vertices);
-  vertices->resize(3*absolute_vertices.size());
+  vertices.resize(3*absolute_vertices.size());
   for(int i = 0; i < absolute_vertices.size(); i++) {
-    vertices->segment<3>(3*i) = absolute_vertices[i];
+    vertices.segment<3>(3*i) = absolute_vertices[i];
   }
 }
 
