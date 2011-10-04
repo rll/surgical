@@ -368,11 +368,11 @@ void processNormalKeys(unsigned char key, int x, int y)
     if (!world->objectAtIndex<Cursor>(1)->isAttached())
     	moveMouseToClosestEE(mouse1);
 		glutIgnoreKeyRepeat(1);
-	} else if(key == 's') {
+	} else if (key == 's') {
     StateRecorder state_recorder;
     state_recorder.queryFileName();
     state_recorder.writeWorldToFile(world);
-  } else if((key == 'a') || (key >= '0' && key <= '9')) { // loads a world state and puts it in the visualize drawing
+  } else if ((key == 'a') || (key >= '0' && key <= '9')) { // loads a world state and puts it in the visualize drawing
   	StateReader state_reader;
   	if (key == 'a') {
   		state_reader.queryFileName();
@@ -386,7 +386,7 @@ void processNormalKeys(unsigned char key, int x, int y)
 			vis_data.push_back(new World(*world));
 			setVisualizationData(vis_data); 
 		}
-	} else if(key == 'c') { // records control trajectory and world trajectory
+	} else if (key == 'c') { // records control trajectory and world trajectory
 		if (trajectory_recorder.hasStarted()) {
 			cout << "Trajectory has already started. Stop it first before starting it." << endl;
 		} else {
@@ -398,20 +398,61 @@ void processNormalKeys(unsigned char key, int x, int y)
 			trajectory_recorder_world.setFileName(file_name_world);
 			trajectory_recorder_world.start(STATE);
 		}
-	} else if(key == 'x') { // stops recording control trajectory and world trajectory
+	} else if (key == 'x') { // stops recording control trajectory and world trajectory
 		if (!trajectory_recorder.hasStarted()) {
 			cout << "Trajectory has not been started. Start it first before stopping it." << endl;
 		} else {
 			trajectory_recorder.stop();
 			trajectory_recorder_world.stop();
 		}
-	} else if(key == 'k') { // loads a world trajectory and puts it in the visualize drawing
+	} else if (key == 'k') { // loads a world trajectory and puts it in the visualize drawing
 		TrajectoryReader trajectory_reader;
 		trajectory_reader.queryFileName();
-		vector<World*> vis_data;
-		if (trajectory_reader.readWorldsFromFile(vis_data)) {
-			setVisualizationData(vis_data);
+		char* file_name = new char[256];
+		trajectory_reader.getFileName(file_name);
+		
+		string file_name_string(file_name);
+		size_t found = file_name_string.find_last_of(".");
+		string root_file_name = file_name_string.substr(0,found);
+		string ext_file_name = file_name_string.substr(found+1);
+
+		if (ext_file_name == "twd" || found == string::npos) {
+			vector<World*> vis_data;
+			if (trajectory_reader.readWorldsFromFile(vis_data)) {
+				setVisualizationData(vis_data);
+			}
+		} else if (ext_file_name == "tcl") {
+			vector<vector<Control*> > controls;
+			trajectory_reader.readControlsFromFile(controls);
+
+			char* world_file_name = new char[256];
+			strcpy(world_file_name, root_file_name.c_str());
+			strcat(world_file_name, ".twd");
+			TrajectoryReader trajectory_reader_world;
+			trajectory_reader_world.setFileName(world_file_name);
+			vector<World*> temp_worlds;
+			trajectory_reader_world.readWorldsFromFile(temp_worlds);
+
+			vector<World*> openLoopWorlds; 
+			openLoopWorlds.push_back(new World(*temp_worlds[0]));
+			World* OLcopy = new World(*temp_worlds[0], test_world_manager);
+			cout << "Step " << 0 << " / " << controls.size()-1 << endl;
+			for (int i = 1; i < controls.size(); i++) {
+			  fputs("\033[A\033[2K",stdout);
+				rewind(stdout);
+				int dummy = ftruncate(1,0);
+			  cout << "Step " << i << " / " << controls.size()-1 << endl;
+			  
+			  OLcopy->applyRelativeControl(controls[i-1], 0, true);
+			  openLoopWorlds.push_back(new World(*OLcopy));
+			}
+			delete OLcopy; 
+
+			setVisualizationData(openLoopWorlds);
+		} else {
+			cout << "Unable to open trajectory. Unknown extension " << ext_file_name << endl;
 		}
+
 	} else if(key == 'd') { // puts the current world in start_world
 		start_world = new World(*world);
 	} else if(key == 'f') { // puts the current world in goal_world

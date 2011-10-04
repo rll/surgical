@@ -140,6 +140,6 @@ bool TrajectoryReader::readControlsFromFile(vector<vector<Control*> >& controls)
   }
   
   file.close();
-  cout << "Trajectory loading was sucessful. " << controls[0].size() << " control pairs were loaded." << endl;
+  cout << "Trajectory loading was sucessful. " << controls.size() << " control pairs were loaded." << endl;
   return true;
 }
