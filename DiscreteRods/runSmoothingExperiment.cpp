@@ -66,7 +66,7 @@ void chunkSmoother(vector<World*>& traj_in, vector<vector<Control*> >& controls_
     solveSQP(sqp_init, chunk_ctrls[i], smooth_chunk, smooth_control, full_namestring, false);
     vector<Control *>  du;
     for (int j = 0; j < 2; j++) {
-      du.push_back(new Control(Vector3d::Zero(), Matrix3d::Identity()));
+      du.push_back(new Control());
     }
     smooth_control.push_back(du);
     smooth_chunks[i] = smooth_chunk[0];
