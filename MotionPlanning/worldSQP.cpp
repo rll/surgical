@@ -73,7 +73,7 @@ void WorldSQP::initializeClosedLoopStepper(World* start, vector<vector<World*> >
   for (int k = 0; k < target[0].size(); k++) {
     current_controls[k].resize(2);
     for (int j = 0; j < 2; j++) { //hack
-      current_controls[k][j] = new Control(Vector3d::Zero(), Matrix3d::Identity());
+      current_controls[k][j] = new Control();
     }
   }
 
