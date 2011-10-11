@@ -163,10 +163,9 @@ class World
       cout << relative_control.size() << endl;
       for (int i = 0; i < cursors.size(); i++) { 
         Vector3d translation = c[i]->getTranslate();
-        //Matrix3d rotation = c[i]->getRotation(); TODO SUPER IMPORTANT MAJOR BUG
-        Matrix3d rotation(Matrix3d::Identity());
+        Matrix3d rotate(c[i]->getRotate());
         relative_control.segment(i*8, 3) = translation; 
-        euler_angles_from_rotation(rotation, relative_control(i*8+3),
+        euler_angles_from_rotation(rotate, relative_control(i*8+3),
             relative_control(i*8+4), relative_control(i*8+5));
 
       }
