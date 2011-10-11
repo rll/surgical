@@ -843,8 +843,10 @@ int main (int argc, char * argv[])
   test_world_manager = new WorldManager();
 	world = new World(test_world_manager);
 	
-	control0 = new Control(world->objectAtIndex<Cursor>(0)->getPosition(), world->objectAtIndex<Cursor>(0)->getRotation());	
-	control1 = new Control(world->objectAtIndex<Cursor>(1)->getPosition(), world->objectAtIndex<Cursor>(1)->getRotation());	
+//	control0 = new Control(world->objectAtIndex<Cursor>(0)->getPosition(), world->objectAtIndex<Cursor>(0)->getRotation());	
+//	control1 = new Control(world->objectAtIndex<Cursor>(1)->getPosition(), world->objectAtIndex<Cursor>(1)->getRotation());
+	control0 = new Control();
+	control1 = new Control();
 
 	glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
 	glGetDoublev(GL_PROJECTION_MATRIX, projection);
@@ -866,8 +868,10 @@ int main (int argc, char * argv[])
 
 void processInput(ControllerBase* controller0, ControllerBase* controller1)
 {	
-	control0->setControl(controller0);
-	control1->setControl(controller1);
+	control0->setButton(UP, controller0->hasButtonPressedAndReset(UP));
+	control0->setButton(DOWN, controller0->hasButtonPressedAndReset(DOWN));
+	control1->setButton(UP, controller1->hasButtonPressedAndReset(UP));
+	control1->setButton(DOWN, controller1->hasButtonPressedAndReset(DOWN));
 
 	bool button_change = control0->getButton(UP) ||
 											 control0->getButton(DOWN) ||
@@ -902,35 +906,27 @@ void processInput(ControllerBase* controller0, ControllerBase* controller1)
 		controls.push_back(control0);
 		controls.push_back(control1);
 
-		Control* c0;
-		Control* c1;
 		Vector3d old_pos0;
 		Vector3d old_pos1;
 		Matrix3d old_rot0;
 		Matrix3d old_rot1;
 		
 		if (trajectory_recorder.hasStarted()) {
-			c0 = new Control(Vector3d::Zero(), Matrix3d::Identity());
-			c1 = new Control(Vector3d::Zero(), Matrix3d::Identity());
 			old_pos0 = world->objectAtIndex<Cursor>(0)->end_eff->getPosition();
 			old_pos1 = world->objectAtIndex<Cursor>(1)->end_eff->getPosition();
 			old_rot0 = world->objectAtIndex<Cursor>(0)->end_eff->getRotation();
 			old_rot1 = world->objectAtIndex<Cursor>(1)->end_eff->getRotation();
-			c0->setButton(UP, control0->getButton(UP));
-			c1->setButton(UP, control1->getButton(UP));
-			c0->setButton(DOWN, control0->getButton(DOWN));
-			c1->setButton(DOWN, control1->getButton(DOWN));
 		}
 		
 		world->applyRelativeControl(controls, NOISE_THRESHOLD, limit_displacement);
 		
 		if (trajectory_recorder.hasStarted()) {
-			c0->setTranslate(world->objectAtIndex<Cursor>(0)->end_eff->getPosition() - old_pos0);
-			c1->setTranslate(world->objectAtIndex<Cursor>(1)->end_eff->getPosition() - old_pos1);
+			control0->setTranslate(world->objectAtIndex<Cursor>(0)->end_eff->getPosition() - old_pos0);
+			control1->setTranslate(world->objectAtIndex<Cursor>(1)->end_eff->getPosition() - old_pos1);
 			
-			c0->setRotate(old_rot0.transpose() * world->objectAtIndex<Cursor>(0)->end_eff->getRotation());
-			c1->setRotate(old_rot1.transpose() * world->objectAtIndex<Cursor>(1)->end_eff->getRotation());
-			trajectory_recorder.writeControlToFile(c0, c1);
+			control0->setRotate(old_rot0.transpose() * world->objectAtIndex<Cursor>(0)->end_eff->getRotation());
+			control1->setRotate(old_rot1.transpose() * world->objectAtIndex<Cursor>(1)->end_eff->getRotation());
+			trajectory_recorder.writeControlToFile(control0, control1);
 		}
 		
 	}
@@ -1308,7 +1304,7 @@ void chunkSmoother(vector<World*>& traj_in, vector<vector<Control*> >& controls_
     solveSQP(sqp_init, chunk_ctrls[i], smooth_chunk, smooth_control, namestring, false);
     vector<Control *>  du;
     for (int j = 0; j < 2; j++) {
-      du.push_back(new Control(Vector3d::Zero(), Matrix3d::Identity()));
+      du.push_back(new Control());
     }
     smooth_control.push_back(du);
     smooth_chunks[i] = smooth_chunk[0];

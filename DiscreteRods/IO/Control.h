@@ -30,20 +30,19 @@ class Control
 {
 public:
 
-	Control(Vector3d start_position, Matrix3d start_rotation);
+	Control();
+	Control(const Vector3d& p_translate, const Quaterniond& p_rotate);
+	Control(const Vector3d& p_translate, const Matrix3d& p_rotate);
   Control(const Control& rhs);
 	~Control();
 	
-	void setControl(ControllerBase* controller);
 	void setTranslate(const Vector3d& t);
+	void setRotate(const Quaterniond& r);
 	void setRotate(const Matrix3d& r);
 	void setButton(button_type bttn_type, bool value);
 	void getControlVector(VectorXd& control);
-	void setInitialTransform(const Vector3d& pos, const Matrix3d& rot);
 	void setNoMotion();
 	
-	const Vector3d& getPosition() const;
-	const Matrix3d& getRotation() const;
 	const Vector3d& getTranslate() const;
 	const Quaterniond& getRotate() const;
 	bool getButton(button_type bttn_type);
@@ -51,10 +50,7 @@ public:
 	void writeToFile(ofstream& file);
 	Control(ifstream& file);
   
-//protected:
-	Vector3d position;
-	Matrix3d rotation;
-  
+protected:
   Vector3d translate;
   Quaterniond rotate;
   bool button[2];

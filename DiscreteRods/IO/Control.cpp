@@ -1,20 +1,32 @@
 #include "Control.h"
 #include "../TrajectoryReader.h"
 
-Control::Control(Vector3d start_position, Matrix3d start_rotation)
-  : position(start_position)
-  , rotation(start_rotation)
-  , translate(0.0, 0.0, 0.0)
+Control::Control()
+  : translate(0.0, 0.0, 0.0)
 	, rotate(Matrix3d::Identity())
 {
 	button[0] = false;
 	button[1] = false;
 }
 
+Control::Control(const Vector3d& p_translate, const Quaterniond& p_rotate)
+  : translate(p_translate)
+	, rotate(p_rotate)
+{
+	button[0] = false;
+	button[1] = false;
+}
+
+
+Control::Control(const Vector3d& p_translate, const Matrix3d& p_rotate)
+  : translate(p_translate)
+	, rotate(p_rotate)
+{
+	button[0] = false;
+	button[1] = false;
+}
 Control::Control(const Control& rhs)  
-  : position(rhs.position)
-  , rotation(rhs.rotation)
-  , translate(rhs.translate)
+  : translate(rhs.translate)
   , rotate(rhs.rotate)
 {
   button[0] = rhs.button[0];
@@ -23,19 +35,14 @@ Control::Control(const Control& rhs)
 
 Control::~Control() {}
 
-void Control::setControl(ControllerBase* controller)
-{
-  translate = controller->getPosition() - position;
-  rotate = Quaterniond(controller->getRotation().transpose() * rotation);
-  position = controller->getPosition();
-  rotation = controller->getRotation();
-  button[UP] = controller->hasButtonPressedAndReset(UP);
-  button[DOWN] = controller->hasButtonPressedAndReset(DOWN);
-}
-
 void Control::setTranslate(const Vector3d& t)
 {
 	translate = t;
+}
+
+void Control::setRotate(const Quaterniond& r)
+{
+	rotate = r;
 }
 
 void Control::setRotate(const Matrix3d& r)
@@ -46,13 +53,6 @@ void Control::setRotate(const Matrix3d& r)
 void Control::setButton(button_type bttn_type, bool value)
 {
 	button[bttn_type] = value;
-}
-
-void Control::setInitialTransform(const Vector3d& pos, const Matrix3d& rot)
-{
-	position = pos;
-	rotation = rot;
-	setNoMotion();
 }
 
 void Control::setNoMotion()
@@ -83,16 +83,6 @@ const Quaterniond& Control::getRotate() const
 	return rotate;
 }
 
-const Vector3d& Control::getPosition() const
-{
-	return position;
-}
-
-const Matrix3d& Control::getRotation() const
-{
-	return rotation;
-}
-
 bool Control::getButton(button_type bttn_type)
 {
 	return button[bttn_type];
@@ -100,6 +90,9 @@ bool Control::getButton(button_type bttn_type)
 
 void Control::writeToFile(ofstream& file)
 {
+	cout << "Control::writeToFile(ofstream& file): position and rotation members are deprecated. They are no longer used." << endl;
+	Vector3d position;
+	Matrix3d rotation;	
 	for (int i=0; i<3; i++)
 		file << position(i) << " ";
 	for (int r=0; r < 3; r++)
@@ -113,6 +106,9 @@ void Control::writeToFile(ofstream& file)
 
 Control::Control(ifstream& file)
 {
+	cout << "Control::Control(ifstream& file): position and rotation members are deprecated. They are no longer used." << endl;
+	Vector3d position;
+	Matrix3d rotation;
 	for (int i=0; i<3; i++)
 		file >> position(i);
 	for (int r=0; r < 3; r++)
