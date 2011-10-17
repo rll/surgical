@@ -1,6 +1,5 @@
 #include "EndEffector.h"
 #include "World.h"
-#include "../threadpiece_discrete.h" //TODO for repulsion coefficient. should be removed if collision is checked in world.
 #include "../ThreadConstrained.h"
 
 EndEffector::EndEffector(const Vector3d& pos, const Matrix3d& rot, World* w, ThreadConstrained* t, int constrained_vertex_num)
