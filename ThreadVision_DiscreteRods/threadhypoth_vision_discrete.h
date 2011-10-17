@@ -16,7 +16,9 @@
 
 #define NUM_HYPOTHS_MAX 20
 
-#define USE_DISTANCE_METRIC true
+#define CURRENT_METRIC 0
+#define DISTANCE_COEFF 0.1
+enum Metrics {VISUAL_ONLY, VISUAL_ENERGY, VISUAL_DISTANCE};
 
 class Thread_Vision;
 

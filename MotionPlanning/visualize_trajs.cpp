@@ -21,7 +21,7 @@
 #include "linearization_utils.h"
 #include "iterative_control.h"
 #include "trajectory_follower.h"
-#include "../../utils/clock.h"
+#include "../utils/clock.h"
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 

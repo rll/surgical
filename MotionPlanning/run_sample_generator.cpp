@@ -67,8 +67,8 @@ int main(int argc, char* argv[]) {
   char start_filename[1024];
   char end_filename[1024];
 
-  sprintf(start_filename, "%s/%s_%d", BASEFOLDER_INITDATA, BASENAME_STARTTHREADS, num_links);
-  sprintf(end_filename, "%s/%s_%d", BASEFOLDER_INITDATA, BASENAME_GOALTHREADS, num_links);
+  sprintf(start_filename, "reversibility/%s_%d", BASENAME_STARTTHREADS, num_links);
+  sprintf(end_filename, "reversibility/%s_%d", BASENAME_GOALTHREADS, num_links);
 
 
   Trajectory_Recorder recorderS(start_filename);

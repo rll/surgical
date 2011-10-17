@@ -1,5 +1,8 @@
 *.o
 *.swp
+*.log
+*.pyc
+README.html
 *~
 /vision/captures/*.tif
 ThreadVision_DiscreteRods/threadStereo
@@ -14,3 +17,5 @@ vision/captures/*
 MotionPlanning/SQP_DATA/*.txt
 MotionPlanning/ims_for_vids/*
 *.pem
+DiscreteRods/environmentFiles
+DiscreteRods/videoImages
