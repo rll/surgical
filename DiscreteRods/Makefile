@@ -15,12 +15,12 @@ ifeq ($(MACHINE),Darwin)
 else
     LIBS = -L/usr/lib/ -lglut -lgle -lIL -lGLU -lBulletDynamics -lBulletCollision -lboost_thread
     INCLUDES = -I/usr/local/include/ -I/usr/include/ -I $(UTILS_DIR)/ -I/usr/include/eigen2 -I/usr/local/include/bullet
+		VISION_LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lrt #-lPvAPI
+		VISION_INCLUDES = -I/usr/local/include/opencv/
     COMPILEFLAG=
     LDFLAG=-lrt
 endif
 
-VISION_LIBS = -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm  -L/usr/lib/  -lrt #-lPvAPI
-VISION_INCLUDES = -I/usr/local/include/opencv/
 SOCKETS_DIR = ../utils/sockets/
 # OPT_COMP =
 OPT_COMP = -Os #-DEIGEN_NO_DEBUG -O3 -DNDEBUG
