@@ -19,10 +19,6 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
-#define CHECKERS_PER_ROW 8.0
-#define CHECKERS_PER_COL 6.0
-#define SIZE_EACH_CHECKER 1.0
-
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
@@ -52,8 +48,6 @@ float last_rotate_frame[2];
 float move[2];
 
 int pressed_mouse_button;
-
-void estimatePointsInRobotHand(const Vector3d& startPt, const Matrix3d& startRot, const Vector3d& offsetGuess, const double offsetAngGuess, vector<Vector3d>& estimatedPoints);
 
 void processLeft(int x, int y) {
 	rotate_frame[0] += x-lastx_L;
@@ -208,64 +202,6 @@ void drawCursor(double transform[16], float color0, float color1, float color2) 
   glPopAttrib();
 }
 
-void drawSphere(Vector3d position, float radius, float color0, float color1, float color2) {
-	glPushMatrix();
-	double transform[16] = {1,0,0,0,
-													0,1,0,0,
-													0,0,1,0,
-													position(0), position(1), position(2), 1};
-	glMultMatrixd(transform);
-	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glEnable(GL_COLOR_MATERIAL);
-  glColor3f(color0, color1, color2);
-  glutSolidSphere(radius, 20, 16);
-  //glFlush ();
-  glPopMatrix();
-}
-
-void drawAxes(Vector3d pos, Matrix3d rot) {
-	glPushMatrix();
-	double transform[] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
-												 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
-												 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
-												 pos(0)   , pos(1)   , pos(2)   , 1 };
-	glMultMatrixd(transform);
-	glBegin(GL_LINES);
-	glEnable(GL_LINE_SMOOTH);
-	glColor3d(1.0, 0.0, 0.0); //red
-	glVertex3f(0.0, 0.0, 0.0); //x
-	glVertex3f(10.0, 0.0, 0.0);
-	glColor3d(0.0, 1.0, 0.0); //green
-	glVertex3f(0.0, 0.0, 0.0); //y
-	glVertex3f(0.0, 10.0, 0.0);
-	glColor3d(0.0, 0.0, 1.0); //blue
-	glVertex3f(0.0, 0.0, 0.0); //z
-	glVertex3f(0.0, 0.0, 10.0);
-	glEnd();
-	glPopMatrix();
-}
-
-void labelAxes(Vector3d pos, Matrix3d rot) {
-  glPushMatrix();
-  Vector3d diff_pos = pos;
-	double rotation_scale_factor = 20.0;
-	Matrix3d rotations_project = rot*rotation_scale_factor;
-	void * font = GLUT_BITMAP_HELVETICA_18;
-	glColor3d(1.0, 0.0, 0.0); //red
-	//glRasterPos3i(20.0, 0.0, -1.0);
-	glRasterPos3i((float)(diff_pos(0)+rotations_project(0,0)), (float)(diff_pos(1)+rotations_project(1,0)), (float)(diff_pos(2)+rotations_project(2,0)));
-	glutBitmapCharacter(font, 'X');
-	glColor3d(0.0, 1.0, 0.0); //red
-	//glRasterPos3i(0.0, 20.0, -1.0);
-	glRasterPos3i((float)(diff_pos(0)+rotations_project(0,1)), (float)(diff_pos(1)+rotations_project(1,1)), (float)(diff_pos(2)+rotations_project(2,1)));
-	glutBitmapCharacter(font, 'Y');
-	glColor3d(0.0, 0.0, 1.0); //red
-	//glRasterPos3i(-1.0, 0.0, 20.0);
-	glRasterPos3i((float)(diff_pos(0)+rotations_project(0,2)), (float)(diff_pos(1)+rotations_project(1,2)), (float)(diff_pos(2)+rotations_project(2,2)));
-	glutBitmapCharacter(font, 'Z');
-  glPopMatrix();
-}
-
 void drawStuff() {
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glColor3f (0.8, 0.3, 0.6);
@@ -283,17 +219,11 @@ void drawStuff() {
   	pos_ori.push_back(data[data_i][i]);
   }
   
-  Matrix3d rot, rot2, rot3;
-	rot = Eigen::AngleAxisd(pos_ori[3], Vector3d::UnitZ())
+  Matrix3d other_rot, rot, rot2, rot3;
+	other_rot = Eigen::AngleAxisd(pos_ori[5], Vector3d::UnitZ())
   			* Eigen::AngleAxisd(pos_ori[4], Vector3d::UnitY())
-  			* Eigen::AngleAxisd(pos_ori[5], Vector3d::UnitX());
-	
-	Vector3d current_point;
-	current_point << pos_ori[0]*200.0, pos_ori[1]*200.0, pos_ori[2]*200.0; 
-	
-	vector<Vector3d> estimatedPoints; 
-	estimatePointsInRobotHand(current_point, rot, Vector3d(0.0, 0.0, 0.0), 0.0 * M_PI/180.0, estimatedPoints);
-	
+  			* Eigen::AngleAxisd(pos_ori[3], Vector3d::UnitX());
+	rot = other_rot.transpose();
 	double transformYPR[16] = { rot(0,0) 				, rot(1,0) 					, rot(2,0) 					, 0 ,
 		 											 rot(0,1) 				, rot(1,1) 					, rot(2,1) 					, 0 ,
 													 rot(0,2) 				, rot(1,2) 					, rot(2,2) 					, 0 ,
@@ -304,16 +234,13 @@ void drawStuff() {
 													 pos_ori[8], pos_ori[11], pos_ori[14], 0,
 													 pos_ori[0]*200.0 , pos_ori[1]*200.0	, pos_ori[2]*200.0	, 1 };
 	
-	//drawCursor(transformYPR, 0.0, 1.0, 0.5);
-	
+	//angle_mismatch(rotations[cvnum], old_rot)
 	drawCursor(transform, 0.0, 0.5, 1.0);
 	
-	drawAxes(current_point, rot);
-	labelAxes(current_point, rot);
+	drawCursor(transformYPR, 0.0, 1.0, 0.5);
 	
-	for (int i=0; i<estimatedPoints.size(); i++) {
-		drawSphere(estimatedPoints[i], 0.5, 0.0, 0.7, 0.7);
-	}
+	
+	
 	
 	glPopMatrix ();
 	glutSwapBuffers ();
@@ -341,30 +268,6 @@ void loadParsedFile(const char* fileName, vector<vector<double> >& data) {
     data.pop_back(); 
   }
 }
-
-void estimatePointsInRobotHand(const Vector3d& startPt, const Matrix3d& startRot, const Vector3d& offsetGuess, const double offsetAngGuess, vector<Vector3d>& estimatedPoints)
-{
-  //rotate about x axis by offsetAng, then offsetGuess will lead to point in top-left corner
-  Matrix3d rotatedAboutX = startRot * Eigen::AngleAxisd(offsetAngGuess, Vector3d::UnitX());
-  Vector3d middlePt = startPt + rotatedAboutX*Vector3d(0.0, -(CHECKERS_PER_ROW-1.0)/2.0, 0.0);
-  Vector3d offsetGuessRotated = rotatedAboutX*offsetGuess + middlePt;
-  Vector3d yAxisRotated = rotatedAboutX*Vector3d::UnitY();
-  Vector3d zAxisRotated = rotatedAboutX*Vector3d::UnitZ();
-
-  estimatedPoints.resize(CHECKERS_PER_ROW*CHECKERS_PER_COL);
-  for (int c = 0; c < CHECKERS_PER_COL; c++)
-  {
-    int cInd = c*CHECKERS_PER_ROW;
-    for (int r = 0; r < CHECKERS_PER_ROW; r++)
-    {
-      estimatedPoints[cInd+r] = offsetGuessRotated + yAxisRotated*r*SIZE_EACH_CHECKER - zAxisRotated*c*SIZE_EACH_CHECKER;
-    }
-  } 
-
-
-}
-
-
 
 int main(int argc, char* argv[]) {
 	/* initialize glut */

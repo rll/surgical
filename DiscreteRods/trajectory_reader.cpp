@@ -16,11 +16,16 @@ void Trajectory_Reader::set_file(const char* fileName_threads_in)
  sprintf(_fileName_threads, "%s.txt", fileName_threads_in);
 }
 
-void Trajectory_Reader::read_threads_from_file()
+int Trajectory_Reader::read_threads_from_file()
 {
- std::cout << "filename: " << _fileName_threads << std::endl;
+	std::cout << "filename: " << _fileName_threads << std::endl;
   ifstream threads_playback;
   threads_playback.open(_fileName_threads);
+  
+  if (threads_playback.fail()) {
+  	cout << "Failed to open file. Threads were not read from file." << endl;
+  	return -1;
+  }
 //  threads_playback.precision(10);
   int num_pts_each;
   int read;
@@ -31,6 +36,8 @@ void Trajectory_Reader::read_threads_from_file()
   points.resize(num_pts_each);
   vector<double> twist_angles;
   twist_angles.resize(num_pts_each);
+  vector<double> rest_lengths;
+  rest_lengths.resize(num_pts_each);
   Matrix3d start_rot;
   Matrix3d end_rot;
 
@@ -57,11 +64,11 @@ void Trajectory_Reader::read_threads_from_file()
 
     for (int i=0; i < points.size(); i++)
     {
-      threads_playback >> points[i](0) >> points[i](1) >> points[i](2) >> twist_angles[i];
+      threads_playback >> points[i](0) >> points[i](1) >> points[i](2) >> twist_angles[i] >> rest_lengths[i];
     }
-		twist_angles.back() = twist_angles[twist_angles.size()-2];
+		//twist_angles.back() = twist_angles[twist_angles.size()-2];
 
-    Thread nextThread(points, twist_angles, start_rot, DEFAULT_REST_LENGTH);
+    Thread nextThread(points, twist_angles, rest_lengths, start_rot);
     _each_thread.push_back(nextThread);
 		//_each_thread.back() = nextThread;
 
@@ -70,7 +77,8 @@ void Trajectory_Reader::read_threads_from_file()
   //last read thread is garbage data
   if (_each_thread.size() > 0)
     _each_thread.pop_back();
-
+  
+  return 0;
 }
 
 

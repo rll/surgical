@@ -1,3 +1,7 @@
+#ifndef _ThreadConstrained_h
+#define _ThreadConstrained_h
+
+
 #include <stdlib.h>
 #include <algorithm>
 
@@ -17,20 +21,61 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <math.h>
-#include "thread_discrete.h"
 
-#define LIMITED_DISPLACEMENT true
-#define MAX_DISPLACEMENT 1 //(0.49*THREAD_RADIUS)
-#define MAX_ANGLE_CHANGE (0.05*M_PI)
+#include "threadutils_discrete.h"
+#include "../utils/drawUtils.h"
+#include "EnvObjects/World.h"
+
+//CONTOUR STUFF
+#define SCALE 1.0
+#define CONTOUR(x,y) {					\
+   double ax, ay, alen;					\
+   contour[i][0] = SCALE * (x);				\
+   contour[i][1] = SCALE * (y);				\
+   if (i!=0) {						\
+      ax = contour[i][0] - contour[i-1][0];		\
+      ay = contour[i][1] - contour[i-1][1];		\
+      alen = 1.0 / sqrt (ax*ax + ay*ay);		\
+      ax *= alen;   ay *= alen;				\
+      contour_norms [i-1][0] = ay;				\
+      contour_norms [i-1][1] = -ax;				\
+   }							\
+   i++;							\
+}
+
+#define NUM_PTS_CONTOUR (25)
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
+class Thread;
+
 class ThreadConstrained {
 	public:
-		ThreadConstrained(int vertices_num);
-		int numVertices() { return num_vertices; }
-		const double rest_length() const { return threads.front()->rest_length(); }
+		//ThreadConstrained();
+		ThreadConstrained(int num_vertices_init, World* w);
+		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, Matrix3d& end_rot, World* w);
+		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, World* w);
+		ThreadConstrained(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot, World* w);
+		ThreadConstrained(const ThreadConstrained& rhs, World* w);
+    //ThreadConstrained& operator=(const ThreadConstrained& rhs);
+    virtual ~ThreadConstrained();
+		
+		//need to be initialized in constructor
+		//num_vertices
+		//threads
+		//zero_angle
+		//rot_diff
+		//rot_offset
+		//constrained_vertices_nums
+		//world
+		//examine_mode (false)
+		
+		void writeToFile(ofstream& file);
+		ThreadConstrained(ifstream& file, World* w);
+		
+		int numVertices();
+		void checkNumVertices();
 		void get_thread_data(vector<Vector3d> &absolute_points);
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<double> &absolute_twist_angles);
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<double> &absolute_twist_angles, vector<Matrix3d> &absolute_material_frames);
@@ -38,9 +83,11 @@ class ThreadConstrained {
 		// parameters have to be of the right size, i.e. threads.size()+1
 		void getConstrainedTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations);
 		void setConstrainedTransforms(vector<Vector3d> positions, vector<Matrix3d> rotations);
+		void updateRotationOffset(int constraint_ind, Matrix3d rotation);
 		void getAllTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations);
 		void setAllTransforms(vector<Vector3d> positions, vector<Matrix3d> rotations);
-		// parameters have to be of the right size.
+		// parameters have to be of the right size. ??
+    void getThreadConstants(VectorXd& constants);
 		void getConstrainedNormals(vector<Vector3d> &normals);
 		void getConstrainedVerticesNums(vector<int> &vertices_num);
 		void getConstrainedVertices(vector<Vector3d> &constrained_vertices);
@@ -55,23 +102,76 @@ class ThreadConstrained {
 		void set_coeffs_normalized(double bend_coeff, double twist_coeff, double grav_coeff);
 		void set_coeffs_normalized(const Matrix2d& bend_coeff, double twist_coeff, double grav_coeff);
 		void minimize_energy();
+		void adapt_links();
 		void updateConstraints (vector<Vector3d> poss, vector<Matrix3d> rots);
-		void addConstraint (int absolute_vertex_num);
+		void updateConstrainedTransform(int constraint_ind, const Vector3d& pos, const Matrix3d& rot);
+		void updateConstrainedRawTransform(int constraint_ind, const Vector3d& pos, const Matrix3d& prev_rot, const Matrix3d& next_rot);
+		void getConstrainedTransform(int constraint_ind, Vector3d& pos, Matrix3d& rot);
+		const Vector3d& positionAtConstraint(int constraint_ind) const;
+		Matrix3d rotationAtConstraint(int constraint_ind);
+		Matrix3d rotationRawPrevAtConstraint(int constraint_ind);
+		Matrix3d rotationRawNextAtConstraint(int constraint_ind);
+		void applyMotionAtConstraints(vector<Vector3d> translations, vector<Matrix3d> rotations);
+		void applyControl(const VectorXd& u);
+		void getState(VectorXd& state);
+    void setState(VectorXd& state);
+    void getVertices(VectorXd& vertices);
+		int addConstraint (int absolute_vertex_num);
 		void removeConstraint (int absolute_vertex_num);
 		// Returns the number of the vertex that is nearest to pos. The chosen vertex have to be a free operable vertex.
 		int nearestVertex(Vector3d pos);
 		Vector3d position(int absolute_vertex_num);
 		Matrix3d rotation(int absolute_vertex_num);
+		void draw(bool mode = false);
+		void drawDebug();
+		void getThreads(vector<Thread*>& ths);
 
-	private:
+		//backup
+		void backup();
+		void restore();
+
+
+
+
+	//private:
 		int num_vertices;
 		vector<Thread*> threads;
 		double zero_angle;
+		World* world;
+		bool examine_mode;
 		vector<Matrix3d> rot_diff;
 		vector<Matrix3d> rot_offset;
-		vector<Vector3d> last_pos;
-		vector<Matrix3d> last_rot;
     vector<int> constrained_vertices_nums;
+    object_type type;
+    
+    //backup
+		int backup_num_vertices;
+		vector<Thread*> backup_threads;
+		double backup_zero_angle;
+		vector<Matrix3d> backup_rot_diff;
+		vector<Matrix3d> backup_rot_offset;
+		vector<int> backup_constrained_vertices_nums;
+		
+		//need to be backup
+		//num_vertices
+		//threads
+		//zero_angle
+		//rot_diff
+		//rot_offset
+		//constrained_vertices_nums
+
+		//need to be restored
+		//num_vertices
+		//threads
+		//zero_angle
+		//rot_diff
+		//rot_offset
+		//constrained_vertices_nums
+		//examine_mode (false)
+        
+    double contour[NUM_PTS_CONTOUR][2];
+		double contour_norms[NUM_PTS_CONTOUR][2];
+    void initContour();
 		void intermediateRotation(Matrix3d &inter_rot, Matrix3d end_rot, Matrix3d start_rot);
 		// Splits the thread threads[thread_num] into two threads, which are stored at threads[thread_num] and threads[thread_num+1].  Threads in threads that are stored after thread_num now have a new thread_num which is one unit more than before. The split is done at vertex vertex of thread[thread_num]
 		void splitThread(int thread_num, int vertex_num);
@@ -104,3 +204,5 @@ int insertSorted (vector<int> &v, int e);
 int removeSorted (vector<int> &v, int e);
 //Returns the position of the element to be found.
 int find(vector<int> v, int e);
+
+#endif //_ThreadConstrained_h

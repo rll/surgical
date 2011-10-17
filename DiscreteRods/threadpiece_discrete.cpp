@@ -1,56 +1,163 @@
 #include "threadpiece_discrete.h"
 #include "thread_discrete.h"
+#include "EnvObjects/World.h"
+#include "Collisions/CollisionWorld.h"
 
-ThreadPiece::ThreadPiece() :
-  rot(Matrix3d::Zero()), _my_thread(NULL)
+ThreadPiece::ThreadPiece(bool add_col_obj)
+	: Object(THREAD_PIECE)
+	, rot(Matrix3d::Zero())
+	, _my_thread(NULL)
+	, _piece_ind(-1)
 {
 	grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
 	grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
 	grad_offsets[2] = Vector3d(0.0, 0.0, grad_eps);
 	rot = Matrix3d::Zero();
+	
+	_rest_length = 0.0;
+	
+	if (add_col_obj) {
+		btCapsuleShapeX* capsule_piece = new btCapsuleShapeX(btScalar(THREAD_RADIUS+REPULSION_DIST), btScalar(_rest_length));
+		capsule_piece->setMargin(0.f);
+		_col_obj = new btCollisionObject();
+		_col_obj->setCollisionShape(capsule_piece);
+		_col_obj->setUserPointer(this);
+		if (_my_thread->world->collision_world != NULL)
+			_my_thread->world->collision_world->addCollisionObject(_col_obj);
+	} else {
+		_col_obj = NULL;
+	}
 }
 
-
-	ThreadPiece::ThreadPiece(const Vector3d& vertex, const double angle_twist, Thread* my_thread)
-: _vertex(vertex), _angle_twist(angle_twist), _prev_piece(NULL), _next_piece(NULL), rot(Matrix3d::Zero()), _my_thread(my_thread)
+ThreadPiece::ThreadPiece(const Vector3d& vertex, const double angle_twist, const double rest_length, Thread* my_thread, bool add_col_obj)
+	: Object(THREAD_PIECE)
+	, _vertex(vertex)
+	, _angle_twist(angle_twist)
+	, _rest_length(rest_length)
+	, _prev_piece(NULL)
+	, _next_piece(NULL), rot(Matrix3d::Zero())
+	, _my_thread(my_thread)
+	, _piece_ind(-1)
 {
 	grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
 	grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
 	grad_offsets[2] = Vector3d(0.0, 0.0, grad_eps);
+	
+	if (add_col_obj) {
+		btCapsuleShapeX* capsule_piece = new btCapsuleShapeX(btScalar(THREAD_RADIUS+REPULSION_DIST), btScalar(_rest_length));
+		capsule_piece->setMargin(0.f);
+		_col_obj = new btCollisionObject();
+		_col_obj->setCollisionShape(capsule_piece);
+		_col_obj->setUserPointer(this);
+		if (_my_thread->world->collision_world != NULL)
+			_my_thread->world->collision_world->addCollisionObject(_col_obj);
+	} else {
+		_col_obj = NULL;
+	}
 }
 
-	ThreadPiece::ThreadPiece(const Vector3d& vertex, const double angle_twist, ThreadPiece* prev, ThreadPiece* next, Thread* my_thread)
-: _vertex(vertex), _angle_twist(angle_twist), rot(Matrix3d::Zero()), _my_thread(my_thread)
+ThreadPiece::ThreadPiece(const Vector3d& vertex, const double angle_twist, const double rest_length, ThreadPiece* prev, ThreadPiece* next, Thread* my_thread, bool add_col_obj)
+	: Object(THREAD_PIECE)
+	, _vertex(vertex)
+	, _angle_twist(angle_twist)
+	, _rest_length(rest_length)
+	, rot(Matrix3d::Zero())
+	, _my_thread(my_thread)
+	, _piece_ind(-1)
 {
 	grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
 	grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
 	grad_offsets[2] = Vector3d(0.0, 0.0, grad_eps);
   set_prev(prev);
   set_next(next);
+
+ 	if (add_col_obj) {
+		btCapsuleShapeX* capsule_piece = new btCapsuleShapeX(btScalar(THREAD_RADIUS+REPULSION_DIST), btScalar(_rest_length));
+		capsule_piece->setMargin(0.f);
+		_col_obj->setCollisionShape(capsule_piece);
+		_col_obj->setUserPointer(this);
+		if (_my_thread->world->collision_world != NULL)
+			_my_thread->world->collision_world->addCollisionObject(_col_obj);
+	} else {
+		_col_obj = NULL;
+	}
 }
 
 
-	ThreadPiece::ThreadPiece(const ThreadPiece& rhs)
-: _vertex(rhs._vertex), _angle_twist(rhs._angle_twist), _edge(rhs._edge), _edge_norm(rhs._edge_norm), _curvature_binormal(rhs._curvature_binormal), _bishop_frame(rhs._bishop_frame), _material_frame(rhs._material_frame), _prev_piece(rhs._prev_piece), _next_piece(rhs._next_piece), _my_thread(rhs._my_thread)
+ThreadPiece::ThreadPiece(const ThreadPiece& rhs, bool add_col_obj)
+	: Object(THREAD_PIECE)
+	, _vertex(rhs._vertex)
+	, _angle_twist(rhs._angle_twist)
+	, _rest_length(rhs._rest_length)
+	, _edge(rhs._edge)
+	, _edge_norm(rhs._edge_norm)
+	, _curvature_binormal(rhs._curvature_binormal)
+	, _bishop_frame(rhs._bishop_frame)
+	, _material_frame(rhs._material_frame)
+	, _prev_piece(rhs._prev_piece)
+	, _next_piece(rhs._next_piece)
+	, _my_thread(rhs._my_thread)
+	, _piece_ind(-1)
 {
 	grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
 	grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
 	grad_offsets[2] = Vector3d(0.0, 0.0, grad_eps);
 	rot = Matrix3d::Zero();
+	
+	if (add_col_obj) {
+		btCapsuleShapeX* capsule_piece = new btCapsuleShapeX(btScalar(THREAD_RADIUS+REPULSION_DIST), btScalar(_rest_length));
+		capsule_piece->setMargin(0.f);
+		_col_obj = new btCollisionObject();
+		_col_obj->setCollisionShape(capsule_piece);
+		_col_obj->setUserPointer(this);
+		if (_my_thread->world->collision_world != NULL)
+			_my_thread->world->collision_world->addCollisionObject(_col_obj);
+	} else {
+		_col_obj = NULL;
+	}
 }
 	
-  ThreadPiece::ThreadPiece(const ThreadPiece& rhs, Thread* my_thread)
-: _vertex(rhs._vertex), _angle_twist(rhs._angle_twist), _edge(rhs._edge), _edge_norm(rhs._edge_norm), _curvature_binormal(rhs._curvature_binormal), _bishop_frame(rhs._bishop_frame), _material_frame(rhs._material_frame), _prev_piece(rhs._prev_piece), _next_piece(rhs._next_piece), _my_thread(my_thread)
+ThreadPiece::ThreadPiece(const ThreadPiece& rhs, Thread* my_thread, bool add_col_obj)
+	: Object(THREAD_PIECE)
+	, _vertex(rhs._vertex)
+	, _angle_twist(rhs._angle_twist)
+	, _rest_length(rhs._rest_length)
+	, _edge(rhs._edge)
+	, _edge_norm(rhs._edge_norm)
+	, _curvature_binormal(rhs._curvature_binormal)
+	, _bishop_frame(rhs._bishop_frame)
+	, _material_frame(rhs._material_frame)
+	, _prev_piece(rhs._prev_piece)
+	, _next_piece(rhs._next_piece)
+	, _my_thread(my_thread)
+	, _piece_ind(-1)
 {
 	grad_offsets[0] = Vector3d(grad_eps, 0.0, 0.0);
 	grad_offsets[1] = Vector3d(0.0, grad_eps, 0.0);
 	grad_offsets[2] = Vector3d(0.0, 0.0, grad_eps);
 	rot = Matrix3d::Zero();
+	
+	if (add_col_obj) {
+		btCapsuleShapeX* capsule_piece = new btCapsuleShapeX(btScalar(THREAD_RADIUS+REPULSION_DIST), btScalar(_rest_length));
+		capsule_piece->setMargin(0.f);
+		_col_obj = new btCollisionObject();
+		_col_obj->setCollisionShape(capsule_piece);
+		_col_obj->setUserPointer(this);
+		if (_my_thread->world->collision_world != NULL)
+			_my_thread->world->collision_world->addCollisionObject(_col_obj);
+	} else {
+		_col_obj = NULL;
+	}
 }
-
 
 ThreadPiece::~ThreadPiece()
 {
+	if (_col_obj != NULL) {
+		if (_my_thread->world->collision_world != NULL)
+			_my_thread->world->collision_world->removeCollisionObject(_col_obj);
+		delete _col_obj;
+		_col_obj = NULL;
+	}
 }
 
 void ThreadPiece::set_vertex(const Vector3d& vertex)
@@ -60,7 +167,7 @@ void ThreadPiece::set_vertex(const Vector3d& vertex)
 
 double ThreadPiece::energy()
 {
-  return energy_curvature() + energy_twist() + energy_grav(); // + energy_stretch();
+  return energy_curvature() + energy_twist() + energy_grav() + energy_stretch();
 }
 
 //not defined for first or last piece
@@ -70,7 +177,7 @@ double ThreadPiece::energy_curvature()
     return 0.0;
 
 #ifdef ISOTROPIC
-  return (BEND_COEFF*_curvature_binormal.squaredNorm())/(2.0*(_my_thread->rest_length()));
+	return (BEND_COEFF*_curvature_binormal.squaredNorm())/(_prev_piece->_rest_length + _rest_length);
 #else
   //find first centerline curvature
   Vector2d curve_with_prev(_curvature_binormal.dot(_prev_piece->_material_frame.col(2)), -_curvature_binormal.dot(_prev_piece->_material_frame.col(1)) );
@@ -78,7 +185,7 @@ double ThreadPiece::energy_curvature()
   Vector2d curve_with_after(_curvature_binormal.dot((_material_frame).col(2)), -_curvature_binormal.dot((_material_frame).col(1)) );
 
 
-  return (curve_with_prev.dot(B*curve_with_prev)+ curve_with_after.dot(B*curve_with_after)) / (4.0*(_my_thread->rest_length()));
+  return (curve_with_prev.dot(B*curve_with_prev)+ curve_with_after.dot(B*curve_with_after)) / (2.0*(_prev_piece->_rest_length + _rest_length));	//check: what about transpose and minus?
 #endif
 }
 
@@ -88,22 +195,21 @@ double ThreadPiece::energy_twist()
 {
 #ifdef ISOTROPIC
  // std::cout << "SHOULD NOT BE CALLING THIS - very inefficient" << std::endl;
-  if (_prev_piece == NULL || _next_piece == NULL)
+  if (_prev_piece == NULL || _next_piece == NULL) //check || _next_piece->_next_piece == NULL)
   {
     return 0.0; //same - since the first twist is set to be zero (aligning bishop to initial material frame)
   } else {
-    double angle_diff = _my_thread->end_angle() - _my_thread->start_angle();
-    return ( (TWIST_COEFF*angle_diff*angle_diff)/((_my_thread->total_length())));
+    double angle_diff = angle_twist() - _prev_piece->angle_twist();    
+    return ( (TWIST_COEFF*angle_diff*angle_diff)/(_prev_piece->_rest_length + _rest_length) );
   }
-
 
 #else
   if (_prev_piece == NULL || _next_piece == NULL)
   {
     return 0.0; //same - since the first twist is set to be zero (aligning bishop to initial material frame)
   } else {
-    double angle_diff = _my_thread->end_angle() - _my_thread->start_angle();
-    return ( (TWIST_COEFF*angle_diff*angle_diff)/(2.0*(_my_thread->rest_length())));
+    double angle_diff = angle_twist() - _prev_piece->angle_twist();    
+    return ( (TWIST_COEFF*angle_diff*angle_diff)/(_prev_piece->_rest_length + _rest_length) );
   }
 #endif
 }
@@ -111,11 +217,30 @@ double ThreadPiece::energy_twist()
 //not defined for first or last piece
 double ThreadPiece::energy_stretch()
 {
+  if (STRETCH_COEFF<=0)
+  	return 0.0;
   if (_next_piece == NULL)
     return 0.0;
   //std::cout << "energy stretch: " << STRETCH_COEFF*(edge_after.norm() - (my_thread->rest_length())) << std::endl;
-  return STRETCH_COEFF*abs(_edge_norm - (_my_thread->rest_length()));
+  return STRETCH_COEFF/2.0 * pow(_edge_norm/_rest_length - 1.0, 2.0) * _rest_length;
 
+  //double dl = abs(_edge_norm-_rest_length);
+//  double a = 0.05*_rest_length;
+//  double dist = 2.0*a - abs(_edge_norm-_rest_length);
+//	//cout << "diff: " << a << "\t\t" << abs(_edge_norm-_rest_length) << endl;
+//	if (dist < 0) {	//abs(_edge_norm-_rest_length) > 2.0*a
+//		//cout << "case 0" << endl;
+//		return 0.0; //STRETCH_COEFF * 10000.0;
+//	} else if (dist < a) { //abs(_edge_norm-_rest_length) > a
+//		//cout << "case 1" << endl;
+//		return STRETCH_COEFF * (-log(dist/a) + 0.5);
+//	} else if (dist < 2.0*a) {	//abs(_edge_norm-_rest_length) > 0
+//		//cout << "case 2" << endl;
+//		return STRETCH_COEFF * (dist*dist/(a*a*2) - 2*dist/a + 2);
+//	} else {	//abs(_edge_norm-_rest_length) == 0
+//		//cout << "case 3" << endl;
+//		return 0.0;
+//	}
 }
 
 double ThreadPiece::energy_grav()
@@ -165,13 +290,14 @@ double ThreadPiece::get_grav_coeff() {return GRAV_COEFF;}
 
 void ThreadPiece::gradient_twist(double& grad)
 {
-  grad = (_angle_twist- _next_piece->_angle_twist)/(2.0*(_my_thread->rest_length()));
+  grad = -(_next_piece->_angle_twist - _angle_twist)/(_rest_length + _next_piece->_rest_length);
 
   if (_prev_piece != NULL)
   {
-    grad += (_angle_twist - _prev_piece->_angle_twist)/(2.0*(_my_thread->rest_length()));
+    grad += (_angle_twist - _prev_piece->_angle_twist)/(_prev_piece->_rest_length + _rest_length);
   } else {
-    grad += (_angle_twist)/(2.0*(_my_thread->rest_length()));
+  	cout << "Internal error: ThreadPiece::gradient_twist(): thread_piece should not be the first one." << endl;
+    grad += (_angle_twist)/(2.0*(_rest_length));
   }
   grad *= 2.0*TWIST_COEFF;
 
@@ -182,56 +308,105 @@ void ThreadPiece::gradient_twist(double& grad)
 
   if (_prev_piece != NULL)
   {
-    grad += (w_j.dot(JB*w_j))/(2.0*(_my_thread->rest_length()));
+    grad += (w_j.dot(JB*w_j))/(_prev_piece->_rest_length + _rest_length);	// check: shouldn't the second w_j be transposed? and what about -w_j bar?
   }
-  grad += (w_j_1.dot(JB*w_j_1))/(2.0*(_my_thread->rest_length()));
+  grad += (w_j_1.dot(JB*w_j_1))/(_rest_length + _next_piece->_rest_length);	//check: same as above
 
 
+}
+
+void ThreadPiece::stretch_gradient_vertex(Vector3d& grad) {
+	if (STRETCH_COEFF > 0.0) {
+		double a = 0.05*_rest_length;
+		double dist;
+		double dl;
+		Vector3d direction;
+		
+		if (_prev_piece != NULL && _prev_piece->_prev_piece != NULL) { //(piece_ind > 1)
+			//vertex i related to edge of the prev piece
+			dist = 2.0*a - abs(_prev_piece->_edge_norm-_prev_piece->_rest_length);
+			dl = _prev_piece->_edge_norm-_prev_piece->_rest_length;
+			// if stretching, dl > 0 and direction should be _prev_piece->_edge/_prev_piece->_edge_norm
+			direction = _prev_piece->_edge/_prev_piece->_edge_norm;
+			if (dl > 0) direction *= -1.0;
+	
+			if (dist < 0) {
+				//grad -= - STRETCH_COEFF * 1000.0 * abs(dist) * direction;
+			} else if (dist < a) {
+				grad -= STRETCH_COEFF * (1/dist) * direction;
+			} else if (dist < 2.0*a) {
+				grad -= - STRETCH_COEFF * (dist/(a*a) - 2/a) * direction;
+			}
+		}
+		
+		if (_next_piece != NULL && _next_piece->_next_piece != NULL) { //piece_ind < _my_thread->_thread_pieces.size()-2)
+			//vertex i related to edge of this piece
+			dist = 2.0*a - abs(_edge_norm-_rest_length);
+			dl = _edge_norm-_rest_length;
+			// if stretching, dl > 0 and direction should be -_edge/_edge_norm
+			direction = _edge/_edge_norm;
+			if (dl < 0) direction *= -1.0;
+	
+			if (dist < 0) {
+				//grad -= - STRETCH_COEFF * 1000.0 * abs(dist) * direction;
+			} else if (dist < a) {
+				grad -= STRETCH_COEFF * (1/dist) * direction;
+			} else if (dist < 2.0*a) {
+				grad -= - STRETCH_COEFF * (dist/(a*a) - 2/a) * direction;
+			}
+		}
+	}
 }
 
 //not defined for first 2 or last 2 pieces
 void ThreadPiece::gradient_vertex(Vector3d& grad)
 {
 #ifdef ISOTROPIC
-  double total_angle_diff = _my_thread->end_angle() - _my_thread->start_angle();
-
-		Matrix3d skew_i;
-		Matrix3d skew_i_im1;
-		Matrix3d del_kb_i_im1;
-		Matrix3d del_kb_i_ip1;
-		Vector3d del_psi_i_im1;
-		Vector3d del_psi_i_ip1;
+	double beta_angle_diff_over_L = TWIST_COEFF*(_my_thread->end_angle() - _my_thread->start_angle())/(_my_thread->total_length() - ((_my_thread->start_rest_length()+_my_thread->end_rest_length())/2.0));
 
 	skew_i.setZero();
 	skew_i_im1.setZero();
 
-	const double rest_length_squared = (_my_thread->rest_length())*(_my_thread->rest_length());
-
 	skew_symmetric_for_cross_fast(_prev_piece->_prev_piece->_edge, skew_i_im1);
-	del_kb_i_ip1 = (2.0*skew_i_im1 - _prev_piece->_curvature_binormal*(_prev_piece->_prev_piece->_edge.transpose())) / (rest_length_squared + _prev_piece->_prev_piece->_edge.dot(_prev_piece->_edge));
-	del_psi_i_ip1 = -_prev_piece->_curvature_binormal/(2.0*(_my_thread->rest_length()));
-
-	grad = (BEND_COEFF/(_my_thread->rest_length()))*del_kb_i_ip1.transpose()*_prev_piece->_curvature_binormal - (TWIST_COEFF*total_angle_diff/(_my_thread->total_length()))*del_psi_i_ip1;
+	//del_kb_i_ip1 = (2.0*skew_i_im1 - _prev_piece->_curvature_binormal*(_prev_piece->_prev_piece->_edge.transpose())) / (rest_length_squared + _prev_piece->_prev_piece->_edge.dot(_prev_piece->_edge));
+	del_kb_i_ip1 = (2.0*skew_i_im1 - _prev_piece->_curvature_binormal*(_prev_piece->_prev_piece->_edge.transpose())) / ((_prev_piece->_prev_piece->_rest_length)*(_prev_piece->_rest_length) + _prev_piece->_prev_piece->_edge.dot(_prev_piece->_edge));
+	del_psi_i_ip1 = -_prev_piece->_curvature_binormal/(2.0*(_prev_piece->_rest_length));
+	
+	grad = (2.0*BEND_COEFF/(_prev_piece->_prev_piece->_rest_length + _prev_piece->_rest_length))*del_kb_i_ip1.transpose()*_prev_piece->_curvature_binormal - beta_angle_diff_over_L*del_psi_i_ip1;
 
 
 	skew_symmetric_for_cross_fast(_next_piece->_edge, skew_i);
-	del_kb_i_im1 = (2.0*skew_i + _next_piece->_curvature_binormal*(_next_piece->_edge.transpose())) / (rest_length_squared + _edge.dot(_next_piece->_edge));
-	del_psi_i_im1 = _next_piece->_curvature_binormal/(2.0*(_my_thread->rest_length()));
+	del_kb_i_im1 = (2.0*skew_i + _next_piece->_curvature_binormal*(_next_piece->_edge.transpose())) / ((_rest_length)*(_next_piece->_rest_length) + _edge.dot(_next_piece->_edge));
+	del_psi_i_im1 = _next_piece->_curvature_binormal/(2.0*(_rest_length));
 
-	grad += (BEND_COEFF/(_my_thread->rest_length()))*del_kb_i_im1.transpose()*_next_piece->_curvature_binormal - (TWIST_COEFF*total_angle_diff/(_my_thread->total_length()))*del_psi_i_im1;
+	grad += (2.0*BEND_COEFF/(_rest_length + _next_piece->_rest_length))*del_kb_i_im1.transpose()*_next_piece->_curvature_binormal - beta_angle_diff_over_L*del_psi_i_im1;
 
 
 	skew_symmetric_for_cross_fast(_edge, skew_i);
 	skew_symmetric_for_cross_fast(_prev_piece->_edge, skew_i_im1);
 
-	double denom_i_i = rest_length_squared + _prev_piece->_edge.dot(_edge);
+	double denom_i_i = (_prev_piece->_rest_length)*(_rest_length) + _prev_piece->_edge.dot(_edge);
 	del_kb_i_im1 = (2.0*skew_i + _curvature_binormal*(_edge.transpose())) / denom_i_i;
 	del_kb_i_ip1 = (2.0*skew_i_im1 - _curvature_binormal*(_prev_piece->_edge.transpose())) / denom_i_i;
-
-	grad += (BEND_COEFF/(_my_thread->rest_length()))*(-del_kb_i_im1-del_kb_i_ip1).transpose()*_curvature_binormal;
+	del_psi_i_im1 = _curvature_binormal/(2.0*(_prev_piece->_rest_length));
+	del_psi_i_ip1 = -_curvature_binormal/(2.0*(_rest_length));
+	
+	grad += (2.0*BEND_COEFF/(_prev_piece->_rest_length + _rest_length))*(-del_kb_i_im1-del_kb_i_ip1).transpose()*_curvature_binormal - beta_angle_diff_over_L*(-del_psi_i_im1-del_psi_i_ip1);
 
 	grad += Vector3d::UnitZ()*GRAV_COEFF;
 
+//	if (STRETCH_COEFF > 0.0) {
+//		double factor;
+//		if ((_next_piece != NULL && _next_piece->_next_piece != NULL && _next_piece->_next_piece->_next_piece != NULL) ||
+//				 (_prev_piece != NULL && _prev_piece->_prev_piece != NULL && _prev_piece->_prev_piece->_prev_piece != NULL))	//(_my_thread->_thread_pieces.size()-3) ||	piece_ind == 2)
+//			factor = 0.25;
+//		else
+//			factor = 1.0;
+//		if (_next_piece != NULL && _next_piece->_next_piece != NULL) //piece_ind < _my_thread->_thread_pieces.size()-2)
+//			grad -= factor * STRETCH_COEFF * (_edge_norm/_rest_length - 1.0) * _edge.normalized();
+//		if (_prev_piece != NULL && _prev_piece->_prev_piece != NULL) //(piece_ind > 1)
+//			grad += factor * STRETCH_COEFF * (_prev_piece->_edge_norm/_prev_piece->_rest_length - 1.0) * _prev_piece->_edge.normalized();
+//	}
 #else
   grad.setZero();
 
@@ -242,14 +417,15 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
   Matrix23d del_w_k_j;
   Vector2d w_k_j;
   Vector3d sum_writhe(0.0, 0.0, 0.0);
+  double denom_k;
 
   ThreadPiece* kPiece = _prev_piece;
   ThreadPiece* jPiece = kPiece->_prev_piece;
   material_frame_del_w_k_j.row(0)= jPiece->_material_frame.col(2).transpose();
   material_frame_del_w_k_j.row(1)= -jPiece->_material_frame.col(1).transpose();
-  double denom_k = (2.0*(_my_thread->rest_length()));
   while (kPiece != _next_piece->_next_piece)
   {
+  	denom_k = k_piece->prev_piece->_rest_length + k_piece->_rest_length;
     calc_del_kb_k(del_kb_k, kPiece, edge_skew_prev, edge_skew_next);
 
     //j=k-1
@@ -286,6 +462,7 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
   //sum writhe also no longer changes
   while (kPiece->_next_piece != NULL)
   {
+  	denom_k = k_piece->prev_piece->_rest_length + k_piece->_rest_length;
     //j = k-1
     w_k_j(0) = kPiece->_curvature_binormal.dot(kPiece->_prev_piece->_material_frame.col(2));
     w_k_j(1) = -kPiece->_curvature_binormal.dot(kPiece->_prev_piece->_material_frame.col(1));
@@ -307,7 +484,7 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
   kPiece = kPiece->_prev_piece;
   w_k_j(0) = kPiece->_curvature_binormal.dot(kPiece->_material_frame.col(2));
   w_k_j(1) = -kPiece->_curvature_binormal.dot(kPiece->_material_frame.col(1));
-  double grad_E_theta = ((w_k_j.dot(JB*w_k_j)) + (2.0*TWIST_COEFF*(kPiece->_angle_twist - kPiece->_prev_piece->_angle_twist)))/ (2.0*(_my_thread->rest_length()));
+  double grad_E_theta = ((w_k_j.dot(JB*w_k_j)) + (2.0*TWIST_COEFF*(kPiece->_angle_twist - kPiece->_prev_piece->_angle_twist)))/(kPiece->_prev_piece->_rest_length + kPiece->_rest_length);
   grad -= (grad_E_theta*sum_writhe);
 
 
@@ -340,7 +517,7 @@ void ThreadPiece::calc_del_kb_k(Matrix3d& del_kb_k, const ThreadPiece* other_pie
     exit(0);
   }
 
-  double denom = (_my_thread->rest_length())*(_my_thread->rest_length()) + other_piece->_prev_piece->_edge.dot(other_piece->_edge);
+  double denom = (other_piece->_prev_piece->_rest_length)*(other_piece->_rest_length) + other_piece->_prev_piece->_edge.dot(other_piece->_edge);
   del_kb_k /= denom;
 
 }
@@ -349,9 +526,9 @@ void ThreadPiece::add_sum_writhe(ThreadPiece* other_piece, Vector3d& curr_sum)
 {
   if (other_piece == _prev_piece)
   {
-    curr_sum -= other_piece->_curvature_binormal/(2.0*(_my_thread->rest_length()));
+    curr_sum -= other_piece->_curvature_binormal/(2.0*(other_piece->_rest_length));
   } else if (other_piece == _next_piece) {
-    curr_sum += other_piece->_curvature_binormal/(2.0*(_my_thread->rest_length()));
+    curr_sum += other_piece->_curvature_binormal/(2.0*(other_piece->_rest_length));
   }
 }
 
@@ -545,7 +722,7 @@ void ThreadPiece::updateFrames_lastpiece()
 
 void ThreadPiece::update_bishop_frame()
 {
-  calculateBinormal();
+	calculateBinormal();
   //now rotate frame
   double curvature_binormal_norm = _curvature_binormal.norm();
   Vector3d toRotAround = _curvature_binormal/curvature_binormal_norm;
@@ -754,19 +931,24 @@ double ThreadPiece::twist_angle_error()
 }
 
 
-void ThreadPiece::calculateBinormal(const Vector3d& edge_prev, const Vector3d& edge_after, Vector3d& binormal)
+/*void ThreadPiece::calculateBinormal(const double rest_length_prev, const Vector3d& edge_prev, 
+																		const double rest_length_after, const Vector3d& edge_after, Vector3d& binormal)
 {
+	if (_prev_piece == NULL) 
+		cout << "Internal error: ThreadPiece::calculateBinormal() : _prev_piece is NULL." << endl;
   binormal = 2.0*edge_prev.cross(edge_after);
-  binormal /= ((_my_thread->rest_length())*(_my_thread->rest_length()) + edge_prev.dot(edge_after));
-}
+  binormal /= ((rest_length_prev * rest_length_after) + edge_prev.dot(edge_after));
+}*/
 
 void ThreadPiece::calculateBinormal()
 {
+	if (_prev_piece == NULL) 
+		cout << "Internal error: ThreadPiece::calculateBinormal() : _prev_piece is NULL." << endl;
   _curvature_binormal = 2.0*_prev_piece->_edge.cross(_edge);
-  _curvature_binormal /= ((_my_thread->rest_length())*(_my_thread->rest_length()) + _prev_piece->_edge.dot(_edge));
+  _curvature_binormal /= (_prev_piece->_edge_norm*_edge_norm + _prev_piece->_edge.dot(_edge));
 }
 
-void ThreadPiece::calculateBinormal_withLength(const Vector3d& edge_prev, const Vector3d& edge_after, Vector3d& binormal)
+/*void ThreadPiece::calculateBinormal_withLength(const Vector3d& edge_prev, const Vector3d& edge_after, Vector3d& binormal)
 {
   binormal = 2.0*edge_prev.cross(edge_after);
   binormal /= (edge_prev.norm()*edge_after.norm() + edge_prev.dot(edge_after));
@@ -776,30 +958,110 @@ void ThreadPiece::calculateBinormal_withLength()
 {
   _curvature_binormal = 2.0*_prev_piece->_edge.cross(_edge);
   _curvature_binormal /= (_prev_piece->_edge_norm*_edge_norm + _prev_piece->_edge.dot(_edge));
+}*/
+
+//variable-length thread_pieces
+// Splits the edge between this->vertex and this->_next_piece->_vertex, i.e. splits this into this and new_piece.
+// this->_vertex shouldn't be any of the first or last vertices of the thread.
+void ThreadPiece::splitPiece(ThreadPiece* new_piece)
+{	
+	if (_prev_piece==NULL)
+		cout << "Internal error: ThreadPiece::splitPiece: this->_vertex cannot be the first vertex." << endl;
+	if (_next_piece==NULL || _next_piece->_next_piece==NULL)
+		cout << "Internal error: ThreadPiece::splitPiece: this->_vertex cannot be the last or second to last vertex." << endl;
+	new_piece->_vertex = (_vertex + _next_piece->_vertex)/2.0;
+  new_piece->_angle_twist = _angle_twist/2.0;
+  //_edge, _edge_norm and _curvature_binormal are updated later
+	//new_piece->_bishop_frame = _bishop_frame;
+	//new_piece->_material_frame = _material_frame;
+	new_piece->_rest_length = _rest_length = _rest_length/2.0;
+	
+	fixPointersSplit(new_piece);
+	
+	update_edge();
+	calculateBinormal();
+	//update_bishop_frame();
+	//update_material_frame();
+	new_piece->update_edge();
+	new_piece->calculateBinormal();
+	new_piece->update_bishop_frame();
+	new_piece->update_material_frame();
 }
 
-
-
-
-ThreadPiece& ThreadPiece::operator=(const ThreadPiece& rhs)
+// Merges the edges adjacent to this->_vertex, i.e. merges this->_prev_piece with this and puts it into this.
+// this->_vertex shouldn't be any of the first two or last two vertices of the thread.
+void ThreadPiece::mergePiece()
 {
-  _vertex = rhs._vertex;
-  _angle_twist = rhs._angle_twist;
-	_edge = rhs._edge;
-	_edge_norm = rhs._edge_norm;
-	_curvature_binormal = rhs._curvature_binormal;
-	_bishop_frame = rhs._bishop_frame;
-	_material_frame = rhs._material_frame;
-
-  _prev_piece = rhs._prev_piece;
-  _next_piece = rhs._next_piece;
-  _my_thread = rhs._my_thread;
-
-	return *this;
-
+	if (_prev_piece==NULL || _prev_piece->_prev_piece == NULL)
+		cout << "Internal error: ThreadPiece::mergePiece: this->_vertex cannot be the first or second vertex." << endl;
+	else if (_next_piece==NULL || _next_piece->_next_piece == NULL)
+		cout << "Internal error: ThreadPiece::mergePiece: this->_vertex cannot be the last or second to last vertex." << endl;
+	
+	_vertex = _prev_piece->_vertex;
+  _angle_twist = _prev_piece->_angle_twist;
+	//_edge, _edge_norm and _curvature_binormal are updated later
+	//intermediate_rotation(_bishop_frame, _prev_piece->_bishop_frame, _bishop_frame);
+	//intermediate_rotation(_material_frame, _prev_piece->_material_frame, _material_frame);
+	_rest_length = _prev_piece->_rest_length + _rest_length;
+	
+	fixPointersMerge();
+	
+	update_edge();
+	calculateBinormal();
+	update_bishop_frame();
+	update_material_frame();
 }
 
+void ThreadPiece::fixPointersSplit(ThreadPiece* new_piece)
+{
+	this->_next_piece->_prev_piece = new_piece;
+	new_piece->_prev_piece = this;
+	new_piece->_next_piece = _next_piece;
+	this->_next_piece = new_piece;
+	new_piece->_my_thread = _my_thread;
+}
 
+void ThreadPiece::fixPointersMerge()
+{
+	this->_prev_piece->_prev_piece->_next_piece = this;
+	this->_prev_piece = _prev_piece->_prev_piece;
+}
+
+//collision
+bool ThreadPiece::isPieceIndConsistent()
+{
+	int piece_ind;
+  for (piece_ind=0; piece_ind<_my_thread->_thread_pieces.size() && _my_thread->_thread_pieces[piece_ind]!=this; piece_ind++) {}
+	assert(piece_ind != _my_thread->_thread_pieces.size()); //this piece is not in _my_thread->_thread_pieces.
+}
+
+void ThreadPiece::updateCollisionObjectTransform()
+{
+	assert(_next_piece != NULL);
+	_col_obj->getWorldTransform().setOrigin(tobtVector3((_vertex + _next_piece->_vertex)/2.0)); //(_edge_norm/2.0) * _material_frame.col(0) + _vertex
+	_col_obj->getWorldTransform().setBasis(tobtMatrix3x3(_material_frame));
+}
+
+//ThreadPiece& ThreadPiece::operator=(const ThreadPiece& rhs)
+//{
+//  _vertex = rhs._vertex;
+//  _angle_twist = rhs._angle_twist;
+//	_edge = rhs._edge;
+//	_edge_norm = rhs._edge_norm;
+//	_curvature_binormal = rhs._curvature_binormal;
+//	_bishop_frame = rhs._bishop_frame;
+//	_material_frame = rhs._material_frame;
+//	_rest_length = rhs._rest_length;
+
+//  _prev_piece = rhs._prev_piece;
+//  _next_piece = rhs._next_piece;
+//  _my_thread = rhs._my_thread;
+
+//	_col_obj.setCollisionShape(dynamic_cast<btCapsuleShapeX*>((btCollisionShape*) rhs._col_obj.getCollisionShape()));
+
+//	return *this;
+
+//}
 
 void ThreadPiece::copyData(const ThreadPiece& rhs)
 {
@@ -810,7 +1072,7 @@ void ThreadPiece::copyData(const ThreadPiece& rhs)
 	_curvature_binormal = rhs._curvature_binormal;
 	_bishop_frame = rhs._bishop_frame;
 	_material_frame = rhs._material_frame;
-  
+  _rest_length = rhs._rest_length;
 
-
+	_col_obj = rhs._col_obj;
 }
