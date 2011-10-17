@@ -11,18 +11,16 @@
 
 #include <iostream>
 
-
 using namespace std;
-
 
 int main(int argc, char** argv)
 {
-		Capture* _captures[NUMCAMS];
-		string _names[NUMCAMS];
-		string _orig_display_names[NUMCAMS];
+  Capture* _captures[NUMCAMS];
+	string _names[NUMCAMS];
+	string _orig_display_names[NUMCAMS];
 
-		Mat* _frames;
-		ThreeCam* _cams;
+	Mat* _frames;
+	ThreeCam* _cams;
 
   _names[0] = "cam1";
   _names[1] = "cam2";
@@ -35,10 +33,7 @@ int main(int argc, char** argv)
           107109);
           //"/home/pabbeel/code/master-slave/vision2/stereo_test/stereo_test1-");
           //"./suture_sets/set3/suture1_1-"); 
-  //_captures[0]->setExposure(4900);
-  //_captures[0]->setExposure(22000);
-  _captures[0]->setExposure(5000);
-  
+  _captures[0]->setExposure(10000);
 
   _captures[1] = new Capture(1, //id
           _names[1].c_str(),// cam name
@@ -47,9 +42,7 @@ int main(int argc, char** argv)
           107110); // camera uid
           //"/home/pabbeel/code/master-slave/vision2/stereo_test/stereo_test2-");
           //"./suture_sets/set3/suture1_2-"); 
-  //_captures[1]->setExposure(3000);
-  //_captures[1]->setExposure(16000);
-  _captures[1]->setExposure(3300);
+  _captures[1]->setExposure(10000);
 
   _captures[2] = new Capture(2, //id
           _names[2].c_str(),// cam name
@@ -58,16 +51,16 @@ int main(int argc, char** argv)
           107111); // camera uid
           //"/home/pabbeel/code/master-slave/vision2/stereo_test/stereo_test3-");
           //"./suture_sets/set3/suture1_3-"); 
-  //_captures[2]->setExposure(4000);
-  //_captures[2]->setExposure(18000);
-  _captures[2]->setExposure(3600);
+  _captures[2]->setExposure(10000);
 
-  /*namedWindow(_names[0], CV_WINDOW_AUTOSIZE);
+  /*
+  namedWindow(_names[0], CV_WINDOW_AUTOSIZE);
   namedWindow(_names[1], CV_WINDOW_AUTOSIZE);
   namedWindow(_names[2], CV_WINDOW_AUTOSIZE);
   */
 
-/*  char names_char[NUMCAMS][256];
+/*
+  char names_char[NUMCAMS][256];
   for (int camNum=0; camNum < NUMCAMS; camNum++)
   {
     sprintf(names_char[camNum], "%s%d", DISPLAY_ORIG_BASE, camNum);
@@ -76,17 +69,11 @@ int main(int argc, char** argv)
   }
 */
 
-
-  //_captures[0]->init("./calib-apr21/");
-  //_captures[1]->init("./calib-apr21/");
-  //_captures[2]->init("./calib-apr21/");
   _captures[0]->init("./calib_params/");
   _captures[1]->init("./calib_params/");
   _captures[2]->init("./calib_params/");
   
-  
   cvWaitKey(1000);							// segfaulted without this
- 
 
   //add information about other cameras for stereo
   _captures[0]->AddOtherCameraInformation(*_captures[1]);
@@ -96,10 +83,10 @@ int main(int argc, char** argv)
   _captures[2]->AddOtherCameraInformation(*_captures[0]);
   _captures[2]->AddOtherCameraInformation(*_captures[1]);
 
-
   //initialize threecam wrapper
   _cams = new ThreeCam(_captures);
- /* float width[] = {1.50, 1.50, 1.50};
+ /*
+  float width[] = {1.50, 1.50, 1.50};
 	float edge_sigma[] = {0.50, 0.50, 0.50};
 	float blur_sigma[] = {1.5, 1.5, 1.5};
 	double thresh1[] = {4.0, 4.0, 4.0};
@@ -107,19 +94,15 @@ int main(int argc, char** argv)
 	_cams->initializeCanny(width, edge_sigma, blur_sigma, thresh1, thresh2);
 */
 
-
   if (argc < 3) {
     cerr << "Usage: example_capture <name> <startind>" << endl;
     return 1;
   }
 
-
   vector<Capture*> syncInCams;
   syncInCams.push_back(_captures[1]);
   syncInCams.push_back(_captures[2]);
   _captures[0]->syncFrameCaptureSetCenter(syncInCams);
-
- 
  
   /*FileStorage file1;
   FileStorage file2;
@@ -128,9 +111,8 @@ int main(int argc, char** argv)
   file2.open("/media/ssd1/captures/%s2.yml", FileStorage::WRITE);
   file3.open("/media/ssd1/captures/%s3.yml", FileStorage::WRITE);
   */
-
   
-//  c1->init("parameters/");
+  //  c1->init("parameters/");
 
   waitKey(1000);
   namedWindow("Example Display1", CV_WINDOW_AUTOSIZE);
@@ -156,7 +138,6 @@ int main(int argc, char** argv)
   char filename3[256];
   int f=atoi(argv[2]);
 
-
   list<Mat> imsSaved[NUMCAMS];
 
   /*
@@ -165,20 +146,19 @@ int main(int argc, char** argv)
   {
     sprintf(filename, "/media/ssd1/captures/%s%d.bin", argv[1],(camNum+1));
     byteFiles[camNum] = fopen(filename, "w+");
-  }*/
+  }
+  */
 
   bool continuous=false;
   while(true) {
 
-    char c = cvWaitKey(20);
-    _cams->updateImagesBlockingNoUndistort();
-    _frames = _cams->frames();
+  char c = cvWaitKey(20);
+  _cams->updateImagesBlockingNoUndistort();
+  _frames = _cams->frames();
 
-    
-   imshow("Example Display1", _frames[0]);
-   imshow("Example Display2", _frames[1]);
-   imshow("Example Display3", _frames[2]);
-   
+  imshow("Example Display1", _frames[0]);
+  imshow("Example Display2", _frames[1]);
+  imshow("Example Display3", _frames[2]);
 
     if(c == 'q' || beforeTime > maxTime)
     {

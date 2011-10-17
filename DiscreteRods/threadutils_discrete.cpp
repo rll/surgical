@@ -2,6 +2,8 @@
 #include <iostream>
 #include <fstream>
 
+using namespace Eigen;
+
 double Normal(double mu, double sigma) {
   double res = 0.0;
   for(int i = 0; i < 24; i++) {
@@ -151,7 +153,39 @@ void euler_angles_from_rotation(const Matrix3d& rotation, double& angZ, double& 
   angX = atan2(rotation(2,1), rotation(2,2));
 }
 
+void intermediate_rotation(Matrix3d &inter_rot, const Matrix3d& end_rot, const Matrix3d& start_rot) {
+	Quaterniond start_q(start_rot);
+  Quaterniond end_q(end_rot);
+  Quaterniond interp_q = start_q.slerp(0.5, end_q);
+  inter_rot = interp_q.toRotationMatrix();
+}
 
+// assumes tan is normalized
+void rotation_from_tangent(const Vector3d& tan, Matrix3d& rot) {
+  rot.col(0) = tan;
+  Vector3d arb = tan + Vector3d(1.0, 1.0, 1.0);
+  rot.col(1) = arb - arb.dot(tan) * tan;
+  rot.col(1).normalize();
+  rot.col(2) = rot.col(0).cross(rot.col(1));
+  rot.col(2).normalize();
+}
+
+bool almost_equal(const Vector3d &a, const Vector3d &b) {
+	Vector3d diff = a-b;
+	double eps = 0.00001;
+	return ((abs(diff(0)) < eps) && (abs(diff(1)) < eps) && (abs(diff(2)) < eps));
+}
+
+//Finds element e in vector v. If found, makes the element equal to NULL and returns the position where it was found. If not found, returns -1
+template<typename T>
+int findInvalidate(vector<T* > v, T* e) {
+	int i;
+	for (i=0; i<v.size() && v[i]!=e; i++) {}
+	if (i==v.size())
+		return -1;
+	v[i] = NULL;
+	return i;
+}
 
 
 Frame_Motion::Frame_Motion(const Vector3d& pos_movement, const Matrix3d& frame_rotation)
