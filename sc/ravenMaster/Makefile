@@ -7,7 +7,7 @@ ifeq ($(MACHINE),Darwin)
     LDFLAG=$(COMPILEFLAG) -L"/System/Library/Frameworks/OpenGL.framework/Libraries" -L"/System/Library/Frameworks/GLUT.framework" -framework GLUT -framework OpenGL -lGL -lGLU -L/usr/X11R6/lib
     INCLUDES = -I/usr/local/include/ -I/usr/include/ -I $(UTILS_DIR) -I/opt/local/include/eigen2/ -I/opt/local/include/
 else
-    LIBS = -L/usr/lib/ -lglut -lgle
+    LIBS = -L/usr/lib/ -lglut -lgle -L/usr/local/lib/ -lcxcore -lcv -lhighgui -lcvaux -lml -lm 
     INCLUDES = -I/usr/local/include/ -I/usr/include/ -I $(UTILS_DIR) -I/usr/include/eigen2
     COMPILEFLAG= -lpthread
     LDFLAG=
@@ -20,7 +20,7 @@ CC = g++ $(OPT_COMP) $(COMPILEFLAG)
 LD = g++ $(OPT_COMP) $(LDFLAG)  
 DEBUG = -ggdb
 
-target: parser visualizer
+target: parser visualizer optimize_handeye
 
 ravenMasterReceiver: ravenMasterReceiver.cpp ravenMasterReceiver.h PracticalSocket.o Log.o _kbhit.o _getch.o
 	$(LD) $(INCLUDES) $(DEBUG) -o ravenMasterReceiver ravenMasterReceiver.cpp PracticalSocket.o Log.o _kbhit.o _getch.o $(LIBS)
@@ -36,6 +36,9 @@ reformat: reformat.cpp
 
 visualizer: visualizer.cpp
 	$(LD) $(INCLUDES) $(DEBUG) -o visualizer visualizer.cpp $(LIBS)
+
+optimize_handeye: optimize_handeye.cpp
+	$(LD) $(INCLUDES) $(DEBUG) -o optimize_handeye optimize_handeye.cpp $(LIBS)
 
 parser: parser.cpp
 	$(LD) $(INCLUDES) $(DEBUG) -o parser parser.cpp $(LIBS)
@@ -59,4 +62,4 @@ _getch.o: $(UTILS_DIR)_getch.cpp $(UTILS_DIR)_getch.h
 	$(CC) $(INCLUDES) $(DEBUG) -c $(UTILS_DIR)_getch.cpp
 
 clean:
-	rm -rf parser ravenMasterReceiver ravenMasterSender ravenMasterCmd reformat resetSequence visualizer *.o *.dSYM
+	rm -rf parser ravenMasterReceiver ravenMasterSender ravenMasterCmd reformat resetSequence visualizer optimize_handeye *.o *.dSYM

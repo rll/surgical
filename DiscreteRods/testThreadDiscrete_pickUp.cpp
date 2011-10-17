@@ -43,10 +43,10 @@
 #include "TrajectoryRecorder.h"
 #include "TrajectoryReader.h"
 
-#include <opencv/cv.h>
-#include <opencv/highgui.h>
+//#include <opencv/cv.h>
+//#include <opencv/highgui.h>
 
-using namespace cv;
+//using namespace cv;
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
@@ -58,7 +58,7 @@ void displayTextInScreen(const char* textline, ...);
 void bitmap_output(int x, int y, const char* str, void *font);
 void glutMenu(int ID);
 void initGL();
-void save_opengl_image(char* filename);
+//void save_opengl_image(char* filename);
 void interruptHandler(int sig);
 //void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_trajectory);
 //void sqpPlanner(World* start, World* goal, vector<World*>& trajectory);
@@ -1105,7 +1105,7 @@ void interruptHandler(int sig) {
   //setVisualizationData(openLoopWorlds);
 }*/
 
-void save_opengl_image(char* filename)
+/*void save_opengl_image(char* filename)
 {
     const int IMG_COLS_TOTAL = 900;
     const int IMG_ROWS_TOTAL = 900;
@@ -1145,7 +1145,7 @@ void save_opengl_image(char* filename)
     imwrite(im_name, img, p);
     waitKey(1);
   //sleep(0);
-} 
+}*/ 
 
 VectorXd closedLoopSQPStepper(World* start, World* goal, WorldSQP* solver) { 
   if (solver == NULL) assert(false); //initialize your shit
