@@ -52,6 +52,8 @@ USING_PART_OF_NAMESPACE_EIGEN
 	#define TYPE_CAST dynamic_cast
 #endif
 
+extern WorldManager* test_world_manager;
+
 enum RenderMode { NORMAL, EXAMINE, DEBUG, COLLISION };
 
 class ThreadConstrained;
@@ -145,7 +147,7 @@ class World
         Matrix3d rotation;
         rotation_from_euler_angles(rotation, relative_control(8*i+3), relative_control(8*i+4), relative_control(8*i+5));
 
-        Control* u = new Control(Vector3d::Zero(), Matrix3d::Identity());
+        Control* u = new Control();
 
         u->setTranslate(translation);
         u->setRotate(rotation);
@@ -161,9 +163,9 @@ class World
       cout << relative_control.size() << endl;
       for (int i = 0; i < cursors.size(); i++) { 
         Vector3d translation = c[i]->getTranslate();
-        Matrix3d rotation = c[i]->getRotation();
-        relative_control.segment(i*8, 3) = translation;
-        euler_angles_from_rotation(rotation, relative_control(i*8+3),
+        Matrix3d rotate(c[i]->getRotate());
+        relative_control.segment(i*8, 3) = translation; 
+        euler_angles_from_rotation(rotate, relative_control(i*8+3),
             relative_control(i*8+4), relative_control(i*8+5));
 
       }
@@ -197,6 +199,7 @@ class World
 				
 		//Init thread
 		void initThread();
+		void initThreadSingle();
 		void initLongerThread();
 		void initRestingThread(int opt);
 		void initRestingFinerThread(int opt);

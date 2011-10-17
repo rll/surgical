@@ -179,8 +179,8 @@ int main (int argc, char * argv[])
         if (i % 2 == 0) {  
           VectorXd cl_ctrl = closedLoopSQPStepper(CLcopy, traj_in[i+T], solver, noise_thresh);
           CLcopy->applyRelativeControlJacobian(cl_ctrl, noise_thresh);
-          closedLoopWorlds.push_back(new World(*CLcopy));
         }
+        closedLoopWorlds.push_back(new World(*CLcopy));
       }
       delete CLcopy;
 
@@ -194,7 +194,7 @@ int main (int argc, char * argv[])
 	sprintf(traj_out_filename, "%s_%.1f", traj_out_filename, experiment_timer->elapsed());
 
   TrajectoryRecorder traj_out_recorder(traj_out_filename);
-  traj_out_recorder.start();
+  traj_out_recorder.start(STATE);
   traj_out_recorder.writeWorldToFile(start);
   for (int i = 0; i < horizon_trajs[0].size(); i++) {
     traj_out_recorder.writeWorldToFile(horizon_trajs[0][i]);

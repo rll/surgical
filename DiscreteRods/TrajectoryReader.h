@@ -2,6 +2,9 @@
 #define _TrajectoryReader_h
 
 #include <stdlib.h>
+#include <string.h>
+#include <string>
+#include <vector>
 
 #ifdef MAC
 #include <OpenGL/gl.h>
@@ -13,6 +16,8 @@
 #include <GL/gle.h>
 #endif
 
+#include <boost/algorithm/string.hpp>
+
 #include <iostream>
 #include <fstream>
 
@@ -23,25 +28,31 @@
 #include "EnvObjects/World.h"
 #include "IO/Control.h"
 
-#define TRAJECTORY_BASE_NAME "environmentFiles"
-enum state_type { NO_STATE, STATE, CONTROL };
+enum StateType { NO_STATE, STATE, CONTROL };
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
 
-
 class TrajectoryReader
 {
 	public:
-		TrajectoryReader();
-		TrajectoryReader(const char* fileName);
-		void setFileName(const char* fileName);
+		TrajectoryReader(const char* new_base_name = "environmentFiles/");
+		TrajectoryReader(const char* new_file_name, const char* new_base_name);
+    void setBaseName(const char* new_base_name);
+    void setFileName(const char* new_file_name);
+    void getFileName(char* name);
+    void queryFileName();
+		
+		StateType trajectoryType();
 		
 		bool readWorldsFromFile(vector<World*>& worlds);
 		bool readControlsFromFile(vector<vector<Control*> >& controls);
 	
 	private:
-		char _fileName[256];
+		void extension(char* ext, char* full_path);	
+
+		char base_name[256];
+		char file_name[256];
 };
 
 #endif

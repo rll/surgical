@@ -1,28 +1,64 @@
 #include "StateReader.h"
 
-StateReader::StateReader()
+StateReader::StateReader(const char* new_base_name)
 {
- sprintf(_fileName, "%s.txt", STATE_BASE_NAME);
+	strcpy(base_name, new_base_name);
 }
 
-StateReader::StateReader(const char* fileName)
+StateReader::StateReader(const char* new_file_name, const char* new_base_name)
 {
- sprintf(_fileName, "%s.txt", fileName);
+	strcpy(file_name, new_file_name);
+	strcpy(base_name, new_base_name);
 }
 
-void StateReader::setFileName(const char* fileName)
+void StateReader::setBaseName(const char* new_base_name)
 {
- sprintf(_fileName, "%s.txt", fileName);
+	strcpy(base_name, new_base_name);
+}
+
+void StateReader::setFileName(const char* new_file_name)
+{
+	strcpy(file_name, new_file_name);
+}
+
+void StateReader::getFileName(char* name)
+{
+	strcpy(name, file_name);
+}
+
+void StateReader::queryFileName()
+{
+	cout << "Please enter source file name for state (with extension): ";
+	cin >> file_name;
+}
+
+void StateReader::extension(char* ext, char* full_path)
+{
+  string full_path_string(full_path);
+  vector<string> vect;
+  boost::split(vect, full_path_string, boost::is_any_of("."));
+
+  if (vect.size() == 1) {
+    strcat(full_path, ".txt");    
+    strcpy(ext, "txt");
+  } else {
+    strcpy(ext, vect.back().c_str());
+  }
 }
 
 bool StateReader::readWorldFromFile(World* world)
 {
-	std::cout << "filename: " << _fileName << std::endl;
+	char *full_path = new char[256];
+  sprintf(full_path, "%s%s", base_name, file_name);
+  char *ext = new char[256];
+  extension(ext, full_path);
+
+  cout << "Reading world trajectory from: " << full_path << endl;
   ifstream file;
-  file.open(_fileName);
+  file.open(full_path);
     
   if (file.fail()) {
-  	cout << "Failed to open file. Objects were not read from file." << endl;
+  	cout << "Failed to open file. State was not loaded. Specified file might not exist." << endl;
   	return false;
   }
   
@@ -34,5 +70,6 @@ bool StateReader::readWorldFromFile(World* world)
   world = new World(file);
 
   file.close();
+  cout << "State loading was sucessful." << endl;
   return true;
 }
