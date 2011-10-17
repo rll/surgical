@@ -1,29 +1,78 @@
 #include "TrajectoryReader.h"
 
-TrajectoryReader::TrajectoryReader()
+TrajectoryReader::TrajectoryReader(const char* new_base_name)
 {
- sprintf(_fileName, "%s.txt", TRAJECTORY_BASE_NAME);
+	strcpy(base_name, new_base_name);
 }
 
-TrajectoryReader::TrajectoryReader(const char* fileName)
+TrajectoryReader::TrajectoryReader(const char* new_file_name, const char* new_base_name)
 {
- sprintf(_fileName, "%s.txt", fileName);
+	strcpy(file_name, new_file_name);
+	strcpy(base_name, new_base_name);
 }
 
-void TrajectoryReader::setFileName(const char* fileName)
+void TrajectoryReader::setBaseName(const char* new_base_name)
 {
- sprintf(_fileName, "%s.txt", fileName);
+	strcpy(base_name, new_base_name);
+}
+
+void TrajectoryReader::setFileName(const char* new_file_name)
+{
+	strcpy(file_name, new_file_name);
+}
+
+void TrajectoryReader::getFileName(char* name)
+{
+	strcpy(name, file_name);
+}
+
+void TrajectoryReader::queryFileName()
+{
+	cout << "Please enter source file name for trajectory (with extension): ";
+	cin >> file_name;
+}
+
+void TrajectoryReader::extension(char* ext, char* full_path)
+{
+  string full_path_string(full_path);
+  vector<string> vect;
+  boost::split(vect, full_path_string, boost::is_any_of("."));
+
+  if (vect.size() == 1) {
+    strcat(full_path, ".txt");    
+    strcpy(ext, "txt");
+  } else {
+    strcpy(ext, vect.back().c_str());
+  }
+}
+
+StateType TrajectoryReader::trajectoryType()
+{
+  char *full_path = new char[256];
+  sprintf(full_path, "%s%s", base_name, file_name);
+  char *ext = new char[256];
+  extension(ext, full_path);
+  if (strcmp(ext, "tcl")) {
+    return CONTROL;
+  } else {  // twd or txt
+    return STATE;
+  }
 }
 
 //the contents of worlds should be properly formatted, i.e. if the world object has already been deleted, then it should be NULL
 bool TrajectoryReader::readWorldsFromFile(vector<World*>& worlds)
 {
-  std::cout << "filename: " << _fileName << std::endl;
+  char *full_path = new char[256];
+  sprintf(full_path, "%s%s", base_name, file_name);
+  char *ext = new char[256];
+  extension(ext, full_path);
+
+  cout << "Reading world trajectory from: " << full_path << endl;
   ifstream file;
-  file.open(_fileName);
+  file.open(full_path);
   
   if (file.fail()) {
-  	cout << "Failed to open file. Objects were not read from file." << endl;
+  	cout << "Failed to open file. Trajectory was not loaded. Specified file might not exist." << endl;
   	return false;
   }
   
@@ -46,18 +95,23 @@ bool TrajectoryReader::readWorldsFromFile(vector<World*>& worlds)
   }
   
   file.close();
-  
+  cout << "Trajectory loading was sucessful. " << worlds.size() << " worlds were loaded." << endl;
   return true;
 }
 
 bool TrajectoryReader::readControlsFromFile(vector<vector<Control*> >& controls)
 {
-  std::cout << "filename: " << _fileName << std::endl;
+  char *full_path = new char[256];
+  sprintf(full_path, "%s%s", base_name, file_name);
+  char *ext = new char[256];
+  extension(ext, full_path);
+
+  cout << "Reading control trajectory from: " << full_path << endl;
   ifstream file;
-  file.open(_fileName);
+  file.open(full_path);
   
   if (file.fail()) {
-  	cout << "Failed to open file. Controls were not read from file." << endl;
+  	cout << "Failed to open file. Trajectory was not loaded. Specified file might not exist." << endl;
   	return false;
   }
   
@@ -86,6 +140,6 @@ bool TrajectoryReader::readControlsFromFile(vector<vector<Control*> >& controls)
   }
   
   file.close();
-  
+  cout << "Trajectory loading was sucessful. " << controls.size() << " control pairs were loaded." << endl;
   return true;
 }
