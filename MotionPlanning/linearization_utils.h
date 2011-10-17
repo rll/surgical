@@ -10,8 +10,12 @@
 
 
 #define WEIGHT_VERTICES 1.0
-#define WEIGHT_EDGES 2.0
+#define WEIGHT_EDGES 1.0
 #define WEIGHT_ANGLE 1.0
+
+#define STEP_DT 1
+#define STEP_MASS 1
+#define MAX_STEPS 50000
 
 using namespace Eigen;
 
@@ -28,6 +32,7 @@ void solveLinearizedControl(Thread* start, const Thread* goal, const movement_mo
 void solveLinearizedControl(Thread* start, const Thread* goal, VectorXd& motions, const movement_mode movement = START_AND_END);
 void estimate_transition_matrix(Thread* thread, MatrixXd& A, const movement_mode movement = START_AND_END);
 void estimate_transition_matrix_noEdges_withTwist(Thread* thread, MatrixXd& A, const movement_mode movement = START_AND_END);
+void estimate_transition_matrix_withTwist(Thread* thread, MatrixXd& A, const movement_mode movement = START_AND_END);
 void interpolateThreads(vector<Thread*>&traj, vector<VectorXd>& controls);
 void simpleInterpolation(Thread* start, const Thread* goal, VectorXd& control);
 

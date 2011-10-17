@@ -1,49 +1,61 @@
 #include "thread_discrete.h"
 
-Thread::Thread() :
-  _rest_length(DEFAULT_REST_LENGTH)
-{
-  _thread_pieces.resize(0);
-	_thread_pieces_backup.resize(0);
-}
+//Thread::Thread()
+//{
+//  world = NULL;
+//  _thread_pieces.resize(0);
+//	_thread_pieces_backup.resize(0);
+//}
 
 
-Thread::Thread(const VectorXd& vertices, const VectorXd& twists, const Matrix3d& start_rot) :
-  _rest_length(DEFAULT_REST_LENGTH)
+Thread::Thread(const VectorXd& vertices, const VectorXd& twists, const Matrix3d& start_rot, World* w)
 {
+  world = w;
+  assert(world != NULL);
   _thread_pieces.resize(twists.size());
   _thread_pieces_backup.resize(twists.size());
   _angle_twist_backup.resize(twists.size());
-  for (int i=0; i < twists.size(); i++)
+  for (int i=0; i < twists.size()-1; i++)
   {
-    _thread_pieces[i] = new ThreadPiece(vertices.segment<3>(3*i), twists(i), this);
+    _thread_pieces[i] = new ThreadPiece(vertices.segment<3>(3*i), twists(i), DEFAULT_REST_LENGTH, this, true);
   }
+	_thread_pieces[twists.size()-1] = new ThreadPiece(vertices.segment<3>(3*(twists.size()-1)), twists(twists.size()-1), DEFAULT_REST_LENGTH, this, false);
 
   for (int i=1; i < twists.size(); i++)
   {
     _thread_pieces[i]->set_prev(_thread_pieces[i-1]);
   }
-
-  for (int i=0; i < twists.size()-1; i++)
+	_thread_pieces[0]->set_prev(NULL);
+	for (int i=0; i < twists.size()-1; i++)
   {
     _thread_pieces[i]->set_next(_thread_pieces[i+1]);
   }
-
+  _thread_pieces[twists.size()-1]->set_next(NULL);
+	
+	_total_length = 0;
+	for (int piece_ind = 0; piece_ind < _thread_pieces.size()-1; piece_ind++)
+	{
+		_total_length += _thread_pieces[piece_ind]->rest_length();
+	}
+	
   //setup backups
   for (int i=0; i < twists.size(); i++)
-    {
-      _thread_pieces_backup[i] = new ThreadPiece(vertices.segment<3>(3*i), twists(i), this);
-    }
+  {
+  	_thread_pieces_backup[i] = new ThreadPiece(vertices.segment<3>(3*i), twists(i), DEFAULT_REST_LENGTH, this, false);
+  }
 
   for (int i=1; i < twists.size(); i++)
-    {
-      _thread_pieces_backup[i]->set_prev(_thread_pieces_backup[i-1]);
-    }
-
+  {
+  	_thread_pieces_backup[i]->set_prev(_thread_pieces_backup[i-1]);
+  }
+	_thread_pieces_backup[0]->set_prev(NULL);
   for (int i=0; i < twists.size()-1; i++)
-    {
-      _thread_pieces_backup[i]->set_next(_thread_pieces_backup[i+1]);
-    }
+  {
+  	_thread_pieces_backup[i]->set_next(_thread_pieces_backup[i+1]);
+  }
+  _thread_pieces_backup[twists.size()-1]->set_next(NULL);
+	
+	setPieceIndices();
 
 
   _thread_pieces.front()->set_bishop_frame(start_rot);
@@ -60,44 +72,55 @@ Thread::Thread(const VectorXd& vertices, const VectorXd& twists, const Matrix3d&
 }
 
 //Create a Thread. start_rot is the first bishop frame. the last material frame is calculated from twist_angles
-Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot) :
-  _rest_length(DEFAULT_REST_LENGTH)
+Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, World* w)
 {
+  world = w;
+  assert(world != NULL);
   _thread_pieces.resize(vertices.size());
   _thread_pieces_backup.resize(vertices.size());
   _angle_twist_backup.resize(vertices.size());
-  for (int i=0; i < vertices.size(); i++)
+  for (int i=0; i < vertices.size()-1; i++)
   {
-    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], this);
+    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], DEFAULT_REST_LENGTH, this, true);
 //    _thread_pieces.push_back(ThreadPiece(vertices[i], twist_angles[i]));
   }
+	_thread_pieces[vertices.size()-1] = new ThreadPiece(vertices[vertices.size()-1], twist_angles[vertices.size()-1], DEFAULT_REST_LENGTH, this, false);
 
   for (int i=1; i < vertices.size(); i++)
   {
     _thread_pieces[i]->set_prev(_thread_pieces[i-1]);
   }
-
+	_thread_pieces[0]->set_prev(NULL);
   for (int i=0; i < vertices.size()-1; i++)
   {
     _thread_pieces[i]->set_next(_thread_pieces[i+1]);
   }
+  _thread_pieces[vertices.size()-1]->set_next(NULL);
 
+	_total_length = 0;
+	for (int piece_ind = 0; piece_ind < _thread_pieces.size()-1; piece_ind++)
+	{
+		_total_length += _thread_pieces[piece_ind]->rest_length();
+	}
+	
 	//setup backups
   for (int i=0; i < vertices.size(); i++)
   {
-    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], this);
+    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], DEFAULT_REST_LENGTH, this, false);
   }
 
   for (int i=1; i < vertices.size(); i++)
   {
     _thread_pieces_backup[i]->set_prev(_thread_pieces_backup[i-1]);
   }
-
+	_thread_pieces_backup[0]->set_prev(NULL);
   for (int i=0; i < vertices.size()-1; i++)
   {
     _thread_pieces_backup[i]->set_next(_thread_pieces_backup[i+1]);
   }
+  _thread_pieces_backup[vertices.size()-1]->set_next(NULL);
 
+	setPieceIndices();
 
   _thread_pieces.front()->set_bishop_frame(start_rot);
   _thread_pieces.front()->set_material_frame(start_rot);
@@ -119,44 +142,55 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
 }
 
 //As above, with a specific rest length
-Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, const double rest_length) :
-  _rest_length(rest_length)
+Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, const double rest_length, World* w)
 {
+  world = w;
+  assert(world != NULL);
   _thread_pieces.resize(vertices.size());
   _thread_pieces_backup.resize(vertices.size());
   _angle_twist_backup.resize(vertices.size());
-  for (int i=0; i < vertices.size(); i++)
+  for (int i=0; i < vertices.size()-1; i++)
   {
-    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], this);
+    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_length, this, true);
 //    _thread_pieces.push_back(ThreadPiece(vertices[i], twist_angles[i]));
   }
+  _thread_pieces[vertices.size()-1] = new ThreadPiece(vertices[vertices.size()-1], twist_angles[vertices.size()-1], rest_length, this, false);
 
   for (int i=1; i < vertices.size(); i++)
   {
     _thread_pieces[i]->set_prev(_thread_pieces[i-1]);
   }
-
+	_thread_pieces[0]->set_prev(NULL);
   for (int i=0; i < vertices.size()-1; i++)
   {
     _thread_pieces[i]->set_next(_thread_pieces[i+1]);
   }
+  _thread_pieces[vertices.size()-1]->set_next(NULL);
+  
+  _total_length = 0;
+	for (int piece_ind = 0; piece_ind < _thread_pieces.size()-1; piece_ind++)
+	{
+		_total_length += _thread_pieces[piece_ind]->rest_length();
+	}
 
 	//setup backups
   for (int i=0; i < vertices.size(); i++)
   {
-    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], this);
+    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_length, this, false);
   }
 
   for (int i=1; i < vertices.size(); i++)
   {
     _thread_pieces_backup[i]->set_prev(_thread_pieces_backup[i-1]);
   }
-
+	_thread_pieces_backup[0]->set_prev(NULL);
   for (int i=0; i < vertices.size()-1; i++)
   {
     _thread_pieces_backup[i]->set_next(_thread_pieces_backup[i+1]);
   }
-
+	_thread_pieces_backup[vertices.size()-1]->set_next(NULL);
+	
+	setPieceIndices();
 
   _thread_pieces.front()->set_bishop_frame(start_rot);
   _thread_pieces.front()->set_material_frame(start_rot);
@@ -177,34 +211,111 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
 }
 
 
+//As above, with a specific rest length for each threadpiece.
+Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, World* w)
+{
+  world = w;
+  assert(world != NULL);
+  _thread_pieces.resize(vertices.size());
+  _thread_pieces_backup.resize(vertices.size());
+  _angle_twist_backup.resize(vertices.size());
+  for (int i=0; i < vertices.size()-1; i++)
+  {
+    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_lengths[i], this, true);
+//    _thread_pieces.push_back(ThreadPiece(vertices[i], twist_angles[i]));
+  }
+  _thread_pieces[vertices.size()-1] = new ThreadPiece(vertices[vertices.size()-1], twist_angles[vertices.size()-1], rest_lengths[vertices.size()-1], this, false);
+	
+  for (int i=1; i < vertices.size(); i++)
+  {
+    _thread_pieces[i]->set_prev(_thread_pieces[i-1]);
+  }
+	_thread_pieces[0]->set_prev(NULL);
+  for (int i=0; i < vertices.size()-1; i++)
+  {
+    _thread_pieces[i]->set_next(_thread_pieces[i+1]);
+  }
+  _thread_pieces[vertices.size()-1]->set_next(NULL);
+  
+  _total_length = 0;
+	for (int piece_ind = 0; piece_ind < _thread_pieces.size()-1; piece_ind++)
+	{
+		_total_length += _thread_pieces[piece_ind]->rest_length();
+	}
+
+	//setup backups
+  for (int i=0; i < vertices.size(); i++)
+  {
+    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_lengths[i], this, false);
+  }
+
+  for (int i=1; i < vertices.size(); i++)
+  {
+    _thread_pieces_backup[i]->set_prev(_thread_pieces_backup[i-1]);
+  }
+	_thread_pieces_backup[vertices.size()-1]->set_next(NULL);
+  for (int i=0; i < vertices.size()-1; i++)
+  {
+    _thread_pieces_backup[i]->set_next(_thread_pieces_backup[i+1]);
+  }
+	_thread_pieces_backup[vertices.size()-1]->set_next(NULL);
+	
+	setPieceIndices();
+
+  _thread_pieces.front()->set_bishop_frame(start_rot);
+  _thread_pieces.front()->set_material_frame(start_rot);
+
+  _thread_pieces.front()->initializeFrames();
+
+
+ // _saved_last_thetas.resize(_thread_pieces.size());
+  //_saved_last_theta_changes.resize(_thread_pieces.size());
+
+
+  set_start_constraint(vertices.front(), start_rot);
+
+  Matrix3d end_bishop = _thread_pieces[_thread_pieces.size()-2]->bishop_frame();
+  Matrix3d end_rot = Eigen::AngleAxisd(twist_angles[twist_angles.size()-2], end_bishop.col(0).normalized())*end_bishop;
+
+  set_end_constraint(vertices.back(), end_rot);
+}
 
 //Create a Thread. start_rot is the first bishop frame. end_rot is used to calculate the last twist angle
-Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot) :
-  _rest_length(DEFAULT_REST_LENGTH)
+Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3d& start_rot, Matrix3d& end_rot, World* w)
 {
+  world = w;
+  assert(world != NULL);
   //_thread_pieces.resize(vertices.size());
   _thread_pieces_backup.resize(vertices.size());
   _angle_twist_backup.resize(vertices.size());
   _thread_pieces.resize(vertices.size());
-  for (int i=0; i < vertices.size(); i++)
+  for (int i=0; i < vertices.size()-1; i++)
   {
-    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], this);
+    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], DEFAULT_REST_LENGTH, this, true);
   }
+  _thread_pieces[vertices.size()-1] = new ThreadPiece(vertices[vertices.size()-1], twist_angles[vertices.size()-1], DEFAULT_REST_LENGTH, this, false);
 
   for (int i=1; i < vertices.size(); i++)
   {
     _thread_pieces[i]->set_prev(_thread_pieces[i-1]);
   }
-
+	_thread_pieces[0]->set_prev(NULL);
   for (int i=0; i < vertices.size()-1; i++)
   {
     _thread_pieces[i]->set_next(_thread_pieces[i+1]);
   }
+  _thread_pieces[vertices.size()-1]->set_next(NULL);
+  
+  _total_length = 0;
+	for (int piece_ind = 0; piece_ind < _thread_pieces.size()-1; piece_ind++)
+	{
+		_total_length += _thread_pieces[piece_ind]->rest_length();
+	}
 
 	//setup backups
   for (int i=0; i < vertices.size(); i++)
   {
-    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], this);
+    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], DEFAULT_REST_LENGTH, this, false);
     //_thread_pieces.push_back(ThreadPiece(vertices[i], twist_angles[i]));
   }
 
@@ -212,11 +323,14 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
   {
     _thread_pieces_backup[i]->set_prev(_thread_pieces_backup[i-1]);
   }
-
+	_thread_pieces_backup[0]->set_prev(NULL);
   for (int i=0; i < vertices.size()-1; i++)
   {
     _thread_pieces_backup[i]->set_next(_thread_pieces_backup[i+1]);
   }
+  _thread_pieces_backup[vertices.size()-1]->set_next(NULL);
+
+	setPieceIndices();
 
   _thread_pieces.front()->set_bishop_frame(start_rot);
   _thread_pieces.front()->set_material_frame(start_rot);
@@ -304,34 +418,97 @@ Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, Matrix3
 
 }
 
-Thread::Thread(const Thread& rhs) :
-  _rest_length(rhs._rest_length)
+
+Thread::Thread(vector<Vector3d>& vertices, vector<double>& twist_angles, vector<double>& rest_lengths, Matrix3d& start_rot, Matrix3d& end_rot, World* w)
 {
+  world = w;
+  assert(world != NULL);
+  _thread_pieces_backup.resize(vertices.size());
+  _angle_twist_backup.resize(vertices.size());
+  _thread_pieces.resize(vertices.size());
+  for (int i=0; i < vertices.size()-1; i++)
+  {
+    _thread_pieces[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_lengths[i], this, true);
+  }
+  _thread_pieces[vertices.size()-1] = new ThreadPiece(vertices[vertices.size()-1], twist_angles[vertices.size()-1], rest_lengths[vertices.size()-1], this, false);
+
+  for (int i=1; i < vertices.size(); i++)
+  {
+    _thread_pieces[i]->set_prev(_thread_pieces[i-1]);
+  }
+	_thread_pieces[0]->set_prev(NULL);
+  for (int i=0; i < vertices.size()-1; i++)
+  {
+    _thread_pieces[i]->set_next(_thread_pieces[i+1]);
+  }
+  _thread_pieces[vertices.size()-1]->set_next(NULL);
+  
+  _total_length = 0;
+	for (int piece_ind = 0; piece_ind < _thread_pieces.size()-1; piece_ind++)
+	{
+		_total_length += _thread_pieces[piece_ind]->rest_length();
+	}
+
+	//setup backups
+  for (int i=0; i < vertices.size(); i++)
+  {
+    _thread_pieces_backup[i] = new ThreadPiece(vertices[i], twist_angles[i], rest_lengths[i], this, false);
+  }
+
+  for (int i=1; i < vertices.size(); i++)
+  {
+    _thread_pieces_backup[i]->set_prev(_thread_pieces_backup[i-1]);
+  }
+	_thread_pieces_backup[0]->set_prev(NULL);
+  for (int i=0; i < vertices.size()-1; i++)
+  {
+    _thread_pieces_backup[i]->set_next(_thread_pieces_backup[i+1]);
+  }
+  _thread_pieces_backup[vertices.size()-1]->set_next(NULL);
+
+	setPieceIndices();
+	
+  _thread_pieces.front()->set_bishop_frame(start_rot);
+  _thread_pieces.front()->set_material_frame(start_rot);
+
+  _thread_pieces.front()->initializeFrames();
+
+  set_constraints(vertices.front(), start_rot, vertices.back(), end_rot);
+}
+
+
+Thread::Thread(const Thread& rhs, World* w)
+{
+  world = w;
+  assert(world != NULL);
   _thread_pieces.resize(rhs._thread_pieces.size());
   _thread_pieces_backup.resize(rhs._thread_pieces_backup.size());
   _angle_twist_backup.resize(rhs._thread_pieces.size());
 
-  for (int piece_ind =0; piece_ind < rhs._thread_pieces.size(); piece_ind++)
+  for (int piece_ind =0; piece_ind < rhs._thread_pieces.size()-1; piece_ind++)
   {
     //_thread_pieces.push_back(rhs._thread_pieces[piece_ind]);
-    _thread_pieces[piece_ind] = new ThreadPiece(*rhs._thread_pieces[piece_ind], this);
+    _thread_pieces[piece_ind] = new ThreadPiece(*rhs._thread_pieces[piece_ind], this, true);
   }
+  _thread_pieces[rhs._thread_pieces.size()-1] = new ThreadPiece(*rhs._thread_pieces[rhs._thread_pieces.size()-1], this, false);
 
   for (int i=1; i < _thread_pieces.size(); i++)
   {
     _thread_pieces[i]->set_prev(_thread_pieces[i-1]);
   }
-
+	_thread_pieces[0]->set_prev(NULL);
   for (int i=0; i < _thread_pieces.size()-1; i++)
   {
     _thread_pieces[i]->set_next(_thread_pieces[i+1]);
   }
+  _thread_pieces[_thread_pieces.size()-1]->set_next(NULL);
 
-
+	_total_length = rhs._total_length;
+	
 	//setup backups
   for (int i=0; i < rhs._thread_pieces_backup.size(); i++)
   {
-    _thread_pieces_backup[i] = new ThreadPiece(*rhs._thread_pieces_backup[i], this);
+    _thread_pieces_backup[i] = new ThreadPiece(*rhs._thread_pieces_backup[i], this, false);
     //_thread_pieces.push_back(ThreadPiece(vertices[i], twist_angles[i]));
   }
 
@@ -339,13 +516,14 @@ Thread::Thread(const Thread& rhs) :
   {
     _thread_pieces_backup[i]->set_prev(_thread_pieces_backup[i-1]);
   }
-
+	_thread_pieces_backup[0]->set_prev(NULL);
   for (int i=0; i < _thread_pieces_backup.size()-1; i++)
   {
     _thread_pieces_backup[i]->set_next(_thread_pieces_backup[i+1]);
   }
+	_thread_pieces_backup[_thread_pieces_backup.size()-1]->set_next(NULL);
 
-
+	setPieceIndices();
 
   _thread_pieces.front()->set_bishop_frame(rhs.start_rot());
   _thread_pieces.front()->set_material_frame(rhs.start_rot());
@@ -362,11 +540,134 @@ Thread::Thread(const Thread& rhs) :
   set_all_pieces_mythread();
 }
 
+Thread::Thread(ifstream& file, World* w)
+{
+  int num_pts_each;
+  file >> num_pts_each;
+
+  vector<Vector3d> points;
+  points.resize(num_pts_each);
+  vector<double> twist_angles;
+  twist_angles.resize(num_pts_each);
+  vector<double> rest_lengths;
+  rest_lengths.resize(num_pts_each);
+  Matrix3d start_rot;
+  Matrix3d end_rot;
+
+  for (int r=0; r < 3; r++)
+  {
+    for (int c=0; c < 3; c++)
+    {
+      file >> start_rot (r,c);
+    }
+  }
+
+  for (int r=0; r < 3; r++)
+  {
+    for (int c=0; c < 3; c++)
+    {
+      file >> end_rot (r,c);
+    }
+  }
+
+  for (int i=0; i < points.size(); i++)
+  {
+    file >> points[i](0) >> points[i](1) >> points[i](2) >> twist_angles[i] >> rest_lengths[i];
+  }
+
+  world = w;
+  assert(world != NULL);
+  _thread_pieces_backup.resize(points.size());
+  _angle_twist_backup.resize(points.size());
+  _thread_pieces.resize(points.size());
+  for (int i=0; i < points.size()-1; i++)
+  {
+    _thread_pieces[i] = new ThreadPiece(points[i], twist_angles[i], rest_lengths[i], this, true);
+  }
+  _thread_pieces[points.size()-1] = new ThreadPiece(points[points.size()-1], twist_angles[points.size()-1], rest_lengths[points.size()-1], this, false);
+
+  for (int i=1; i < points.size(); i++)
+  {
+    _thread_pieces[i]->set_prev(_thread_pieces[i-1]);
+  }
+	_thread_pieces[0]->set_prev(NULL);
+  for (int i=0; i < points.size()-1; i++)
+  {
+    _thread_pieces[i]->set_next(_thread_pieces[i+1]);
+  }
+  _thread_pieces[points.size()-1]->set_next(NULL);
+  
+  _total_length = 0;
+	for (int piece_ind = 0; piece_ind < _thread_pieces.size()-1; piece_ind++)
+	{
+		_total_length += _thread_pieces[piece_ind]->rest_length();
+	}
+
+	//setup backups
+  for (int i=0; i < points.size(); i++)
+  {
+    _thread_pieces_backup[i] = new ThreadPiece(points[i], twist_angles[i], rest_lengths[i], this, false);
+  }
+
+  for (int i=1; i < points.size(); i++)
+  {
+    _thread_pieces_backup[i]->set_prev(_thread_pieces_backup[i-1]);
+  }
+	_thread_pieces_backup[0]->set_prev(NULL);
+  for (int i=0; i < points.size()-1; i++)
+  {
+    _thread_pieces_backup[i]->set_next(_thread_pieces_backup[i+1]);
+  }
+  _thread_pieces_backup[points.size()-1]->set_next(NULL);
+  
+	setPieceIndices();
+
+  _thread_pieces.front()->set_bishop_frame(start_rot);
+  _thread_pieces.front()->set_material_frame(start_rot);
+
+  _thread_pieces.front()->initializeFrames();
+
+  set_constraints(points.front(), start_rot, points.back(), end_rot);
+}
+
+void Thread::writeToFile(ofstream& file)
+{
+  vector<Vector3d> points;
+  vector<double> twist_angles;
+  vector<double> rest_lengths;
+  Matrix3d start_rot = this->start_rot();
+  Matrix3d end_rot = this->end_rot();
+  get_thread_data(points, twist_angles, rest_lengths);
+
+	file << (double)points.size() << "\n";
+
+  for (int r=0; r < 3; r++)
+  {
+    for (int c=0; c < 3; c++)
+    {
+      file << start_rot(r,c) << " ";
+    }
+  }
+
+  for (int r=0; r < 3; r++)
+  {
+    for (int c=0; c < 3; c++)
+    {
+      file << end_rot(r,c) << " ";
+    }
+  }
+
+  for (int j=0; j < points.size(); j++)
+  {
+    file << points[j](0) << " " << points[j](1) << " " << points[j](2) << " " << twist_angles[j] << " " << rest_lengths[j] << " ";
+  }
+  file << "\n";
+}
+
 Thread::~Thread()
 {
   delete_current_threadpieces();
 }
-
 
 void Thread::delete_current_threadpieces()
 {
@@ -378,6 +679,7 @@ void Thread::delete_current_threadpieces()
 
 	for (int piece_ind=0; piece_ind < _thread_pieces_backup.size(); piece_ind++)
 	{
+		_thread_pieces_backup[piece_ind]->_col_obj = NULL;
 		delete _thread_pieces_backup[piece_ind];
 	}
 	_thread_pieces_backup.clear();
@@ -398,16 +700,66 @@ void Thread::delete_threadpieces(vector<ThreadPiece*> thread_pieces)
  * Needs at least two thread pieces to work */
 double Thread::calculate_energy()
 {
-
 #ifdef ISOTROPIC
-  double energy = _thread_pieces[2]->get_twist_coeff() * (pow(_thread_pieces[_thread_pieces.size() - 2]->angle_twist() - _thread_pieces.front()->angle_twist(),2)) / (2.0 * _rest_length * (_thread_pieces.size() - 2));
+  //double energy = _thread_pieces[2]->get_twist_coeff() * (pow(_thread_pieces[_thread_pieces.size() - 2]->angle_twist() - _thread_pieces.front()->angle_twist(),2)) / (2.0 * _rest_length * (_thread_pieces.size() - 2));
+	double energy = _thread_pieces[2]->get_twist_coeff() * (pow(end_angle() - start_angle(),2)) / (2.0*total_length() - start_rest_length() - end_rest_length());
+	
+	//std::cout << _thread_pieces[2]->get_twist_coeff() << " " << _thread_pieces.size() << " " << _thread_pieces[_thread_pieces.size()-2]->angle_twist() << " " << _thread_pieces.front()->angle_twist() << std::endl;
 
-	//std::cout << _thread_pieces[2]->get_twist_coeff() << " " << _thread_pieces.size() << " " << _thread_pieces[_thread_pieces.size()-2]->angle_twist() << " " << _thread_pieces.front()->angle_twist() << " " << 2.0*_rest_length*(_thread_pieces.size()-2) << std::endl;
+  if (REPULSION_COEFF>0) {
+  	updateCollisionObjectsTransform();
+  	if (world->collision_world != NULL) {
+		 	world->collision_world->performDiscreteCollisionDetection();
+  		energy += world->collision_world->totalRepulsionEnergy(this);
+  	}
+  }
+//	  Vector3d direction;
+//	  
+//	  //self repulsion
+//		for(int i = 0; i < _thread_pieces.size() - 3; i++) {
+//			//+2 so you don't check the adjacent piece - bug?
+//			for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
+//			  //skip if both ends, since these are constraints
+//			  if(i == 0 && j == _thread_pieces.size() - 2) 
+//			    continue;
+//			  const double dist = self_intersection(i,j,THREAD_RADIUS,direction);
+//				energy += 2.0 * repulsionEnergy(dist, THREAD_RADIUS);	//it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
+//			}
+//		}
 
-
+//		//repulsions between threads
+//		for (int k=0; k < threads_in_env.size(); k++) {
+//			for(int i = 0; i < _thread_pieces.size()-1; i++) {
+//				for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
+//				  //skip if both ends, since these are constraints
+//				  if((i==0 && j==0) ||
+//				  	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
+//				  	 (i==_thread_pieces.size()-2 && j==0) ||
+//				  	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
+//				    continue;
+//				  const double dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
+//					if (j == 0 || j==threads_in_env[k]->_thread_pieces.size()-2) {
+//						energy += 4.0 * repulsionEnergy(dist, THREAD_RADIUS);	//it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
+//					} else {
+//						energy += 2.0 * repulsionEnergy(dist, THREAD_RADIUS);	//it's multiplied by two because this ammount of energy corresponds to each vertex of the edge
+//					}
+//				}
+//			}
+//		}
+//		
+//		//object repulsions
+//		if (world != NULL)
+//			for(int i = 2; i < _thread_pieces.size() - 3; i++)
+//				energy += world->capsuleObjectRepulsionEnergy(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS);
+	
+//#pragma omp parallel for num_threads(NUM_CPU_THREADS) reduction(+ : energy)
   for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
-    energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav();
+    energy += _thread_pieces[piece_ind]->energy_curvature() + _thread_pieces[piece_ind]->energy_grav();// + _thread_pieces[piece_ind]->energy_stretch();
+  }
+  for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
+  {
+    energy += _thread_pieces[piece_ind]->energy_stretch();
   }
   return energy;
 #else
@@ -420,9 +772,119 @@ double Thread::calculate_energy()
 #endif
 }
 
+void Thread::dynamic_step_until_convergence(double step_size, double mass, int max_steps) {
+  VectorXd last_position;
+  VectorXd current_position;
+
+  int current_step = 0; 
+  do {
+    toVector(&last_position);
+    //dynamic_step(step_size, mass, 1);
+    minimize_energy();
+    toVector(&current_position); 
+    current_step += 1;
+    //current_step += max_steps;
+
+  } while ((last_position - current_position).norm() > 1e-4 && current_step < max_steps);
+
+  
+  if ((last_position - current_position).norm() > 1e-4) {
+    cout << "WARNING: Did not converge in " << current_step << " steps. Current norm = " << (last_position - current_position).norm() << endl;
+    minimize_energy();
+  }
+
+  //cout << (last_position - current_position).norm() << endl; ;
+  //cout << current_step << endl; 
+
+}
+
+
+void Thread::dynamic_step(double step_size, double mass, int steps) { 
+  vector<Vector3d> vertex_gradients(num_pieces());
+  vector<Vector3d> position_offsets(num_pieces());
+  vector<Vector3d> velocity(num_pieces());
+
+  bool initialize_velocity = false; 
+  if (last_velocity.size() == 0)  {
+    initialize_velocity = true; 
+    last_velocity.resize(num_pieces());
+  }
+
+    
+  for (int t = 0; t < steps; t++) { 
+    for (int i = 0; i < vertex_gradients.size(); i++) {
+      velocity[i].setZero();
+      if (initialize_velocity) { 
+        last_velocity[i].setZero();
+        initialize_velocity = false; 
+      }
+      vertex_gradients[i].setZero();
+      position_offsets[i].setZero();
+    }
+    calculate_gradient_vertices(vertex_gradients);
+
+    for (int i = 0; i < velocity.size(); i++) { 
+      last_velocity[i] = 0.10*last_velocity[i] + (-vertex_gradients[i] / mass) * step_size;
+      velocity[i] = last_velocity[i];
+      position_offsets[i] = velocity[i] * step_size;  
+    }
+
+    //
+    double max_move = 0;
+    bool move_too_far = false;
+    for(int i = 2; i < position_offsets.size() - 2; i++) {
+      if(position_offsets[i].norm() > MAX_MOVEMENT_VERTICES) {
+        move_too_far = true;
+        if(position_offsets[i].norm() > max_move) 
+          max_move = position_offsets[i].norm();
+          //cout << "Max move = " << max_move << endl;
+      }
+    }
+    if(move_too_far) {
+      for(int i = 2; i < position_offsets.size()-2; i++) {
+        position_offsets[i] = position_offsets[i] * MAX_MOVEMENT_VERTICES / 2;
+      }
+    }
+    apply_vertex_offsets(position_offsets);
+
+    /*if (COLLISION_CHECKING) {
+      bool project_length_constraint_pass = true;
+      vector<Self_Intersection> self_intersections;
+      vector<Thread_Intersection> thread_intersections;
+      vector<Intersection> intersections;
+      int intersection_iters = 0; 
+      while(check_for_intersection(self_intersections, thread_intersections, intersections) && project_length_constraint_pass) {
+        fix_intersections();
+        //project_length_constraint_pass &= project_length_constraint();
+        intersection_iters++;
+        //cout << "fixing for " << intersection_iters << " iterations." << endl;
+      }
+    }*/
+    minimize_energy_twist_angles();
+    project_length_constraint();
+  }
+}
+
+
+double Thread::calculate_energy_inefficient()
+{
+  double energy = 0.0;
+  for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
+  {
+    energy += _thread_pieces[piece_ind]->energy();
+  }
+  return energy;
+}
+
 bool debugflag = false;
 bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
 {
+#ifndef NDEBUG
+	for (int i = 0; i < _thread_pieces.size(); i++) {
+		_thread_pieces[i]->isPieceIndConsistent();
+	}
+#endif
+  
   //backup pieces in case collision checking infinite loops due to unsatisfiable system
   //cout << "backing up pieces" << endl; 
 	
@@ -434,14 +896,14 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 			cout << "_thread_pieces[" << i << "]->_my_thread is this" << endl;
 	}*/
 	
-  if (COLLISION_CHECKING) { 
-    save_thread_pieces_and_resize(_thread_pieces_collision_backup);
-    for (int i=0; i<threads_in_env.size(); i++) {
-    	//if (this == threads_in_env[i])
-    		//continue;
-    	threads_in_env[i]->save_thread_pieces_and_resize(threads_in_env[i]->_thread_pieces_collision_backup);
-    }
-  }
+//  if (COLLISION_CHECKING) { 
+//    save_thread_pieces_and_resize(_thread_pieces_collision_backup);
+//    for (int i=0; i<threads_in_env.size(); i++) {
+//    	//if (this == threads_in_env[i])
+//    		//continue;
+//    	threads_in_env[i]->save_thread_pieces_and_resize(threads_in_env[i]->_thread_pieces_collision_backup);
+//    }
+//  }
   bool project_length_constraint_pass = true; 
 
   double step_in_grad_dir_vertices = 1.0;
@@ -470,7 +932,7 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
     double curr_energy = calculate_energy();
     double next_energy = 0.0;
 
-    if (recalc_vertex_grad)
+    if (true || recalc_vertex_grad)
     {
       save_thread_pieces();
       calculate_gradient_vertices(vertex_gradients);
@@ -538,7 +1000,7 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
     next_energy = calculate_energy();
 
 
-    //std::cout << "curr energy: " << curr_energy << "   next energy: " << next_energy << "  before projection: " << energy_before_projection << "  last step: " << step_in_grad_dir_vertices <<  std::endl;
+   //std::cout << "curr energy: " << curr_energy << "   next energy: " << next_energy << "  before projection: " << energy_before_projection << "  last step: " << step_in_grad_dir_vertices <<  std::endl;
 
     recalc_vertex_grad = true;
     if (next_energy + energy_error_for_convergence > curr_energy)
@@ -593,526 +1055,520 @@ bool Thread::minimize_energy(int num_opt_iters, double min_move_vert, double max
 
   next_energy = calculate_energy();
 
-  if (!project_length_constraint_pass && COLLISION_CHECKING) {
-    //cout << "reverting thread to prior state" << endl; 
-    restore_thread_pieces_and_resize(_thread_pieces_collision_backup);
-    restore_constraints(_start_pos_backup, _start_rot_backup, _end_pos_backup, _end_rot_backup);
-    for (int i=0; i<threads_in_env.size(); i++) {
-    	//if (this == threads_in_env[i])
-    		//continue;
-    	threads_in_env[i]->restore_thread_pieces_and_resize(threads_in_env[i]->_thread_pieces_collision_backup);
-    }
-  }
+//  if (!project_length_constraint_pass && COLLISION_CHECKING) {
+//    cout << "reverting thread to prior state" << endl; 
+//    restore_thread_pieces_and_resize(_thread_pieces_collision_backup);
+//    restore_constraints(_start_pos_backup, _start_rot_backup, _end_pos_backup, _end_rot_backup);
+//    for (int i=0; i<threads_in_env.size(); i++) {
+//    	//if (this == threads_in_env[i])
+//    		//continue;
+//    	threads_in_env[i]->restore_thread_pieces_and_resize(threads_in_env[i]->_thread_pieces_collision_backup);
+//    }
+//  }
   /*
      cout << "Edges: " << endl; 
      for (int i = 0; i < num_pieces()-1; i++) {
      cout << edge_at_ind(i).norm() << endl;; 
      }
   */
+	
+	//if (opt_iter!=-1)
+	//	std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
 
 	return (opt_iter != num_opt_iters);
-
-  //std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
 } // end minimize_energy
 
 
 void Thread::fix_intersections() {
-    vector<Self_Intersection> self_intersections;
-    vector<Thread_Intersection> thread_intersections;
-    vector<Intersection> intersections;
-    while(check_for_intersection(self_intersections, thread_intersections, intersections)) {
-        //restore_thread_pieces();
-        //cout << "INTERSECTION FOUND, total current intersections is: " << (intersections.size() + self_intersections.size())<< endl;
-        debugflag = true;
+	vector<Self_Intersection> self_intersections;
+	vector<Thread_Intersection> thread_intersections;
+	vector<Intersection> intersections;
+	while(check_for_intersection(self_intersections, thread_intersections, intersections)) {
+	  //restore_thread_pieces();
+		//cout << "INTERSECTION FOUND, total current intersections is: " << (intersections.size() + self_intersections.size())<< endl;
+		debugflag = true;
 
-        for (int i=0; i < self_intersections.size(); i++)
-        {
-          int ind_a = self_intersections[i]._piece_ind_a;
-          int ind_b = self_intersections[i]._piece_ind_b;
-          Vector3d cross = _thread_pieces[ind_a]->edge().cross(_thread_pieces[ind_b]->edge());
-          cross.normalize();
+		for (int i=0; i < self_intersections.size(); i++)
+		{
+			int ind_a = self_intersections[i]._piece_ind_a;
+			int ind_b = self_intersections[i]._piece_ind_b;
+			Vector3d dir = self_intersections[i]._direction;
+			dir.normalize();
 
-          double dist_a, dist_b;
-          if (ind_a == 0)
-          {
-            dist_a = 0.0;
-            dist_b = self_intersections[i]._dist + INTERSECTION_PUSHBACK_EPS;
-          } else if (ind_b == _thread_pieces.size()-2) {
-            dist_a = self_intersections[i]._dist + INTERSECTION_PUSHBACK_EPS;
-            dist_b = 0.0;
-          } else {
-            dist_a = dist_b = self_intersections[i]._dist/2.0 + INTERSECTION_PUSHBACK_EPS;
-          }
-       //    cross *= MAX_MOVEMENT_VERTICES;
+			double dist_a, dist_b;
+			if (ind_a <= 1)
+			{
+				dist_a = 0.0;
+				dist_b = self_intersections[i]._dist + INTERSECTION_PUSHBACK_EPS;
+			} else if (ind_b >= _thread_pieces.size()-3) {
+				dist_a = self_intersections[i]._dist + INTERSECTION_PUSHBACK_EPS;
+				dist_b = 0.0;
+			} else {
+				dist_a = dist_b = self_intersections[i]._dist/2.0 + INTERSECTION_PUSHBACK_EPS;
+			}
 
-          _thread_pieces[ind_a]->offset_vertex(cross*dist_a); 
-          _thread_pieces[ind_a + 1]->offset_vertex(cross*dist_a);
-          _thread_pieces[ind_b]->offset_vertex(-cross*dist_b); 
-          _thread_pieces[ind_b + 1]->offset_vertex(-cross*dist_b);
-          if(self_intersection(ind_a,ind_b,THREAD_RADIUS)) {
-        //  cout << "cross pointed wrong direction, trying other direction" << endl;
-            _thread_pieces[ind_a]->offset_vertex(-2.0*cross*dist_a); 
-            _thread_pieces[ind_a + 1]->offset_vertex(-2.0*cross*dist_a);
-            _thread_pieces[ind_b]->offset_vertex(2.0*cross*dist_b); 
-            _thread_pieces[ind_b + 1]->offset_vertex(2.0*cross*dist_b);
-          }
- /*         if(intersection(a,b,MAX_MOVEMENT_VERTICES)) {
-             cout << "************BAD: projected orthoganally out of intersection both directions and still intersect" << endl;
-          }
- */
-        }
-                
-        for (int i=0; i < thread_intersections.size(); i++)
-        {
-          int ind_a = thread_intersections[i]._piece_ind_a;
-          int ind_b = thread_intersections[i]._piece_ind_b;
-          int ind_t = thread_intersections[i]._thread_ind;
-          Vector3d cross = _thread_pieces[ind_a]->edge().cross(threads_in_env[ind_t]->_thread_pieces[ind_b]->edge());
-          cross.normalize();
+			_thread_pieces[ind_a]->offset_vertex(dir*dist_a); 
+			_thread_pieces[ind_a + 1]->offset_vertex(dir*dist_a);
+			_thread_pieces[ind_b]->offset_vertex(-dir*dist_b); 
+			_thread_pieces[ind_b + 1]->offset_vertex(-dir*dist_b);
+		}
+				            
+		for (int i=0; i < thread_intersections.size(); i++)
+		{
+			int ind_a = thread_intersections[i]._piece_ind_a;
+			int ind_b = thread_intersections[i]._piece_ind_b;
+			int ind_t = thread_intersections[i]._thread_ind;
+			Vector3d dir = thread_intersections[i]._direction;
+			dir.normalize();
 
-          double dist_a, dist_b;
-          if (ind_a == 0 || ind_a == _thread_pieces.size()-2) {
-            dist_a = 0.0;
-            dist_b = thread_intersections[i]._dist + INTERSECTION_PUSHBACK_EPS;
-          } else if (ind_b == 0 || ind_b == threads_in_env[ind_t]->_thread_pieces.size()-2) {
-            dist_a = thread_intersections[i]._dist + INTERSECTION_PUSHBACK_EPS;
-            dist_b = 0.0;
-          } else {
-            dist_a = dist_b = thread_intersections[i]._dist/2.0 + INTERSECTION_PUSHBACK_EPS;
-          }
+			double dist_a, dist_b;
+			if (ind_a <= 1 || ind_a >= _thread_pieces.size()-3) {
+				dist_a = 0.0;
+				dist_b = thread_intersections[i]._dist + INTERSECTION_PUSHBACK_EPS;
+			} else if (ind_b <= 1 || ind_b >= threads_in_env[ind_t]->_thread_pieces.size()-3) {
+				dist_a = thread_intersections[i]._dist + INTERSECTION_PUSHBACK_EPS;
+				dist_b = 0.0;
+			} else {
+				dist_a = dist_b = thread_intersections[i]._dist/2.0 + INTERSECTION_PUSHBACK_EPS;
+			}
 
-          _thread_pieces[ind_a]->offset_vertex(cross*dist_a); 
-          _thread_pieces[ind_a + 1]->offset_vertex(cross*dist_a);
-          threads_in_env[ind_t]->_thread_pieces[ind_b]->offset_vertex(-cross*dist_b); 
-          threads_in_env[ind_t]->_thread_pieces[ind_b + 1]->offset_vertex(-cross*dist_b);
-          if(thread_intersection(ind_a,ind_b,ind_t,THREAD_RADIUS)) {
-            _thread_pieces[ind_a]->offset_vertex(-2.0*cross*dist_a); 
-            _thread_pieces[ind_a + 1]->offset_vertex(-2.0*cross*dist_a);
-            threads_in_env[ind_t]->_thread_pieces[ind_b]->offset_vertex(2.0*cross*dist_b); 
-            threads_in_env[ind_t]->_thread_pieces[ind_b + 1]->offset_vertex(2.0*cross*dist_b);
-          }
-        }
+			_thread_pieces[ind_a]->offset_vertex(dir*dist_a); 
+			_thread_pieces[ind_a + 1]->offset_vertex(dir*dist_a);
+			threads_in_env[ind_t]->_thread_pieces[ind_b]->offset_vertex(-dir*dist_b); 
+			threads_in_env[ind_t]->_thread_pieces[ind_b + 1]->offset_vertex(-dir*dist_b);
+		}
 
-        for (int i=0; i < intersections.size(); i++)
-        {
-          int ind_piece = intersections[i]._piece_ind;
-          int ind_obj = intersections[i]._object_ind;
-          Vector3d cross = _thread_pieces[ind_piece]->edge().cross(objects_in_env[ind_obj]->_end_pos - objects_in_env[ind_obj]->_start_pos);
-          cross.normalize();
+		for (int i=0; i < intersections.size(); i++)
+		{
+			int ind_piece = intersections[i]._piece_ind;
+			Vector3d dir = intersections[i]._direction;
+			dir.normalize();
 
-          cross *= intersections[i]._dist+INTERSECTION_PUSHBACK_EPS;
+			double dist = intersections[i]._dist + INTERSECTION_PUSHBACK_EPS;
 
-       //    cross *= MAX_MOVEMENT_VERTICES;
-
-          _thread_pieces[ind_piece]->offset_vertex(cross); 
-          _thread_pieces[ind_piece + 1]->offset_vertex(cross);
-          if(obj_intersection(ind_piece,THREAD_RADIUS, ind_obj,objects_in_env[ind_obj]->_radius)) {
-        //  cout << "cross pointed wrong direction, trying other direction" << endl;
-            _thread_pieces[ind_piece]->offset_vertex(-2.0*cross); 
-            _thread_pieces[ind_piece + 1]->offset_vertex(-2.0*cross);
-          }
- /*         if(intersection(a,b,MAX_MOVEMENT_VERTICES)) {
-             cout << "************BAD: projected orthoganally out of intersection both directions and still intersect" << endl;
-          }
- */
-        }
-
-
-
-
-
-
-    }
+			_thread_pieces[ind_piece]->offset_vertex(dir*dist); 
+			_thread_pieces[ind_piece + 1]->offset_vertex(dir*dist);
+			
+			//glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			//glPushMatrix();
+			//glTranslatef (0.0, 0.0, -110.0);
+			//drawArrow(_thread_pieces[ind_piece]->vertex(), 100.0*dir*dist, 0, 1, 0);
+			//drawArrow(_thread_pieces[ind_piece + 1]->vertex(), 100.0*dir*dist, 0, 1, 0);
+			//glPopMatrix();
+			//glutSwapBuffers ();
+			//glutPostRedisplay ();
+		}
+	}
 }
 
 bool Thread::check_for_intersection(vector<Self_Intersection>& self_intersections, vector<Thread_Intersection>& thread_intersections, vector<Intersection>& intersections)
-{   	
-  double found = false; // count of number of intersections
-  self_intersections.clear();
-  thread_intersections.clear();
-  intersections.clear();
+{
+	assert(0);
+//  double found = false; // count of number of intersections
+//  Vector3d direction;
+//  self_intersections.clear();
+//  thread_intersections.clear();
+//  intersections.clear();
 
-  //self intersections
-  for(int i = 0; i < _thread_pieces.size() - 3; i++) {
-    //+2 so you don't check the adjacent piece - bug?
-    for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
-      if(i == 0 && j == _thread_pieces.size() - 2) 
-        continue;
-      double intersection_dist = self_intersection(i,j,THREAD_RADIUS);
-      if(intersection_dist != 0) {
-        //skip if both ends, since these are constraints
-        found = true;
+//  //self intersections
+//  for(int i = 0; i < _thread_pieces.size() - 3; i++) {
+//    //+2 so you don't check the adjacent piece - bug?
+//    for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
+//      //skip if both ends, since these are constraints
+//      if(i == 0 && j == _thread_pieces.size() - 2) 
+//        continue;
+//      double intersection_dist = self_intersection(i,j,THREAD_RADIUS,direction);
+//      if(intersection_dist < 0) {
+//        found = true;
 
-        self_intersections.push_back(Self_Intersection(i,j,intersection_dist));
-      }
-    }
+//        self_intersections.push_back(Self_Intersection(i,j,-intersection_dist,direction));
+//      }
+//    }
+//  }
+//	
+//	//intersections between threads
+//	for (int k=0; k < threads_in_env.size(); k++) {
+//		//if (this == threads_in_env[k]) //check
+//			//continue;
+//		for(int i = 0; i < _thread_pieces.size()-1; i++) {
+//	    for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
+//	      //skip if both ends, since these are constraints
+//	      if((i==0 && j==0) ||
+//	      	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
+//	      	 (i==_thread_pieces.size()-2 && j==0) ||
+//	      	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
+//	        continue;
+//	      double intersection_dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
+//	      if(intersection_dist < 0) {
+//	        found = true;
+//	        thread_intersections.push_back(Thread_Intersection(i,j,k,-intersection_dist,direction));
+//	      }
+//	    }
+//	  }
+//	}
+//	bool obj_intersection = false;
+//	//object intersections
+//  if (world != NULL) {
+//		for(int i = 2; i < _thread_pieces.size() - 3; i++) {
+//			//found = world->capsuleObjectIntersection(i, _thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS, intersections) || found;
+//			bool temp_obj_intersection = world->capsuleObjectIntersection(i, _thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS, intersections);
+//			if (temp_obj_intersection) obj_intersection = true;
+//			found = temp_obj_intersection || found;
+//		}
+//  }
+//  
+//  //if (found || obj_intersection)
+//  	//cout << "intersections. obj_intersection = " << obj_intersection << endl;
+
+//  return found;
+}
+
+double Thread::self_intersection(int i, int j, double radius, Vector3d& direction)
+{
+	return capsuleCapsuleDistance(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, _thread_pieces[j]->vertex(), _thread_pieces[j+1]->vertex(), radius, direction);
+}
+
+double Thread::thread_intersection(int i, int j, int k, double radius, Vector3d& direction)
+{
+	return capsuleCapsuleDistance(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, threads_in_env[k]->_thread_pieces[j]->vertex(), threads_in_env[k]->_thread_pieces[j+1]->vertex(), radius, direction);
+}
+
+void Thread::setPieceIndices()
+{
+  for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
+  {
+    _thread_pieces[piece_ind]->setPieceInd(piece_ind);
   }
+
+  for (int piece_ind=0; piece_ind < _thread_pieces_backup.size(); piece_ind++)
+  {
+    _thread_pieces_backup[piece_ind]->setPieceInd(piece_ind);
+  }
+}
+
+void Thread::updateCollisionObjectsTransform()
+{
+	for (int piece_ind=0; piece_ind < _thread_pieces.size()-1; piece_ind++)
+  {
+    _thread_pieces[piece_ind]->updateCollisionObjectTransform();
+  }
+}
+
+/*********************************************************************************/
+//variable-length thread_pieces
+
+void Thread::split_thread_piece(ThreadPiece* this_piece)
+{
+	ThreadPiece* new_piece = new ThreadPiece(true);
+	this_piece->splitPiece(new_piece);
 	
-	//intersections between threads
-	for (int k=0; k < threads_in_env.size(); k++) {
-		//if (this == threads_in_env[k]) //check
-			//continue;
-		for(int i = 0; i < _thread_pieces.size()-1; i++) {
-	    for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
-	      if((i==0 && j==0) ||
-	      	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
-	      	 (i==_thread_pieces.size()-2 && j==0) ||
-	      	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
-	        continue;
-	      double intersection_dist = thread_intersection(i,j,k,THREAD_RADIUS);		//asumes other threads have same radius
-	      if(intersection_dist != 0) {
-	        //skip if both ends, since these are constraints
-	        found = true;
-	        thread_intersections.push_back(Thread_Intersection(i,j,k,intersection_dist));
-	      }
-	    }
-	  }
-	}
+	int piece_ind;
+	for (piece_ind=0; piece_ind<_thread_pieces.size() && _thread_pieces[piece_ind]!=this_piece; piece_ind++) {}
+	if (piece_ind==_thread_pieces.size())
+		cout << "Internal error: Thread::split_thread_piece: this_piece is not in _thread_pieces." << endl;
+	
+	_thread_pieces.insert(_thread_pieces.begin() + piece_ind + 1, new_piece);
+}
+
+// Merges the edges adjacent to this_piece->_vertex.
+void Thread::merge_thread_piece(ThreadPiece* this_piece)
+{	
+	this_piece->mergePiece();
+	
+	int piece_ind;
+	for (piece_ind=0; piece_ind<_thread_pieces.size() && _thread_pieces[piece_ind]!=this_piece; piece_ind++) {}
+	if (piece_ind==_thread_pieces.size())
+		cout << "Internal error: Thread::merge_thread_piece: this piece is not in _thread_pieces." << endl; // debugerror
 		
-  //intersections with objects
-  for (int i=0; i < objects_in_env.size(); i++)
-  {
-    for(int j = 2; j < _thread_pieces.size() - 3; j++) {
-    //for(int j = 0; j < _thread_pieces.size() - 1; j++) {
-      double intersection_dist = obj_intersection(j,THREAD_RADIUS, i, objects_in_env[i]->_radius);
-      if(intersection_dist != 0) {
-        found = true;
-
-        intersections.push_back(Intersection(j,i,intersection_dist));
-      }
-    }
-
-  }
-
-  return found;
+	delete _thread_pieces[piece_ind-1];
+	_thread_pieces[piece_ind-1] = NULL;
+	_thread_pieces.erase(_thread_pieces.begin() + piece_ind - 1);
 }
 
-//define an epsilon
-double Thread::self_intersection(int i, int j, double radius)
+void Thread::adapt_links()
 {
-    return  intersection(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, _thread_pieces[j]->vertex(), _thread_pieces[j+1]->vertex(), radius);
+	unrefine_links();
+	refine_links_geometrical();
+	//if (COLLISION_CHECKING)
+	//	refine_links_mechanical();
 }
 
-double Thread::thread_intersection(int i, int j, int k, double radius)
-{
-		return intersection(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), radius, threads_in_env[k]->_thread_pieces[j]->vertex(), threads_in_env[k]->_thread_pieces[j+1]->vertex(), radius);
+void Thread::refine_links_geometrical() {
+	vector<ThreadPiece*> to_refine;
+	priority_queue <ThreadPiece*, vector<ThreadPiece*>, angleLess<ThreadPiece*> > tp_queue;
+	
+	for (int i=1; i<_thread_pieces.size()-2; i++) {
+		tp_queue.push(_thread_pieces[i]);
+	}
+	
+	while((tp_queue.size() > 0) && needs_refine_geometrical(tp_queue.top())) {
+		to_refine.push_back(tp_queue.top());
+		tp_queue.pop();
+	}
+
+	for (int piece_ind=0; piece_ind < to_refine.size(); piece_ind++) {
+		if (to_refine[piece_ind]->_prev_piece!=NULL && 
+				to_refine[piece_ind]->_prev_piece->_prev_piece!=NULL && 
+				to_refine[piece_ind]->_prev_piece->rest_length()>MIN_REST_LENGTH &&
+				!almost_equal(to_refine[piece_ind]->_prev_piece->edge(), to_refine[piece_ind]->_prev_piece->_prev_piece->edge())) {
+			split_concatenation_left(to_refine[piece_ind]->_prev_piece);
+		}
+		if (to_refine[piece_ind]->_next_piece!=NULL &&
+				to_refine[piece_ind]->_next_piece->_next_piece!=NULL &&
+				to_refine[piece_ind]->rest_length()>MIN_REST_LENGTH &&
+				!almost_equal(to_refine[piece_ind]->edge(), to_refine[piece_ind]->_next_piece->edge())) {
+			split_concatenation_right(to_refine[piece_ind]);
+		}
+	}
+	//TODO resize
+	//save_thread_pieces_and_resize(_thread_pieces_backup);
+	//minimize_energy();
 }
 
-double Thread::obj_intersection(int piece_ind, double piece_radius, int obj_ind, double obj_radius)
-{
-  	return intersection(objects_in_env[obj_ind]->_start_pos, objects_in_env[obj_ind]->_end_pos, objects_in_env[obj_ind]->_radius,
-            _thread_pieces[piece_ind]->vertex(), _thread_pieces[piece_ind+1]->vertex(),THREAD_RADIUS);
+void Thread::refine_links_mechanical() {
+	vector<ThreadPiece*> to_refine;
+
+	for (int i=1; i<_thread_pieces.size()-2; i++) {
+		if (needs_refine_mechanical(_thread_pieces[i])) {
+			to_refine.push_back(_thread_pieces[i]);
+		}
+	}
+
+	for (int piece_ind=0; piece_ind < to_refine.size(); piece_ind++) {
+		if (to_refine[piece_ind]->_prev_piece!=NULL && 
+				to_refine[piece_ind]->_prev_piece->_prev_piece!=NULL && 
+				to_refine[piece_ind]->_prev_piece->rest_length()>MIN_REST_LENGTH &&
+				!almost_equal(to_refine[piece_ind]->_prev_piece->edge(), to_refine[piece_ind]->_prev_piece->_prev_piece->edge())) {
+			split_concatenation_left(to_refine[piece_ind]->_prev_piece);
+		}
+		if (to_refine[piece_ind]->_next_piece!=NULL &&
+				to_refine[piece_ind]->_next_piece->_next_piece!=NULL &&
+				to_refine[piece_ind]->rest_length()>MIN_REST_LENGTH &&
+				!almost_equal(to_refine[piece_ind]->edge(), to_refine[piece_ind]->_next_piece->edge())) {
+			split_concatenation_right(to_refine[piece_ind]);
+		}
+	}
+	//TODO resize
+	//save_thread_pieces_and_resize(_thread_pieces_backup);
+	//minimize_energy();
 }
 
-#define INTERSECTION_EDGE_LENGTH_FACTOR 1.5
-#define INTERSECTION_HEIGHT_FACTOR 0.5
-#define INTERSECTION_PARALLEL_CHECK_FACTOR 1e-5
+void Thread::unrefine_links() {
+	vector<ThreadPiece*> to_unrefine, tp_heap;
+	priority_queue <ThreadPiece*, vector<ThreadPiece*>, angleGreater<ThreadPiece*> > tp_queue;
+	
+	for (int i=2; i<_thread_pieces.size()-2; i++) {
+		tp_queue.push(_thread_pieces[i]);
+	}
+	
+	while((tp_queue.size() > 0) && needs_unrefine(tp_queue.top())) {
+		to_unrefine.push_back(tp_queue.top());
+		tp_queue.pop();
+	}
 
-double Thread::intersection(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius)
+	for (int piece_ind=0; piece_ind < to_unrefine.size(); piece_ind++) {
+	
+		if (to_unrefine[piece_ind] == NULL) {	// this edge was already merged and invalidated with findInvalidate()
+			continue;
+		}
+	
+		if (to_unrefine[piece_ind] == NULL || to_unrefine[piece_ind]->_next_piece == NULL ||
+				to_unrefine[piece_ind]->_prev_piece == NULL || to_unrefine[piece_ind]->_prev_piece->_prev_piece == NULL)
+		cout << "Internal error: unrefine_links: to_unrefine[piece_ind] or one of its neighbors is NULL." << endl;
+		
+		if (to_unrefine[piece_ind] == NULL)
+		cout << "Internal error: unrefine_links: 0" << endl;
+		if (to_unrefine[piece_ind]->_next_piece == NULL)
+		cout << "Internal error: unrefine_links: 1" << endl;
+		if (to_unrefine[piece_ind]->_prev_piece == NULL)
+		cout << "Internal error: unrefine_links: 2" << endl;
+		if (to_unrefine[piece_ind]->_prev_piece->_prev_piece == NULL)
+		cout << "Internal error: unrefine_links: 3" << endl;
+		
+		double r0 = to_unrefine[piece_ind]->rest_length();
+		double r1 = to_unrefine[piece_ind]->_next_piece->rest_length();
+		double l0 = to_unrefine[piece_ind]->_prev_piece->rest_length();		
+		double l1 = to_unrefine[piece_ind]->_prev_piece->_prev_piece->rest_length();
+		if (((l0+r0) <= (GRADING_FACTOR+GRADING_FACTOR_EPS)*r1) && ((l0+r0) <= (GRADING_FACTOR+GRADING_FACTOR_EPS)*l1)) { // merge only if the new rest length after merging is not longer by more than a factor of 2 with respect to the rest length of the new neighbors
+			//remove to_unrefine[piece_ind]->_prev_piece and to_unrefine[piece_ind] from to_unrefine;
+			ThreadPiece* temp = to_unrefine[piece_ind];
+			findInvalidate(to_unrefine, to_unrefine[piece_ind]->_prev_piece);
+			findInvalidate(to_unrefine, to_unrefine[piece_ind]);
+			merge_thread_piece(temp);
+		}
+	}
+	//TODO resize
+	//save_thread_pieces_and_resize(_thread_pieces_backup);
+	//minimize_energy();
+}
+
+void Thread::split_concatenation_left(ThreadPiece* piece) {
+	if (piece->_prev_piece != NULL) {
+		double adj0 = piece->rest_length();
+		double adj1 = piece->_prev_piece->rest_length();
+		split_thread_piece(piece);
+		if ((GRADING_FACTOR-GRADING_FACTOR_EPS)*adj0 <= adj1) {	// split only if the new rest length after splitting is not smaller by more than a factor of 2 with respect to the rest length of the new neighbors
+			split_concatenation_left(piece->_prev_piece);
+		}
+	}
+}
+
+void Thread::split_concatenation_right(ThreadPiece* piece) {
+	if (piece->_next_piece == NULL) {
+		cout << "Internal error: split_concatenation_right: piece->_vertex should not be vertex _threads_pieces.size()-1." << endl;
+	}
+	if (piece->_next_piece != NULL && piece->_next_piece->_next_piece != NULL) {
+		double adj0 = piece->rest_length();
+		double adj1 = piece->_next_piece->rest_length();
+		if ((GRADING_FACTOR-GRADING_FACTOR_EPS)*adj0 <= adj1) {	// split only if the new rest length after splitting is not smaller by more than a factor of 2 with respect to the rest length of the new neighbors
+			split_concatenation_right(piece->_next_piece);
+		}
+		split_thread_piece(piece);
+	}
+}
+
+// Does the edges adyacent to piece->_vertex need to be refined?		
+bool Thread::needs_refine_geometrical(ThreadPiece* piece)
 {
-  Vector3d a_start = a_start_in;
-  Vector3d a_end = a_end_in;
-  Vector3d b_start = b_start_in;
-  Vector3d b_end = b_end_in;
-  bool trivial_reject = false;
-  double total_radius = a_radius + b_radius;
+	if (piece==NULL)
+		cout << "Internal error: needs_unrefine: piece is NULL" << endl;
+	return (piece->angle() < REFINE_THRESHHOLD * M_PI/180.0);
+}
 
-  Vector3d a_mid = (a_start + a_end)/2.0;
-  double edgeLen = max((a_end - a_start).norm() * INTERSECTION_EDGE_LENGTH_FACTOR,(b_end-b_start).norm()*INTERSECTION_EDGE_LENGTH_FACTOR);
-  //check distance to b_start and b_end
-  double distb_start = (b_start-a_mid).norm();
-  double distb_end = (b_end - a_mid).norm();
-  if((distb_start > (edgeLen / 2.0 + total_radius)) && (distb_end > (edgeLen / 2.0 + total_radius))) {
-    // cout << "false (trivial rejected)" << endl;
-    trivial_reject = true;
-    return 0;
+bool Thread::needs_refine_mechanical(ThreadPiece* piece)
+{
+	if (piece->_prev_piece==NULL || piece->_next_piece->_next_piece==NULL)
+		cout << "Internal error: needs_refine_mechanical: piece cannot be the first or the last one." << endl;
+	
+  if ((closest_intersection_dist(piece) < (2.0*THREAD_RADIUS+REFINE_MECHANICAL_DIST)) &&
+    	(piece->rest_length() > TARGET_REST_LENGTH_REFINE_MECHANICAL)) {
+    return true;
   }
-  
-  // move 'a_start' to origin and move everything else relative
-  a_end = a_end - a_start;
-  b_start = b_start - a_start;
-  b_end = b_end - a_start;
-  a_start.setZero();
+  return false;
+}
+
+// Does the vertex especified by piece->_vertex need to be unrefined?
+bool Thread::needs_unrefine(ThreadPiece* piece)
+{
+	if (piece==NULL)
+		cout << "Internal error: needs_unrefine: piece is NULL" << endl;
+	return ((piece->angle() > UNREFINE_THRESHHOLD * M_PI/180.0) && 
+					(!COLLISION_CHECKING || (closest_intersection_dist(piece) > (2.0*THREAD_RADIUS+UNREFINE_MECHANICAL_DIST))));
+}
+
+double Thread::closest_intersection_dist(ThreadPiece* piece)
+{
+	if (piece==NULL)
+		cout << "Internal error: closest_intersection_dist: piece is NULL" << endl;
+	if (piece->_next_piece==NULL)
+		cout << "Internal error: closest_intersection_dist: piece cannot be the piece after the last one." << endl;
+	
+	double min_dist = numeric_limits<double>::max();
+	double dist;
+	Vector3d direction;
+	ThreadPiece* other_piece = _thread_pieces.front();
+	while (other_piece!=NULL && other_piece->_next_piece != NULL) {
+		if (((piece->_prev_piece!=NULL) && (other_piece == piece->_prev_piece->_prev_piece)) ||
+				(other_piece == piece->_prev_piece) ||
+				(other_piece == piece) ||
+				(other_piece == piece->_next_piece) ||
+				((piece->_next_piece!=NULL) && (other_piece == piece->_next_piece->_next_piece))) {
+			other_piece = other_piece->_next_piece;
+		} else {
+			min_dist = min(min_dist, capsuleCapsuleDistance(piece->vertex(), piece->_next_piece->vertex(), THREAD_RADIUS, other_piece->vertex(), other_piece->_next_piece->vertex(), THREAD_RADIUS, direction));
+		  other_piece = other_piece->_next_piece;
+		}
+	}
+	return min_dist;
+}
+
+//end variable-length thread_pieces
+/*********************************************************************************/
+
+//void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
+//{
+//  double max_movement_vertices = max_move_vert;
+//  project_length_constraint();
+//  bool recalc_vertex_grad = true;
+
+//  double curr_energy = calculate_energy();
+//  double next_energy = 0.0;
+
+//  int opt_iter;
+//  MatrixXd Hessian(3*(int)_thread_pieces.size(), 3*(int)_thread_pieces.size());
+//  VectorXd Gradients(3*(int)_thread_pieces.size());
+//  VectorXd offsets_vectorized(3*(int)_thread_pieces.size());
+//  vector<Vector3d> offsets(_thread_pieces.size());
+//  Gradients.setZero();
+//  for (opt_iter = 0; opt_iter < num_opt_iters; opt_iter++)
+//  {
+//    double curr_energy = calculate_energy();
+//    double next_energy = 0.0;
+
+//    if (recalc_vertex_grad)
+//    {
+//      save_thread_pieces();
+//      calculate_hessian_vertices(Hessian);
+//      calculate_gradient_vertices_vectorized(&Gradients);
+//      curr_energy = calculate_energy();
+//    }
+//    
+
+//    //std::cout << "hessian:\n" << Inv_Hessian << "\nGrads:\n" << Gradients << std::endl;
 
 
-  // rotate 'b' to be along z-axis, and rotate 'a' relative
-  Quaterniond quat_to_unitz;
-  quat_to_unitz.setFromTwoVectors(a_end.normalized(),Vector3d::UnitZ());
-  //Matrix3d mrot;
-  //mrot = qrot.toRotationMatrix(); //convert to matrix for more efficent rotation
-  a_end = quat_to_unitz*a_end;
-  b_start = quat_to_unitz*b_start;
-  b_end = quat_to_unitz*b_end;
+
+//    Hessian.lu().solve(Gradients, &offsets_vectorized);
+//    //offsets_vectorized = Inv_Hessian*Gradients;
+//    //std::cout << "wanted step: " << offsets_vectorized.transpose() << std::endl;
+//    for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
+//    {
+//      offsets[piece_ind] = offsets_vectorized.segment<3>(3*piece_ind);
+//    }
+//    make_max_norm_one(offsets);
+
+////    apply_vertex_offsets_vectorized(-max_movement_vertices*Inv_Hessian*Gradients, true);
+//    apply_vertex_offsets(offsets, true, -max_movement_vertices);
+//      
+//    double energy_before_projection = calculate_energy();
+//    project_length_constraint();
 
 
-  // check if z values of b allow for trivial rejection (both points far enough away)
-  if((b_start[2] > a_end[2] + INTERSECTION_HEIGHT_FACTOR && b_end[2] > a_end[2] + INTERSECTION_HEIGHT_FACTOR) || 
-      (b_start[2] < -INTERSECTION_HEIGHT_FACTOR && b_end[2] < -INTERSECTION_HEIGHT_FACTOR)) {
-    return 0;
-  }
-
-  // checks for parallel edges
-  // can do this check because we rotated to unit Z
-  if(abs(b_start[0]-b_end[0]) < INTERSECTION_PARALLEL_CHECK_FACTOR && abs(b_start[1]-b_end[1]) < INTERSECTION_PARALLEL_CHECK_FACTOR)
-  {
-    //parallel, so assume everything the same distance as the start
-    return max(0.0, total_radius - sqrt(b_start[0]*b_start[0] + b_start[1]*b_start[1]));
-//    if(b_start[0]*b_start[0] + b_start[1]*b_start[1] > total_radius)
-//      return 0;
-//    else
-//      return total_radius - sqrt(b_start[0]*b_start[0] + b_start[1]*b_start[1]);
- 
-  }
+//    next_energy = calculate_energy();
 
 
+//    std::cout << "curr energy: " << curr_energy << "   next energy: " << next_energy << "  before projection: " << energy_before_projection << "  last step: " << max_movement_vertices <<  std::endl;
 
-  // check for intersection in the x-y plane projection by solving quadratic formula
-  // parameterize line as start + t(end_start), t in [0,1]
-  // find t that intersects circle of radius total_radius
-  Vector2d b_xy_start(b_start[0],b_start[1]); //start vector of projection of edge b into x, y plane
-  Vector2d b_xy_end(b_end[0],b_end[1]); //end vector of projection of edge b into x, y plane
-  Vector2d b_xy_edge = b_xy_end - b_xy_start; //direction vector
+//    recalc_vertex_grad = true;
+//    if (next_energy + energy_error_for_convergence > curr_energy)
+//    {
+//      if (next_energy >= curr_energy) {
+//        restore_thread_pieces();
+//        recalc_vertex_grad = false;
+//      }
 
-  double acoeff, bcoeff, ccoeff; // a, b, and c coefficents in quadratic formula
-  bcoeff = 2.0 * b_xy_edge.dot(b_xy_start);
-  acoeff = b_xy_edge.dot(b_xy_edge);
-  ccoeff = b_xy_start.dot(b_xy_start) - pow(total_radius,2.0);
+//      if (max_movement_vertices <= min_move_vert)
+//      {
+//        break;
+//      }
 
-  // if there are no solutions, there are no intersections
-  double det = pow(bcoeff,2.0) - 4 * acoeff * ccoeff;
-  if(det <= 0) {
-    return 0;
-  }
+//      max_movement_vertices = max_movement_vertices / 2.0;
+//    } else {
+//      max_movement_vertices = min(max_movement_vertices*2.0, max_move_vert);
+//      //max_movement_vertices = max_move_vert;
+//    }
 
-  // no intersections if t isn't in range [0,1], since we only care about line segment between points
-  double t1 = (-bcoeff + sqrt(det))/(2.0 * acoeff);
-  double t2 = (-bcoeff - sqrt(det))/(2.0 * acoeff);
-  if((t1 > 1.0 && t2 > 1.0) || (t1 < 0.0 && t2 < 0.0)) {
-    return 0;
-  }
-
-  //if we have an intersection point, ensure, it's within this z
-  double z1 = (b_start + t1*(b_end - b_start))[2];
-  double z2 = (b_start + t2*(b_end - b_start))[2];  
-  if((z1 < -INTERSECTION_HEIGHT_FACTOR && z2 < -INTERSECTION_HEIGHT_FACTOR) || 
-      (z1 >  a_end[2] + INTERSECTION_HEIGHT_FACTOR && z2 > a_end[2] + INTERSECTION_HEIGHT_FACTOR))
-  {
-    return 0;
-  } 
-
-
-  // we have intersection
-  
-//  if(trivial_reject) {
-//    cout << "---------------------------BAD: trivial reject, but actually intersection" << endl;
-//    cout << "t1, t2, z1, z2: " << t1 << " " << t2 << " " << z1 << " " << z2 << endl;
-//    cout << "Trivial reject distance: " << edgeLen / 2.0 + r*r << " edgeLen, r " << edgeLen << " " << r << endl; 
-//    cout << "a_end[2]: " << a_end[2] << endl;
-//    cout << "distb_start, distb_end: " << distb_start << " " << distb_end << endl;
-//    // return true;
 //  }
 
-  // return distance
-  //double min_t = - b_xy_start.dot(b_xy_edge) / b_xy_edge.dot(b_xy_edge);
-  double min_t = (t1+t2)/2.0;
-  double dist = sqrt((b_xy_start + b_xy_edge * min_t).dot(b_xy_start + b_xy_edge * min_t));
+//  curr_energy = calculate_energy();
 
-  return total_radius - dist;
+//  project_length_constraint();
+//  //minimize_energy_twist_angles();
 
+//  next_energy = calculate_energy();
 
-
-  //////cout << "bs, be, ae: " << bs << endl << endl << 
-
-}
-
-//Based on http://softsurfer.com/Archive/algorithm_0106/algorithm_0106.htm
-double Thread::intersection_experimental(const Vector3d& a_start_in, const Vector3d& a_end_in, const double a_radius, 
-														const Vector3d& b_start_in, const Vector3d& b_end_in, const double b_radius)
-{
-	Vector3d u = a_end_in - a_start_in;
-	Vector3d v = b_end_in - b_start_in;
-	bool trivial_reject = false;
-	  
-	Vector3d a_mid = (a_start_in + a_end_in)/2.0;
-	double a_squared_norm = u.squaredNorm();
-	double b_squared_norm = v.squaredNorm();
-  double edgeLen = max(a_squared_norm, b_squared_norm);
-  edgeLen = sqrt(edgeLen) * INTERSECTION_EDGE_LENGTH_FACTOR;
-  //check distance to b_start and b_end
-  double distb_start_squared = (b_start_in - a_mid).squaredNorm();
-  double distb_end_squared = (b_end_in - a_mid).squaredNorm();
-  double compare = pow(edgeLen / 2.0 + a_radius + b_radius, 2);
-  if((distb_start_squared > compare) && (distb_end_squared > compare)) {
-    // cout << "false (trivial rejected)" << endl;
-    trivial_reject = true;
-    return 0;
-  }
-  
-  // check if z values of b allow for trivial rejection (both points far enough away)
-	Vector3d a_dir = INTERSECTION_HEIGHT_FACTOR * u.normalized();
-	Vector3d a_end_free 	= a_end_in 	 + INTERSECTION_HEIGHT_FACTOR * a_dir;
-	Vector3d a_start_free = a_start_in - INTERSECTION_HEIGHT_FACTOR * a_dir;
-	if(((b_start_in[0] > a_end_free[0]) && (b_end_in[0] > a_end_free[0]) &&
-		 	(b_start_in[1] > a_end_free[1]) && (b_end_in[1] > a_end_free[1]) &&
-		 	(b_start_in[2] > a_end_free[2]) && (b_end_in[2] > a_end_free[2])) ||
-		 ((b_start_in[0] > a_start_free[0]) && (b_end_in[0] > a_start_free[0]) &&
-		 	(b_start_in[1] > a_start_free[1]) && (b_end_in[1] > a_start_free[1]) &&
-		 	(b_start_in[2] > a_start_free[2]) && (b_end_in[2] > a_start_free[2]))) {
-		return 0;
-	}
-
-	// Line parametrization
-	// L1 : P(s) = a_start_in + s * (a_end_in - a_start_in) = a_start_in + s * u
-	// L2 : Q(t) = b_start_in + t * (b_end_in - b_start_in) = b_start_in + t * v
-	//Vector3d u = a_end_in - a_start_in;
-	//Vector3d v = b_end_in - b_start_in;
-	Vector3d w = a_start_in - b_start_in;
-	double a = u.dot(u);        // always >= 0
-	double b = u.dot(v);
-	double c = v.dot(v);        // always >= 0
-	double d = u.dot(w);
-	double e = v.dot(w);
-	double D = a*c-b*b;       	// always >= 0
-	double sc, sN, sD = D;      // sc = sN / sD, default sD = D >= 0
-	double tc, tN, tD = D;      // tc = tN / tD, default tD = D >= 0
-
-  // compute the line parameters of the two closest points
-  if (D < INTERSECTION_PARALLEL_CHECK_FACTOR) { 			// the lines are almost parallel
-    sN = 0.0;       				// force using point P0 on segment S1
-    sD = 1.0;       				// to prevent possible division by 0.0 later
-    tN = e;
-    tD = c;
-  } else {                	// get the closest points on the infinite lines
-    sN = (b*e - c*d);
-    tN = (a*e - b*d);
-    if (sN < 0.0) {       	// sc < 0 => the s=0 edge is visible
-      sN = 0.0;
-      tN = e;
-      tD = c;
-    } else if (sN > sD) { 	// sc > 1 => the s=1 edge is visible
-      sN = sD;
-      tN = e + b;
-      tD = c;
-    }
-  }
-
-  if (tN < 0.0) {           // tc < 0 => the t=0 edge is visible
-    tN = 0.0;
-    // recompute sc for this edge
-    if (-d < 0.0)
-      sN = 0.0;
-    else if (-d > a)
-      sN = sD;
-    else {
-		  sN = -d;
-		  sD = a;
-    }
-  } else if (tN > tD) {      // tc > 1 => the t=1 edge is visible
-    tN = tD;
-    // recompute sc for this edge
-    if ((-d + b) < 0.0)
-      sN = 0.0;
-    else if ((-d + b) > a)
-      sN = sD;
-    else {
-      sN = (-d + b);
-      sD = a;
-    }
-  }
-  // finally do the division to get sc and tc
-  sc = (abs(sN) < INTERSECTION_PARALLEL_CHECK_FACTOR ? 0.0 : sN / sD);
-  tc = (abs(tN) < INTERSECTION_PARALLEL_CHECK_FACTOR ? 0.0 : tN / tD);
-
-  // get the difference of the two closest points
-  double dist = (w + (sc * u) - (tc * v)).norm();  // = S1(sc) - S2(tc)
-
-  return max(0.0, a_radius + b_radius - dist);   // return the overlapping distance
-}
-
-void Thread::minimize_energy_hessian(int num_opt_iters, double min_move_vert, double max_move_vert, double energy_error_for_convergence) 
-{
-  double max_movement_vertices = max_move_vert;
-  project_length_constraint();
-  bool recalc_vertex_grad = true;
-
-  double curr_energy = calculate_energy();
-  double next_energy = 0.0;
-
-  int opt_iter;
-  MatrixXd Hessian(3*(int)_thread_pieces.size(), 3*(int)_thread_pieces.size());
-  VectorXd Gradients(3*(int)_thread_pieces.size());
-  VectorXd offsets_vectorized(3*(int)_thread_pieces.size());
-  vector<Vector3d> offsets(_thread_pieces.size());
-  Gradients.setZero();
-  for (opt_iter = 0; opt_iter < num_opt_iters; opt_iter++)
-  {
-    double curr_energy = calculate_energy();
-    double next_energy = 0.0;
-
-    if (recalc_vertex_grad)
-    {
-      save_thread_pieces();
-      calculate_hessian_vertices(Hessian);
-      calculate_gradient_vertices_vectorized(&Gradients);
-      curr_energy = calculate_energy();
-    }
-    
-
-    //std::cout << "hessian:\n" << Inv_Hessian << "\nGrads:\n" << Gradients << std::endl;
-
-
-
-    Hessian.lu().solve(Gradients, &offsets_vectorized);
-    //offsets_vectorized = Inv_Hessian*Gradients;
-    //std::cout << "wanted step: " << offsets_vectorized.transpose() << std::endl;
-    for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
-    {
-      offsets[piece_ind] = offsets_vectorized.segment<3>(3*piece_ind);
-    }
-    make_max_norm_one(offsets);
-
-//    apply_vertex_offsets_vectorized(-max_movement_vertices*Inv_Hessian*Gradients, true);
-    apply_vertex_offsets(offsets, true, -max_movement_vertices);
-      
-    double energy_before_projection = calculate_energy();
-    project_length_constraint();
-
-
-    next_energy = calculate_energy();
-
-
-    std::cout << "curr energy: " << curr_energy << "   next energy: " << next_energy << "  before projection: " << energy_before_projection << "  last step: " << max_movement_vertices <<  std::endl;
-
-    recalc_vertex_grad = true;
-    if (next_energy + energy_error_for_convergence > curr_energy)
-    {
-      if (next_energy >= curr_energy) {
-        restore_thread_pieces();
-        recalc_vertex_grad = false;
-      }
-
-      if (max_movement_vertices <= min_move_vert)
-      {
-        break;
-      }
-
-      max_movement_vertices = max_movement_vertices / 2.0;
-    } else {
-      max_movement_vertices = min(max_movement_vertices*2.0, max_move_vert);
-      //max_movement_vertices = max_move_vert;
-    }
-
-  }
-
-  curr_energy = calculate_energy();
-
-  project_length_constraint();
-  //minimize_energy_twist_angles();
-
-  next_energy = calculate_energy();
-
-  //std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
-}
+//  //std::cout << "num iters: " << opt_iter << " curr energy final: " << curr_energy << "   next energy final: " << next_energy <<  std::endl;
+//}
 
 
 
@@ -1208,14 +1664,16 @@ double Thread::one_step_grad_change(double step_size)
 void Thread::minimize_energy_twist_angles()
 {
 #ifdef ISOTROPIC
-  double angle_per = (_thread_pieces[_thread_pieces.size()-2]->angle_twist())/((double)_thread_pieces.size()-2);
-
+  double accum_rest_length = rest_length_at_ind(0);
+  double angle_per_length = end_angle() / (_total_length - end_rest_length());
+  
   //#pragma omp parallel for num_threads(NUM_THREADS_PARALLEL_FOR)
   for (int piece_ind = 1; piece_ind < _thread_pieces.size()-2; piece_ind++)
-  {
-    _thread_pieces[piece_ind]->set_angle_twist(angle_per*piece_ind);
+ 	{
+ 		_thread_pieces[piece_ind]->set_angle_twist(angle_per_length*accum_rest_length);
     _thread_pieces[piece_ind]->updateFrames_twistOnly();
-  }
+ 		accum_rest_length += rest_length_at_ind(piece_ind);
+ 	}
 
 #else
   double step_in_grad_dir_twist = 1.0;
@@ -1517,10 +1975,9 @@ void Thread::calculate_gradient_vertices_vectorized(VectorXd* gradient) {
   }
 }
 
-
 void Thread::calculate_gradient_vertices(vector<Vector3d>& vertex_gradients)
 {
-  //#pragma omp parallel for num_threads(NUM_THREADS_PARALLEL_FOR)
+  //#pragma omp parallel for num_threads(NUM_CPU_THREADS)
   for (int piece_ind = 2; piece_ind < _thread_pieces.size()-2; piece_ind++)
   {
     //_thread_pieces[piece_ind]->gradient_vertex_numeric(vertex_gradients[piece_ind]);
@@ -1529,114 +1986,171 @@ void Thread::calculate_gradient_vertices(vector<Vector3d>& vertex_gradients)
     //std::cout << "piece ind " << piece_ind << " new grad: " << vertex_gradients[piece_ind].transpose() << std::endl;
 
   }
+
+  if (REPULSION_COEFF>0) {
+  	updateCollisionObjectsTransform();
+  	if (world->collision_world != NULL) {
+			world->collision_world->performDiscreteCollisionDetection();
+			world->collision_world->totalRepulsionEnergyGradient(this, vertex_gradients);
+  	}
+  }
+//	  Vector3d direction;
+
+//	  //self repulsion
+//		for(int i = 0; i < _thread_pieces.size() - 3; i++) {
+//			//+2 so you don't check the adjacent piece - bug?
+//			for(int j = i + 2; j <= _thread_pieces.size() - 2; j++) { //check. it was < instead of <=
+//			  //skip if both ends, since these are constraints
+//			  if(i == 0 && j == _thread_pieces.size() - 2) 
+//			    continue;
+//			  const double dist = self_intersection(i,j,THREAD_RADIUS,direction);
+//				const Vector3d grad = repulsionEnergyGradient(dist, THREAD_RADIUS, direction);
+//				vertex_gradients[i] -= grad;
+//				vertex_gradients[i+1] -= grad;
+//				vertex_gradients[j] += grad;
+//				vertex_gradients[j+1] += grad;
+//			}
+//		}
+
+//		//repulsions between threads
+//		for (int k=0; k < threads_in_env.size(); k++) {
+//			for(int i = 0; i < _thread_pieces.size()-1; i++) {
+//				for(int j = 0; j < threads_in_env[k]->_thread_pieces.size()-1; j++) {
+//				  //skip if both ends, since these are constraints
+//				  if((i==0 && j==0) ||
+//				  	 (i==0 && j==threads_in_env[k]->_thread_pieces.size()-2) ||
+//				  	 (i==_thread_pieces.size()-2 && j==0) ||
+//				  	 (i==_thread_pieces.size()-2 && j==threads_in_env[k]->_thread_pieces.size()-2))
+//				    continue;
+//				  const double dist = thread_intersection(i,j,k,THREAD_RADIUS,direction);		//asumes other threads have same radius
+//				  const Vector3d grad = repulsionEnergyGradient(dist, THREAD_RADIUS, direction);
+//				  if (j == 0 || j==threads_in_env[k]->_thread_pieces.size()-2) {
+//				  	vertex_gradients[i] -= 2*grad;
+//						vertex_gradients[i+1] -= 2*grad;
+//					} else {
+//						vertex_gradients[i] -= grad;
+//						vertex_gradients[i+1] -= grad;
+//					}
+//				}
+//			}
+//		}
+//		
+//		//object repulsions
+//		if (world != NULL)
+//			for(int i = 2; i < _thread_pieces.size() - 3; i++) {
+//				Vector3d grad = Vector3d::Zero();
+//				world->capsuleObjectRepulsionEnergyGradient(_thread_pieces[i]->vertex(), _thread_pieces[i+1]->vertex(), THREAD_RADIUS, grad);
+//				vertex_gradients[i] += grad;
+//				vertex_gradients[i+1] += grad;
+//			}
+//	}
+  
 }
 
+//void Thread::calculate_hessian_vertices(MatrixXd& hessian)
+//{
+//  //ignore first and last 2 pieces
+//  hessian.setZero();
+//  const double eps = 1e-3;
+//  Vector3d grad_offets[3];
+//  grad_offsets[0] = Vector3d(eps, 0, 0);
+//  grad_offsets[1] = Vector3d(0, eps, 0);
+//  grad_offsets[2] = Vector3d(0, 0, eps);
 
-void Thread::calculate_hessian_vertices(MatrixXd& hessian)
-{
-  //ignore first and last 2 pieces
-  hessian.setZero();
-  const double eps = 1e-3;
-  Vector3d grad_offets[3];
-  grad_offsets[0] = Vector3d(eps, 0, 0);
-  grad_offsets[1] = Vector3d(0, eps, 0);
-  grad_offsets[2] = Vector3d(0, 0, eps);
+//  Vector3d gradient;
+//  //vector<ThreadPiece*> backup_pieces;
+//  for (int r=2; r < _thread_pieces.size()-2; r++)
+//  {
+//    int r_ind = r-2;
+//    for (int grad_ind = 0; grad_ind < 3; grad_ind++)
+//    {
+//      //save_thread_pieces_and_resize(backup_pieces);
+//      _thread_pieces[r]->offset_and_update(grad_offsets[grad_ind]);
+//      for (int c=max(2,r-2); c < min((int)_thread_pieces.size()-2,r+3); c++)
+//      {
+//        int c_ind = c-2;
+//        _thread_pieces[c]->gradient_vertex(gradient);
+//        hessian.block(6+3*r_ind+grad_ind ,3*c_ind+6,1,3) = gradient.transpose();
+//      }
 
-  Vector3d gradient;
-  //vector<ThreadPiece*> backup_pieces;
-  for (int r=2; r < _thread_pieces.size()-2; r++)
-  {
-    int r_ind = r-2;
-    for (int grad_ind = 0; grad_ind < 3; grad_ind++)
-    {
-      //save_thread_pieces_and_resize(backup_pieces);
-      _thread_pieces[r]->offset_and_update(grad_offsets[grad_ind]);
-      for (int c=max(2,r-2); c < min((int)_thread_pieces.size()-2,r+3); c++)
-      {
-        int c_ind = c-2;
-        _thread_pieces[c]->gradient_vertex(gradient);
-        hessian.block(6+3*r_ind+grad_ind ,3*c_ind+6,1,3) = gradient.transpose();
-      }
+//      //restore_thread_pieces(backup_pieces);
+//      _thread_pieces[r]->offset_and_update(-2.0*grad_offsets[grad_ind]);
 
-      //restore_thread_pieces(backup_pieces);
-      _thread_pieces[r]->offset_and_update(-2.0*grad_offsets[grad_ind]);
-
-      for (int c=max(2,r-2); c < min((int)_thread_pieces.size()-2,r+3); c++)
-      {
-        int c_ind = c-2;
-        _thread_pieces[c]->gradient_vertex(gradient);
-        hessian.block(6+3*r_ind+grad_ind, 3*c_ind+6,1,3) -= gradient.transpose();
-        hessian.block(6+3*r_ind+grad_ind, 3*c_ind+6,1,3) /= 2.0*eps;
-      }
-      _thread_pieces[r]->offset_and_update(grad_offsets[grad_ind]);
-      //restore_thread_pieces_and_resize(backup_pieces);
-    } 
-  }
-
+//      for (int c=max(2,r-2); c < min((int)_thread_pieces.size()-2,r+3); c++)
+//      {
+//        int c_ind = c-2;
+//        _thread_pieces[c]->gradient_vertex(gradient);
+//        hessian.block(6+3*r_ind+grad_ind, 3*c_ind+6,1,3) -= gradient.transpose();
+//        hessian.block(6+3*r_ind+grad_ind, 3*c_ind+6,1,3) /= 2.0*eps;
+//      }
+//      _thread_pieces[r]->offset_and_update(grad_offsets[grad_ind]);
+//      //restore_thread_pieces_and_resize(backup_pieces);
+//    } 
+//  }
 
 
-  MatrixXd check_transposes(hessian.cols(), hessian.rows());
-  for (int r=0; r < hessian.rows(); r++)
-  {
-    for (int c=0; c < hessian.cols(); c++)
-    {
-      if (abs(hessian(r,c) - hessian(c,r)) < 1e-2)
-        check_transposes(r,c) = 0;
-      else
-        check_transposes(r,c) = (abs(hessian(r,c) - hessian(c,r)));
 
-      
-      if (abs(hessian(r,c)) < 1e-5)
-        hessian(r,c) = 0;
-    }
+//  MatrixXd check_transposes(hessian.cols(), hessian.rows());
+//  for (int r=0; r < hessian.rows(); r++)
+//  {
+//    for (int c=0; c < hessian.cols(); c++)
+//    {
+//      if (abs(hessian(r,c) - hessian(c,r)) < 1e-2)
+//        check_transposes(r,c) = 0;
+//      else
+//        check_transposes(r,c) = (abs(hessian(r,c) - hessian(c,r)));
 
-  }
-/*
-  //calculate pseudoinverse with svd
-  Eigen::SVD<Eigen::MatrixXd> hessian_svd;
-  hessian_svd.compute(hessian);
+//      
+//      if (abs(hessian(r,c)) < 1e-5)
+//        hessian(r,c) = 0;
+//    }
 
-
-  MatrixXd sing_vals_mat(hessian_svd.singularValues().rows(), hessian_svd.singularValues().rows());
-  sing_vals_mat.setZero();
-  for (int i=0; i < hessian_svd.singularValues().rows(); i++)
-  {
-    if (hessian_svd.singularValues()(i) != 0)
-      sing_vals_mat(i,i) = 1.0/(hessian_svd.singularValues()(i));
-  }
-  inv_hessian.block(6,6,hessian.cols(), hessian.rows()) = hessian_svd.matrixV()*sing_vals_mat*hessian_svd.matrixU().transpose();
-  //inv_hessian.block(6,6,hessian.cols(), hessian.rows()) = hessian;
-
-  MatrixXd hess_times_inv(hessian.rows(), hessian.cols());
-  hess_times_inv = hessian*inv_hessian.block(6,6,hessian.cols(),hessian.rows());
-  MatrixXd inv_times_hess(hessian.rows(), hessian.cols());
-  inv_times_hess = inv_hessian.block(6,6,hessian.cols(),hessian.rows())*hessian;
-
-  for (int r=0; r < hessian.rows(); r++)
-  {
-    for (int c=0; c < hessian.cols(); c++)
-    {
-      if (abs(hess_times_inv(r,c)) < 1e-4)
-        hess_times_inv(r,c) = 0;
-
-      if (abs(inv_times_hess(r,c)) < 1e-4)
-        inv_times_hess(r,c) = 0;
-    }
-  }
-  */
- 
-  //skip first 2 pieces
-  //inv_hessian.block(6,6,hessian.cols(), hessian.rows()) = hessian.inverse();
-  //std::cout << hessian << "\n\n\n";
-  //std::cout << hessian_svd.matrixU()*sing_vals_mat*hessian_svd.matrixV().transpose() << "\n\n\n";
-  //std::cout << check_transposes << "\n\n\n";
-  //std::cout << inv_hessian.block(6,6,hessian.rows(), hessian.cols()) << "\n\n\n";
-  //std::cout << hess_times_inv << "\n\n\n";
-  //std::cout << inv_times_hess << "\n\n\n";
-  //exit(0);
+//  }
+///*
+//  //calculate pseudoinverse with svd
+//  Eigen::SVD<Eigen::MatrixXd> hessian_svd;
+//  hessian_svd.compute(hessian);
 
 
-}
+//  MatrixXd sing_vals_mat(hessian_svd.singularValues().rows(), hessian_svd.singularValues().rows());
+//  sing_vals_mat.setZero();
+//  for (int i=0; i < hessian_svd.singularValues().rows(); i++)
+//  {
+//    if (hessian_svd.singularValues()(i) != 0)
+//      sing_vals_mat(i,i) = 1.0/(hessian_svd.singularValues()(i));
+//  }
+//  inv_hessian.block(6,6,hessian.cols(), hessian.rows()) = hessian_svd.matrixV()*sing_vals_mat*hessian_svd.matrixU().transpose();
+//  //inv_hessian.block(6,6,hessian.cols(), hessian.rows()) = hessian;
+
+//  MatrixXd hess_times_inv(hessian.rows(), hessian.cols());
+//  hess_times_inv = hessian*inv_hessian.block(6,6,hessian.cols(),hessian.rows());
+//  MatrixXd inv_times_hess(hessian.rows(), hessian.cols());
+//  inv_times_hess = inv_hessian.block(6,6,hessian.cols(),hessian.rows())*hessian;
+
+//  for (int r=0; r < hessian.rows(); r++)
+//  {
+//    for (int c=0; c < hessian.cols(); c++)
+//    {
+//      if (abs(hess_times_inv(r,c)) < 1e-4)
+//        hess_times_inv(r,c) = 0;
+
+//      if (abs(inv_times_hess(r,c)) < 1e-4)
+//        inv_times_hess(r,c) = 0;
+//    }
+//  }
+//  */
+// 
+//  //skip first 2 pieces
+//  //inv_hessian.block(6,6,hessian.cols(), hessian.rows()) = hessian.inverse();
+//  //std::cout << hessian << "\n\n\n";
+//  //std::cout << hessian_svd.matrixU()*sing_vals_mat*hessian_svd.matrixV().transpose() << "\n\n\n";
+//  //std::cout << check_transposes << "\n\n\n";
+//  //std::cout << inv_hessian.block(6,6,hessian.rows(), hessian.cols()) << "\n\n\n";
+//  //std::cout << hess_times_inv << "\n\n\n";
+//  //std::cout << inv_times_hess << "\n\n\n";
+//  //exit(0);
+
+//}
 
 void Thread::make_max_norm_one(vector<Vector3d>& to_normalize)
 {
@@ -1689,7 +2203,7 @@ void Thread::calculate_gradient_twist(vector<double>& angle_twist_gradients)
 
 }
 
-void Thread::project_length_constraint_old()
+/*void Thread::project_length_constraint_old()
 {
   const int num_iters_project = 5000;
   const double projection_scale_factor = 0.75;
@@ -1728,7 +2242,7 @@ void Thread::project_length_constraint_old()
     edge_norm = curr_edge.norm();
     vertex_offsets[_thread_pieces.size()-3] += (curr_edge/edge_norm)*((edge_norm - _rest_length));
     projected_enough &= (abs(edge_norm-_rest_length) < max_norm_to_break);
-    /*
+*//*
 
     Vector3d edge_before = _thread_pieces[2]->vertex() - _thread_pieces[1]->vertex();
     double edge_before_norm = edge_before.norm();
@@ -1741,7 +2255,7 @@ void Thread::project_length_constraint_old()
     edge_before = _thread_pieces[_thread_pieces.size()-3]->vertex() - _thread_pieces[_thread_pieces.size()-4].vertex();
     edge_before_norm = edge_before.norm();
     edge_after = _thread_pieces[_thread_pieces.size()-3]->vertex() - _thread_pieces[_thread_pieces.size()-2]->vertex();
-    edge_after_norm = edge_after.norm();
+    edge_after_norm = edge_after.norm();;
     vertex_offsets[_thread_pieces.size()-3] = 0.5*(edge_before/edge_before_norm)*(_rest_length-edge_before_norm) + (edge_after/edge_after_norm) * (_rest_length-edge_after_norm);
 
     //projected_enough &= abs(edge_after_norm-_rest_length) < max_norm_to_break;
@@ -1759,12 +2273,12 @@ void Thread::project_length_constraint_old()
         projected_enough = false;
     }
 
-*/
- /*     if (vertex_offsets[_thread_pieces.size()-3].norm() > 3)
+*//*     
+			if (vertex_offsets[_thread_pieces.size()-3].norm() > 3)
       {
         std::cout << "iter " << iter_num << "piece " << (_thread_pieces.size()-3) << " projection offset big " << vertex_offsets[_thread_pieces.size()-3]<< std::endl;
       }
-      */
+      *//*
     //apply the actual offsets
     apply_vertex_offsets(vertex_offsets, true, projection_scale_factor, iter_num == (num_iters_project-1) || projected_enough);
 
@@ -1776,7 +2290,7 @@ void Thread::project_length_constraint_old()
 
   //std::cout << "num projs: " << iter_num << std::endl;
 
-}
+}*/
 
 
 //this function might introduce intersections. fix_intersections should be called (with caution) afterwards. 
@@ -1789,18 +2303,18 @@ bool Thread::project_length_constraint(int recursive_depth)
 
   const int num_iters_project = 50;
   const double projection_scale_factor = 1.0;
-  const double max_norm_to_break = 1e-5;
+  const double max_norm_to_break = DEFAULT_REST_LENGTH * 1e-2; //1e-5;
 
 
   //quick check to see if we can avoid calling this function
   bool all_norms_within_thresh = true;
   for (int piece_ind = 0; piece_ind < _thread_pieces.size()-1; piece_ind++)
   {
-    all_norms_within_thresh &= abs(_thread_pieces[piece_ind]->edge_norm() - _rest_length) < max_norm_to_break;
+    all_norms_within_thresh &= abs(_thread_pieces[piece_ind]->edge_norm() - _thread_pieces[piece_ind]->rest_length()) < max_norm_to_break;
   }
   if (all_norms_within_thresh)
     return true;
-
+	  
   // set up the augmented lagrangian system: need C, grad C, mass mat.
   // y is the coordinates of all vertices
   // dy is what we are solving for
@@ -1832,7 +2346,7 @@ bool Thread::project_length_constraint(int recursive_depth)
       next_point = _thread_pieces[i+2]->vertex();
       cur_point = _thread_pieces[i+1]->vertex();
 
-      C[i] = (next_point - cur_point).squaredNorm() - _rest_length*_rest_length;
+      C[i] = (next_point - cur_point).squaredNorm() - pow(_thread_pieces[i+1]->rest_length(),2);
     }
 
     gradC.block<1,3>(0,0)         = (_thread_pieces[2]->vertex() - _thread_pieces[1]->vertex())*2;
@@ -1848,7 +2362,7 @@ bool Thread::project_length_constraint(int recursive_depth)
     // VectorXd dy = -gradC.transpose()*dl;
 
     //gradC*gradC.transpose();
-    (gradC*gradC.transpose()).llt().solveInPlace(C);
+    (gradC*gradC.transpose()).ldlt().solveInPlace(C);
     dy = -gradC.transpose()*C;
 
     for(int i = 2; i < N-2; i++) {
@@ -1922,7 +2436,7 @@ bool Thread::project_length_constraint(int recursive_depth)
 
 }
 
-void Thread::project_length_constraint_slow()
+/*void Thread::project_length_constraint_slow()
 {
   const int num_iters_project = 900000;
   const double projection_scale_factor = 0.33;
@@ -1961,7 +2475,7 @@ void Thread::project_length_constraint_slow()
     edge_norm = curr_edge.norm();
     vertex_offsets[_thread_pieces.size()-3] += (curr_edge/edge_norm)*((edge_norm - _rest_length));
     projected_enough &= (abs(edge_norm-_rest_length) < max_norm_to_break);
-    /*
+    *//*
 
     Vector3d edge_before = _thread_pieces[2]->vertex() - _thread_pieces[1]->vertex();
     double edge_before_norm = edge_before.norm();
@@ -1997,7 +2511,7 @@ void Thread::project_length_constraint_slow()
       {
         std::cout << "iter " << iter_num << "piece " << (_thread_pieces.size()-3) << " projection offset big " << vertex_offsets[_thread_pieces.size()-3]<< std::endl;
       }
-      */
+      *//*
     //apply the actual offsets
     apply_vertex_offsets(vertex_offsets, true, projection_scale_factor, iter_num == (num_iters_project-1) || projected_enough);
 
@@ -2009,13 +2523,30 @@ void Thread::project_length_constraint_slow()
 
   //std::cout << "num projs: " << iter_num << std::endl;
 
-}
+}*/
 
 
 void Thread::apply_vertex_offsets(vector<Vector3d>& offsets, bool skip_edge_cases, double step_size, bool update_frames)
 {
-
-//std::cout << "last angle before: " << _thread_pieces[_thread_pieces.size()-2]->angle_twist() << std::endl;
+	double max_move = 0;
+	bool move_too_far = false;
+  for(int i = 2; i < offsets.size() - 2; i++) {
+    if(step_size*offsets[i].norm() > MAX_MOVEMENT_VERTICES) {
+      //cout << "MOVED MORE THAN MAX_MOVE_VERTICES IN PROJECT_LENGTH CONSTRAINTS, CANNOT GUARUNTEE LACK OF SELF INTERSECTION)" << endl;
+      //cout << "vertex " << i << "moved: " << offsets[i].norm() << " vector3d " << offsets[i] << endl;
+      move_too_far = true;
+      if(offsets[i].norm() > max_move) max_move = offsets[i].norm();
+      }
+  }
+	
+	if(move_too_far) {
+    for(int i = 2; i < offsets.size()-2; i++) {
+	    offsets[i] = offsets[i] * MAX_MOVEMENT_VERTICES / (max_move*step_size);
+    }
+		//cout << "offset vertex is offseting by more than max_movement_vertices" << endl;
+	}
+	
+	//std::cout << "last angle before: " << _thread_pieces[_thread_pieces.size()-2]->angle_twist() << std::endl;
   if (!skip_edge_cases)
   {
     _thread_pieces[0]->offset_vertex(step_size*offsets[0]);
@@ -2111,83 +2642,86 @@ void Thread::save_angle_twist_changes(vector<double>& start_angles, vector<doubl
 
 void Thread::save_thread_pieces()
 {
+  assert(_thread_pieces_backup.size() == _thread_pieces.size());
   for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
     _thread_pieces_backup[piece_ind]->copyData(*_thread_pieces[piece_ind]);
   }
-
 }
 
 void Thread::restore_thread_pieces()
 {
+  assert(_thread_pieces_backup.size() == _thread_pieces.size());
   for (int piece_ind=0; piece_ind < _thread_pieces_backup.size(); piece_ind++)
   {
     _thread_pieces[piece_ind]->copyData(*_thread_pieces_backup[piece_ind]);
+    _thread_pieces_backup[piece_ind]->_col_obj = NULL;
   }
 }
 
-
 void Thread::save_thread_pieces(vector<ThreadPiece*>& to_save)
 {
+  assert(to_save.size() == _thread_pieces.size());
   for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
     to_save[piece_ind]->copyData(*_thread_pieces[piece_ind]);
   }
-
-}
-
-void Thread::save_thread_pieces_and_resize(vector<ThreadPiece*>& to_save)
-{
-  while (to_save.size() < _thread_pieces.size())
-  {
-    to_save.push_back(new ThreadPiece());
-  }
-
-  for (int i = to_save.size()-1; i >= (int)_thread_pieces.size(); i--)
-  {
-    delete to_save[i];
-    to_save.pop_back();
-  }
-  
-  save_thread_pieces(to_save);
-
 }
 
 void Thread::restore_thread_pieces(vector<ThreadPiece*>& to_restore)
 {
+  assert(to_restore.size() == _thread_pieces.size());
   for (int piece_ind=0; piece_ind < to_restore.size(); piece_ind++)
   {
     _thread_pieces[piece_ind]->copyData(*to_restore[piece_ind]);
+    to_restore[piece_ind]->_col_obj = NULL;
   }
-  for (int piece_ind=to_restore.size()-1; piece_ind >= 0; piece_ind--)
-  {
-      delete to_restore[piece_ind];
-      to_restore.pop_back();
-  }
+//  for (int piece_ind=to_restore.size()-1; piece_ind >= 0; piece_ind--)
+//  {
+//      delete to_restore[piece_ind];
+//      to_restore.pop_back();
+//  }
 }
 
-void Thread::restore_thread_pieces_and_resize(vector<ThreadPiece*>& to_restore)
-{
-  while (_thread_pieces.size() < to_restore.size())
-  {
-    _thread_pieces.push_back(new ThreadPiece());
-    _thread_pieces_backup.push_back(new ThreadPiece());
-  }
+//void Thread::save_thread_pieces_and_resize(vector<ThreadPiece*>& to_save)
+//{
+//  while (to_save.size() < _thread_pieces.size())
+//  {
+//    to_save.push_back(new ThreadPiece());
+//  }
 
-  for (int i = _thread_pieces.size()-1; i >= (int)to_restore.size(); i--)
-  {
-    delete _thread_pieces[i];
-    delete _thread_pieces_backup[i];
-    _thread_pieces.pop_back();
-    _thread_pieces_backup.pop_back();
-  }
-  
-  set_prev_next_pointers(_thread_pieces);
-  set_prev_next_pointers(_thread_pieces_backup);
+//  for (int i = to_save.size()-1; i >= (int)_thread_pieces.size(); i--)
+//  {
+//    delete to_save[i];
+//    to_save.pop_back();
+//  }
+//  
+//  save_thread_pieces(to_save);
 
-  restore_thread_pieces(to_restore);
+//}
 
-}
+//void Thread::restore_thread_pieces_and_resize(vector<ThreadPiece*>& to_restore)
+//{
+//  while (_thread_pieces.size() < to_restore.size())
+//  {
+//    _thread_pieces.push_back(new ThreadPiece());
+//    _thread_pieces_backup.push_back(new ThreadPiece());
+//  }
+
+//  for (int i = _thread_pieces.size()-1; i >= (int)to_restore.size(); i--)
+//  {
+//    delete _thread_pieces[i];
+//    delete _thread_pieces_backup[i];
+//    _thread_pieces.pop_back();
+//    _thread_pieces_backup.pop_back();
+//  }
+//  
+//  set_prev_next_pointers(_thread_pieces);
+//  set_prev_next_pointers(_thread_pieces_backup);
+
+//  restore_thread_pieces(to_restore);
+
+//}
 
 void Thread::set_prev_next_pointers(vector<ThreadPiece*> pieces)
 {
@@ -2244,6 +2778,29 @@ void Thread::get_thread_data(vector<Vector3d>& points, vector<double>& twist_ang
     points[piece_ind] = _thread_pieces[piece_ind]->vertex();
     twist_angles[piece_ind] = _thread_pieces[piece_ind]->angle_twist();
   }
+#ifdef ISOTROPIC
+  twist_angles.back() = twist_angles[twist_angles.size()-2] * (_total_length/(_total_length-end_rest_length()));
+#else
+	cout << "Internal error: Thread::get_thread_data() : wrong end twist angle for anisotropic case." << endl;
+#endif
+}
+
+void Thread::get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<double>& rest_lengths)
+{
+  points.resize(_thread_pieces.size());
+  twist_angles.resize(_thread_pieces.size());
+  rest_lengths.resize(_thread_pieces.size());
+  for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
+  {
+    points[piece_ind] = _thread_pieces[piece_ind]->vertex();
+    twist_angles[piece_ind] = _thread_pieces[piece_ind]->angle_twist();
+    rest_lengths[piece_ind] = _thread_pieces[piece_ind]->rest_length();
+  }
+#ifdef ISOTROPIC
+  twist_angles.back() = twist_angles[twist_angles.size()-2] * (_total_length/(_total_length-end_rest_length()));
+#else
+	cout << "Internal error: Thread::get_thread_data() : wrong end twist angle for anisotropic case." << endl;
+#endif
 }
 
 void Thread::get_thread_data(vector<Vector3d>& points, vector<Matrix3d>& material_frames)
@@ -2276,6 +2833,22 @@ void Thread::get_thread_data(vector<Vector3d>& points, vector<double>& twist_ang
     points[piece_ind] = _thread_pieces[piece_ind]->vertex();
     twist_angles[piece_ind] = _thread_pieces[piece_ind]->angle_twist();
     material_frames[piece_ind] = _thread_pieces[piece_ind]->material_frame();
+  }
+#ifdef ISOTROPIC
+  twist_angles.back() = twist_angles[twist_angles.size()-2] * (_total_length/(_total_length-end_rest_length()));
+#else
+	cout << "Internal error: Thread::get_thread_data() : wrong end twist angle for anisotropic case." << endl;
+#endif
+}
+
+void Thread::get_thread_data(vector<double>& lengths, vector<double>& edge_norms)
+{
+  lengths.resize(_thread_pieces.size());
+  edge_norms.resize(_thread_pieces.size());
+  for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
+  {
+    lengths[piece_ind] = _thread_pieces[piece_ind]->rest_length();
+    edge_norms[piece_ind] = _thread_pieces[piece_ind]->edge_norm();
   }
 }
 
@@ -2353,7 +2926,7 @@ double Thread::calculate_holonomy()
 
   Matrix3d no_twist_bishop;
 
-  Vector3d to_twist_around = edge_first2.cross(edge_last2)/(_rest_length*_rest_length + edge_first2.dot(edge_last2));
+  Vector3d to_twist_around = edge_first2.cross(edge_last2)/((_thread_pieces.front()->rest_length())*(_thread_pieces[_thread_pieces.size()-2]->rest_length()) + edge_first2.dot(edge_last2));	// check
   to_twist_around.normalize();
   if (isnan(to_twist_around(0)))
   {
@@ -2409,7 +2982,7 @@ void Thread::set_start_constraint(const Vector3d& start_pos, const Matrix3d& sta
   _thread_pieces.front()->set_material_frame(start_rot);
 
   //to fix tangent, set 2nd point as well
-  Vector3d fixed_point = start_pos + start_rot.col(0)*_rest_length;
+  Vector3d fixed_point = start_pos + start_rot.col(0)*start_rest_length();
   _thread_pieces[1]->set_vertex(fixed_point);
   _thread_pieces.front()->updateFrames_firstpiece();
 }
@@ -2428,7 +3001,7 @@ void Thread::set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot
   _thread_pieces.back()->set_material_frame(end_rot);
 
   //to fix tangent, set 2nd to last point as well
-  Vector3d fixed_point = end_pos - end_rot.col(0)*_rest_length;
+  Vector3d fixed_point = end_pos - end_rot.col(0)*end_rest_length();
   _thread_pieces[_thread_pieces.size()-2]->set_vertex(fixed_point);
 
   _thread_pieces.back()->updateFrames_lastpiece();
@@ -2437,17 +3010,17 @@ void Thread::set_end_constraint(const Vector3d& end_pos, const Matrix3d& end_rot
 void Thread::set_start_constraint_nearEnd(Vector3d& start_pos, Matrix3d& start_rot)
 {
   Vector3d start_pos_movement = start_pos - this->start_pos();
-  start_pos += (vertex_at_ind(1) - this->start_pos()) - (start_rot.col(0)*_rest_length);
+  start_pos += (vertex_at_ind(1) - this->start_pos()) - (start_rot.col(0)*start_rest_length());
   set_start_constraint(start_pos, start_rot);
-  minimize_energy();
+  //minimize_energy();
 }
 
 void Thread::set_end_constraint_nearEnd(Vector3d& end_pos, Matrix3d& end_rot)
 {
   Vector3d end_pos_movement = end_pos - this->end_pos();
-  end_pos += (vertex_at_ind(_thread_pieces.size()-2) - this->end_pos()) + (end_rot.col(0)*_rest_length);
+  end_pos += (vertex_at_ind(_thread_pieces.size()-2) - this->end_pos()) + (end_rot.col(0)*end_rest_length());
   set_end_constraint(end_pos, end_rot);
-  minimize_energy();
+  //minimize_energy();
 }
 
 void Thread::set_constraints_nearEnds(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot)
@@ -2457,16 +3030,16 @@ void Thread::set_constraints_nearEnds(Vector3d& start_pos, Matrix3d& start_rot, 
 
   //make it so the position is at 2nd and 2nd to last vertices
   //thus, account for how the frame rotation affected position of those vertices
-  start_pos += (vertex_at_ind(1) - this->start_pos()) - (start_rot.col(0)*_rest_length);
-  end_pos += (vertex_at_ind(_thread_pieces.size()-2) - this->end_pos()) + (end_rot.col(0)*_rest_length);
+  start_pos += (vertex_at_ind(1) - this->start_pos()) - (start_rot.col(0)*start_rest_length());
+  end_pos += (vertex_at_ind(_thread_pieces.size()-2) - this->end_pos()) + (end_rot.col(0)*end_rest_length());
 
   //check to make sure we aren't trying to go beyond the max length
-  Vector3d pointA = start_pos+start_rot.col(0)*_rest_length;
-  Vector3d pointB = end_pos-end_rot.col(0)*_rest_length;
+  Vector3d pointA = start_pos+start_rot.col(0)*start_rest_length();
+  Vector3d pointB = end_pos-end_rot.col(0)*end_rest_length();
 
   //if so, correct by moving back into acceptable region
   Vector3d entire_length_vector = pointB - pointA;
-  double too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
+  double too_long_by = (entire_length_vector).norm() - (total_length() - start_rest_length() - end_rest_length()) + LENGTH_THRESHHOLD;
   if (too_long_by > 0)
   {
     entire_length_vector.normalize();
@@ -2485,18 +3058,19 @@ void Thread::set_constraints_nearEnds(Vector3d& start_pos, Matrix3d& start_rot, 
   minimize_energy();
 }
 
-void Thread::set_constraints_check(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot)
+// same as set_constraints_nearEnds except that the constraints is set at the end and not at the near end.
+void Thread::set_constraints_check(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot, bool minimize)
 {
   Vector3d start_pos_movement = start_pos - this->start_pos();
   Vector3d end_pos_movement = end_pos - this->end_pos();
 
   //check to make sure we aren't trying to go beyond the max length
-  Vector3d pointA = start_pos+start_rot.col(0)*_rest_length;
-  Vector3d pointB = end_pos-end_rot.col(0)*_rest_length;
+  Vector3d pointA = start_pos+start_rot.col(0)*start_rest_length();
+  Vector3d pointB = end_pos-end_rot.col(0)*end_rest_length();
 
   //if so, correct by moving back into acceptable region
   Vector3d entire_length_vector = pointB - pointA;
-  double too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
+  double too_long_by = (entire_length_vector).norm() - (total_length() - start_rest_length() - end_rest_length()) + LENGTH_THRESHHOLD;
   if (too_long_by > 0)
   {
     entire_length_vector.normalize();
@@ -2512,7 +3086,8 @@ void Thread::set_constraints_check(Vector3d& start_pos, Matrix3d& start_rot, Vec
     unviolate_total_length_constraint();
   }
   set_constraints(start_pos, start_rot, end_pos, end_rot);
-  minimize_energy();
+  if (minimize)
+  	minimize_energy();
 }
 
 bool Thread::check_fix_positions(Vector3d& start_pos, Matrix3d& start_rot, Vector3d& end_pos, Matrix3d& end_rot)
@@ -2521,12 +3096,12 @@ bool Thread::check_fix_positions(Vector3d& start_pos, Matrix3d& start_rot, Vecto
   Vector3d end_pos_movement = end_pos - this->end_pos();
 
   //check to make sure we aren't trying to go beyond the max length
-  Vector3d pointA = start_pos+start_rot.col(0)*_rest_length;
-  Vector3d pointB = end_pos-end_rot.col(0)*_rest_length;
+  Vector3d pointA = start_pos+start_rot.col(0)*start_rest_length();
+  Vector3d pointB = end_pos-end_rot.col(0)*end_rest_length();
 
   //if so, correct by moving back into acceptable region
   Vector3d entire_length_vector = pointB - pointA;
-  double too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
+  double too_long_by = (entire_length_vector).norm() - (total_length() - start_rest_length() - end_rest_length()) + LENGTH_THRESHHOLD;
   if (too_long_by > 0)
   {
     entire_length_vector.normalize();
@@ -2541,11 +3116,34 @@ bool Thread::check_fix_positions(Vector3d& start_pos, Matrix3d& start_rot, Vecto
     //due to numerical reasons, this sometimes seems to fail. if so, just move the end back in
     unviolate_total_length_constraint();
   }
-	entire_length_vector = (end_pos-end_rot.col(0)*_rest_length) - (start_pos+start_rot.col(0)*_rest_length);
-  too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
+	entire_length_vector = (end_pos-end_rot.col(0)*end_rest_length()) - (start_pos+start_rot.col(0)*start_rest_length());
+  too_long_by = (entire_length_vector).norm() - (total_length() - start_rest_length() - end_rest_length()) + LENGTH_THRESHHOLD;
   
   return (too_long_by > 1e-3);
 }
+
+//bool Thread::check_fix_positions(double start_fix_fraction)
+//{
+//  //check to make sure we aren't trying to go beyond the max length
+//  Vector3d pointA = this->start_pos()+this->start_rot().col(0)*start_rest_length();
+//  Vector3d pointB= this->end_pos()-this->end_rot().col(0)*end_rest_length();
+
+//  //if so, correct by moving back into acceptable region
+//  Vector3d entire_length_vector = pointB - pointA;
+//  double too_long_by = (entire_length_vector).norm() - (total_length() - start_rest_length() - end_rest_length()) + LENGTH_THRESHHOLD;
+//  if (too_long_by > 0)
+//  {
+//    entire_length_vector.normalize();
+//		set_constraints(this->start_pos() + start_fix_fraction*entire_length_vector*too_long_by, this->start_rot(),
+//										this->end_pos() - (1.0-start_fix_fraction)*entire_length_vector*too_long_by, this->end_rot());
+//  }  
+//  pointA = this->start_pos()+this->start_rot().col(0)*start_rest_length();
+//  pointB= this->end_pos()-this->end_rot().col(0)*end_rest_length();
+//  entire_length_vector = pointB - pointA;
+//  too_long_by = (entire_length_vector).norm() - (total_length() - start_rest_length() - end_rest_length()) + LENGTH_THRESHHOLD;
+//  
+//  return (too_long_by > 1e-3);
+//}
 
 void Thread::rotate_end_by(double degrees)
 {
@@ -2568,7 +3166,7 @@ void Thread::apply_motion(Frame_Motion& motion)
   Matrix3d end_rot = this->end_rot();
   motion.applyMotion(end_pos, end_rot);
   set_end_constraint(end_pos, end_rot);
-  minimize_energy();
+  //minimize_energy();
 }
 
 //applies motion to start and end
@@ -2580,8 +3178,9 @@ void Thread::apply_motion(Two_Motions& motion)
   Matrix3d end_rot = this->end_rot();
   motion._start.applyMotion(start_pos, start_rot);
   motion._end.applyMotion(end_pos, end_rot);
+
   set_constraints(start_pos, start_rot, end_pos, end_rot);
-  minimize_energy();
+  //minimize_energy();
 }
 
 //applies motion to END
@@ -2591,11 +3190,11 @@ void Thread::apply_motion_nearEnds(Frame_Motion& motion, bool mini_energy)
   Matrix3d end_rot = this->end_rot();
   motion.applyMotion(end_pos, end_rot);
   //now account for translation that occurs because of rotation
-  end_pos += (vertex_at_ind(_thread_pieces.size()-2)+motion._pos_movement) - (end_pos-end_rot.col(0).normalized()*_rest_length);
+  end_pos += (vertex_at_ind(_thread_pieces.size()-2)+motion._pos_movement) - (end_pos-end_rot.col(0).normalized()*end_rest_length());
   set_end_constraint(end_pos, end_rot);
   unviolate_total_length_constraint();
-  if (mini_energy)
-    minimize_energy();
+  //if (mini_energy)
+  //  minimize_energy();
 }
 
 void Thread::apply_motion_nearEnds(Two_Motions& motion, bool mini_energy)
@@ -2610,16 +3209,16 @@ void Thread::apply_motion_nearEnds(Two_Motions& motion, bool mini_energy)
 
   //make it so the motion is at 2nd and 2nd to last vertices
   //thus, account for how the frame rotation affected position of those vertices
-  start_pos += (vertex_at_ind(1)+motion._start._pos_movement) - (start_pos+start_rot.col(0)*_rest_length);
-  end_pos += (vertex_at_ind(_thread_pieces.size()-2)+motion._end._pos_movement) - (end_pos-end_rot.col(0)*_rest_length);
+  start_pos += (vertex_at_ind(1)+motion._start._pos_movement) - (start_pos+start_rot.col(0)*start_rest_length());
+  end_pos += (vertex_at_ind(_thread_pieces.size()-2)+motion._end._pos_movement) - (end_pos-end_rot.col(0)*end_rest_length());
 
   //check to make sure we aren't trying to go beyond the max length
-  Vector3d pointA = start_pos+start_rot.col(0)*_rest_length;
-  Vector3d pointB= end_pos-end_rot.col(0)*_rest_length;
+  Vector3d pointA = start_pos+start_rot.col(0)*start_rest_length();
+  Vector3d pointB= end_pos-end_rot.col(0)*end_rest_length();
 
   //if so, correct by moving back into acceptable region
   Vector3d entire_length_vector = pointB - pointA;
-  double too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
+  double too_long_by = (entire_length_vector).norm() - (total_length() - start_rest_length() - end_rest_length()) + LENGTH_THRESHHOLD;
   if (too_long_by > 0)
   {
     entire_length_vector.normalize();
@@ -2646,8 +3245,8 @@ void Thread::apply_motion_nearEnds(Two_Motions& motion, bool mini_energy)
 
 
   set_constraints(start_pos, start_rot, end_pos, end_rot);
-  if (mini_energy)
-    minimize_energy();
+  //if (mini_energy)
+  //  minimize_energy();
 
 
 }
@@ -2655,22 +3254,28 @@ void Thread::apply_motion_nearEnds(Two_Motions& motion, bool mini_energy)
 
 void Thread::unviolate_total_length_constraint()
 {
-  Vector3d pointA = this->start_pos()+this->start_rot().col(0)*_rest_length;
-  Vector3d pointB= this->end_pos()-this->end_rot().col(0)*_rest_length;
+  Vector3d pointA = this->start_pos()+this->start_rot().col(0)*start_rest_length();
+  Vector3d pointB= this->end_pos()-this->end_rot().col(0)*end_rest_length();
   Vector3d entire_length_vector = pointB - pointA;
-  double too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
+  double too_long_by = (entire_length_vector).norm() - (total_length() - start_rest_length() - end_rest_length()) + LENGTH_THRESHHOLD;
 
+//  if (too_long_by > 0)
+//  {
+//    entire_length_vector.normalize();
+//    set_end_constraint(this->end_pos() -entire_length_vector*too_long_by, this->end_rot());
+//  }
+  
   if (too_long_by > 0)
   {
     entire_length_vector.normalize();
-    set_end_constraint(this->end_pos() -entire_length_vector*too_long_by, this->end_rot());
+    set_start_constraint(this->start_pos() -entire_length_vector*too_long_by, this->start_rot());
   }
 
 
-  pointA = this->start_pos()+this->start_rot().col(0)*_rest_length;
-  pointB= this->end_pos()-this->end_rot().col(0)*_rest_length;
+  pointA = this->start_pos()+this->start_rot().col(0)*start_rest_length();
+  pointB= this->end_pos()-this->end_rot().col(0)*end_rest_length();
   entire_length_vector = pointB - pointA;
-  too_long_by = (entire_length_vector).norm() - (total_length() - 2.0*rest_length()) + LENGTH_THRESHHOLD;
+  too_long_by = (entire_length_vector).norm() - (total_length() - start_rest_length() - end_rest_length()) + LENGTH_THRESHHOLD;
 
   //std::cout << "total length: " << entire_length_vector.norm() << std::endl;
   
@@ -2684,7 +3289,7 @@ void Thread::copy_data_from_vector(VectorXd& toCopy)
   for (int piece_ind = 0; piece_ind < _thread_pieces.size(); piece_ind++)
   {
     //std::cout << "before vertex: " << _thread_pieces[piece_ind]->vertex().transpose() << "\t\t";
-    _thread_pieces[piece_ind]->set_vertex(toCopy.segment(piece_ind*3,3));
+    _thread_pieces[piece_ind]->set_vertex(toCopy.segment(piece_ind*6,3));
     //std::cout << "after vertex: " << _thread_pieces[piece_ind]->vertex().transpose() << std::endl;
   }
 
@@ -2696,13 +3301,125 @@ void Thread::copy_data_from_vector(VectorXd& toCopy)
   set_start_constraint(_thread_pieces.front()->vertex(), this->start_rot());
   
   set_end_constraint(_thread_pieces.back()->vertex(), this->end_rot());
-  _thread_pieces[_thread_pieces.size()-2]->set_angle_twist(toCopy(toCopy.rows()-1));
-  _thread_pieces[_thread_pieces.size()-2]->update_material_frame();
-  set_end_constraint(_thread_pieces.back()->vertex(), this->end_rot());
+  //_thread_pieces[_thread_pieces.size()-2]->set_angle_twist(toCopy(toCopy.rows()-1));
+  //_thread_pieces[_thread_pieces.size()-2]->update_material_frame();
+  //set_end_constraint(_thread_pieces.back()->vertex(), this->end_rot());
+}
+
+void Thread::applyControl(const VectorXd& u)
+{
+  double max_ang_start = max( max(abs(u(3)), abs(u(4))), abs(u(5)));
+  double max_ang_end = max( max(abs(u(9)), abs(u(10))), abs(u(11)));
+  double max_ang = max(max_ang_start, max_ang_end);
+
+  int number_steps = max ((int)ceil(max_ang / (M_PI/4.0)), 1);
+  VectorXd u_for_translation = u/((double)number_steps);
+
+	Two_Motions* to_Move = new Two_Motions();
+
+  Vector3d translation_start;
+  translation_start << u_for_translation(0), u_for_translation(1), u_for_translation(2);
+  Vector3d translation_end;
+  translation_end << u_for_translation(6), u_for_translation(7), u_for_translation(8);
+	to_Move->_start._pos_movement = translation_start;
+  to_Move->_end._pos_movement = translation_end;
+
+  Matrix3d rotation_start;
+  rotation_from_euler_angles(rotation_start, u(3), u(4), u(5));
+  Matrix3d rotation_end;
+  rotation_from_euler_angles(rotation_end, u(9), u(10), u(11));
+
+  Quaterniond quat_rotation_start(rotation_start);
+  Quaterniond quat_rotation_end(rotation_end);
+
+  to_Move->_start._frame_rotation = Quaterniond::Identity().slerp(1.0/(double)number_steps, quat_rotation_start);
+  to_Move->_end._frame_rotation = Quaterniond::Identity().slerp(1.0/(double)number_steps, quat_rotation_end);
+
+  for (int i=0; i < number_steps; i++)
+  {
+    apply_motion_nearEnds(*to_Move);
+  }
 }
 
 
+void Thread::getCompleteState(VectorXd& state, bool ignore_first_vertex) {
+  const int _num_pieces = num_pieces();
+  
+  if (ignore_first_vertex) 
+    state.resize(6*(_num_pieces-1));
+  else 
+    state.resize(6*_num_pieces-3);
 
+  for (int piece_ind=0; piece_ind < _num_pieces; piece_ind++)
+  {
+    
+    if (ignore_first_vertex) {
+      if(piece_ind < _num_pieces-1) {
+        state.segment(piece_ind*6, 3) = edge_at_ind(piece_ind);
+        state.segment(piece_ind*6+3, 3) = vertex_at_ind(piece_ind+1);
+      }
+    }
+    else {
+      state.segment(piece_ind*6, 3) = vertex_at_ind(piece_ind);
+      if (piece_ind < _num_pieces-1) { 
+        state.segment(piece_ind*6 + 3, 3) = edge_at_ind(piece_ind);
+      }
+    }
+  }
+  /*
+  if (ignore_first_vertex) {
+		state(6*(_num_pieces-1)) = end_angle();
+	} else {
+		state(6*_num_pieces-3) = end_angle(); // TC is weird w/ pickup
+	}
+	*/
+}
+
+
+void Thread::getPartialState(VectorXd& state) { 
+  const int _num_pieces = num_pieces(); 
+  state.resize(3*(6+6)); // check indices
+
+  for (int piece_ind=0; piece_ind < 6; piece_ind++) {
+    state.segment(piece_ind*3, 3) = vertex_at_ind(piece_ind);
+  }
+
+  int ind = 3*6; 
+  for (int piece_ind=0; piece_ind < 6; piece_ind++) {
+    state.segment(ind + piece_ind*3, 3) = edge_at_ind(piece_ind);
+  }
+  //state(6) = end_angle();
+}
+
+void Thread::getState(VectorXd& state, bool ignore_first_vertex)
+{
+  const int _num_pieces = num_pieces();
+  assert(_num_pieces == _thread_pieces.size());
+
+  VectorXd thread_state;
+ //getPartialState(thread_state);
+  getCompleteState(thread_state, ignore_first_vertex); 
+
+//  if (ignore_first_vertex) {
+//  	state.resize(thread_state.size());
+//    state = thread_state;
+//    return; 
+//  }
+//  state.resize(thread_state.size() + 1); 
+//  state(0) = state.size();
+//  state.segment(1, thread_state.size()) = thread_state; 
+	state = thread_state;
+}
+
+void Thread::setState(VectorXd& state) {
+  //assert(state(0) == state.size());
+  assert(state.size() == 6*num_pieces() - 3);
+  VectorXd thread_state;
+  //getCompleteState(thread_state); 
+  //assert(thread_state.size() + 1 == state.size()); // setState only works for complete state
+  //VectorXd data = state.segment(1, state.size() - 1);
+  copy_data_from_vector(state);
+}
 
 void Thread::set_coeffs_normalized(double bend_coeff, double twist_coeff, double grav_coeff)
 {
@@ -2739,8 +3456,10 @@ void Thread::evaluate_twist_scores(vector<double>& twist_to_try, vector<double>&
   get_thread_data(orig_pts, orig_angls);
 
   vector<ThreadPiece*> backups;
-
-  save_thread_pieces_and_resize(backups);
+	for (int i = 0; i < _thread_pieces.size(); i++) {
+		backups.push_back(new ThreadPiece(false));
+	}
+  save_thread_pieces(backups);
 
   for (int i=0; i < twist_to_try.size(); i++)
   {
@@ -2793,6 +3512,7 @@ void Thread::set_twist_and_minimize(double twist, vector<Vector3d>& orig_pts)
 
 Thread& Thread::operator=(const Thread& rhs)
 {
+  world = rhs.world;
   //_thread_pieces.resize(rhs._thread_pieces.size());
 
 	for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++)
@@ -2810,11 +3530,12 @@ Thread& Thread::operator=(const Thread& rhs)
   _thread_pieces.resize(rhs._thread_pieces.size());
  _thread_pieces_backup.resize(rhs._thread_pieces_backup.size());
   _angle_twist_backup.resize(rhs._thread_pieces.size());
-  for (int piece_ind =0; piece_ind < rhs._thread_pieces.size(); piece_ind++)
+  for (int piece_ind =0; piece_ind < rhs._thread_pieces.size()-1; piece_ind++)
   {
     //_thread_pieces.push_back(rhs._thread_pieces[piece_ind]);
-    _thread_pieces[piece_ind] = new ThreadPiece(*rhs._thread_pieces[piece_ind], this);
+    _thread_pieces[piece_ind] = new ThreadPiece(*rhs._thread_pieces[piece_ind], this, true);
   }
+  _thread_pieces[rhs._thread_pieces.size()-1] = new ThreadPiece(*rhs._thread_pieces[rhs._thread_pieces.size()-1], this, false);
 
   for (int i=1; i < _thread_pieces.size(); i++)
   {
@@ -2829,7 +3550,7 @@ Thread& Thread::operator=(const Thread& rhs)
 	//setup backups
   for (int piece_ind=0; piece_ind < rhs._thread_pieces_backup.size(); piece_ind++)
   {
-    _thread_pieces_backup[piece_ind] = new ThreadPiece(*rhs._thread_pieces_backup[piece_ind], this);
+    _thread_pieces_backup[piece_ind] = new ThreadPiece(*rhs._thread_pieces_backup[piece_ind], this, false);
   }
 
   for (int i=1; i < _thread_pieces_backup.size(); i++)
@@ -2858,7 +3579,7 @@ Thread& Thread::operator=(const Thread& rhs)
 
   set_constraints(start_pos, start_rot, end_pos, end_rot);
 
-  _rest_length = rhs._rest_length;
+  _total_length = rhs._total_length;
   //project_length_constraint();
 
 /*
@@ -2876,39 +3597,19 @@ Thread& Thread::operator=(const Thread& rhs)
 
 }
 
-void add_object_to_env(Intersection_Object* obj)
-{
-  objects_in_env.push_back(obj);
-}
-
-void remove_object_from_env(Intersection_Object* obj)
-{
-	for (int i=0; i<objects_in_env.size(); i++) {
-		if ((objects_in_env[i]) == obj) {
-			objects_in_env.erase(objects_in_env.begin()+i);
-			break;
-		}
-	}
-}
-
-void clear_objects_in_env()
-{
-	for (int i=0; i<objects_in_env.size(); i++)
-		delete objects_in_env[i];
-	objects_in_env.clear();
-}
-
-//not sure why, couldn't look at static variable directly
-//so this gets the data
-vector<Intersection_Object*>* get_objects_in_env()
-{
-  return &objects_in_env;
-}
-
 void Thread::add_thread_to_env(Thread* thread) {  // check
 	threads_in_env.push_back(thread);
 }
 
 void Thread::clear_threads_in_env() {
 	threads_in_env.clear();
+}
+
+int findInvalidate(vector<ThreadPiece*> &v, ThreadPiece* e) {
+	int i;
+	for (i=0; i<v.size() && v[i]!=e; i++) {}
+	if (i==v.size())
+		return -1;
+	v[i] = NULL;
+	return i;
 }
