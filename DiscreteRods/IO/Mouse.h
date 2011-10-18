@@ -10,6 +10,7 @@ class Mouse : public ControllerBase
 {
 public:
 
+  Mouse(const Vector3d& pos, const Matrix3d& rot);
   Mouse();
   ~Mouse();
   

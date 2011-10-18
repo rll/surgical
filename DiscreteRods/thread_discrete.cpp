@@ -1667,7 +1667,6 @@ void Thread::minimize_energy_twist_angles()
   double accum_rest_length = rest_length_at_ind(0);
   double angle_per_length = end_angle() / (_total_length - end_rest_length());
   
-  //#pragma omp parallel for num_threads(NUM_THREADS_PARALLEL_FOR)
   for (int piece_ind = 1; piece_ind < _thread_pieces.size()-2; piece_ind++)
  	{
  		_thread_pieces[piece_ind]->set_angle_twist(angle_per_length*accum_rest_length);
@@ -2850,6 +2849,64 @@ void Thread::get_thread_data(vector<double>& lengths, vector<double>& edge_norms
     lengths[piece_ind] = _thread_pieces[piece_ind]->rest_length();
     edge_norms[piece_ind] = _thread_pieces[piece_ind]->edge_norm();
   }
+}
+
+void Thread::get_thread_data(Vector3d& start_position, Matrix3d& start_rotation, vector<double>& roll_angles, vector<double>& bend_angles, double& twist_angle)
+{
+	vector<Vector3d> points;
+	get_thread_data(points);
+	start_position = points[0];
+	start_rotation = start_rot();
+	roll_angles.resize(points.size()-2);
+	bend_angles.resize(points.size()-2);
+	vector<Matrix3d> rotations(points.size()-1);
+	rotations[0] = start_rotation;
+	for (int i = 0; i < roll_angles.size(); i++) {
+		const Vector3d edge0 = points[i+1]-points[i];
+		const Vector3d edge1 = points[i+2]-points[i+1];
+		const Vector3d normal_to_edges = edge0.cross(edge1);
+
+		Matrix3d rot_theta;
+		roll_angles[i] = angle_match_rotation(rot_theta, normal_to_edges, rotations[i], 0, 2);
+		
+		Matrix3d rot_phi;
+		bend_angles[i] = angle_match_rotation(rot_phi, edge1, rot_theta, 2, 0);
+		rotations[i+1] = rot_phi;
+	}
+}
+
+//assumes rest lengths remained constant.
+void Thread::set_thread_data(const Vector3d& start_position, const Matrix3d& start_rotation, const vector<double>& roll_angles, const vector<double>& bend_angles, const double& twist_angle)
+{
+	vector<Vector3d> points(roll_angles.size()+2);
+	points[0] = start_position;
+	vector<Matrix3d> rotations(roll_angles.size()+1);
+	rotations[0] = start_rotation;
+	for (int i = 0; i < points.size()-1; i++) {
+		const Matrix3d rot_theta = Eigen::AngleAxisd(roll_angles[i], rotations[i].col(0)) * rotations[i];
+		const Matrix3d rot_phi = Eigen::AngleAxisd(bend_angles[i], rot_theta.col(2)) * rot_theta;
+		points[i+1] = points[i] + rest_length_at_ind(i) * rotations[i].col(0);
+		if (i != (points.size()-2))
+			rotations[i+1] = rot_phi;
+	}
+	for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++) {
+    _thread_pieces[piece_ind]->set_vertex(points[piece_ind]);
+  }
+  // appropriately distributes twist_angle for each thread piece
+  _thread_pieces[_thread_pieces.size()-2]->set_angle_twist(twist_angle);
+  minimize_energy_twist_angles();
+  
+  _thread_pieces.front()->set_bishop_frame(start_rotation);
+  _thread_pieces.front()->set_material_frame(start_rotation);
+
+  _thread_pieces.front()->initializeFrames();
+
+  set_start_constraint(points.front(), start_rotation);
+
+  Matrix3d end_bishop = _thread_pieces[_thread_pieces.size()-2]->bishop_frame();
+  Matrix3d end_rot = Eigen::AngleAxisd(twist_angle, end_bishop.col(0).normalized())*end_bishop;
+
+  set_end_constraint(points.back(), end_rot);
 }
 
 void Thread::set_all_angles_zero()

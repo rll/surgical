@@ -513,7 +513,7 @@ void ThreadConstrained::get_thread_data(vector<Vector3d> &absolute_points, vecto
 	vector<vector<double> > twist_angles(threads.size());
 	for (int thread_num=0; thread_num<threads.size(); thread_num++) {
 		threads[thread_num]->get_thread_data(points[thread_num], twist_angles[thread_num]);
-		twist_angles[thread_num].back() = 2.0*twist_angles[thread_num][twist_angles[thread_num].size()-2] - twist_angles[thread_num][twist_angles[thread_num].size()-3];
+		//twist_angles[thread_num].back() = 2.0*twist_angles[thread_num][twist_angles[thread_num].size()-2] - twist_angles[thread_num][twist_angles[thread_num].size()-3];
 		//TODO
 		//if (thread_num==0)
 		//	mapAdd(twist_angles[thread_num], zero_angle);
@@ -530,7 +530,7 @@ void ThreadConstrained::get_thread_data(vector<Vector3d> &absolute_points, vecto
 	vector<vector<Matrix3d> > material_frames(threads.size());
 	for (int thread_num=0; thread_num<threads.size(); thread_num++) {
 		threads[thread_num]->get_thread_data(points[thread_num], twist_angles[thread_num], material_frames[thread_num]);
-		twist_angles[thread_num].back() = 2.0*twist_angles[thread_num][twist_angles[thread_num].size()-2] - twist_angles[thread_num][twist_angles[thread_num].size()-3];
+		//twist_angles[thread_num].back() = 2.0*twist_angles[thread_num][twist_angles[thread_num].size()-2] - twist_angles[thread_num][twist_angles[thread_num].size()-3];
 	 	//TODO
 	 	//if (thread_num==0)
 		//	mapAdd(twist_angles[thread_num], zero_angle);
@@ -550,6 +550,19 @@ void ThreadConstrained::get_thread_data(vector<Vector3d> &absolute_points, vecto
 	}
 	mergeMultipleVector(absolute_points, points);
 	mergeMultipleVector(absolute_material_frames, material_frames);
+}
+
+
+void ThreadConstrained::get_thread_data(Vector3d& start_position, Matrix3d& start_rotation, vector<double>& roll_angles, vector<double>& bend_angles, double& twist_angle)
+{
+	assert(threads.size() == 1);
+	threads[0]->get_thread_data(start_position, start_rotation, roll_angles, bend_angles, twist_angle);
+}
+
+void ThreadConstrained::set_thread_data(const Vector3d& start_position, const Matrix3d& start_rotation, const vector<double>& roll_angles, const vector<double>& bend_angles, const double& twist_angle)
+{
+	assert(threads.size() == 1);
+	threads[0]->set_thread_data(start_position, start_rotation, roll_angles, bend_angles, twist_angle);
 }
 
 // parameters have to be of the right size, i.e. threads.size()+1

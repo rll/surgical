@@ -18,17 +18,13 @@ World::World(WorldManager* wm)
   //initRestingThread(0);
   //initRestingFinerThread(0);
 	
-	//setting up control handles
-	cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));
-	cursors.push_back(new Cursor(Vector3d::Zero(), Matrix3d::Identity(), this, NULL));	
-	
 	//setting up objects in environment
 	//InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), "../utils/textures/checkerBoardSquare32.bmp", this);
 	//InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), 0.6, 0.6, 0.6, this);
 	//InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), 0.42, 0.48, 0.55, this);
-	InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), 139.0/255.0, 137.0/255.0, 137.0/255.0, this);
+//	InfinitePlane* plane = new InfinitePlane(Vector3d(0.0, -30.0, 0.0), Vector3d(0.0, 1.0, 0.0), 139.0/255.0, 137.0/255.0, 137.0/255.0, this);
 	
-	objs.push_back(plane);
+//	objs.push_back(plane);
 	//objs.push_back(new TexturedSphere(Vector3d::Zero(), 150.0, "../utils/textures/checkerBoardRect16.bmp", this));
 	
 //	objs.push_back(new Box(plane->getPosition() + Vector3d(-40.0, 10.0, 0.0), Matrix3d::Identity(), Vector3d(10,10,10), 0.0, 0.5, 0.7, this));
@@ -38,20 +34,24 @@ World::World(WorldManager* wm)
 	
 	//setting up end effectors
 	for (int i = 0; i < threads.size(); i++) {
-		objs.push_back(new EndEffector(threads[i]->positionAtConstraint(0), threads[i]->rotationAtConstraint(0), this, threads[i], 0));
-		assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 0);
+		EndEffector* end_eff0 = new EndEffector(threads[i]->positionAtConstraint(0), threads[i]->rotationAtConstraint(0), this, threads[i], 0);
+		objs.push_back(end_eff0);
+		assert(end_eff0->constraint_ind == 0);
+		cursors.push_back(new Cursor(end_eff0->getPosition(), end_eff0->getRotation(), this, end_eff0));	
 
-		objs.push_back(new EndEffector(threads[i]->positionAtConstraint(1), threads[i]->rotationAtConstraint(1), this, threads[i], threads[i]->numVertices()-1));
-		assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == 1);
-	}
+		EndEffector* end_eff1 = new EndEffector(threads[i]->positionAtConstraint(1), threads[i]->rotationAtConstraint(1), this, threads[i], threads[i]->numVertices()-1);
+		objs.push_back(end_eff1);
+		assert(end_eff1->constraint_ind == 1);
+		cursors.push_back(new Cursor(end_eff1->getPosition(), end_eff1->getRotation(), this, end_eff1));	
+	}	
 	
-	objs.push_back(new EndEffector(plane->getPosition() + Vector3d(30.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()), this));
-	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == -1);
-	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint == -1);
-	
-	objs.push_back(new EndEffector(plane->getPosition() + Vector3d(35.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()), this));
-	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == -1);
-	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint == -1);
+//	objs.push_back(new EndEffector(plane->getPosition() + Vector3d(30.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()), this));
+//	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == -1);
+//	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint == -1);
+//	
+//	objs.push_back(new EndEffector(plane->getPosition() + Vector3d(35.0, EndEffector::short_handle_r, 0.0), (Matrix3d) AngleAxisd(-M_PI/2.0, Vector3d::UnitY()) * AngleAxisd(M_PI/2.0, Vector3d::UnitX()), this));
+//	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint_ind == -1);
+//	assert((TYPE_CAST<EndEffector*>(objs.back()))->constraint == -1);
 }
 
 World::World(const World& rhs, WorldManager* wm)
@@ -259,6 +259,26 @@ EndEffector* World::closestEndEffector(Vector3d tip_pos)
 
 void World::draw(RenderMode render_mode)
 {
+	Vector3d start_position;
+	Matrix3d start_rotation;
+	vector<double> roll_angles;
+	vector<double> bend_angles;
+	double twist_angle;
+	threads[0]->get_thread_data(start_position, start_rotation, roll_angles, bend_angles, twist_angle);
+	cout << "start_position " << start_position.transpose() << endl;
+	cout << "start_rotation " << endl << start_rotation << endl;
+	cout << "roll_angles " << roll_angles.size() << ": ";
+	for (int i = 0; i < roll_angles.size(); i++)
+		cout << roll_angles[i] << " ";
+	cout << endl;
+	cout << "bend_angles " << bend_angles.size() << ": ";
+	for (int i = 0; i < bend_angles.size(); i++)
+		cout << bend_angles[i] << " ";
+	cout << endl;
+	cout << "twist_angle " << twist_angle << endl;
+	
+	threads[0]->set_thread_data(start_position, start_rotation, roll_angles, bend_angles, twist_angle);
+	
 	if (render_mode == NORMAL) {
 #ifndef PICTURE
 		for (int i = 0; i<cursors.size(); i++)

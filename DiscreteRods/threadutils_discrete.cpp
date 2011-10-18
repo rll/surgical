@@ -131,11 +131,53 @@ double calculate_vector_norm_avg(vector<Vector3d>& pts1, vector<Vector3d>& pts2)
 
 double angle_between(const Vector3d& tan1, const Vector3d& tan2)
 {
-	double for_ang = (tan1.dot(tan2))/(tan1.norm()*tan2.norm());
-	for_ang = max( min ( for_ang, 1.0), -1.0);
+	Matrix<long double, 3, 1> tan1_l, tan2_l;
+	for (int i = 0; i < 3; i++) {
+		tan1_l(i) = (long double) tan1(i);
+		tan2_l(i) = (long double) tan2(i);
+	}
+	long double for_ang = (tan1_l.dot(tan2_l))/(tan1_l.norm()*tan2_l.norm());
+	for_ang = max( min ( for_ang, (long double) 1.0), (long double) -1.0);
 	return acos(for_ang);
 }
 
+void set_rotation(Matrix3d& rot, const long double& angle, const Vector3d& axis)
+{
+    //rot.setZero();
+    long double x = axis(0); long double y = axis(1); long double z = axis(2);
+    long double cost = cos(angle);
+    long double m1cost = 1.0-cost;
+    long double sint = sin(angle);
+    rot <<
+        cost + x*x*m1cost, x*y*m1cost - z*sint, x*z*m1cost + y*sint,
+        y*x*m1cost + z*sint, cost + y*y*m1cost, y*z*m1cost - x*sint,
+        z*x*m1cost - y*sint, z*y*m1cost + x*sint, cost + z*z*m1cost;
+}
+
+//computes the angle between tan_theta and rot.col(match_axis) to a precision such that rot_theta = AngleAxisd(angle, rot.col(rotate_axis)) * rot and rot(match_axis) = rot_theta
+double angle_match_rotation(Matrix3d& rot_theta, const Vector3d& tan_theta, const Matrix3d& rot, int rotate_axis, int match_axis)
+{
+	double angle = angle_between(rot.col(match_axis), tan_theta);
+	rot_theta = Eigen::AngleAxisd(angle, rot.col(rotate_axis)) * rot;
+	if (angle_between(rot_theta.col(match_axis), tan_theta) < 1e-5)
+		return angle;
+	
+	rot_theta = Eigen::AngleAxisd(-angle, rot.col(rotate_axis)) * rot;
+	if (angle_between(rot_theta.col(match_axis), tan_theta) < 1e-5)
+		return -angle;
+	
+	cout << "WARNING: angle_match_rotation failed to find the angle naively. Now trying to find it iteratively." << endl;
+	int i = 0;
+	double test_angle;
+	while ((test_angle = angle_between(rot_theta.col(match_axis), tan_theta)) >= 1e-5) {
+		angle -= test_angle;
+		rot_theta = Eigen::AngleAxisd(-angle, rot.col(rotate_axis)) * rot;
+		printf("recomp angle %d: \n%.20f \n%.20f \n%.20f\n", i, angle_between(rot.col(2), rot_theta.col(2)), angle, angle_between(rot_theta.col(2), tan_theta));
+		cout << "theta: " << angle << " vector " << rot_theta.col(2).transpose() << " should be approx equal to " << tan_theta.normalized().transpose() << endl;
+		i++;
+	}
+	return -angle;
+}
 
 void rotation_from_euler_angles(Matrix3d& rotation, double angZ, double angY, double angX)
 {

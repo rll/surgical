@@ -4,6 +4,14 @@
 #define MOVE_TAN_CONST 0.05
 #define ROTATE_TAN_CONST 0.2
 
+Mouse::Mouse(const Vector3d& pos, const Matrix3d& rot)
+	: ControllerBase(pos, rot)
+	, key_pressed(NONE)
+	, move(0.0, 0.0)
+{
+	button_state[UP] = button_state[DOWN] = false;
+}
+
 Mouse::Mouse()
 	: ControllerBase()
 	, key_pressed(NONE)

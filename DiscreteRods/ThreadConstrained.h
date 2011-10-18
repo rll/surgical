@@ -80,6 +80,8 @@ class ThreadConstrained {
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<double> &absolute_twist_angles);
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<double> &absolute_twist_angles, vector<Matrix3d> &absolute_material_frames);
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<Matrix3d> &absolute_material_frames);
+    void get_thread_data(Vector3d& start_position, Matrix3d& start_rotation, vector<double>& roll_angles, vector<double>& bend_angles, double& twist_angle);
+		void set_thread_data(const Vector3d& start_position, const Matrix3d& start_rotation, const vector<double>& roll_angles, const vector<double>& bend_angles, const double& twist_angle);
 		// parameters have to be of the right size, i.e. threads.size()+1
 		void getConstrainedTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations);
 		void setConstrainedTransforms(vector<Vector3d> positions, vector<Matrix3d> rotations);

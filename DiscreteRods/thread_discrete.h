@@ -93,6 +93,8 @@ class Thread
     void get_thread_data(vector<Matrix3d>& bishop_frames);
     void get_thread_data(vector<Vector3d>& points, vector<double>& twist_angles, vector<Matrix3d>& material_frames);
     void get_thread_data(vector<double>& lengths, vector<double>& edge_norms);
+    void get_thread_data(Vector3d& start_position, Matrix3d& start_rotation, vector<double>& roll_angles, vector<double>& bend_angles, double& twist_angle);
+		void set_thread_data(const Vector3d& start_position, const Matrix3d& start_rotation, const vector<double>& roll_angles, const vector<double>& bend_angles, const double& twist_angle);
     void set_all_angles_zero();
     void set_all_pieces_mythread();
 

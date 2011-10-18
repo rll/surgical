@@ -832,16 +832,16 @@ int main (int argc, char * argv[])
   zero_location = Vector3d::Zero();
   zero_angle = 0.0;
 
-	//IO
-	mouse0 = new Mouse();
-	mouse1 = new Mouse();
-	haptic0 = new Haptic();
-	haptic1 = new Haptic();
-	connectionInit();
-	
 	//Environment
   test_world_manager = new WorldManager();
 	world = new World(test_world_manager);
+	
+	//IO
+	mouse0 = new Mouse(world->objectAtIndex<Cursor>(0)->getPosition(), world->objectAtIndex<Cursor>(0)->getRotation());
+	mouse1 = new Mouse(world->objectAtIndex<Cursor>(1)->getPosition(), world->objectAtIndex<Cursor>(1)->getRotation());
+	haptic0 = new Haptic();
+	haptic1 = new Haptic();
+	connectionInit();
 	
 //	control0 = new Control(world->objectAtIndex<Cursor>(0)->getPosition(), world->objectAtIndex<Cursor>(0)->getRotation());	
 //	control1 = new Control(world->objectAtIndex<Cursor>(1)->getPosition(), world->objectAtIndex<Cursor>(1)->getRotation());
@@ -1024,6 +1024,8 @@ void glutMenu(int ID) {
 }
 
 void interruptHandler(int sig) {
+  //alex
+  exit(0);
   cout << "Time since last interrupt: " << interruptTimer->elapsed() << endl; 
   if (interruptTimer->elapsed() < 0.1) exit(0);
   cout << "You need to hold ctrl-c to forcefully exit the program!" << endl;
