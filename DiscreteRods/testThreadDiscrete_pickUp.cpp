@@ -76,7 +76,7 @@ static const GLfloat lightThreeColor[] = {0.5, 0.5, 0.5, 1.0};
 static const GLfloat lightFourPosition[] = {-140.0, 0.0, -200.0, 0.0};
 static const GLfloat lightFourColor[] = {0.9, 0.9, 0.9, 1.0};
 
-//#define VIEW3D
+#define VIEW3D
 
 float lastx_L=0;
 float lasty_L=0;
@@ -86,6 +86,10 @@ float lasty_M=0;
 int pressed_mouse_button;
 float rotate_frame[2] = { 0.0, 0.0 };
 float translate_frame[3] = { 0.0, 0.0, -110.0 };
+
+double fovy = 61.93;
+double z_near = 50.0;
+double z_far = 500.0;
 #ifdef VIEW3D
 int main_window = 0;
 int side_window = 0;
@@ -656,21 +660,20 @@ void processIdle()
 	checkMouseUpdate();
 }
 
-void drawStuff()
+void reshape (int w, int h)
 {
-#ifdef VIEW3D
- 	glutSetWindow(main_window);
-#endif
-  
-  glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glClearColor(0.4, 0.4, 0.4, 0.0);
-  glColor3f(1.0, 1.0, 1.0);
-	glPushMatrix ();
-  /* set up some matrices so that the object spins with the mouse */
-  glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
+   glViewport (0, 0, (GLsizei) w, (GLsizei) h); 
+   glMatrixMode (GL_PROJECTION);
+   glLoadIdentity ();
+   gluPerspective(fovy, (GLfloat) w/(GLfloat) h, z_near, z_far);
+   glMatrixMode (GL_MODELVIEW);
+   window_width = w;
+   window_height = h;
+}
 
-#ifndef PICTURE
-  glDisable(GL_LIGHTING);
+void drawExperimentText()
+{
+	glDisable(GL_LIGHTING);
 	if (drawWorldInd < drawWorlds.size() &&
       drawInd < drawWorlds[drawWorldInd].size() &&
       drawWorlds[drawWorldInd][drawInd] != NULL &&
@@ -687,29 +690,25 @@ void drawStuff()
     bitmap_output(50, 40, "Goal (])", GLUT_BITMAP_TIMES_ROMAN_24);
   }
   glEnable(GL_LIGHTING);
-#endif
+}
 
+void draw3dText()
+{
 #ifdef VIEW3D
-	glTranslatef(0.0, 0.0, +eye_focus_depth);
-	glColor3f(0.8, 0.8, 0.8);
-  drawSphere(Vector3d::Zero(), 1);
-	// (-translate_frame[2]) is distance from camera to sphere center
-	// (-translate_frame[2] - eye_focus_depth) is distance from camera to focus point
-	glRotatef (+atan(eye_separation/(2.0*(-translate_frame[2]-eye_focus_depth))) * 180.0/M_PI, 0.0, 1.0, 0.0);
-	glTranslatef(0.0, 0.0, -eye_focus_depth);
+	glDisable(GL_LIGHTING);
+	glColor3f(0.0, 0.0, 0.0);
+  displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
+	glEnable(GL_LIGHTING);
 #endif
-  glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
-  glRotatef (rotate_frame[0], 0.0, 1.0, 0.0);
-  
-  glLightfv (GL_LIGHT0, GL_POSITION, lightOnePosition);
+}
+
+void drawWorld()
+{
+	glLightfv (GL_LIGHT0, GL_POSITION, lightOnePosition);
 	glLightfv (GL_LIGHT1, GL_POSITION, lightTwoPosition);
 	glLightfv (GL_LIGHT2, GL_POSITION, lightThreePosition);
 	glLightfv (GL_LIGHT3, GL_POSITION, lightFourPosition);
-  
-  glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
-	glGetDoublev(GL_PROJECTION_MATRIX, projection);
-	glGetIntegerv(GL_VIEWPORT, viewport);
-  
+	
 	if (drawWorldInd < drawWorlds.size() &&
       drawInd < drawWorlds[drawWorldInd].size() &&
       drawWorlds[drawWorldInd][drawInd] != NULL &&
@@ -725,28 +724,78 @@ void drawStuff()
   if (goal_world && drawGoalWorld) {
   	goal_world->draw();
   } 
+}
+
+void drawStuff()
+{
+#ifdef VIEW3D
+ 	glutSetWindow(main_window);
+ 	reshape(window_width, window_height);
+ 	glGetIntegerv(GL_VIEWPORT, viewport);
+ 	cout << "viewport left ";
+ 	for (int i = 0; i < 4; i++)
+ 		cout << viewport[i] << " ";
+ 	cout << endl;
+// 	usleep(100);
+#endif
+	glPushMatrix ();
+  glLoadIdentity();
+  glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glClearColor(0.4, 0.4, 0.4, 0.0);
+  /* set up some matrices so that the object spins with the mouse */
+  glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
+
+#ifndef PICTURE
+  drawExperimentText();
+#endif
+
+#ifdef VIEW3D
+	glTranslatef(0.0, 0.0, +eye_focus_depth);
+	glColor3f(0.8, 0.8, 0.8);
+  drawSphere(Vector3d::Zero(), 1);
+	// (-translate_frame[2]) is distance from camera to sphere center
+	// (-translate_frame[2] - eye_focus_depth) is distance from camera to focus point
+	//glRotatef (+atan(eye_separation/(2.0*(-translate_frame[2]-eye_focus_depth))) * 180.0/M_PI, 0.0, 1.0, 0.0);
+	glTranslatef(0.0, 0.0, -eye_focus_depth);
+#endif
+  glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
+  glRotatef (rotate_frame[0], 0.0, 1.0, 0.0);
+  
+  glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
+	glGetDoublev(GL_PROJECTION_MATRIX, projection);
+	glGetIntegerv(GL_VIEWPORT, viewport);
+  
+	drawWorld();
   glPopMatrix();
 #ifdef VIEW3D
-  displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
+  draw3dText();
 #endif
   glutSwapBuffers ();
   
 #ifdef VIEW3D
 	glutSetWindow(side_window);
-	glPushMatrix ();  
+ 	//reshape(window_width, window_height);
+ 	glGetIntegerv(GL_VIEWPORT, viewport);
+ 	cout << "viewport right ";
+ 	for (int i = 0; i < 4; i++)
+ 		cout << viewport[i] << " ";
+ 	cout << endl;
+	glPushMatrix ();
+	glLoadIdentity();
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClearColor(0.4, 0.4, 0.4, 0.0);
 	/* set up some matrices so that the object spins with the mouse */
 	glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
 	glTranslatef(0.0, 0.0, +eye_focus_depth);
 	glColor3f(0.8, 0.8, 0.8);
   drawSphere(Vector3d::Zero(), 1);
-	glRotatef (-atan(eye_separation/(-2.0*translate_frame[2]-eye_focus_depth)) * 180.0/M_PI, 0.0, 1.0, 0.0);
+	//glRotatef (-atan(eye_separation/(2.0*(-translate_frame[2]-eye_focus_depth))) * 180.0/M_PI, 0.0, 1.0, 0.0);
 	glTranslatef(0.0, 0.0, -eye_focus_depth);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 1.0, 0.0);
-	world->draw(examine_mode);
+	drawWorld();
 	glPopMatrix();
-	displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
+	draw3dText();
 	glutSwapBuffers ();
 		
 	glutSetWindow(main_window);
@@ -803,6 +852,7 @@ int main (int argc, char * argv[])
 	glutPositionWindow(3.0*screen_width/4.0, 0);
 	initGL();
 	glutSetCursor(GLUT_CURSOR_NONE);
+	glutReshapeFunc(reshape);
 	
 	main_window = glutCreateWindow ("Thread");
 	glutPositionWindow(screen_width/2.0,0);
@@ -813,6 +863,7 @@ int main (int argc, char * argv[])
 	glutCreateWindow ("Thread");
 	glutPositionWindow(1680-900, 0);
 #endif
+	glutReshapeFunc(reshape);
 	glutDisplayFunc (drawStuff);
 	glutMotionFunc (mouseMotion);
   glutMouseFunc (processMouse);
@@ -986,8 +1037,8 @@ void initGL()
 	glEnable(GL_NORMALIZE);
 	glShadeModel (GL_SMOOTH);
 
-	glMatrixMode (GL_PROJECTION);
-	glFrustum (-30.0, 30.0, -30.0, 30.0, 50.0, 500.0); // roughly, measured in centimeters
+	//glMatrixMode (GL_PROJECTION);
+	//glFrustum (-30.0, 30.0, -30.0, 30.0, 50.0, 500.0); // roughly, measured in centimeters
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
   // initialize lighting
