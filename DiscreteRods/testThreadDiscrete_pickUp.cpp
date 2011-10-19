@@ -81,6 +81,8 @@ static GLfloat mat_diffuse[]    = { 0.8f, 0.8f, 0.8f, 1.0 };
 static GLfloat mat_specular[]   = { 0.5f, 0.5f, 0.5f, 1.0 };
 static GLfloat high_shininess[] = { 100.0 };
 
+#define DISABLE_DOWNSAMPLE true
+
 #define VIEW3D
 
 float lastx_L=0;
@@ -96,8 +98,6 @@ double fovy = 61.93;
 double z_near = 50.0;
 double z_far = 500.0;
 #ifdef VIEW3D
-int main_window = 0;
-int side_window = 0;
 float eye_separation = 7.0;
 float eye_focus_depth = 0.0; // distance from sphere center to focus point
 #endif
@@ -698,16 +698,6 @@ void drawExperimentText()
   glEnable(GL_LIGHTING);
 }
 
-void draw3dText()
-{
-#ifdef VIEW3D
-	glDisable(GL_LIGHTING);
-	glColor3f(0.0, 0.0, 0.0);
-  displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
-	glEnable(GL_LIGHTING);
-#endif
-}
-
 void drawWorld()
 {
 	glLightfv (GL_LIGHT0, GL_POSITION, lightOnePosition);
@@ -737,35 +727,18 @@ void drawWorld()
   } 
 }
 
-void drawStuff2() {}
-
 void drawStuff()
 {
-#ifdef VIEW3D
- 	glutSetWindow(main_window);
-#endif
+#ifndef VIEW3D
 	glPushMatrix ();
   glLoadIdentity();
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glClearColor(0.4, 0.4, 0.4, 0.0);
   /* set up some matrices so that the object spins with the mouse */
   glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
-
-#ifndef PICTURE
-  drawExperimentText();
-#endif
-
-#ifdef VIEW3D
-	glTranslatef(0.0, 0.0, +eye_focus_depth);
-#ifndef PICTURE
-	glColor3f(0.8, 0.8, 0.8);
-  drawSphere(Vector3d::Zero(), 1);
-#endif
-	// (-translate_frame[2]) is distance from camera to sphere center
-	// (-translate_frame[2] - eye_focus_depth) is distance from camera to focus point
-	glRotatef (+atan(eye_separation/(2.0*(-translate_frame[2]-eye_focus_depth))) * 180.0/M_PI, 0.0, 1.0, 0.0);
-	glTranslatef(0.0, 0.0, -eye_focus_depth);
-#endif
+	#ifndef PICTURE
+  	drawExperimentText();
+	#endif
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 1.0, 0.0);
   
@@ -775,34 +748,72 @@ void drawStuff()
   
 	drawWorld();
   glPopMatrix();
-#ifdef VIEW3D
-  draw3dText();
-#endif
   glutSwapBuffers ();
+#else
+	glViewport(0, 0, (GLsizei) (((double) window_width)/2.0), (GLsizei) window_height); 
+	glScissor(0, 0, (GLsizei) (((double) window_width)/2.0), (GLsizei) window_height); 
+	glPushMatrix ();
+  glLoadIdentity();
+  glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glClearColor(0.4, 0.4, 0.4, 0.0);
+  glDisable(GL_LIGHTING);
+	glColor3f(0.0, 0.0, 0.0);
+  displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
+	glEnable(GL_LIGHTING);
+	#ifndef PICTURE
+  	drawExperimentText();
+	#endif
+  /* set up some matrices so that the object spins with the mouse */
+  glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
+	glTranslatef(0.0, 0.0, +eye_focus_depth);
+	#ifndef PICTURE
+		glColor3f(0.8, 0.8, 0.8);
+		drawSphere(Vector3d::Zero(), 1);
+	#endif
+	// (-translate_frame[2]) is distance from camera to sphere center
+	// (-translate_frame[2] - eye_focus_depth) is distance from camera to focus point
+	glRotatef (+atan(eye_separation/(2.0*(-translate_frame[2]-eye_focus_depth))) * 180.0/M_PI, 0.0, 1.0, 0.0);
+	glTranslatef(0.0, 0.0, -eye_focus_depth);
+  glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
+  glRotatef (rotate_frame[0], 0.0, 1.0, 0.0);
   
-#ifdef VIEW3D
-	glutSetWindow(side_window);
+  glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
+	glGetDoublev(GL_PROJECTION_MATRIX, projection);
+	glGetIntegerv(GL_VIEWPORT, viewport);
+  
+	drawWorld();
+  glPopMatrix();
+
+	glViewport((int) (((double) window_width)/2.0), 0, (GLsizei) (((double) window_width)/2.0), (GLsizei) window_height); 
+	glScissor((int) (((double) window_width)/2.0), 0, (GLsizei) (((double) window_width)/2.0), (GLsizei) window_height); 
 	glPushMatrix ();
 	glLoadIdentity();
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glClearColor(0.4, 0.4, 0.4, 0.0);
+  glDisable(GL_LIGHTING);
+	glColor3f(0.0, 0.0, 0.0);
+  displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
+	glEnable(GL_LIGHTING);
+	#ifndef PICTURE
+  	drawExperimentText();
+	#endif
 	/* set up some matrices so that the object spins with the mouse */
 	glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
 	glTranslatef(0.0, 0.0, +eye_focus_depth);
-#ifndef PICTURE
-	glColor3f(0.8, 0.8, 0.8);
-  drawSphere(Vector3d::Zero(), 1);
-#endif
+	#ifndef PICTURE
+		glColor3f(0.8, 0.8, 0.8);
+		drawSphere(Vector3d::Zero(), 1);
+	#endif
+	// (-translate_frame[2]) is distance from camera to sphere center
+	// (-translate_frame[2] - eye_focus_depth) is distance from camera to focus point
 	glRotatef (-atan(eye_separation/(2.0*(-translate_frame[2]-eye_focus_depth))) * 180.0/M_PI, 0.0, 1.0, 0.0);
 	glTranslatef(0.0, 0.0, -eye_focus_depth);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 1.0, 0.0);
+	
 	drawWorld();
 	glPopMatrix();
-	draw3dText();
-	glutSwapBuffers ();
-		
-	glutSetWindow(main_window);
+	glutSwapBuffers();
 #endif
 }
 
@@ -844,40 +855,37 @@ int main (int argc, char * argv[])
 	/* initialize glut */
 	glutInit (&argc, argv); //can i do that?
 	glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-#ifdef VIEW3D	
-	int screen_width, screen_height;
-	double screen_fraction = 2.0;
- 	screen_width = glutGet(GLUT_SCREEN_WIDTH);
-	screen_height = glutGet(GLUT_SCREEN_HEIGHT);
-	glutInitWindowSize(screen_width/screen_fraction, screen_height);
-	window_width = screen_width/screen_fraction;
-	window_height = screen_height;
 	
-	side_window = glutCreateWindow ("Thread");
-	glutPositionWindow((screen_fraction-1.0)*screen_width/screen_fraction, 0);
-	initGL();
-	glutSetCursor(GLUT_CURSOR_NONE);
-	glutReshapeFunc(reshape);
-	glutDisplayFunc (drawStuff2);
-	
-	main_window = glutCreateWindow ("Thread");
-	glutPositionWindow((screen_fraction-2.0)*screen_width/screen_fraction,0);
-#else
 	glutInitWindowSize(900,900);
 	window_width = 900;
 	window_height = 900;
 	glutCreateWindow ("Thread");
+#ifdef VIEW3D	
+	bool right_screen = true;
+	if (right_screen) {
+		int screen_width = glutGet(GLUT_SCREEN_WIDTH);
+		glutPositionWindow(screen_width/2.0, 0);
+	} else {
+		glutPositionWindow(0, 0);
+	}
+	glutFullScreen();
+	glEnable(GL_SCISSOR_TEST);
+#else
 	glutPositionWindow(1680-900, 0);
 #endif
+
+	window_width = glutGet(GLUT_WINDOW_WIDTH);
+	window_height = glutGet(GLUT_WINDOW_HEIGHT);
+	
 	glutReshapeFunc(reshape);
-	glutDisplayFunc (drawStuff);
-	glutMotionFunc (mouseMotion);
-  glutMouseFunc (processMouse);
+	glutDisplayFunc(drawStuff);
+	glutMotionFunc(mouseMotion);
+  glutMouseFunc(processMouse);
   glutKeyboardFunc(processNormalKeys);
   glutKeyboardUpFunc(processKeyUp);
   glutSpecialFunc(processSpecialKeys);
   glutIdleFunc(processIdle); 
-	
+
 	/* create popup menu */
 	glutCreateMenu (glutMenu);
 	glutAddMenuEntry ("Exit", 0);
@@ -939,7 +947,7 @@ void processInput(ControllerBase* controller0, ControllerBase* controller1)
 	else
 		downsample = (downsample+1) % 10;
 		
-	if (downsample == 0) {
+	if (DISABLE_DOWNSAMPLE || downsample == 0) {
 
 		if (haptics) { //TODO fix this hack
 			control0->setTranslate(haptic0->getPosition() - world->objectAtIndex<Cursor>(0)->getPosition());
@@ -1007,7 +1015,7 @@ void displayTextInScreen(const char* textline, ...)
 	vector<string> textvect;
 	boost::split(textvect, cbuffer, boost::is_any_of("\n"));
 	for (int i=0; i<textvect.size(); i++) {
-		printText(-28, 28-i*1.5, textvect[i].c_str());
+		printText(-50, 28-i*1.5, textvect[i].c_str());
 	}
   glPopMatrix();
 }
