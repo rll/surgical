@@ -163,7 +163,16 @@ void intermediate_rotation(Matrix3d &inter_rot, const Matrix3d& end_rot, const M
 // assumes tan is normalized
 void rotation_from_tangent(const Vector3d& tan, Matrix3d& rot) {
   rot.col(0) = tan;
-  Vector3d arb = tan + Vector3d(1.0, 1.0, 1.0);
+  int max_coor = 0, min_coor = 0;
+  for (int i = 1; i < 3; i++) {
+    if (tan(i) > tan(max_coor))
+      max_coor = i;
+    if (tan(i) <= tan(min_coor))
+      min_coor = i;
+  }
+  Vector3d arb = tan;
+  arb(max_coor) *= 0.1;
+  arb(min_coor) *= 10.0;
   rot.col(1) = arb - arb.dot(tan) * tan;
   rot.col(1).normalize();
   rot.col(2) = rot.col(0).cross(rot.col(1));
