@@ -13,9 +13,9 @@ World::World(WorldManager* wm)
 
 	//any of these pushes two threads into threads.
 	//initThread();
-	initThreadSingle();
+	//initThreadSingle();
   //initLongerThread();
-  //initRestingThread(0);
+  initRestingThread(0);
   //initRestingFinerThread(0);
 	
 	//setting up control handles
@@ -260,9 +260,9 @@ EndEffector* World::closestEndEffector(Vector3d tip_pos)
 void World::draw(RenderMode render_mode)
 {
 	if (render_mode == NORMAL) {
-#ifndef PICTURE
 		for (int i = 0; i<cursors.size(); i++)
 			cursors[i]->draw();
+#ifndef PICTURE
 		for (int i = 0; i<objs.size(); i++)
 			objs[i]->draw();
 #else
@@ -285,8 +285,9 @@ void World::draw(RenderMode render_mode)
 		
 		vector<InfinitePlane*> planes;
 		getObjects<InfinitePlane>(planes);
-		if (planes.size() > 0)
+		if (planes.size() > 0) {
 			planes[0]->draw();
+		}
 #endif
 		for (int i = 0; i<threads.size(); i++)
 			threads[i]->draw(false);

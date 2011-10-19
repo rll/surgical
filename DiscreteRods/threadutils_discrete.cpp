@@ -170,7 +170,7 @@ void rotation_from_tangent(const Vector3d& tan, Matrix3d& rot) {
     if (tan(i) <= tan(min_coor))
       min_coor = i;
   }
-  Vector3d arb = tan;
+  Vector3d arb = tan + Vector3d(1.0, 1.0, 1.0);
   arb(max_coor) *= 0.1;
   arb(min_coor) *= 10.0;
   rot.col(1) = arb - arb.dot(tan) * tan;

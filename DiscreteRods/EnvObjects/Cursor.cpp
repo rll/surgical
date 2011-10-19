@@ -198,7 +198,7 @@ void Cursor::draw()
 	end_pos = new_rot * Vector3d(EndEffector::start+EndEffector::h, -r, 0.0) + new_pos;
 	drawColoredCapsule(start_pos, end_pos);
 	
-	drawAxes(position, rotation);
+	//drawAxes(position, rotation);
 }
 
 void Cursor::drawColoredCapsule(const Vector3d& start_pos, const Vector3d& end_pos)
