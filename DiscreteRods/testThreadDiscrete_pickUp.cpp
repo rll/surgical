@@ -76,6 +76,11 @@ static const GLfloat lightThreeColor[] = {0.5, 0.5, 0.5, 1.0};
 static const GLfloat lightFourPosition[] = {-140.0, 0.0, -200.0, 0.0};
 static const GLfloat lightFourColor[] = {0.9, 0.9, 0.9, 1.0};
 
+static GLfloat mat_ambient[]    = { 0.7f, 0.7f, 0.7f, 1.0 };
+static GLfloat mat_diffuse[]    = { 0.8f, 0.8f, 0.8f, 1.0 };
+static GLfloat mat_specular[]   = { 0.5f, 0.5f, 0.5f, 1.0 };
+static GLfloat high_shininess[] = { 100.0 };
+
 #define VIEW3D
 
 float lastx_L=0;
@@ -667,8 +672,9 @@ void reshape (int w, int h)
    glLoadIdentity ();
    gluPerspective(fovy, (GLfloat) w/(GLfloat) h, z_near, z_far);
    glMatrixMode (GL_MODELVIEW);
-   window_width = w;
-   window_height = h;
+   glGetIntegerv(GL_VIEWPORT, viewport);
+   window_width = viewport[2];
+   window_height = viewport[3];
 }
 
 void drawExperimentText()
@@ -709,6 +715,11 @@ void drawWorld()
 	glLightfv (GL_LIGHT2, GL_POSITION, lightThreePosition);
 	glLightfv (GL_LIGHT3, GL_POSITION, lightFourPosition);
 	
+	glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
+  glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
+  glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+  glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
+	
 	if (drawWorldInd < drawWorlds.size() &&
       drawInd < drawWorlds[drawWorldInd].size() &&
       drawWorlds[drawWorldInd][drawInd] != NULL &&
@@ -726,17 +737,12 @@ void drawWorld()
   } 
 }
 
+void drawStuff2() {}
+
 void drawStuff()
 {
 #ifdef VIEW3D
  	glutSetWindow(main_window);
- 	reshape(window_width, window_height);
- 	glGetIntegerv(GL_VIEWPORT, viewport);
- 	cout << "viewport left ";
- 	for (int i = 0; i < 4; i++)
- 		cout << viewport[i] << " ";
- 	cout << endl;
-// 	usleep(100);
 #endif
 	glPushMatrix ();
   glLoadIdentity();
@@ -751,11 +757,13 @@ void drawStuff()
 
 #ifdef VIEW3D
 	glTranslatef(0.0, 0.0, +eye_focus_depth);
+#ifndef PICTURE
 	glColor3f(0.8, 0.8, 0.8);
   drawSphere(Vector3d::Zero(), 1);
+#endif
 	// (-translate_frame[2]) is distance from camera to sphere center
 	// (-translate_frame[2] - eye_focus_depth) is distance from camera to focus point
-	//glRotatef (+atan(eye_separation/(2.0*(-translate_frame[2]-eye_focus_depth))) * 180.0/M_PI, 0.0, 1.0, 0.0);
+	glRotatef (+atan(eye_separation/(2.0*(-translate_frame[2]-eye_focus_depth))) * 180.0/M_PI, 0.0, 1.0, 0.0);
 	glTranslatef(0.0, 0.0, -eye_focus_depth);
 #endif
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
@@ -774,22 +782,18 @@ void drawStuff()
   
 #ifdef VIEW3D
 	glutSetWindow(side_window);
- 	//reshape(window_width, window_height);
- 	glGetIntegerv(GL_VIEWPORT, viewport);
- 	cout << "viewport right ";
- 	for (int i = 0; i < 4; i++)
- 		cout << viewport[i] << " ";
- 	cout << endl;
 	glPushMatrix ();
 	glLoadIdentity();
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glClearColor(0.4, 0.4, 0.4, 0.0);
+  glClearColor(0.4, 0.4, 0.4, 0.0);
 	/* set up some matrices so that the object spins with the mouse */
 	glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
 	glTranslatef(0.0, 0.0, +eye_focus_depth);
+#ifndef PICTURE
 	glColor3f(0.8, 0.8, 0.8);
   drawSphere(Vector3d::Zero(), 1);
-	//glRotatef (-atan(eye_separation/(2.0*(-translate_frame[2]-eye_focus_depth))) * 180.0/M_PI, 0.0, 1.0, 0.0);
+#endif
+	glRotatef (-atan(eye_separation/(2.0*(-translate_frame[2]-eye_focus_depth))) * 180.0/M_PI, 0.0, 1.0, 0.0);
 	glTranslatef(0.0, 0.0, -eye_focus_depth);
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 1.0, 0.0);
@@ -842,20 +846,22 @@ int main (int argc, char * argv[])
 	glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
 #ifdef VIEW3D	
 	int screen_width, screen_height;
+	double screen_fraction = 2.0;
  	screen_width = glutGet(GLUT_SCREEN_WIDTH);
 	screen_height = glutGet(GLUT_SCREEN_HEIGHT);
-	glutInitWindowSize(screen_width/4.0, screen_height);
-	window_width = screen_width/4.0;
+	glutInitWindowSize(screen_width/screen_fraction, screen_height);
+	window_width = screen_width/screen_fraction;
 	window_height = screen_height;
 	
 	side_window = glutCreateWindow ("Thread");
-	glutPositionWindow(3.0*screen_width/4.0, 0);
+	glutPositionWindow((screen_fraction-1.0)*screen_width/screen_fraction, 0);
 	initGL();
 	glutSetCursor(GLUT_CURSOR_NONE);
 	glutReshapeFunc(reshape);
+	glutDisplayFunc (drawStuff2);
 	
 	main_window = glutCreateWindow ("Thread");
-	glutPositionWindow(screen_width/2.0,0);
+	glutPositionWindow((screen_fraction-2.0)*screen_width/screen_fraction,0);
 #else
 	glutInitWindowSize(900,900);
 	window_width = 900;
@@ -870,8 +876,7 @@ int main (int argc, char * argv[])
   glutKeyboardFunc(processNormalKeys);
   glutKeyboardUpFunc(processKeyUp);
   glutSpecialFunc(processSpecialKeys);
-  glutIdleFunc(processIdle);
- 
+  glutIdleFunc(processIdle); 
 	
 	/* create popup menu */
 	glutCreateMenu (glutMenu);
