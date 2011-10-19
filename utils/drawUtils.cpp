@@ -1,6 +1,8 @@
 #include "drawUtils.h"
 
 void drawCylinder(const btTransform& tr, float half_height, float r) {
+	cout << "implement drawCylinder(const btTransform& tr, float half_height, float r) using glu" << endl;
+	assert(0);
 	glPushMatrix();
 	btScalar transform[16];
 	tr.getOpenGLMatrix(transform);
@@ -27,20 +29,20 @@ void drawCapsule(btCollisionObject* col_obj, bool include_repulsion_dist)
 	glMultMatrixf((float*) transform);
 	float half_height = capsule_shape->getHalfHeight();
 	float radius = capsule_shape->getRadius() - ((include_repulsion_dist) ? 0.0 : REPULSION_DIST);
-	double cylinder[4][3] = { {-half_height-1.0, 0.0, 0.0} , {-half_height, 0.0, 0.0} , {half_height, 0.0, 0.0} ,
-															 {half_height+1.0, 0.0, 0.0} };
-#ifdef PICTURE
-	gleSetNumSides(60);
-#endif
-	glePolyCylinder(4, cylinder, NULL, radius);
-	glTranslated(-half_height, 0.0, 0.0);
+	GLUquadricObj* cyl;
+  cyl = gluNewQuadric();
+  glRotatef(90.0, 0.0, 1.0, 0.0);
+  glTranslatef(0.0, 0.0, -half_height);
+  gluCylinder(cyl, radius, radius, 2.0*half_height, 12, 12);
 	glutSolidSphere(radius, 20, 16);
-	glTranslated(2.0*half_height, 0.0, 0.0);
+	glTranslated(0.0, 0.0, 2.0*half_height);
 	glutSolidSphere(radius, 20, 16);
 	glPopMatrix();
 }
 
 void drawCylinder(Vector3d pos, Matrix3d rot, double h, double r) {
+	cout << "implement drawCylinder(Vector3d pos, Matrix3d rot, double h, double r) using glu" << endl;
+	assert(0);
 	glPushMatrix();
 	double transform[16] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
 													 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
@@ -82,23 +84,39 @@ void drawCylinder(Vector3d pos, Matrix3d rot, double h, double r) {
 void drawCylinder(Vector3d start_pos, Vector3d end_pos, double r)
 {
 	glPushMatrix();	
-  Vector3d vector_array[4];
-  double point_array[4][3];
-
-  vector_array[0] = start_pos - (end_pos - start_pos);
-  vector_array[1] = start_pos;
-  vector_array[2] = end_pos;
-  vector_array[3] = end_pos + (end_pos - start_pos);
-
-  for (int pt_ind = 0; pt_ind < 4; pt_ind++)
-  {
-    point_array[pt_ind][0] = vector_array[pt_ind](0);
-    point_array[pt_ind][1] = vector_array[pt_ind](1);
-    point_array[pt_ind][2] = vector_array[pt_ind](2);
-  }
-
-  glePolyCylinder(4, point_array, NULL, r);
+	Vector3d edge = end_pos - start_pos;
+	Matrix3d rot;
+	rotation_from_tangent(edge.normalized(), rot);
+	double transform[16] = { rot(0,0) , rot(1,0) , rot(2,0) , 0 ,
+													 rot(0,1) , rot(1,1) , rot(2,1) , 0 ,
+													 rot(0,2) , rot(1,2) , rot(2,2) , 0 ,
+													 start_pos(0)   , start_pos(1)   , start_pos(2)   , 1 };
+	glMultMatrixd(transform);
+	
+  GLUquadricObj* cyl;
+  cyl = gluNewQuadric();
+  glRotatef(90.0, 0.0, 1.0, 0.0);
+  gluCylinder(cyl, r, r, edge.norm(), 12, 12);
   glPopMatrix();
+
+//  glPushMatrix();	
+//  Vector3d vector_array[4];
+//  double point_array[4][3];
+
+//  vector_array[0] = start_pos - (end_pos - start_pos);
+//  vector_array[1] = start_pos;
+//  vector_array[2] = end_pos;
+//  vector_array[3] = end_pos + (end_pos - start_pos);
+
+//  for (int pt_ind = 0; pt_ind < 4; pt_ind++)
+//  {
+//    point_array[pt_ind][0] = vector_array[pt_ind](0);
+//    point_array[pt_ind][1] = vector_array[pt_ind](1);
+//    point_array[pt_ind][2] = vector_array[pt_ind](2);
+//  }
+
+//  glePolyCylinder(4, point_array, NULL, r);
+//  glPopMatrix();
 }
 
 void drawEndEffector(Vector3d pos, Matrix3d rot, double degrees, float color0, float color1, float color2) {
