@@ -260,9 +260,9 @@ EndEffector* World::closestEndEffector(Vector3d tip_pos)
 void World::draw(RenderMode render_mode)
 {
 	if (render_mode == NORMAL) {
+#ifndef PICTURE
 		for (int i = 0; i<cursors.size(); i++)
 			cursors[i]->draw();
-#ifndef PICTURE
 		for (int i = 0; i<objs.size(); i++)
 			objs[i]->draw();
 #else

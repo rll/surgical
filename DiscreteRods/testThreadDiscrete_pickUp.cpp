@@ -81,9 +81,9 @@ static GLfloat mat_diffuse[]    = { 0.8f, 0.8f, 0.8f, 1.0 };
 static GLfloat mat_specular[]   = { 0.5f, 0.5f, 0.5f, 1.0 };
 static GLfloat high_shininess[] = { 100.0 };
 
-#define DISABLE_DOWNSAMPLE true
+#define DISABLE_DOWNSAMPLE false
 
-#define VIEW3D
+//#define VIEW3D
 
 float lastx_L=0;
 float lasty_L=0;
@@ -241,14 +241,14 @@ void loadNextTrajectory()
 
 void processNormalKeys(unsigned char key, int x, int y)
 {
-	/*
+	
 	if (key == 'o') {
 		cout << "Please enter problem name (without extension) (i.e. x1): ";
 	  data_raw_filename = new char[256];
 	  cin >> data_raw_filename;
 	  char *directory = new char[256];
-	  sprintf(directory, "environmentFiles/%s/video_trajs/", data_raw_filename);
-	  //sprintf(directory, "environmentFiles/%s/", data_raw_filename);
+	  //sprintf(directory, "environmentFiles/%s/video_trajs/", data_raw_filename);
+	  sprintf(directory, "environmentFiles/%s/", data_raw_filename);
 		dir = opendir (directory);
 		if (dir != NULL) {
 			cout << "Sucessfully opened directory" << endl;
@@ -271,8 +271,8 @@ void processNormalKeys(unsigned char key, int x, int y)
 				sprintf(filename, "%s", ent->d_name);
 				vector<string> parameters;
 				boost::split(parameters, filename, boost::is_any_of("_"));
-				if (parameters.size() != 8 || parameters[0]!=string(data_raw_filename) || parameters[4]!="1.0") {
-				//if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename) || parameters[4]!="0.6" || parameters[3] != "0") {
+				//if (parameters.size() != 8 || parameters[0]!=string(data_raw_filename) || parameters[4]!="1.0") {
+				if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename) || parameters[4]!="0.6" || parameters[3] != "5") {
 				//if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename) || parameters[3] == "5") {
 					cout << "Ignoring file " << filename << endl;
 					processNormalKeys('b', x, y);
@@ -280,8 +280,8 @@ void processNormalKeys(unsigned char key, int x, int y)
 				}
 				string base_name = "environmentFiles/";
 				base_name.append(data_raw_filename);
-				//base_name.append("/");
-				base_name.append("/video_trajs/");
+				base_name.append("/");
+				//base_name.append("/video_trajs/");
 				vector<World*> temp_worlds;
 				TrajectoryReader read(filename, base_name.c_str());
 				if (read.readWorldsFromFile(temp_worlds)) {
@@ -313,14 +313,17 @@ void processNormalKeys(unsigned char key, int x, int y)
 		cout << "You answered no" << endl;
 		processNormalKeys('b', x, y);
 		return;
-	} else if (key == 'i') {
+	} else
+	if (key == 'i') {
 		cout << "Please enter image destination file name (without extension): ";
     char *dstFileName = new char[256];
     cin >> dstFileName;
 		save_opengl_image(dstFileName);
 	} else if (key == 'I') {
-		TrajectoryReader trajectory_reader();
+		TrajectoryReader trajectory_reader;
 		trajectory_reader.queryFileName();
+		char* srcFullFileName = new char[256];
+		trajectory_reader.getFileName(srcFullFileName);
 		
 		cout << "Please enter image destination file path (without extension): ";
     char *dstPath = new char[256];
@@ -332,7 +335,6 @@ void processNormalKeys(unsigned char key, int x, int y)
     boost::split(srcFullFileName_vect, srcFullFileName_string, boost::is_any_of("/"));
     string srcFileName = srcFullFileName_vect.back();
 
-		TrajectoryReader trajectory_reader(srcRawFileName);
 		vector<World*> worlds_to_save;
 		if (trajectory_reader.readWorldsFromFile(worlds_to_save)) {
 			for (int i = 0; i < worlds_to_save.size(); i++) {
@@ -352,8 +354,7 @@ void processNormalKeys(unsigned char key, int x, int y)
 			cout << "Unable to save images" << endl;
 		}
 	}
-	*/
-	if (key == 't')
+	else if (key == 't')
 	  mouse0->setKeyPressed(MOVETAN);
   else if (key == 'm')
     mouse0->setKeyPressed(MOVEPOS);
@@ -425,12 +426,88 @@ void processNormalKeys(unsigned char key, int x, int y)
 		string root_file_name = file_name_string.substr(0,found);
 		string ext_file_name = file_name_string.substr(found+1);
 
-		if (ext_file_name == "twd" || found == string::npos) {
+		if (ext_file_name == "tcl") {
+			vector<vector<Control*> > controls;
+			trajectory_reader.readControlsFromFile(controls);
+
+			char* world_file_name = new char[256];
+			strcpy(world_file_name, root_file_name.c_str());
+			strcat(world_file_name, ".twd");
+			TrajectoryReader trajectory_reader_world;
+			trajectory_reader_world.setFileName(world_file_name);
+			//trajectory_reader_world.setFileName("x10s/x10s_world.txt");
+			vector<World*> temp_worlds;
+			trajectory_reader_world.readWorldsFromFile(temp_worlds);
+
+			vector<World*> openLoopWorlds; 
+			openLoopWorlds.push_back(new World(*temp_worlds[0]));
+			World* OLcopy = new World(*temp_worlds[0], test_world_manager);
+//			openLoopWorlds.push_back(new World(*temp_worlds.back()));
+//			World* OLcopy = new World(*temp_worlds.back(), test_world_manager);
+			cout << "Step " << 0 << " / " << controls.size()-1 << endl;
+			for (int i = 1; i < controls.size(); i++) {
+			  fputs("\033[A\033[2K",stdout);
+				rewind(stdout);
+				int dummy = ftruncate(1,0);
+			  cout << "Step " << i << " / " << controls.size()-1 << endl;
+			  
+			  OLcopy->applyRelativeControl(controls[i-1], 0, true);
+			  openLoopWorlds.push_back(new World(*OLcopy));
+			}
+			delete OLcopy; 
+
+			setVisualizationData(openLoopWorlds);
+		} else { // (ext_file_name == "twd" || found == string::npos) or other extension i.e. .txt
 			vector<World*> vis_data;
 			if (trajectory_reader.readWorldsFromFile(vis_data)) {
 				setVisualizationData(vis_data);
 			}
-		} else if (ext_file_name == "tcl") {
+		}
+	} else if (key == 'K') { //put the last world from the trajectory into the interactive world.
+		TrajectoryReader trajectory_reader;
+		trajectory_reader.queryFileName();
+		vector<World*> world_traj;
+		if (trajectory_reader.readWorldsFromFile(world_traj)) {
+			world = new World(*world_traj.back(), test_world_manager);
+			ControllerBase *controller0, *controller1;
+			if (haptics) {
+				controller0 = haptic0;
+				controller1 = haptic1;
+			} else {
+				controller0 = mouse0;
+				controller1 = mouse1;
+			}
+			controller0->setTransform(world->objectAtIndex<Cursor>(0)->getPosition(), world->objectAtIndex<Cursor>(0)->getRotation());
+			controller1->setTransform(world->objectAtIndex<Cursor>(1)->getPosition(), world->objectAtIndex<Cursor>(1)->getRotation());
+
+			control0->setButton(UP, controller0->hasButtonPressedAndReset(UP));
+			control0->setButton(DOWN, controller0->hasButtonPressedAndReset(DOWN));
+			control1->setButton(UP, controller1->hasButtonPressedAndReset(UP));
+			control1->setButton(DOWN, controller1->hasButtonPressedAndReset(DOWN));
+
+			control0->setTranslate(controller0->getPosition() - world->objectAtIndex<Cursor>(0)->getPosition());
+			control0->setRotate(world->objectAtIndex<Cursor>(0)->getRotation().transpose() * controller0->getRotation());
+			control1->setTranslate(controller1->getPosition() - world->objectAtIndex<Cursor>(1)->getPosition());
+			control1->setRotate(world->objectAtIndex<Cursor>(1)->getRotation().transpose() * controller1->getRotation());
+
+			vector<Control*> controls;
+			controls.push_back(control0);
+			controls.push_back(control1);
+
+			world->applyRelativeControl(controls, 0.0, false);
+		}
+	} else if (key == 'C') {
+		TrajectoryReader trajectory_reader;
+		trajectory_reader.queryFileName();
+		char* file_name = new char[256];
+		trajectory_reader.getFileName(file_name);
+		
+		string file_name_string(file_name);
+		size_t found = file_name_string.find_last_of(".");
+		string root_file_name = file_name_string.substr(0,found);
+		string ext_file_name = file_name_string.substr(found+1);
+
+		if (ext_file_name == "tcl") {
 			vector<vector<Control*> > controls;
 			trajectory_reader.readControlsFromFile(controls);
 
@@ -458,8 +535,20 @@ void processNormalKeys(unsigned char key, int x, int y)
 			delete OLcopy; 
 
 			setVisualizationData(openLoopWorlds);
-		} else {
-			cout << "Unable to open trajectory. Unknown extension " << ext_file_name << endl;
+			
+			TrajectoryRecorder world_traj_rec;
+			world_traj_rec.queryFileName();
+			world_traj_rec.start(STATE);
+			for (int i = 0; i < openLoopWorlds.size(); i++) {
+				if (world_traj_rec.hasStarted())
+					world_traj_rec.writeWorldToFile(openLoopWorlds[i]);
+			}
+			world_traj_rec.stop();
+		} else { // (ext_file_name == "twd" || found == string::npos) or other extension i.e. .txt
+			vector<World*> vis_data;
+			if (trajectory_reader.readWorldsFromFile(vis_data)) {
+				setVisualizationData(vis_data);
+			}
 		}
 
 	} else if(key == 'd') { // puts the current world in start_world
@@ -705,10 +794,10 @@ void drawWorld()
 	glLightfv (GL_LIGHT2, GL_POSITION, lightThreePosition);
 	glLightfv (GL_LIGHT3, GL_POSITION, lightFourPosition);
 	
-	glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
-  glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
-  glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
-  glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
+//	glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
+//  glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
+//  glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+//  glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
 	
 	if (drawWorldInd < drawWorlds.size() &&
       drawInd < drawWorlds[drawWorldInd].size() &&
@@ -948,23 +1037,15 @@ void processInput(ControllerBase* controller0, ControllerBase* controller1)
 		downsample = (downsample+1) % 10;
 		
 	if (DISABLE_DOWNSAMPLE || downsample == 0) {
-
-		if (haptics) { //TODO fix this hack
-			control0->setTranslate(haptic0->getPosition() - world->objectAtIndex<Cursor>(0)->getPosition());
-			control0->setRotate(world->objectAtIndex<Cursor>(0)->getRotation().transpose() * haptic0->getRotation());
-			control1->setTranslate(haptic1->getPosition() - world->objectAtIndex<Cursor>(1)->getPosition());
-			control1->setRotate(world->objectAtIndex<Cursor>(1)->getRotation().transpose() * haptic1->getRotation());
-		} else {
-			control0->setTranslate(mouse0->getPosition() - world->objectAtIndex<Cursor>(0)->getPosition());
-			control0->setRotate(world->objectAtIndex<Cursor>(0)->getRotation().transpose() * mouse0->getRotation());
-			control1->setTranslate(mouse1->getPosition() - world->objectAtIndex<Cursor>(1)->getPosition());
-			control1->setRotate(world->objectAtIndex<Cursor>(1)->getRotation().transpose() * mouse1->getRotation());
-		}
+		
+		//TODO fix this hack
+		control0->setTranslate(controller0->getPosition() - world->objectAtIndex<Cursor>(0)->getPosition());
+		control0->setRotate(world->objectAtIndex<Cursor>(0)->getRotation().transpose() * controller0->getRotation());
+		control1->setTranslate(controller1->getPosition() - world->objectAtIndex<Cursor>(1)->getPosition());
+		control1->setRotate(world->objectAtIndex<Cursor>(1)->getRotation().transpose() * controller1->getRotation());
 
 		if (trajectory_recorder_world.hasStarted())
 			trajectory_recorder_world.writeWorldToFile(world);
-//			if (trajectory_recorder.hasStarted())
-//				trajectory_recorder.writeControlToFile(control0, control1);
 
 		vector<Control*> controls;
 		controls.push_back(control0);
@@ -1088,6 +1169,8 @@ void glutMenu(int ID) {
 }
 
 void interruptHandler(int sig) {
+  //Alex doesn't like this so he put an exit call
+  exit(0);
   cout << "Time since last interrupt: " << interruptTimer->elapsed() << endl; 
   if (interruptTimer->elapsed() < 0.1) exit(0);
   cout << "You need to hold ctrl-c to forcefully exit the program!" << endl;
