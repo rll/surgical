@@ -326,6 +326,16 @@ void World::draw(RenderMode render_mode)
 		collision_world->drawAllCollisions();
 }
 
+double World::distanceMetric(const World* w)
+{
+	assert(this->threads.size() == w->threads.size());
+	double dist = 0.0;
+	for (int i = 0; i < threads.size(); i++) {
+		dist += threads[i]->distanceMetric(w->threads[i]);
+	}
+	return dist;
+}
+
 void World::setTransformFromController(const vector<ControllerBase*>& controllers, bool limit_displacement)
 {
 	assert(cursors.size() == controllers.size());

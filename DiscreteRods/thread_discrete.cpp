@@ -2871,6 +2871,7 @@ void Thread::set_thread_data(const Vector3d& start_position, const vector<Matrix
 
 	for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++) {
     _thread_pieces[piece_ind]->set_vertex(points[piece_ind]);
+    _thread_pieces[piece_ind]->set_material_frame(material_frames[piece_ind]);
   }
   set_constraints(points[0], material_frames[0], points[points.size()-1], material_frames[material_frames.size()-2]);
 }
@@ -2913,6 +2914,7 @@ void Thread::set_thread_data(const Vector3d& start_position, const Vector3d& end
 	
 	for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++) {
     _thread_pieces[piece_ind]->set_vertex(points[piece_ind]);
+    _thread_pieces[piece_ind]->set_material_frame(material_frames[piece_ind]);
   }
   set_constraints(points[0], material_frames[0], points[points.size()-1], material_frames[material_frames.size()-2]);
 }

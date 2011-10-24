@@ -552,7 +552,9 @@ void ThreadConstrained::get_thread_data(vector<Vector3d> &absolute_points, vecto
 	mergeMultipleVector(absolute_material_frames, material_frames);
 }
 
+//------------------------------------------ rrt interface starts ------------------------------------------//
 
+//For simplicity for now, assume that the ThreadConstrained is not picked from the middle (i.e. ThreadConstrained is composed of only one Thread).
 void ThreadConstrained::get_thread_data(Vector3d& start_position, vector<Matrix3d>& material_frames)
 {
 	assert(threads.size() == 1);
@@ -599,6 +601,21 @@ void ThreadConstrained::set_thread_data(const Vector3d& start_position, const Ve
 {
 	assert(threads.size() == 1);
 	threads[0]->set_thread_data(start_position, end_position, euler_angles);
+}
+
+double ThreadConstrained::distanceMetric(ThreadConstrained* t)
+{
+	vector<Vector3d> points;
+  vector<Vector3d> t_points;
+  this->get_thread_data(points);
+  t->get_thread_data(t_points);
+  assert(points.size() == t_points.size());
+  VectorXd diff;
+  diff.resize(3*points.size());
+  for (int i = 0; i < points.size(); i++) {
+    diff.segment<3>(3*i) = t_points[i] - points[i];
+  }
+  return diff.norm();
 }
 
 //void ThreadConstrained::toVector(VectorXd* vec) const
@@ -658,6 +675,8 @@ void ThreadConstrained::set_thread_data(const Vector3d& start_position, const Ve
 //    vec_iter += edges_vector[i].size();
 //  }
 //}
+
+//------------------------------------------ rrt interface ends ------------------------------------------//
 
 // parameters have to be of the right size, i.e. threads.size()+1
 void ThreadConstrained::getConstrainedTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations) {

@@ -325,12 +325,12 @@ void EndEffector::updateCollisionObjects()
 	}
 }
 
-void EndEffector::updateTransformFromAttachment()
+void EndEffector::updateTransformFromAttachment(bool limited_displacement)
 {
 	if (isThreadAttached()) {
 //		position = thread->positionAtConstraint(constraint_ind);
 //		rotation = thread->rotationAtConstraint(constraint_ind);
-		setTransform(thread->positionAtConstraint(constraint_ind), thread->rotationAtConstraint(constraint_ind), true);
+		setTransform(thread->positionAtConstraint(constraint_ind), thread->rotationAtConstraint(constraint_ind), limited_displacement);
 		updateCollisionObjects();
 	}
 	if (isNeedleAttached()) {
