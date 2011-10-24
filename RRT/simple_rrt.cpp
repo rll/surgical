@@ -185,7 +185,7 @@ void processLeft(int x, int y)
 		mouse0->add2DMove(x-lastx_L, lasty_L-y);
 	} else if (mouse1->getKeyPressed() != NONE) {
 		mouse1->add2DMove(x-lastx_L, lasty_L-y);
-	} else if (/*glutGetModifiers()*/ false &  GLUT_ACTIVE_CTRL){
+	} else if (glutGetModifiers() &  GLUT_ACTIVE_CTRL){
 
 		translate_frame[0] += 0.1*(x-lastx_L);
 		translate_frame[1] += 0.1*(lasty_L-y);
@@ -789,16 +789,24 @@ void drawExperimentText()
       drawInd < drawWorlds[drawWorldInd].size() &&
       drawWorlds[drawWorldInd][drawInd] != NULL &&
       drawVisualizationData) { 
-    bitmap_output(50, 55, "Viz (')", GLUT_BITMAP_TIMES_ROMAN_24);
+    bitmap_output(45, 55, "Vizualizer (')", GLUT_BITMAP_HELVETICA_18);
+  } else {
+    bitmap_output(45, 55, "Vizualizer (')", GLUT_BITMAP_HELVETICA_12);
   }
   if (world && drawInteractiveWorld) {
-    bitmap_output(50, 50, "Int (;)", GLUT_BITMAP_TIMES_ROMAN_24);
+    bitmap_output(45, 50, "Interactive (;)", GLUT_BITMAP_HELVETICA_18);
+  } else {
+    bitmap_output(45, 50, "Interactive (;)", GLUT_BITMAP_HELVETICA_12);
   }
   if (start_world && drawStartWorld) {
-    bitmap_output(50, 45, "Start ([)", GLUT_BITMAP_TIMES_ROMAN_24);
+    bitmap_output(45, 45, "Start ([)", GLUT_BITMAP_HELVETICA_18);
+  } else {
+    bitmap_output(45, 45, "Start ([)", GLUT_BITMAP_HELVETICA_12);
   }
   if (goal_world && drawGoalWorld) {
-    bitmap_output(50, 40, "Goal (])", GLUT_BITMAP_TIMES_ROMAN_24);
+    bitmap_output(45, 40, "Goal (])", GLUT_BITMAP_HELVETICA_18);
+  } else {
+    bitmap_output(45, 40, "Goal (])", GLUT_BITMAP_HELVETICA_12);
   }
   glEnable(GL_LIGHTING);
 }
@@ -829,7 +837,7 @@ void drawWorld()
   }
   if (goal_world && drawGoalWorld) {
   	goal_world->draw();
-  } 
+  }
 }
 
 void drawStuff()
@@ -837,13 +845,17 @@ void drawStuff()
 #ifndef VIEW3D
 	glPushMatrix ();
   glLoadIdentity();
-  glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glClearColor(0.4, 0.4, 0.4, 0.0);
+	#ifndef PICTURE
+		glPushMatrix();
+		glTranslatef(0.0, 0.0, -110.0);
+		glColor3f(0.0, 0.0, 0.0);
+  	drawExperimentText();
+  	glPopMatrix();
+	#endif
   /* set up some matrices so that the object spins with the mouse */
   glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
-	#ifndef PICTURE
-  	drawExperimentText();
-	#endif
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 1.0, 0.0);
   
@@ -867,7 +879,11 @@ void drawStuff()
   displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
 	glEnable(GL_LIGHTING);
 	#ifndef PICTURE
+		glPushMatrix();
+		glTranslatef(0.0, 0.0, -110.0);
+		glColor3f(0.0, 0.0, 0.0);
   	drawExperimentText();
+  	glPopMatrix();
 	#endif
   /* set up some matrices so that the object spins with the mouse */
   glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
@@ -901,7 +917,11 @@ void drawStuff()
   displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
 	glEnable(GL_LIGHTING);
 	#ifndef PICTURE
+		glPushMatrix();
+		glTranslatef(0.0, 0.0, -110.0);
+		glColor3f(0.0, 0.0, 0.0);
   	drawExperimentText();
+  	glPopMatrix();
 	#endif
 	/* set up some matrices so that the object spins with the mouse */
 	glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
@@ -930,19 +950,19 @@ int main (int argc, char * argv[])
 
   printf("Instructions:\n"
     "\n"
-    "There are two types of control: haptic (Phantom) and normal (mouse and \nkeyboard).\n"
-    "The 3D cursor (represented by a capsule) is controlled by either one of the \ncontrols.\n"
-    "Initially, the 3D cursor is controlled by the normal device. To change the \ncontrol, press 'h'.\n"
+    "There are two types of controllers: haptic (Phantom) and normal (mouse and \nkeyboard).\n"
+    "The 3D cursor (represented by a capsule) is controlled by either one of the \ncontrollers.\n"
+    "Initially, the 3D cursor is controlled by the normal device. To change the \ncontroller, press 'h'.\n"
     "\n"
     "The upper part of the 3D cursor is where the white ring is closer to.\n"
-    "The cursor represent the true position and orientation of the control.\n"
+    "The cursor represent the true position and orientation of the controller.\n"
     "The cursor can be open or closed, and this is represented by a green or red \ncolor on the upper part of it respectively.\n"
     "The cursor can be attached to an end effector, which inherits the open/close \nstatus of the cursor that holds it.\n"
     "To attach the cursor to an end effector, the cursor have to be NEAR and \nALIGNED (orientation) to the end effector's yellow cylinder.\n"
-    "Press the control's upper button to change between open and closed.\n"
-    "Press the control's lower button to attach or dettach the cursor to or from \nthe end effector.\n"
+    "Press the controller's upper button to change between open and closed.\n"
+    "Press the controller's lower button to attach or dettach the cursor to or from \nthe end effector. When using the normal device, the cursor is automatically \nmoved near and aligned to the closest end effector.\n"
     "\n"
-    "Manipule the cursor using the normal control (use SHIFT for controlling the \nother cursor):\n"
+    "Manipule the cursor using the normal controller (use SHIFT for controlling the \nother cursor):\n"
     "  Move:                    Left mouse button and 'm'.\n"
     "  Move tangent:            Left mouse button and 't'.\n"
     "  Rotate around tangent:   Left mouse button and 'r'.\n"
