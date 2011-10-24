@@ -768,8 +768,6 @@ void ThreadPiece::update_bishop_frame()
 
 }
 
-
-
 void ThreadPiece::update_bishop_frame_firstPiece()
 {
 	Vector3d new_direction = _edge.normalized();
@@ -874,7 +872,7 @@ double ThreadPiece::calculate_holonomy()
 
 void ThreadPiece::update_edge()
 {
-  if (_next_piece == 0)
+  if (_next_piece == NULL)
      return;
   _edge = _next_piece->_vertex - _vertex;
   _edge_norm = _edge.norm();
