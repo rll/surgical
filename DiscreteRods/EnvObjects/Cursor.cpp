@@ -166,6 +166,13 @@ void Cursor::setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_d
 	}
 }
 
+void Cursor::updateTransformFromEndEffector()
+{
+	if (isAttached() && end_eff->isThreadAttached()) {
+		setTransform(end_eff->getPosition(), end_eff->getRotation());
+	}
+}
+
 const Vector3d& Cursor::getPosition() const
 {
 	return position;

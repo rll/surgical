@@ -80,6 +80,20 @@ class ThreadConstrained {
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<double> &absolute_twist_angles);
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<double> &absolute_twist_angles, vector<Matrix3d> &absolute_material_frames);
 		void get_thread_data(vector<Vector3d> &absolute_points, vector<Matrix3d> &absolute_material_frames);
+    
+    
+    //------------------------------------------ rrt interface starts ------------------------------------------//
+    void get_thread_data(Vector3d& start_position, vector<Matrix3d>& material_frames);
+		void set_thread_data(const Vector3d& start_position, const vector<Matrix3d>& material_frames);
+		void get_thread_data(Vector3d& start_position, Vector3d& end_position, vector<Matrix3d>& material_frames);
+		void set_thread_data(const Vector3d& start_position, const Vector3d& end_position, const vector<Matrix3d>& material_frames);
+    void get_thread_data(Vector3d& start_position, vector<Vector3d>& euler_angles);
+		void set_thread_data(const Vector3d& start_position, const vector<Vector3d>& euler_angles);
+		void get_thread_data(Vector3d& start_position, Vector3d& end_position, vector<Vector3d>& euler_angles);
+		void set_thread_data(const Vector3d& start_position, const Vector3d& end_position, const vector<Vector3d>& euler_angles);
+		double distanceMetric(ThreadConstrained* t);
+		//------------------------------------------ rrt interface ends ------------------------------------------//
+		
 		// parameters have to be of the right size, i.e. threads.size()+1
 		void getConstrainedTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations);
 		void setConstrainedTransforms(vector<Vector3d> positions, vector<Matrix3d> rotations);

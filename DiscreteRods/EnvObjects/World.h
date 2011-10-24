@@ -115,6 +115,8 @@ class World
 	
 		void draw(RenderMode examine_mode = NORMAL);
 
+		double distanceMetric(const World* w);
+		
 		//applying control
 		//the controls should know to whom they are applying control.
 		//if the control doesn't have an ee attachment, world should solve that; i.e. find the closest ee for the control.

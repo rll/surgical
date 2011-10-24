@@ -59,7 +59,7 @@ class EndEffector : public EnvObject
 		EndEffector(ifstream& file, World* w);
 		
 		void setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_displacement = false, double max_displacement = MAX_DISPLACEMENT, double max_angle_change = MAX_ANGLE_CHANGE);
-		void updateTransformFromAttachment();
+		void updateTransformFromAttachment(bool limited_displacement = true);
 		
 		void draw();
 		void drawDebug();

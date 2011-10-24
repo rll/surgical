@@ -24,29 +24,32 @@
 
 #include <dirent.h>
 
-#include "IO/ControllerBase.h"
-#include "IO/Mouse.h"
-#include "IO/Haptic.h"
-#include "IO/Control.h"
-#include "thread_socket_interface.h"
+#include "../DiscreteRods/IO/ControllerBase.h"
+#include "../DiscreteRods/IO/Mouse.h"
+#include "../DiscreteRods/IO/Haptic.h"
+#include "../DiscreteRods/IO/Control.h"
+#include "../DiscreteRods/thread_socket_interface.h"
 
-#include "thread_discrete.h"
-#include "ThreadConstrained.h"
-#include "EnvObjects/World.h"
-#include "EnvObjects/WorldManager.h"
-#include "EnvObjects/Cursor.h"
+#include "../DiscreteRods/thread_discrete.h"
+#include "../DiscreteRods/ThreadConstrained.h"
+#include "../DiscreteRods/EnvObjects/World.h"
+#include "../DiscreteRods/EnvObjects/WorldManager.h"
+#include "../DiscreteRods/EnvObjects/Cursor.h"
 
-#include "planner_lib.h"
+#include "../DiscreteRods/planner_lib.h"
 
-#include "StateRecorder.h"
-#include "StateReader.h"
-#include "TrajectoryRecorder.h"
-#include "TrajectoryReader.h"
+#include "../DiscreteRods/StateRecorder.h"
+#include "../DiscreteRods/StateReader.h"
+#include "../DiscreteRods/TrajectoryRecorder.h"
+#include "../DiscreteRods/TrajectoryReader.h"
 
-//#include <opencv/cv.h>
-//#include <opencv/highgui.h>
+#include "rrt_utils.h"
+#include "RRTNode.h"
 
-//using namespace cv;
+#include <opencv/cv.h>
+#include <opencv/highgui.h>
+
+using namespace cv;
 
 // import most common Eigen types
 USING_PART_OF_NAMESPACE_EIGEN
@@ -58,7 +61,7 @@ void displayTextInScreen(const char* textline, ...);
 void bitmap_output(int x, int y, const char* str, void *font);
 void glutMenu(int ID);
 void initGL();
-//void save_opengl_image(char* filename);
+void save_opengl_image(char* filename);
 void interruptHandler(int sig);
 //void sqpSmoother(vector<World*>& trajectory_to_smooth, vector<World*>& smooth_trajectory);
 //void sqpPlanner(World* start, World* goal, vector<World*>& trajectory);
@@ -159,6 +162,10 @@ ofstream data_file;
 char* data_raw_filename;
 vector<vector<World*> > world_data;
 
+//RRT stuff
+RRTNode* rrt = NULL;
+vector<World*> planned_traj;
+
 void setVisualizationData(vector<vector<World*> > vis_data) {
   drawWorlds = vis_data;
   drawWorldInd = 0; 
@@ -178,7 +185,7 @@ void processLeft(int x, int y)
 		mouse0->add2DMove(x-lastx_L, lasty_L-y);
 	} else if (mouse1->getKeyPressed() != NONE) {
 		mouse1->add2DMove(x-lastx_L, lasty_L-y);
-	} else if (/*glutGetModifiers()*/ false &  GLUT_ACTIVE_CTRL){
+	} else if (glutGetModifiers() &  GLUT_ACTIVE_CTRL){
 
 		translate_frame[0] += 0.1*(x-lastx_L);
 		translate_frame[1] += 0.1*(lasty_L-y);
@@ -234,127 +241,9 @@ void processMouse(int button, int state, int x, int y)
 	}
 }
 
-void loadNextTrajectory()
-{
-
-}
-
 void processNormalKeys(unsigned char key, int x, int y)
 {
-	
-	if (key == 'o') {
-		cout << "Please enter problem name (without extension) (i.e. x1): ";
-	  data_raw_filename = new char[256];
-	  cin >> data_raw_filename;
-	  char *directory = new char[256];
-	  //sprintf(directory, "environmentFiles/%s/video_trajs/", data_raw_filename);
-	  sprintf(directory, "environmentFiles/%s/", data_raw_filename);
-		dir = opendir (directory);
-		if (dir != NULL) {
-			cout << "Sucessfully opened directory" << endl;
-//		  char *fullPath = new char[256];
-//		  sprintf(fullPath, "%s%s%s%s%s", "environmentFiles/", data_raw_filename, "/", data_raw_filename, "_data.txt");
-//			cout << "Writing data to: " << fullPath << endl;
-//			data_file.precision(20);
-//			data_file.open(fullPath);
-			
-			processNormalKeys('b', x, y);
-			return;
-		} else {
-			cout << "Failed to open directory" << endl;
-		}
-	} else if (key == 'b') {
-		cout << "--------------------------------------------" << endl;
-		if (dir != NULL) {
-			if ((ent = readdir (dir)) != NULL) {
-				char *filename = new char[256];
-				sprintf(filename, "%s", ent->d_name);
-				vector<string> parameters;
-				boost::split(parameters, filename, boost::is_any_of("_"));
-				//if (parameters.size() != 8 || parameters[0]!=string(data_raw_filename) || parameters[4]!="1.0") {
-				if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename) || parameters[4]!="0.6" || parameters[3] != "5") {
-				//if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename) || parameters[3] == "5") {
-					cout << "Ignoring file " << filename << endl;
-					processNormalKeys('b', x, y);
-					return;
-				}
-				string base_name = "environmentFiles/";
-				base_name.append(data_raw_filename);
-				base_name.append("/");
-				//base_name.append("/video_trajs/");
-				vector<World*> temp_worlds;
-				TrajectoryReader read(filename, base_name.c_str());
-				if (read.readWorldsFromFile(temp_worlds)) {
-					cout << "Displaying last world." << endl;
-				} else {
-					assert(0);
-				}
-				world_data.push_back(temp_worlds);
-				setVisualizationData(world_data);
-    		drawWorldInd = drawWorlds.size()-1;
-    		drawInd = drawWorlds[drawWorldInd].size()-1;
-				cout << "Press y or n." << endl;
-			} else {
-				closedir (dir);
-				dir = NULL;
-//				data_file.close();
-			  cout << "Writing data file Done\n";
-			}
-		} else {
-			cout << "No directory is open" << endl;
-		}
-	} else if (key == 'y') {
-//		data_file << "1 \n";
-		cout << "You answered yes" << endl;
-		processNormalKeys('b', x, y);
-		return;
-	} else if (key == 'n') {
-//		data_file << "0 \n";
-		cout << "You answered no" << endl;
-		processNormalKeys('b', x, y);
-		return;
-	} else
-	if (key == 'i') {
-		cout << "Please enter image destination file name (without extension): ";
-    char *dstFileName = new char[256];
-    cin >> dstFileName;
-		save_opengl_image(dstFileName);
-	} else if (key == 'I') {
-		TrajectoryReader trajectory_reader;
-		trajectory_reader.queryFileName();
-		char* srcFullFileName = new char[256];
-		trajectory_reader.getFileName(srcFullFileName);
-		
-		cout << "Please enter image destination file path (without extension): ";
-    char *dstPath = new char[256];
-    cin >> dstPath;
-    cout << "Image destination file path is " << dstPath << endl;
-    
-    vector<string> srcFullFileName_vect;
-    string srcFullFileName_string = string(srcFullFileName);
-    boost::split(srcFullFileName_vect, srcFullFileName_string, boost::is_any_of("/"));
-    string srcFileName = srcFullFileName_vect.back();
-
-		vector<World*> worlds_to_save;
-		if (trajectory_reader.readWorldsFromFile(worlds_to_save)) {
-			for (int i = 0; i < worlds_to_save.size(); i++) {
-				world_data.push_back(worlds_to_save);
-				setVisualizationData(world_data);
-    		drawWorldInd = drawWorlds.size()-1;
-    		drawInd = i; //drawWorlds[drawWorldInd].size()-1;
-    		
-    		drawStuff();
-    		
-    		char *dstFullFileName = new char[256];
-    		sprintf(dstFullFileName, "%s%s_%.4d", dstPath, srcFileName.c_str(), i);
-    		
-				save_opengl_image(dstFullFileName);
-			}
-		} else {
-			cout << "Unable to save images" << endl;
-		}
-	}
-	else if (key == 't')
+	if (key == 't')
 	  mouse0->setKeyPressed(MOVETAN);
   else if (key == 'm')
     mouse0->setKeyPressed(MOVEPOS);
@@ -551,10 +440,21 @@ void processNormalKeys(unsigned char key, int x, int y)
 			}
 		}
 
+	//rrt options
 	} else if(key == 'd') { // puts the current world in start_world
 		start_world = new World(*world);
 	} else if(key == 'f') { // puts the current world in goal_world
 		goal_world = new World(*world);
+	} else if (key == 'p') {
+  	if (start_world != NULL && goal_world != NULL) {
+			rrt = new RRTNode(start_world);
+			RRTNode* goal_rrt_node = NULL;
+			rrt->planTrajectory(goal_rrt_node, goal_world);
+			goal_rrt_node->branchTrajectory(planned_traj);
+			setVisualizationData(planned_traj);
+  	}
+  //end of rrt options
+	
 	} else if(key == '[') {
 		drawStartWorld = !drawStartWorld;
 	} else if(key == ']') {
@@ -563,6 +463,7 @@ void processNormalKeys(unsigned char key, int x, int y)
 		limit_displacement = !limit_displacement;
   } else if(key == 'h') {
   	haptics = !haptics;
+  	//TODO
   	/*if (haptics) {
   		haptic0->resetPosition(mouse0->getPosition());
   		haptic1->resetPosition(mouse1->getPosition());
@@ -577,7 +478,122 @@ void processNormalKeys(unsigned char key, int x, int y)
   	rotate_frame[0] = rotate_frame[1] = 0.0;
 		translate_frame[0] = translate_frame[1] = 0.0;
 		translate_frame[2] = -110.0;
-  } else if(key == 'g') {
+  
+  // the following 5 options serves to analyze recorded data (i.e. world trajectories and world states) and to generate video images.
+  } else if (key == 'o') {
+		cout << "Please enter problem name (without extension) (i.e. x1): ";
+	  data_raw_filename = new char[256];
+	  cin >> data_raw_filename;
+	  char *directory = new char[256];
+	  //sprintf(directory, "environmentFiles/%s/video_trajs/", data_raw_filename);
+	  sprintf(directory, "environmentFiles/%s/", data_raw_filename);
+		dir = opendir (directory);
+		if (dir != NULL) {
+			cout << "Sucessfully opened directory" << endl;
+//		  char *fullPath = new char[256];
+//		  sprintf(fullPath, "%s%s%s%s%s", "environmentFiles/", data_raw_filename, "/", data_raw_filename, "_data.txt");
+//			cout << "Writing data to: " << fullPath << endl;
+//			data_file.precision(20);
+//			data_file.open(fullPath);
+			
+			processNormalKeys('b', x, y);
+			return;
+		} else {
+			cout << "Failed to open directory" << endl;
+		}
+	} else if (key == 'b') {
+		cout << "--------------------------------------------" << endl;
+		if (dir != NULL) {
+			if ((ent = readdir (dir)) != NULL) {
+				char *filename = new char[256];
+				sprintf(filename, "%s", ent->d_name);
+				vector<string> parameters;
+				boost::split(parameters, filename, boost::is_any_of("_"));
+				//if (parameters.size() != 8 || parameters[0]!=string(data_raw_filename) || parameters[4]!="1.0") {
+				if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename) || parameters[4]!="0.6" || parameters[3] != "5") {
+				//if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename) || parameters[3] == "5") {
+					cout << "Ignoring file " << filename << endl;
+					processNormalKeys('b', x, y);
+					return;
+				}
+				string base_name = "environmentFiles/";
+				base_name.append(data_raw_filename);
+				base_name.append("/");
+				//base_name.append("/video_trajs/");
+				vector<World*> temp_worlds;
+				TrajectoryReader read(filename, base_name.c_str());
+				if (read.readWorldsFromFile(temp_worlds)) {
+					cout << "Displaying last world." << endl;
+				} else {
+					assert(0);
+				}
+				world_data.push_back(temp_worlds);
+				setVisualizationData(world_data);
+    		drawWorldInd = drawWorlds.size()-1;
+    		drawInd = drawWorlds[drawWorldInd].size()-1;
+				cout << "Press y or n." << endl;
+			} else {
+				closedir (dir);
+				dir = NULL;
+//				data_file.close();
+			  cout << "Writing data file Done\n";
+			}
+		} else {
+			cout << "No directory is open" << endl;
+		}
+	} else if (key == 'y') {
+//		data_file << "1 \n";
+		cout << "You answered yes" << endl;
+		processNormalKeys('b', x, y);
+		return;
+	} else if (key == 'n') {
+//		data_file << "0 \n";
+		cout << "You answered no" << endl;
+		processNormalKeys('b', x, y);
+		return;
+	} else
+	if (key == 'i') {
+		cout << "Please enter image destination file name (without extension): ";
+    char *dstFileName = new char[256];
+    cin >> dstFileName;
+		save_opengl_image(dstFileName);
+	} else if (key == 'I') {
+		TrajectoryReader trajectory_reader;
+		trajectory_reader.queryFileName();
+		char* srcFullFileName = new char[256];
+		trajectory_reader.getFileName(srcFullFileName);
+		
+		cout << "Please enter image destination file path (without extension): ";
+    char *dstPath = new char[256];
+    cin >> dstPath;
+    cout << "Image destination file path is " << dstPath << endl;
+    
+    vector<string> srcFullFileName_vect;
+    string srcFullFileName_string = string(srcFullFileName);
+    boost::split(srcFullFileName_vect, srcFullFileName_string, boost::is_any_of("/"));
+    string srcFileName = srcFullFileName_vect.back();
+
+		vector<World*> worlds_to_save;
+		if (trajectory_reader.readWorldsFromFile(worlds_to_save)) {
+			for (int i = 0; i < worlds_to_save.size(); i++) {
+				world_data.push_back(worlds_to_save);
+				setVisualizationData(world_data);
+    		drawWorldInd = drawWorlds.size()-1;
+    		drawInd = i; //drawWorlds[drawWorldInd].size()-1;
+    		
+    		drawStuff();
+    		
+    		char *dstFullFileName = new char[256];
+    		sprintf(dstFullFileName, "%s%s_%.4d", dstPath, srcFileName.c_str(), i);
+    		
+				save_opengl_image(dstFullFileName);
+			}
+		} else {
+			cout << "Unable to save images" << endl;
+		}
+	//end of the options for record data and generate video images
+
+	} else if(key == 'g') {
     vector<World*> plan; 
     //sqpPlanner(start_world, goal_world, plan);
     setVisualizationData(plan);
@@ -773,16 +789,24 @@ void drawExperimentText()
       drawInd < drawWorlds[drawWorldInd].size() &&
       drawWorlds[drawWorldInd][drawInd] != NULL &&
       drawVisualizationData) { 
-    bitmap_output(50, 55, "Viz (')", GLUT_BITMAP_TIMES_ROMAN_24);
+    bitmap_output(45, 55, "Vizualizer (')", GLUT_BITMAP_HELVETICA_18);
+  } else {
+    bitmap_output(45, 55, "Vizualizer (')", GLUT_BITMAP_HELVETICA_12);
   }
   if (world && drawInteractiveWorld) {
-    bitmap_output(50, 50, "Int (;)", GLUT_BITMAP_TIMES_ROMAN_24);
+    bitmap_output(45, 50, "Interactive (;)", GLUT_BITMAP_HELVETICA_18);
+  } else {
+    bitmap_output(45, 50, "Interactive (;)", GLUT_BITMAP_HELVETICA_12);
   }
   if (start_world && drawStartWorld) {
-    bitmap_output(50, 45, "Start ([)", GLUT_BITMAP_TIMES_ROMAN_24);
+    bitmap_output(45, 45, "Start ([)", GLUT_BITMAP_HELVETICA_18);
+  } else {
+    bitmap_output(45, 45, "Start ([)", GLUT_BITMAP_HELVETICA_12);
   }
   if (goal_world && drawGoalWorld) {
-    bitmap_output(50, 40, "Goal (])", GLUT_BITMAP_TIMES_ROMAN_24);
+    bitmap_output(45, 40, "Goal (])", GLUT_BITMAP_HELVETICA_18);
+  } else {
+    bitmap_output(45, 40, "Goal (])", GLUT_BITMAP_HELVETICA_12);
   }
   glEnable(GL_LIGHTING);
 }
@@ -794,10 +818,10 @@ void drawWorld()
 	glLightfv (GL_LIGHT2, GL_POSITION, lightThreePosition);
 	glLightfv (GL_LIGHT3, GL_POSITION, lightFourPosition);
 	
-//	glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
-//  glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
-//  glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
-//  glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
+	glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
+  glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
+  glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+  glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
 	
 	if (drawWorldInd < drawWorlds.size() &&
       drawInd < drawWorlds[drawWorldInd].size() &&
@@ -813,7 +837,7 @@ void drawWorld()
   }
   if (goal_world && drawGoalWorld) {
   	goal_world->draw();
-  } 
+  }
 }
 
 void drawStuff()
@@ -821,13 +845,17 @@ void drawStuff()
 #ifndef VIEW3D
 	glPushMatrix ();
   glLoadIdentity();
-  glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glClearColor(0.4, 0.4, 0.4, 0.0);
+	#ifndef PICTURE
+		glPushMatrix();
+		glTranslatef(0.0, 0.0, -110.0);
+		glColor3f(0.0, 0.0, 0.0);
+  	drawExperimentText();
+  	glPopMatrix();
+	#endif
   /* set up some matrices so that the object spins with the mouse */
   glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
-	#ifndef PICTURE
-  	drawExperimentText();
-	#endif
   glRotatef (rotate_frame[1], 1.0, 0.0, 0.0);
   glRotatef (rotate_frame[0], 0.0, 1.0, 0.0);
   
@@ -836,6 +864,7 @@ void drawStuff()
 	glGetIntegerv(GL_VIEWPORT, viewport);
   
 	drawWorld();
+	
   glPopMatrix();
   glutSwapBuffers ();
 #else
@@ -850,7 +879,11 @@ void drawStuff()
   displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
 	glEnable(GL_LIGHTING);
 	#ifndef PICTURE
+		glPushMatrix();
+		glTranslatef(0.0, 0.0, -110.0);
+		glColor3f(0.0, 0.0, 0.0);
   	drawExperimentText();
+  	glPopMatrix();
 	#endif
   /* set up some matrices so that the object spins with the mouse */
   glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
@@ -884,7 +917,11 @@ void drawStuff()
   displayTextInScreen("eye separation: %.2f\ncamera to focus point: %.2f\ncamera to sphere center: %.2f", eye_separation, (-translate_frame[2] - eye_focus_depth), (-translate_frame[2]));
 	glEnable(GL_LIGHTING);
 	#ifndef PICTURE
+		glPushMatrix();
+		glTranslatef(0.0, 0.0, -110.0);
+		glColor3f(0.0, 0.0, 0.0);
   	drawExperimentText();
+  	glPopMatrix();
 	#endif
 	/* set up some matrices so that the object spins with the mouse */
 	glTranslatef (translate_frame[0], translate_frame[1], translate_frame[2]);
@@ -913,19 +950,19 @@ int main (int argc, char * argv[])
 
   printf("Instructions:\n"
     "\n"
-    "There are two types of control: haptic (Phantom) and normal (mouse and \nkeyboard).\n"
-    "The 3D cursor (represented by a capsule) is controlled by either one of the \ncontrols.\n"
-    "Initially, the 3D cursor is controlled by the normal device. To change the \ncontrol, press 'h'.\n"
+    "There are two types of controllers: haptic (Phantom) and normal (mouse and \nkeyboard).\n"
+    "The 3D cursor (represented by a capsule) is controlled by either one of the \ncontrollers.\n"
+    "Initially, the 3D cursor is controlled by the normal device. To change the \ncontroller, press 'h'.\n"
     "\n"
     "The upper part of the 3D cursor is where the white ring is closer to.\n"
-    "The cursor represent the true position and orientation of the control.\n"
+    "The cursor represent the true position and orientation of the controller.\n"
     "The cursor can be open or closed, and this is represented by a green or red \ncolor on the upper part of it respectively.\n"
     "The cursor can be attached to an end effector, which inherits the open/close \nstatus of the cursor that holds it.\n"
     "To attach the cursor to an end effector, the cursor have to be NEAR and \nALIGNED (orientation) to the end effector's yellow cylinder.\n"
-    "Press the control's upper button to change between open and closed.\n"
-    "Press the control's lower button to attach or dettach the cursor to or from \nthe end effector.\n"
+    "Press the controller's upper button to change between open and closed.\n"
+    "Press the controller's lower button to attach or dettach the cursor to or from \nthe end effector. When using the normal device, the cursor is automatically \nmoved near and aligned to the closest end effector.\n"
     "\n"
-    "Manipule the cursor using the normal control (use SHIFT for controlling the \nother cursor):\n"
+    "Manipule the cursor using the normal controller (use SHIFT for controlling the \nother cursor):\n"
     "  Move:                    Left mouse button and 'm'.\n"
     "  Move tangent:            Left mouse button and 't'.\n"
     "  Rotate around tangent:   Left mouse button and 'r'.\n"
@@ -1000,7 +1037,7 @@ int main (int argc, char * argv[])
 //	control1 = new Control(world->objectAtIndex<Cursor>(1)->getPosition(), world->objectAtIndex<Cursor>(1)->getRotation());
 	control0 = new Control();
 	control1 = new Control();
-
+	
 	glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
 	glGetDoublev(GL_PROJECTION_MATRIX, projection);
 	glGetIntegerv(GL_VIEWPORT, viewport);
@@ -1252,7 +1289,7 @@ void interruptHandler(int sig) {
   //setVisualizationData(openLoopWorlds);
 }*/
 
-/*void save_opengl_image(char* filename)
+void save_opengl_image(char* filename)
 {
     const int IMG_COLS_TOTAL = 900;
     const int IMG_ROWS_TOTAL = 900;
@@ -1292,7 +1329,7 @@ void interruptHandler(int sig) {
     imwrite(im_name, img, p);
     waitKey(1);
   //sleep(0);
-}*/ 
+} 
 
 VectorXd closedLoopSQPStepper(World* start, World* goal, WorldSQP* solver) { 
   if (solver == NULL) assert(false); //initialize your shit

@@ -513,7 +513,7 @@ void ThreadConstrained::get_thread_data(vector<Vector3d> &absolute_points, vecto
 	vector<vector<double> > twist_angles(threads.size());
 	for (int thread_num=0; thread_num<threads.size(); thread_num++) {
 		threads[thread_num]->get_thread_data(points[thread_num], twist_angles[thread_num]);
-		twist_angles[thread_num].back() = 2.0*twist_angles[thread_num][twist_angles[thread_num].size()-2] - twist_angles[thread_num][twist_angles[thread_num].size()-3];
+		//twist_angles[thread_num].back() = 2.0*twist_angles[thread_num][twist_angles[thread_num].size()-2] - twist_angles[thread_num][twist_angles[thread_num].size()-3];
 		//TODO
 		//if (thread_num==0)
 		//	mapAdd(twist_angles[thread_num], zero_angle);
@@ -530,7 +530,7 @@ void ThreadConstrained::get_thread_data(vector<Vector3d> &absolute_points, vecto
 	vector<vector<Matrix3d> > material_frames(threads.size());
 	for (int thread_num=0; thread_num<threads.size(); thread_num++) {
 		threads[thread_num]->get_thread_data(points[thread_num], twist_angles[thread_num], material_frames[thread_num]);
-		twist_angles[thread_num].back() = 2.0*twist_angles[thread_num][twist_angles[thread_num].size()-2] - twist_angles[thread_num][twist_angles[thread_num].size()-3];
+		//twist_angles[thread_num].back() = 2.0*twist_angles[thread_num][twist_angles[thread_num].size()-2] - twist_angles[thread_num][twist_angles[thread_num].size()-3];
 	 	//TODO
 	 	//if (thread_num==0)
 		//	mapAdd(twist_angles[thread_num], zero_angle);
@@ -551,6 +551,132 @@ void ThreadConstrained::get_thread_data(vector<Vector3d> &absolute_points, vecto
 	mergeMultipleVector(absolute_points, points);
 	mergeMultipleVector(absolute_material_frames, material_frames);
 }
+
+//------------------------------------------ rrt interface starts ------------------------------------------//
+
+//For simplicity for now, assume that the ThreadConstrained is not picked from the middle (i.e. ThreadConstrained is composed of only one Thread).
+void ThreadConstrained::get_thread_data(Vector3d& start_position, vector<Matrix3d>& material_frames)
+{
+	assert(threads.size() == 1);
+	threads[0]->get_thread_data(start_position, material_frames);
+}
+
+void ThreadConstrained::set_thread_data(const Vector3d& start_position, const vector<Matrix3d>& material_frames)
+{
+	assert(threads.size() == 1);
+	threads[0]->set_thread_data(start_position, material_frames);
+}
+
+void ThreadConstrained::get_thread_data(Vector3d& start_position, Vector3d& end_position, vector<Matrix3d>& material_frames)
+{
+	assert(threads.size() == 1);
+	threads[0]->get_thread_data(start_position, end_position, material_frames);
+}
+
+void ThreadConstrained::set_thread_data(const Vector3d& start_position, const Vector3d& end_position, const vector<Matrix3d>& material_frames)
+{
+	assert(threads.size() == 1);
+	threads[0]->set_thread_data(start_position, end_position, material_frames);
+}
+
+void ThreadConstrained::get_thread_data(Vector3d& start_position, vector<Vector3d>& euler_angles)
+{
+	assert(threads.size() == 1);
+	threads[0]->get_thread_data(start_position, euler_angles);
+}
+
+void ThreadConstrained::set_thread_data(const Vector3d& start_position, const vector<Vector3d>& euler_angles)
+{
+	assert(threads.size() == 1);
+	threads[0]->set_thread_data(start_position, euler_angles);
+}
+
+void ThreadConstrained::get_thread_data(Vector3d& start_position, Vector3d& end_position, vector<Vector3d>& euler_angles)
+{
+	assert(threads.size() == 1);
+	threads[0]->get_thread_data(start_position, end_position, euler_angles);
+}
+
+void ThreadConstrained::set_thread_data(const Vector3d& start_position, const Vector3d& end_position, const vector<Vector3d>& euler_angles)
+{
+	assert(threads.size() == 1);
+	threads[0]->set_thread_data(start_position, end_position, euler_angles);
+}
+
+double ThreadConstrained::distanceMetric(ThreadConstrained* t)
+{
+	vector<Vector3d> points;
+  vector<Vector3d> t_points;
+  this->get_thread_data(points);
+  t->get_thread_data(t_points);
+  assert(points.size() == t_points.size());
+  VectorXd diff;
+  diff.resize(3*points.size());
+  for (int i = 0; i < points.size(); i++) {
+    diff.segment<3>(3*i) = t_points[i] - points[i];
+  }
+  return diff.norm();
+}
+
+//void ThreadConstrained::toVector(VectorXd* vec) const
+//{
+//  vector<VectorXd*> points_vector(threads.size());
+//  int vec_size = 0;
+//  for (int i = 0; i < thread.size(); i++) {
+//  	threads[i]->toVector(points_vector[i]);
+//  	vec_size += points_vector[i].size();
+//  }
+//  vec->resize(vec_size-3*(threads.size()-1));
+//  int vec_iter = 0;
+//  for (int i = 0; i < points_vector.size(); i++) {
+//    if (i == (points_vector.size() - 1)) {
+//    	vec->segment<points_vector[i].size()>(vec_iter) = points_vector[i]; 
+//   		vec_iter += points_vector[i].size();
+//    } else {
+//    	vec->segment<points_vector[i].size()-3>(vec_iter) = segment<points_vector[i].size()-3>(0);
+//   		vec_iter += (points_vector[i].size() - 3);
+//    }
+//  }
+//}
+
+//void ThreadConstrained::getTwists(VectorXd* vec) const
+//{
+//  vector<VectorXd*> twists_vector(threads.size());
+//  int vec_size = 0;
+//  for (int i = 0; i < thread.size(); i++) {
+//  	threads[i]->toVector(twists_vector[i]);
+//  	vec_size += twists_vector[i].size();
+//  }
+//  vec->resize(vec_size-3*(threads.size()-1));
+//  int vec_iter = 0;
+//  for (int i = 0; i < twists_vector.size(); i++) {
+//    if (i == (twists_vector.size() - 1)) {
+//    	vec->segment<twists_vector[i].size()>(vec_iter) = twists_vector[i]; 
+//   		vec_iter += twists_vector[i].size();
+//    } else {
+//    	vec->segment<twists_vector[i].size()-3>(vec_iter) = segment<twists_vector[i].size()-3>(0);
+//   		vec_iter += (twists_vector[i].size() - 3);
+//    }
+//  }
+//}
+
+//void ThreadConstrained::getEdges(VectorXd* vec) const
+//{
+//  vector<VectorXd*> edges_vector(threads.size());
+//  int vec_size = 0;
+//  for (int i = 0; i < thread.size(); i++) {
+//  	threads[i]->getEdges(edges_vector[i]);
+//  	vec_size += edges_vector[i].size();
+//  }
+//  vec->resize(vec_size);
+//  int vec_iter = 0;
+//  for (int i = 0; i < edges_vector.size(); i++) {
+//    vec->segment<edges_vector[i].size()>(vec_iter) = edges_vector[i]; 
+//    vec_iter += edges_vector[i].size();
+//  }
+//}
+
+//------------------------------------------ rrt interface ends ------------------------------------------//
 
 // parameters have to be of the right size, i.e. threads.size()+1
 void ThreadConstrained::getConstrainedTransforms(vector<Vector3d> &positions, vector<Matrix3d> &rotations) {
