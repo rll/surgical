@@ -1,0 +1,27 @@
+The binary simple_rrt allows to plan a trajectory using a naive and simple rrt. Since it's simple, the cost metric and extend function are limited, so I use a weak criteria to stop the planning. Also, it takes a while to generate a not-so-good trajectory.
+
+About the Discrete Elastic Rod (DER), also known as Thread (implemented in DiscreteRods/thread_discrete) and ThreadConstrained (implemented in DiscreteRods/ThreadConstrained). The term thread is usually used to refer the DER, which is usually ThreadConstrained.
+Thread is our intial implementation of the DER. The limitation of a Thread is that you can only (and have to) constrained it at the ends of it. The ThreadConstrained allows you to constrain the DER at a vertex in the middle (but you still need to constrain at the ends of it). The ThreadConstrained is composed of multiple Thread's when it's constrained in the middle. For the rrt, you can get/set data from/to the ThreadConstrained using a different parametrization of the implementation. To parametrization consists of a start position (one end of the thread), an optional end position (the other end), and a material frame for every edge. The material frame is an absolute quantity (represented either by euler angles or a matrix) and it happens to be the same one used in the implementation. The relevant functions for the rrt is clearly identified in ThreadConstrained.h. For now, rrt-related functions only works when the ThreadConstained is only attached at the two ends.
+
+About the World object (implemented in DiscretRods/EnvObjects/World).
+The World containts objects like the ThreadConstrained, EndEffector and Cursor. Cursor is an abstraction to control the world; when a control is applied to the World, it's applied to the Cursor and the Cursor knows what to do (i.e. move the EndEffector which in turn might move the ThreadConstrained). The Cursor is represented by the colorful capsule and there are cases in which the World is assumed to have two Cursor's, so it's better to always use two Cursors. The relevant functions for the rrt in World.h are the following:
+double distanceMetric(const World* w);
+void applyRelativeControl(const vector<Control*>& controls, double thresh=0.0, bool limit_displacement = false);
+
+The rrt is planned with respect to World's rather than to ThreadConstrained's directly.
+
+The simulation has 4 views:
+- Visualizer    Usually used to put a trajectory (i.e. a vector of World objects) or multiple trajectories. To navigate through a trajectory use the '<' and '>' keys. The navigate between trajectories use the ',' and '.' keys.
+- Interactive   The default view, in which you can interactively manipulate the World (through the Cursor's).
+- Start         Displays the start World for the planner.
+- Goal          Displays the goal World for the planner.
+Press the ''', ';', '[' or ']' keys respectively to select a view. You cannot select the Visualizer, Start or Goal view if there is nothing to display (i.e. no trajectory has been put in the visualizer or no world has been put in start or goal).
+
+Instructions on manipulating the World is printed in the terminal when the binary is run.
+
+To plan a trajectory from a start World to a goal World, do the following steps:
+- Manipulate the World in the interactive view. Press 'd' to copy the current World in interactive to the start World.
+- Manipulate the World again. Press 'f' to copy the current World in interactive to the goal World.
+- You can see the selected start and goal World's with the '[' and ']' keys.
+- Press 'p' to plan the trajectory.
+- When the planning finishes, the found trajectory is put into the Visualizer. Press the ''' key to visualize the trajectory and use '<' and '>' to navigate through the trajectory.

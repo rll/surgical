@@ -32,6 +32,11 @@ class ControllerBase
 {
 public:
 
+  ControllerBase(const Vector3d& pos, const Matrix3d& rot)
+  	: position(pos)
+  	, rotation(rot)
+  {}
+  
   ControllerBase()
   	: position(0.0, 0.0, 0.0)
   	, rotation(Matrix3d::Identity())
