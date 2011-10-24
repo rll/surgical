@@ -2851,62 +2851,112 @@ void Thread::get_thread_data(vector<double>& lengths, vector<double>& edge_norms
   }
 }
 
-void Thread::get_thread_data(Vector3d& start_position, Matrix3d& start_rotation, vector<double>& roll_angles, vector<double>& bend_angles, double& twist_angle)
+void Thread::get_thread_data(Vector3d& start_position, vector<Matrix3d>& material_frames)
 {
 	vector<Vector3d> points;
-	get_thread_data(points);
-	start_position = points[0];
-	start_rotation = start_rot();
-	roll_angles.resize(points.size()-2);
-	bend_angles.resize(points.size()-2);
-	vector<Matrix3d> rotations(points.size()-1);
-	rotations[0] = start_rotation;
-	for (int i = 0; i < roll_angles.size(); i++) {
-		const Vector3d edge0 = points[i+1]-points[i];
-		const Vector3d edge1 = points[i+2]-points[i+1];
-		const Vector3d normal_to_edges = edge0.cross(edge1);
+	get_thread_data(points, material_frames);
+	start_position = points.front();
+}
 
-		Matrix3d rot_theta;
-		roll_angles[i] = angle_match_rotation(rot_theta, normal_to_edges, rotations[i], 0, 2);
-		
-		Matrix3d rot_phi;
-		bend_angles[i] = angle_match_rotation(rot_phi, edge1, rot_theta, 2, 0);
-		rotations[i+1] = rot_phi;
+//assumes rest lengths remained constant.
+void Thread::set_thread_data(const Vector3d& start_position, const vector<Matrix3d>& material_frames)
+{
+	int p_size = material_frames.size();
+	vector<Vector3d> points(p_size);
+
+	points[0] = start_position;
+	for (int i = 1; i < points.size(); i++) {
+		points[i] = points[i-1] + rest_length_at_ind(i-1) * material_frames[i-1].col(0);
+	}
+
+	for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++) {
+    _thread_pieces[piece_ind]->set_vertex(points[piece_ind]);
+  }
+  set_constraints(points[0], material_frames[0], points[points.size()-1], material_frames[material_frames.size()-2]);
+}
+
+void Thread::get_thread_data(Vector3d& start_position, Vector3d& end_position, vector<Matrix3d>& material_frames)
+{
+	vector<Vector3d> points;
+	get_thread_data(points, material_frames);
+	start_position = points.front();
+	end_position = points.back();
+}
+
+//assumes rest lengths remained constant.
+void Thread::set_thread_data(const Vector3d& start_position, const Vector3d& end_position, const vector<Matrix3d>& material_frames)
+{
+	int p_size = material_frames.size();
+	vector<Vector3d> forward_points(p_size);
+	vector<Vector3d> reverse_points(p_size);
+	vector<Vector3d> points(p_size);
+
+	forward_points[0] = start_position;
+	for (int i = 1; i < forward_points.size(); i++) {
+		forward_points[i] = forward_points[i-1] + rest_length_at_ind(i-1) * material_frames[i-1].col(0);
+	}
+
+	reverse_points[reverse_points.size()-1] = end_position;
+	for (int i = reverse_points.size() - 2; i >= 0; i--) {
+		reverse_points[i] = reverse_points[i+1] - rest_length_at_ind(i) * material_frames[i].col(0);
+	}
+	
+	for (int i = 0; i < points.size(); i++) {
+		double weight = ((double) i)/((double) p_size - 1.0);
+		points[i] = (1.0 - weight) * forward_points[i] + weight * reverse_points[i];
+	}
+	
+//	cout << "forward\t\t\t\treverse\t\t\t\tpoints" << endl;
+//	for (int i = 0; i < points.size(); i++) {
+//		cout << forward_points[i].transpose() << "\t\t" << reverse_points[i].transpose() << "\t\t" << points[i].transpose() << endl;
+//	}
+	
+	for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++) {
+    _thread_pieces[piece_ind]->set_vertex(points[piece_ind]);
+  }
+  set_constraints(points[0], material_frames[0], points[points.size()-1], material_frames[material_frames.size()-2]);
+}
+
+void Thread::get_thread_data(Vector3d& start_position, vector<Vector3d>& euler_angles)
+{
+	vector<Vector3d> points;
+	vector<Matrix3d> material_frames;
+	get_thread_data(start_position, material_frames);
+	euler_angles.resize(material_frames.size());
+	for (int i = 0; i < euler_angles.size(); i++) {
+		euler_angles_from_rotation(material_frames[i], euler_angles[i](0), euler_angles[i](1), euler_angles[i](2));
 	}
 }
 
 //assumes rest lengths remained constant.
-void Thread::set_thread_data(const Vector3d& start_position, const Matrix3d& start_rotation, const vector<double>& roll_angles, const vector<double>& bend_angles, const double& twist_angle)
+void Thread::set_thread_data(const Vector3d& start_position, const vector<Vector3d>& euler_angles)
 {
-	vector<Vector3d> points(roll_angles.size()+2);
-	points[0] = start_position;
-	vector<Matrix3d> rotations(roll_angles.size()+1);
-	rotations[0] = start_rotation;
-	for (int i = 0; i < points.size()-1; i++) {
-		const Matrix3d rot_theta = Eigen::AngleAxisd(roll_angles[i], rotations[i].col(0)) * rotations[i];
-		const Matrix3d rot_phi = Eigen::AngleAxisd(bend_angles[i], rot_theta.col(2)) * rot_theta;
-		points[i+1] = points[i] + rest_length_at_ind(i) * rotations[i].col(0);
-		if (i != (points.size()-2))
-			rotations[i+1] = rot_phi;
+	vector<Matrix3d> material_frames(euler_angles.size());
+	for (int i = 0; i < material_frames.size(); i++) {
+		rotation_from_euler_angles(material_frames[i], euler_angles[i](0), euler_angles[i](1), euler_angles[i](2));
 	}
-	for (int piece_ind=0; piece_ind < _thread_pieces.size(); piece_ind++) {
-    _thread_pieces[piece_ind]->set_vertex(points[piece_ind]);
-  }
-  // appropriately distributes twist_angle for each thread piece
-  _thread_pieces[_thread_pieces.size()-2]->set_angle_twist(twist_angle);
-  minimize_energy_twist_angles();
-  
-  _thread_pieces.front()->set_bishop_frame(start_rotation);
-  _thread_pieces.front()->set_material_frame(start_rotation);
+	set_thread_data(start_position, material_frames);
+}
 
-  _thread_pieces.front()->initializeFrames();
+void Thread::get_thread_data(Vector3d& start_position, Vector3d& end_position, vector<Vector3d>& euler_angles)
+{
+	vector<Vector3d> points;
+	vector<Matrix3d> material_frames;
+	get_thread_data(start_position, end_position, material_frames);
+	euler_angles.resize(material_frames.size());
+	for (int i = 0; i < euler_angles.size(); i++) {
+		euler_angles_from_rotation(material_frames[i], euler_angles[i](0), euler_angles[i](1), euler_angles[i](2));
+	}
+}
 
-  set_start_constraint(points.front(), start_rotation);
-
-  Matrix3d end_bishop = _thread_pieces[_thread_pieces.size()-2]->bishop_frame();
-  Matrix3d end_rot = Eigen::AngleAxisd(twist_angle, end_bishop.col(0).normalized())*end_bishop;
-
-  set_end_constraint(points.back(), end_rot);
+//assumes rest lengths remained constant.
+void Thread::set_thread_data(const Vector3d& start_position, const Vector3d& end_position, const vector<Vector3d>& euler_angles)
+{
+	vector<Matrix3d> material_frames(euler_angles.size());
+	for (int i = 0; i < material_frames.size(); i++) {
+		rotation_from_euler_angles(material_frames[i], euler_angles[i](0), euler_angles[i](1), euler_angles[i](2));
+	}
+	set_thread_data(start_position, end_position, material_frames);
 }
 
 void Thread::set_all_angles_zero()

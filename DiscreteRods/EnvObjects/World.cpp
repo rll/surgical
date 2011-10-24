@@ -259,25 +259,13 @@ EndEffector* World::closestEndEffector(Vector3d tip_pos)
 
 void World::draw(RenderMode render_mode)
 {
-	Vector3d start_position;
-	Matrix3d start_rotation;
-	vector<double> roll_angles;
-	vector<double> bend_angles;
-	double twist_angle;
-	threads[0]->get_thread_data(start_position, start_rotation, roll_angles, bend_angles, twist_angle);
-	cout << "start_position " << start_position.transpose() << endl;
-	cout << "start_rotation " << endl << start_rotation << endl;
-	cout << "roll_angles " << roll_angles.size() << ": ";
-	for (int i = 0; i < roll_angles.size(); i++)
-		cout << roll_angles[i] << " ";
-	cout << endl;
-	cout << "bend_angles " << bend_angles.size() << ": ";
-	for (int i = 0; i < bend_angles.size(); i++)
-		cout << bend_angles[i] << " ";
-	cout << endl;
-	cout << "twist_angle " << twist_angle << endl;
-	
-	threads[0]->set_thread_data(start_position, start_rotation, roll_angles, bend_angles, twist_angle);
+//	Vector3d start_position;
+//	Vector3d end_position;
+//	vector<Vector3d> euler_angles;
+//	threads[0]->get_thread_data(start_position, euler_angles);
+//	threads[0]->set_thread_data(start_position, euler_angles);
+	//threads[0]->get_thread_data(start_position, end_position, euler_angles);
+	//threads[0]->set_thread_data(start_position, end_position, euler_angles);
 	
 	if (render_mode == NORMAL) {
 #ifndef PICTURE
