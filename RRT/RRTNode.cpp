@@ -1,4 +1,5 @@
 #include "RRTNode.h"
+#include "simple_rrt.h"
 
 RRTNode::RRTNode(World* w, RRTNode* p)
   : world(w)
@@ -36,6 +37,7 @@ void RRTNode::planTrajectory(RRTNode*& goal_node, const World* goal)
     nearest_node->extend(extended_node, sample_world);
     cout << "distance between extended_node->world and goal " << extended_node->world->distanceMetric(goal) << endl;
     iter++;
+    drawFromView(sample_world->draw);
   } while (extended_node->world->distanceMetric(goal) > 50.0 && iter < 500);
   goal_node = extended_node;
   if (iter == 1000)
@@ -59,17 +61,7 @@ void RRTNode::sampleWorld(World* sample_world)
   // end effectors thread (if any). In this case, we're modifying the thread 
   // end constraints, so we need to do special work to update the transform of 
   // the end effector and the cursor.
-  vector<EndEffector*> end_effs;
-  sample_world->getObjects<EndEffector>(end_effs);
-  for (int ee_ind = 0; ee_ind < end_effs.size(); ee_ind++) {
-    end_effs[ee_ind]->updateTransformFromAttachment(false);
-  }
-
-  vector<Cursor*> cursors;
-  sample_world->getObjects<Cursor>(cursors);
-  for (int i = 0; i < cursors.size(); i++) {
-    cursors[i]->updateTransformFromEndEffector();
-  }
+  sample_world->updateTransformsFromThread();
 }
 
 double RRTNode::distanceMetric(RRTNode* node)
@@ -150,12 +142,21 @@ void RRTNode::reverseBranchTrajectory(vector<World*>& trajectory)
     parent->reverseBranchTrajectory(trajectory);
 }
 
-void RRTNode::drawTree()
+Vector3d RRTNode::drawTree()
 {
-  world->draw();
+  const Vector3d pos = world->objectAtIndex<ThreadConstrained>(0)->end_pos();
+  glColor3f(1.0, 1.0, 1.0);
+  drawSphere(pos, 1.0);
+  glPushMatrix();
+  glBegin(GL_LINES);
+  glLineWidth(10.0);
   for (int i = 0; i < children.size(); i++) {
-    children[i]->drawTree();
+    glVertex3f(pos);
+    glVertex3f(children[i]->drawTree());
   }
+  glEnd();
+  glPopMatrix();
+  return pos;
 }
 
 void RRTNode::drawBranch()

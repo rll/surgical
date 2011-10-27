@@ -47,6 +47,9 @@ void drawArrow(Vector3d pos, Vector3d direction);
 void drawPlane(Vector3d pos, Vector3d normal, float side);
 void printText(float x, float y, const char *string);
 
+void glVertex3f(const Vector3d& v);
+void glVertex3d(const Vector3d& v);
+
 static double gCursorScale = 6;
 static GLuint gCursorDisplayList = 0;
 

@@ -42,7 +42,7 @@ class RRTNode
 
     void branchTrajectory(vector<World*>& trajectory);
 
-    void drawTree();
+    Vector3d drawTree();
     void drawBranch();
 
   private:

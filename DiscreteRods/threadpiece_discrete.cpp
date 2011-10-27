@@ -245,7 +245,7 @@ double ThreadPiece::energy_stretch()
 
 double ThreadPiece::energy_grav()
 {
-	return _vertex(2)*GRAV_COEFF;
+	return _vertex(1)*GRAV_COEFF;
 }
 
 
@@ -393,7 +393,7 @@ void ThreadPiece::gradient_vertex(Vector3d& grad)
 	
 	grad += (2.0*BEND_COEFF/(_prev_piece->_rest_length + _rest_length))*(-del_kb_i_im1-del_kb_i_ip1).transpose()*_curvature_binormal - beta_angle_diff_over_L*(-del_psi_i_im1-del_psi_i_ip1);
 
-	grad += Vector3d::UnitZ()*GRAV_COEFF;
+	grad += Vector3d::UnitY()*GRAV_COEFF;
 
 //	if (STRETCH_COEFF > 0.0) {
 //		double factor;

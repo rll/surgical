@@ -276,7 +276,7 @@ void EndEffector::setTransform(const Vector3d& pos, const Matrix3d& rot, bool li
 		} else {
 			rotation = rot;
 		}
-		rotation = (Matrix3d) AngleAxisd(rotation); // orthonormalizes the rotation matrix due to numerical errors
+		rotation = (Matrix3d) Quaterniond(rotation); // orthonormalizes the rotation matrix due to numerical errors
 		
 		Vector3d disp = old_pos - position;
 		if ((abs(disp(0)) > 0.2000001) || (abs(disp(1)) > 0.2000001) || (abs(disp(2)) > 0.2000001)) {

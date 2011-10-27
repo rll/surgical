@@ -116,6 +116,7 @@ class World
 		void draw(RenderMode examine_mode = NORMAL);
 
 		double distanceMetric(const World* w);
+		void updateTransformsFromThread();
 		
 		//applying control
 		//the controls should know to whom they are applying control.

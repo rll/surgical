@@ -336,6 +336,19 @@ double World::distanceMetric(const World* w)
 	return dist;
 }
 
+void World::updateTransformsFromThread()
+{
+	vector<EndEffector*> end_effs;
+  getObjects<EndEffector>(end_effs);
+  for (int ee_ind = 0; ee_ind < end_effs.size(); ee_ind++) {
+    end_effs[ee_ind]->updateTransformFromAttachment(false);
+  }
+
+  for (int i = 0; i < cursors.size(); i++) {
+    cursors[i]->updateTransformFromEndEffector();
+  }
+}
+
 void World::setTransformFromController(const vector<ControllerBase*>& controllers, bool limit_displacement)
 {
 	assert(cursors.size() == controllers.size());
@@ -732,8 +745,8 @@ void World::restore()
 	for (int i = 0; i<objs.size(); i++)
 		objs[i]->restore();
 	for (int i = 0; i<cursors.size(); i++) {
-		if(cursors[i]->isAttached())
-			cursors[i]->dettach();
+//		if(cursors[i]->isAttached())
+    cursors[i]->updateTransformFromEndEffector();
 	}
 }
 

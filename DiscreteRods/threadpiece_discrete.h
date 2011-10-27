@@ -15,7 +15,7 @@ static double BEND_COEFF = 1;
 static Matrix2d B = Matrix2d::Identity()*BEND_COEFF;
 static double TWIST_COEFF = BEND_COEFF*3.00;
 static double STRETCH_COEFF = 0.1 * BEND_COEFF;
-static double GRAV_COEFF = BEND_COEFF*1e-4;
+static double GRAV_COEFF = BEND_COEFF*1e+1;
 static double REPULSION_COEFF = 100 * BEND_COEFF;
 
 static Matrix2d J = Matrix2d(Eigen::Rotation2Dd(M_PI/2.0));
