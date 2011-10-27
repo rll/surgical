@@ -12,6 +12,8 @@
 
 USING_PART_OF_NAMESPACE_EIGEN
 
+enum RRTDrawMode { NO_DRAW, START, END, START_AND_END };
+
 class RRTNode
 {
   public:
@@ -26,7 +28,9 @@ class RRTNode
      * sample_world should not be empty. This function takes the sample_world,
      * and modifies the state of each of it's threads randomly.
      */
-    void sampleWorld(World* sample_world);
+    void sampleRandomWorld(World* sample_world);
+
+		void sampleWorldFromWorld(World* sample_world, World* world);
 
     /**
      * Nearest_node is set to the node whose world is nearest to sample_world. 
@@ -42,11 +46,13 @@ class RRTNode
 
     void branchTrajectory(vector<World*>& trajectory);
 
-    Vector3d drawTree();
+    void drawTree(RRTDrawMode mode);
     void drawBranch();
 
   private:
-    void reverseBranchTrajectory(vector<World*>& trajectory);
+    void reverseBranchTrajectory(vector<World*>& trajectory);    
+    void drawTreeSpheres(RRTDrawMode mode);
+		Vector3d drawTreeLines(RRTDrawMode mode);
 
     World* world;
     RRTNode* parent;

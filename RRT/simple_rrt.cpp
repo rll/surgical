@@ -157,6 +157,7 @@ vector<vector<World*> > world_data;
 //RRT stuff
 RRTNode* rrt = NULL;
 vector<World*> planned_traj;
+RRTDrawMode draw_tree_mode = NO_DRAW;
 
 void setVisualizationData(vector<vector<World*> > vis_data) {
   drawWorlds = vis_data;
@@ -464,12 +465,16 @@ void processNormalKeys(unsigned char key, int x, int y)
 		}
 	} else if (key == 'p') {
   	if (start_world != NULL && goal_world != NULL) {
-			rrt = new RRTNode(start_world);
+			if (rrt == NULL)
+				rrt = new RRTNode(start_world);
 			RRTNode* goal_rrt_node = NULL;
 			rrt->planTrajectory(goal_rrt_node, goal_world);
 			goal_rrt_node->branchTrajectory(planned_traj);
 			setVisualizationData(planned_traj);
   	}
+  } else if (key == 'y') {
+  	draw_tree_mode = (RRTDrawMode) (((int) draw_tree_mode + 1) % 4);
+  	cout << "draw_tree_mode " << draw_tree_mode << endl;
   //end of rrt options
 	
 	} else if(key == '[') {
@@ -844,6 +849,8 @@ void drawWorld()
       drawWorlds[drawWorldInd][drawInd] != NULL &&
       drawVisualizationData) { 
   	drawWorlds[drawWorldInd][drawInd]->draw(examine_mode);
+  	if (rrt != NULL)
+	  	rrt->drawTree(draw_tree_mode);
   }
   if (world && drawInteractiveWorld) {
    	world->draw(examine_mode);

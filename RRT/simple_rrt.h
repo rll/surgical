@@ -12,11 +12,14 @@
 #endif
 
 #define drawFromView(member_func_ptr) \
-  glMatrixMode(GL_MODELVIEW); \
   glPushMatrix(); \
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); \
+  glClearColor(0.4, 0.4, 0.4, 0.0); \
+  glMatrixMode(GL_MODELVIEW); \
   glLoadMatrixd(model_view); \
   member_func_ptr(); \
-  glPopMatrix();
+  glPopMatrix(); \
+  glutSwapBuffers();
 
 extern GLdouble model_view[16];
 extern GLdouble projection[16];

@@ -74,6 +74,8 @@ class ThreadConstrained {
 		void writeToFile(ofstream& file);
 		ThreadConstrained(ifstream& file, World* w);
 		
+		void copyData(const ThreadConstrained& rhs);
+		
 		int numVertices();
 		void checkNumVertices();
 		void get_thread_data(vector<Vector3d> &absolute_points);

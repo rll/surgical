@@ -32,21 +32,25 @@ void RRTNode::planTrajectory(RRTNode*& goal_node, const World* goal)
   // the taken samples don't converge fast enough
   int iter = 0;
   do {
-    sampleWorld(sample_world);
+    if (drand48() < 0.1) { // exploration
+	    sampleRandomWorld(sample_world);
+	 	} else { // kind of exploitation
+	 		sampleWorldFromWorld(sample_world, (World*) goal);
+	 	}
     nearestNeighbor(nearest_node, sample_world);
     nearest_node->extend(extended_node, sample_world);
     cout << "distance between extended_node->world and goal " << extended_node->world->distanceMetric(goal) << endl;
     iter++;
     drawFromView(sample_world->draw);
-  } while (extended_node->world->distanceMetric(goal) > 50.0 && iter < 500);
+  } while (extended_node->world->distanceMetric(goal) > 10.0 && iter < 200);
   goal_node = extended_node;
-  if (iter == 1000)
+  if (iter == 200)
     nearestNeighbor(goal_node, goal);
   
   delete sample_world;
 }
 
-void RRTNode::sampleWorld(World* sample_world)
+void RRTNode::sampleRandomWorld(World* sample_world)
 {
   assert(sample_world != NULL);
   vector<ThreadConstrained*> threads;
@@ -64,9 +68,30 @@ void RRTNode::sampleWorld(World* sample_world)
   sample_world->updateTransformsFromThread();
 }
 
+void RRTNode::sampleWorldFromWorld(World* sample_world, World* world)
+{
+  assert(sample_world != NULL);
+  vector<ThreadConstrained*> sample_threads;
+  sample_world->getObjects<ThreadConstrained>(sample_threads);
+  assert(world != NULL);
+  vector<ThreadConstrained*> threads;
+  world->getObjects<ThreadConstrained>(threads);
+	assert(sample_threads.size() == threads.size());
+
+  for (int i = 0; i < sample_threads.size(); i++) {
+    sample_threads[i]->copyData(*threads[i]);
+  }
+
+  sample_world->updateTransformsFromThread();
+}
+
 double RRTNode::distanceMetric(RRTNode* node)
 {
-  return world->distanceMetric(node->world);
+	VectorXd world_state;
+  world->getStateForJacobian(world_state);
+  VectorXd node_world_state;
+  node->world->getStateForJacobian(node_world_state);
+  return (world_state - node_world_state).norm();
 }
 
 double RRTNode::nearestNeighbor(RRTNode*& nearest_node, const World* sample_world)
@@ -86,8 +111,8 @@ double RRTNode::nearestNeighbor(RRTNode*& nearest_node, const World* sample_worl
 
 void RRTNode::extend(RRTNode*& extended_node, const World* sample_world)
 {
-  World* extended_world = new World(*world, world->world_manager);
-  double sample_extended_dist = extended_world->distanceMetric(sample_world);
+  World* extended_world = NULL;
+  double sample_extended_dist = DBL_MAX;
   World* candidate_world = NULL;
   double sample_candidate_dist;
 
@@ -97,10 +122,11 @@ void RRTNode::extend(RRTNode*& extended_node, const World* sample_world)
 
   for (int trial = 0; trial < 10; trial++) {
     for (int control_ind = 0; control_ind < 2; control_ind++) {
-      uniformlyRandomTranslation(translation, 20.0);
+      uniformlyRandomTranslation(translation, 5.0);
       //TODO Assume rotation at the ends remain constant. If not a random rotation should be generated
-      //uniformlyRandomRotation(rotation);
-      rotation.setIdentity();
+      // Now random
+      uniformlyRandomRotation(rotation);
+      //rotation.setIdentity();
       controls.push_back(new Control(translation, rotation));
     }
 
@@ -108,7 +134,10 @@ void RRTNode::extend(RRTNode*& extended_node, const World* sample_world)
     candidate_world->applyRelativeControl(controls);
     sample_candidate_dist = candidate_world->distanceMetric(sample_world);
     
-    if (sample_candidate_dist < sample_extended_dist) {
+    if (extended_world == NULL) {
+    	extended_world = candidate_world;
+      sample_extended_dist = sample_candidate_dist;
+    } else if (sample_candidate_dist < sample_extended_dist) {
       delete extended_world;
       extended_world = candidate_world;
       sample_extended_dist = sample_candidate_dist;
@@ -142,20 +171,54 @@ void RRTNode::reverseBranchTrajectory(vector<World*>& trajectory)
     parent->reverseBranchTrajectory(trajectory);
 }
 
-Vector3d RRTNode::drawTree()
+void RRTNode::drawTree(RRTDrawMode mode)
 {
-  const Vector3d pos = world->objectAtIndex<ThreadConstrained>(0)->end_pos();
+  if (mode == NO_DRAW)
+  	return;
   glColor3f(1.0, 1.0, 1.0);
-  drawSphere(pos, 1.0);
   glPushMatrix();
+  if (mode == START_AND_END) {
+  	drawTreeSpheres(START);
+  	drawTreeSpheres(END);
+  } else {
+  	drawTreeSpheres(mode);
+  }
   glBegin(GL_LINES);
   glLineWidth(10.0);
-  for (int i = 0; i < children.size(); i++) {
-    glVertex3f(pos);
-    glVertex3f(children[i]->drawTree());
+  if (mode == START_AND_END) {
+  	drawTreeLines(START);
+  	drawTreeLines(END);
+  } else {
+  	drawTreeLines(mode);
   }
   glEnd();
   glPopMatrix();
+}
+
+void RRTNode::drawTreeSpheres(RRTDrawMode mode)
+{
+	Vector3d pos;
+	if (mode == START)
+		pos = world->objectAtIndex<ThreadConstrained>(0)->start_pos();
+	else
+		pos = world->objectAtIndex<ThreadConstrained>(0)->end_pos();
+  drawSphere(pos, 1.0);
+	for (int i = 0; i < children.size(); i++) {
+    children[i]->drawTreeSpheres(mode);
+  }
+}
+
+Vector3d RRTNode::drawTreeLines(RRTDrawMode mode)
+{
+	Vector3d pos;
+	if (mode == START)
+		pos = world->objectAtIndex<ThreadConstrained>(0)->start_pos();
+	else
+		pos = world->objectAtIndex<ThreadConstrained>(0)->end_pos();
+	for (int i = 0; i < children.size(); i++) {
+    glVertex3f(pos);
+    glVertex3f(children[i]->drawTreeLines(mode));
+  }
   return pos;
 }
 
@@ -165,8 +228,6 @@ void RRTNode::drawBranch()
   if (parent != NULL)
     parent->drawBranch();
 }
-
-
 
 
 
