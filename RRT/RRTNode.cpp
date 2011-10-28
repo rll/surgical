@@ -24,7 +24,7 @@ RRTNode::~RRTNode()
   children.clear();
 }
 
-void RRTNode::planTrajectory(RRTNode*& goal_node, const World* goal)
+void RRTNode::planTrajectory(RRTNode*& goal_node, World const * goal)
 {
   World* sample_world = new World(*world, world->world_manager);
   RRTNode *nearest_node = NULL, *extended_node = NULL;
@@ -32,7 +32,7 @@ void RRTNode::planTrajectory(RRTNode*& goal_node, const World* goal)
   // the taken samples don't converge fast enough
   int iter = 0;
   do {
-    if (drand48() < 0.1) { // exploration
+    if (drand48() < 0.9) { // exploration
 	    sampleRandomWorld(sample_world);
 	 	} else { // kind of exploitation
 	 		sampleWorldFromWorld(sample_world, (World*) goal);
@@ -41,11 +41,12 @@ void RRTNode::planTrajectory(RRTNode*& goal_node, const World* goal)
     nearest_node->extend(extended_node, sample_world);
     cout << "distance between extended_node->world and goal " << extended_node->world->distanceMetric(goal) << endl;
     iter++;
-    drawFromView(sample_world->draw);
-  } while (extended_node->world->distanceMetric(goal) > 10.0 && iter < 200);
+    drawFromView(extended_node->world->draw);
+  } while (extended_node->world->distanceMetric(goal) > 10.0 && iter < 2000);
   goal_node = extended_node;
-  if (iter == 200)
+  if (iter == 2000)
     nearestNeighbor(goal_node, goal);
+  cout << "Finished with a distance of " << extended_node->world->distanceMetric(goal) << endl;
   
   delete sample_world;
 }
@@ -94,7 +95,7 @@ double RRTNode::distanceMetric(RRTNode* node)
   return (world_state - node_world_state).norm();
 }
 
-double RRTNode::nearestNeighbor(RRTNode*& nearest_node, const World* sample_world)
+double RRTNode::nearestNeighbor(RRTNode*& nearest_node, World const * sample_world)
 {
   nearest_node = this;
   double dist = this->world->distanceMetric(sample_world);
@@ -109,33 +110,51 @@ double RRTNode::nearestNeighbor(RRTNode*& nearest_node, const World* sample_worl
   return dist;
 }
 
-void RRTNode::extend(RRTNode*& extended_node, const World* sample_world)
+void RRTNode::extend(RRTNode*& extended_node, World const * sample_world)
 {
-  World* extended_world = NULL;
-  double sample_extended_dist = DBL_MAX;
-  World* candidate_world = NULL;
-  double sample_candidate_dist;
-
   vector<Control*> controls;
   Vector3d translation;
   Quaterniond rotation;
+  
+  World* extended_world = NULL;
+  double sample_extended_dist = DBL_MAX;
+  
+//  // Create a Control such that its translation and rotation would move the Cursor it controls from world's Cursor transform to sample_world's Cursor transform.
+//  for (int control_ind = 0; control_ind < 2; control_ind++) {
+//    translation = sample_world->objectAtIndex<Cursor>(control_ind)->getPosition() - world->objectAtIndex<Cursor>(control_ind)->getPosition();
+//    rotation = world->objectAtIndex<Cursor>(control_ind)->getRotation().transpose() * sample_world->objectAtIndex<Cursor>(control_ind)->getRotation();
+//    controls.push_back(new Control(translation, rotation));
+//  }
+//  
+//  World* extended_world = new World(*world, world->world_manager);
+//  // The 'true' argument in the applyRelativeControl specifies that the translation and rotation should be interpolated (i.e. limited).
+//  extended_world->applyRelativeControl(controls, 0.0, true);
+//  double sample_extended_dist = extended_world->distanceMetric(sample_world);
+//  
+//  for (int control_ind = 0; control_ind < 2; control_ind++) {
+//    delete controls[control_ind];
+//    controls[control_ind] = NULL;
+//  }
+//  controls.clear();
+  
+  World* candidate_world = NULL;
+  double sample_candidate_dist;
 
+  // Now create Controls with random translation and rotation, and keep the extended_world that is closest to the sample_world.
   for (int trial = 0; trial < 10; trial++) {
     for (int control_ind = 0; control_ind < 2; control_ind++) {
       uniformlyRandomTranslation(translation, 5.0);
-      //TODO Assume rotation at the ends remain constant. If not a random rotation should be generated
-      // Now random
       uniformlyRandomRotation(rotation);
-      //rotation.setIdentity();
       controls.push_back(new Control(translation, rotation));
     }
 
     candidate_world = new World(*world, world->world_manager);
-    candidate_world->applyRelativeControl(controls);
+    // The 'true' argument in the applyRelativeControl specifies that the translation and rotation should be interpolated (i.e. limited).
+    candidate_world->applyRelativeControl(controls, 0.0, true);
     sample_candidate_dist = candidate_world->distanceMetric(sample_world);
     
     if (extended_world == NULL) {
-    	extended_world = candidate_world;
+      extended_world = candidate_world;
       sample_extended_dist = sample_candidate_dist;
     } else if (sample_candidate_dist < sample_extended_dist) {
       delete extended_world;

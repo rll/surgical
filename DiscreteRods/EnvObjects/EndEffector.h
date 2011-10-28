@@ -5,8 +5,8 @@
 
 #include "EnvObject.h"
 
-#define MAX_DISPLACEMENT 0.2 //THREAD_RADIUS
-#define MAX_ANGLE_CHANGE 0.0036667160503703967 //arcsin(MAX_DISPLACEMENT/end_effector_length)
+#define MAX_DISPLACEMENT 10.0*0.2 //THREAD_RADIUS
+#define MAX_ANGLE_CHANGE 100.0*0.0036667160503703967 //arcsin(MAX_DISPLACEMENT/end_effector_length)
 //#define MAX_ANGLE_CHANGE 0.0000001
 
 class ThreadConstrained;

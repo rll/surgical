@@ -71,7 +71,7 @@ class World
 		void writeToFile(ofstream& file);
 		World(ifstream& file, WorldManager* wm = NULL);
 
-		template <class T> void getObjects(vector<T*>& objects)
+		template <class T> void getObjects(vector<T*>& objects) const
 		{
 			objects.clear();
 			if (typeid(ThreadConstrained) == typeid(T)) {
@@ -90,7 +90,7 @@ class World
 			} 
 		}
 		
-		template <class T> int objectIndex(T* object)
+		template <class T> int objectIndex(T* object) const
 		{
 			vector<T*> objects;
 			getObjects<T>(objects);
@@ -101,7 +101,7 @@ class World
 			return i;
 		}
 		
-		template <class T> T* objectAtIndex(int object_ind)
+		template <class T> T* objectAtIndex(int object_ind) const
 		{
 			vector<T*> objects;
 			getObjects<T>(objects);
