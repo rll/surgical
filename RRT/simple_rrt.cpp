@@ -1,15 +1,7 @@
+#include "simple_rrt.h"
+
 #include <stdlib.h>
 #include <pthread.h>
-
-#ifdef MAC
-#include <OpenGL/gl.h>
-#include <GLUT/glut.h>
-#include <GL/gle.h>
-#else
-#include <GL/gl.h>
-#include <GL/glut.h>
-#include <GL/gle.h> 
-#endif
 
 #include <iostream>
 #include <fstream>
@@ -165,6 +157,7 @@ vector<vector<World*> > world_data;
 //RRT stuff
 RRTNode* rrt = NULL;
 vector<World*> planned_traj;
+RRTDrawMode draw_tree_mode = NO_DRAW;
 
 void setVisualizationData(vector<vector<World*> > vis_data) {
   drawWorlds = vis_data;
@@ -441,18 +434,46 @@ void processNormalKeys(unsigned char key, int x, int y)
 		}
 
 	//rrt options
-	} else if(key == 'd') { // puts the current world in start_world
+	} else if (key == 'z') {
+		vector<ThreadConstrained*> threads;
+		world->getObjects<ThreadConstrained>(threads);
+		for (int i = 0; i < threads.size(); i++) {
+		  generateRandomThread(threads[i]);
+		}
+		world->updateTransformsFromThread();
+		if (haptics) {
+			haptic0->setTransform(world->objectAtIndex<Cursor>(0));
+			haptic1->setTransform(world->objectAtIndex<Cursor>(1));
+		} else {
+			mouse0->setTransform(world->objectAtIndex<Cursor>(0));
+			mouse1->setTransform(world->objectAtIndex<Cursor>(1));
+		}
+	} else if (key == 'd') { // puts the current world in start_world
 		start_world = new World(*world);
-	} else if(key == 'f') { // puts the current world in goal_world
+	} else if (key == 'f') { // puts the current world in goal_world
 		goal_world = new World(*world);
+	} else if (key == 'b') {
+		world->backup();
+	} else if (key == 'n') {
+		world->restore();
+		if (haptics) {
+			haptic0->setTransform(world->objectAtIndex<Cursor>(0));
+			haptic1->setTransform(world->objectAtIndex<Cursor>(1));
+		} else {
+			mouse0->setTransform(world->objectAtIndex<Cursor>(0));
+			mouse1->setTransform(world->objectAtIndex<Cursor>(1));
+		}
 	} else if (key == 'p') {
   	if (start_world != NULL && goal_world != NULL) {
-			rrt = new RRTNode(start_world);
+			if (rrt == NULL)
+				rrt = new RRTNode(start_world);
 			RRTNode* goal_rrt_node = NULL;
 			rrt->planTrajectory(goal_rrt_node, goal_world);
 			goal_rrt_node->branchTrajectory(planned_traj);
 			setVisualizationData(planned_traj);
   	}
+  } else if (key == 'y') {
+  	draw_tree_mode = (RRTDrawMode) (((int) draw_tree_mode + 1) % 4);
   //end of rrt options
 	
 	} else if(key == '[') {
@@ -479,80 +500,79 @@ void processNormalKeys(unsigned char key, int x, int y)
 		translate_frame[0] = translate_frame[1] = 0.0;
 		translate_frame[2] = -110.0;
   
-  // the following 5 options serves to analyze recorded data (i.e. world trajectories and world states) and to generate video images.
-  } else if (key == 'o') {
-		cout << "Please enter problem name (without extension) (i.e. x1): ";
-	  data_raw_filename = new char[256];
-	  cin >> data_raw_filename;
-	  char *directory = new char[256];
-	  //sprintf(directory, "environmentFiles/%s/video_trajs/", data_raw_filename);
-	  sprintf(directory, "environmentFiles/%s/", data_raw_filename);
-		dir = opendir (directory);
-		if (dir != NULL) {
-			cout << "Sucessfully opened directory" << endl;
-//		  char *fullPath = new char[256];
-//		  sprintf(fullPath, "%s%s%s%s%s", "environmentFiles/", data_raw_filename, "/", data_raw_filename, "_data.txt");
-//			cout << "Writing data to: " << fullPath << endl;
-//			data_file.precision(20);
-//			data_file.open(fullPath);
-			
-			processNormalKeys('b', x, y);
-			return;
-		} else {
-			cout << "Failed to open directory" << endl;
-		}
-	} else if (key == 'b') {
-		cout << "--------------------------------------------" << endl;
-		if (dir != NULL) {
-			if ((ent = readdir (dir)) != NULL) {
-				char *filename = new char[256];
-				sprintf(filename, "%s", ent->d_name);
-				vector<string> parameters;
-				boost::split(parameters, filename, boost::is_any_of("_"));
-				//if (parameters.size() != 8 || parameters[0]!=string(data_raw_filename) || parameters[4]!="1.0") {
-				if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename) || parameters[4]!="0.6" || parameters[3] != "5") {
-				//if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename) || parameters[3] == "5") {
-					cout << "Ignoring file " << filename << endl;
-					processNormalKeys('b', x, y);
-					return;
-				}
-				string base_name = "environmentFiles/";
-				base_name.append(data_raw_filename);
-				base_name.append("/");
-				//base_name.append("/video_trajs/");
-				vector<World*> temp_worlds;
-				TrajectoryReader read(filename, base_name.c_str());
-				if (read.readWorldsFromFile(temp_worlds)) {
-					cout << "Displaying last world." << endl;
-				} else {
-					assert(0);
-				}
-				world_data.push_back(temp_worlds);
-				setVisualizationData(world_data);
-    		drawWorldInd = drawWorlds.size()-1;
-    		drawInd = drawWorlds[drawWorldInd].size()-1;
-				cout << "Press y or n." << endl;
-			} else {
-				closedir (dir);
-				dir = NULL;
-//				data_file.close();
-			  cout << "Writing data file Done\n";
-			}
-		} else {
-			cout << "No directory is open" << endl;
-		}
-	} else if (key == 'y') {
-//		data_file << "1 \n";
-		cout << "You answered yes" << endl;
-		processNormalKeys('b', x, y);
-		return;
-	} else if (key == 'n') {
-//		data_file << "0 \n";
-		cout << "You answered no" << endl;
-		processNormalKeys('b', x, y);
-		return;
-	} else
-	if (key == 'i') {
+//  // the following 5 options serves to analyze recorded data (i.e. world trajectories and world states) and to generate video images.
+//  } else if (key == 'o') {
+//		cout << "Please enter problem name (without extension) (i.e. x1): ";
+//	  data_raw_filename = new char[256];
+//	  cin >> data_raw_filename;
+//	  char *directory = new char[256];
+//	  //sprintf(directory, "environmentFiles/%s/video_trajs/", data_raw_filename);
+//	  sprintf(directory, "environmentFiles/%s/", data_raw_filename);
+//		dir = opendir (directory);
+//		if (dir != NULL) {
+//			cout << "Sucessfully opened directory" << endl;
+////		  char *fullPath = new char[256];
+////		  sprintf(fullPath, "%s%s%s%s%s", "environmentFiles/", data_raw_filename, "/", data_raw_filename, "_data.txt");
+////			cout << "Writing data to: " << fullPath << endl;
+////			data_file.precision(20);
+////			data_file.open(fullPath);
+//			
+//			processNormalKeys('b', x, y);
+//			return;
+//		} else {
+//			cout << "Failed to open directory" << endl;
+//		}
+//	} else if (key == 'b') {
+//		cout << "--------------------------------------------" << endl;
+//		if (dir != NULL) {
+//			if ((ent = readdir (dir)) != NULL) {
+//				char *filename = new char[256];
+//				sprintf(filename, "%s", ent->d_name);
+//				vector<string> parameters;
+//				boost::split(parameters, filename, boost::is_any_of("_"));
+//				//if (parameters.size() != 8 || parameters[0]!=string(data_raw_filename) || parameters[4]!="1.0") {
+//				if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename) || parameters[4]!="0.6" || parameters[3] != "5") {
+//				//if (parameters.size() != 7 || parameters[0]!=string(data_raw_filename) || parameters[3] == "5") {
+//					cout << "Ignoring file " << filename << endl;
+//					processNormalKeys('b', x, y);
+//					return;
+//				}
+//				string base_name = "environmentFiles/";
+//				base_name.append(data_raw_filename);
+//				base_name.append("/");
+//				//base_name.append("/video_trajs/");
+//				vector<World*> temp_worlds;
+//				TrajectoryReader read(filename, base_name.c_str());
+//				if (read.readWorldsFromFile(temp_worlds)) {
+//					cout << "Displaying last world." << endl;
+//				} else {
+//					assert(0);
+//				}
+//				world_data.push_back(temp_worlds);
+//				setVisualizationData(world_data);
+//    		drawWorldInd = drawWorlds.size()-1;
+//    		drawInd = drawWorlds[drawWorldInd].size()-1;
+//				cout << "Press y or n." << endl;
+//			} else {
+//				closedir (dir);
+//				dir = NULL;
+////				data_file.close();
+//			  cout << "Writing data file Done\n";
+//			}
+//		} else {
+//			cout << "No directory is open" << endl;
+//		}
+//	} else if (key == 'y') {
+////		data_file << "1 \n";
+//		cout << "You answered yes" << endl;
+//		processNormalKeys('b', x, y);
+//		return;
+//	} else if (key == 'n') {
+////		data_file << "0 \n";
+//		cout << "You answered no" << endl;
+//		processNormalKeys('b', x, y);
+//		return;
+	} else if (key == 'i') {
 		cout << "Please enter image destination file name (without extension): ";
     char *dstFileName = new char[256];
     cin >> dstFileName;
@@ -828,6 +848,8 @@ void drawWorld()
       drawWorlds[drawWorldInd][drawInd] != NULL &&
       drawVisualizationData) { 
   	drawWorlds[drawWorldInd][drawInd]->draw(examine_mode);
+  	if (rrt != NULL)
+	  	rrt->drawTree(draw_tree_mode);
   }
   if (world && drawInteractiveWorld) {
    	world->draw(examine_mode);

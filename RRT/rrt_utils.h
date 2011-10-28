@@ -23,6 +23,6 @@ void uniformlyRandomRotation(Matrix3d& rotation);
  * is chosen such that the midpoint between the start and end of the thread 
  * is at a random position within the cube of side 2*translation_offset_limit.
  */
-void generateRandomThread(ThreadConstrained* thread, double translation_offset_limit = 40.0);
+void generateRandomThread(ThreadConstrained* thread, double translation_offset_limit = 5.0);
 
 #endif //_rrt_utils_h

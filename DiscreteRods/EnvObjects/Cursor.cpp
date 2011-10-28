@@ -76,7 +76,7 @@ Cursor::Cursor(ifstream& file, World* w)
 	end_eff = world->objectAtIndex<EndEffector>(end_eff_ind);
 }
 
-void Cursor::setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_displacement)
+void Cursor::setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_displacement, double max_displacement, double max_angle_change)
 {
 	position = pos - EndEffector::grab_offset * rot.col(0) ;
 	rotation = rot;
@@ -159,7 +159,7 @@ void Cursor::setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_d
 //    	}
 //    }
     
-    end_eff->setTransform(position - EndEffector::grab_offset * rotation.col(0), rotation, limit_displacement);
+    end_eff->setTransform(position - EndEffector::grab_offset * rotation.col(0), rotation, limit_displacement, max_displacement, max_angle_change);
     
     
     

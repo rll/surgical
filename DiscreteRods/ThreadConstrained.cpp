@@ -414,6 +414,24 @@ ThreadConstrained::~ThreadConstrained()
 	threads.clear();
 }
 
+void ThreadConstrained::copyData(const ThreadConstrained& rhs)
+{
+	num_vertices = rhs.num_vertices;
+	zero_angle = rhs.zero_angle;
+
+	for (int thread_ind = 0; thread_ind < threads.size(); thread_ind++) {
+		delete threads[thread_ind];
+	}
+	threads.resize(rhs.threads.size());	 
+  for (int thread_ind = 0; thread_ind < rhs.threads.size(); thread_ind++) {
+    threads[thread_ind] = new Thread(*rhs.threads[thread_ind], world);
+	}
+	
+	rot_diff = rhs.rot_diff;
+	rot_offset = rhs.rot_offset;
+	constrained_vertices_nums = rhs.constrained_vertices_nums;
+}
+
 void ThreadConstrained::setState(VectorXd& state) {
   /*
   int ind = 0;

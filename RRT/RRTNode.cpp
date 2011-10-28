@@ -1,4 +1,5 @@
 #include "RRTNode.h"
+#include "simple_rrt.h"
 
 RRTNode::RRTNode(World* w, RRTNode* p)
   : world(w)
@@ -23,28 +24,35 @@ RRTNode::~RRTNode()
   children.clear();
 }
 
-void RRTNode::planTrajectory(RRTNode*& goal_node, const World* goal)
+void RRTNode::planTrajectory(RRTNode*& goal_node, World const * goal)
 {
   World* sample_world = new World(*world, world->world_manager);
   RRTNode *nearest_node = NULL, *extended_node = NULL;
   // TODO the following while loop is limited by the number of iterations since
   // the taken samples don't converge fast enough
   int iter = 0;
+  int max_iter = 500;
   do {
-    sampleWorld(sample_world);
+    if (drand48() < 0.9) { // exploration
+	    sampleRandomWorld(sample_world);
+	 	} else { // kind of exploitation
+	 		sampleWorldFromWorld(sample_world, (World*) goal);
+	 	}
     nearestNeighbor(nearest_node, sample_world);
     nearest_node->extend(extended_node, sample_world);
-    cout << "distance between extended_node->world and goal " << extended_node->world->distanceMetric(goal) << endl;
+    cout << "iter " << iter << "/" << max_iter-1 << ". distance between extended_node->world and goal " << extended_node->world->distanceMetric(goal) << endl;
     iter++;
-  } while (extended_node->world->distanceMetric(goal) > 50.0 && iter < 500);
+    drawFromView(extended_node->world->draw);
+  } while (extended_node->world->distanceMetric(goal) > 10.0 && iter < max_iter);
   goal_node = extended_node;
-  if (iter == 1000)
+  if (iter == max_iter)
     nearestNeighbor(goal_node, goal);
+  cout << "Finished with a distance of " << extended_node->world->distanceMetric(goal) << endl;
   
   delete sample_world;
 }
 
-void RRTNode::sampleWorld(World* sample_world)
+void RRTNode::sampleRandomWorld(World* sample_world)
 {
   assert(sample_world != NULL);
   vector<ThreadConstrained*> threads;
@@ -59,25 +67,62 @@ void RRTNode::sampleWorld(World* sample_world)
   // end effectors thread (if any). In this case, we're modifying the thread 
   // end constraints, so we need to do special work to update the transform of 
   // the end effector and the cursor.
-  vector<EndEffector*> end_effs;
-  sample_world->getObjects<EndEffector>(end_effs);
-  for (int ee_ind = 0; ee_ind < end_effs.size(); ee_ind++) {
-    end_effs[ee_ind]->updateTransformFromAttachment(false);
-  }
-
-  vector<Cursor*> cursors;
-  sample_world->getObjects<Cursor>(cursors);
-  for (int i = 0; i < cursors.size(); i++) {
-    cursors[i]->updateTransformFromEndEffector();
-  }
+  sample_world->updateTransformsFromThread();
 }
 
+void RRTNode::sampleWorldFromWorld(World* sample_world, World* world)
+{
+  assert(sample_world != NULL);
+  vector<ThreadConstrained*> sample_threads;
+  sample_world->getObjects<ThreadConstrained>(sample_threads);
+  assert(world != NULL);
+  vector<ThreadConstrained*> threads;
+  world->getObjects<ThreadConstrained>(threads);
+	assert(sample_threads.size() == threads.size());
+
+  for (int i = 0; i < sample_threads.size(); i++) {
+    sample_threads[i]->copyData(*threads[i]);
+  }
+
+  sample_world->updateTransformsFromThread();
+}
+
+double RRTNode::distanceMetric2(RRTNode* node)
+{
+	VectorXd world_state;
+  world->getStateForJacobian(world_state);
+  
+  VectorXd node_world_state;
+  node->world->getStateForJacobian(node_world_state);
+  
+  return (world_state - node_world_state).norm();
+}
+
+// Assumes the world and node->world has only one thread.
 double RRTNode::distanceMetric(RRTNode* node)
 {
-  return world->distanceMetric(node->world);
+	Vector3d start_position;
+	Vector3d end_position;
+	vector<Matrix3d> material_frames;
+  world->objectAtIndex<ThreadConstrained>(0)->get_thread_data(start_position, end_position, material_frames);
+	
+	Vector3d node_start_position;
+	Vector3d node_end_position;
+	vector<Matrix3d> node_material_frames;
+  node->world->objectAtIndex<ThreadConstrained>(0)->get_thread_data(node_start_position, node_end_position, node_material_frames);
+  
+  VectorXd diff;
+  diff.resize(6+3*(material_frames.size()-1));
+  diff.segment(0, 3) = (node_start_position - start_position);
+  diff.segment(3, 3) =  (node_end_position - end_position);
+  for (int i = 0; i < (material_frames.size()-1); i++) {
+  	diff.segment(6+3*i, 3) = (node_material_frames[i].col(0) - material_frames[i].col(0));
+  }
+  
+  return diff.norm();
 }
 
-double RRTNode::nearestNeighbor(RRTNode*& nearest_node, const World* sample_world)
+double RRTNode::nearestNeighbor(RRTNode*& nearest_node, World const * sample_world)
 {
   nearest_node = this;
   double dist = this->world->distanceMetric(sample_world);
@@ -92,31 +137,55 @@ double RRTNode::nearestNeighbor(RRTNode*& nearest_node, const World* sample_worl
   return dist;
 }
 
-void RRTNode::extend(RRTNode*& extended_node, const World* sample_world)
+void RRTNode::extend(RRTNode*& extended_node, World const * sample_world)
 {
-  World* extended_world = new World(*world, world->world_manager);
-  double sample_extended_dist = extended_world->distanceMetric(sample_world);
-  World* candidate_world = NULL;
-  double sample_candidate_dist;
-
   vector<Control*> controls;
   Vector3d translation;
   Quaterniond rotation;
+  
+  World* extended_world = NULL;
+  double sample_extended_dist = DBL_MAX;
+  
+  /*
+  // Create a Control such that its translation and rotation would move the Cursor it controls from world's Cursor transform to sample_world's Cursor transform.
+  for (int control_ind = 0; control_ind < 2; control_ind++) {
+    translation = sample_world->objectAtIndex<Cursor>(control_ind)->getPosition() - world->objectAtIndex<Cursor>(control_ind)->getPosition();
+    rotation = world->objectAtIndex<Cursor>(control_ind)->getRotation().transpose() * sample_world->objectAtIndex<Cursor>(control_ind)->getRotation();
+    controls.push_back(new Control(translation, rotation));
+  }
+  
+  World* extended_world = new World(*world, world->world_manager);
+  // The 'true' argument in the applyRelativeControl specifies that the translation and rotation should be interpolated (i.e. limited).
+  extended_world->applyRelativeControl(controls, 0.0, true);
+  double sample_extended_dist = extended_world->distanceMetric(sample_world);
+  
+  for (int control_ind = 0; control_ind < 2; control_ind++) {
+    delete controls[control_ind];
+    controls[control_ind] = NULL;
+  }
+  controls.clear();
+  */
+  
+  World* candidate_world = NULL;
+  double sample_candidate_dist;
 
+  // Now create Controls with random translation and rotation, and keep the extended_world that is closest to the sample_world.
   for (int trial = 0; trial < 10; trial++) {
     for (int control_ind = 0; control_ind < 2; control_ind++) {
-      uniformlyRandomTranslation(translation, 20.0);
-      //TODO Assume rotation at the ends remain constant. If not a random rotation should be generated
-      //uniformlyRandomRotation(rotation);
-      rotation.setIdentity();
+      uniformlyRandomTranslation(translation, 5.0);
+      uniformlyRandomRotation(rotation);
       controls.push_back(new Control(translation, rotation));
     }
 
     candidate_world = new World(*world, world->world_manager);
-    candidate_world->applyRelativeControl(controls);
+    // The 'true' argument in the applyRelativeControl specifies that the translation and rotation should be interpolated (i.e. limited).
+    candidate_world->applyRelativeControl(controls, 0.0, true, 10.0*MAX_DISPLACEMENT, 50.0*MAX_ANGLE_CHANGE);
     sample_candidate_dist = candidate_world->distanceMetric(sample_world);
     
-    if (sample_candidate_dist < sample_extended_dist) {
+    if (extended_world == NULL) {
+      extended_world = candidate_world;
+      sample_extended_dist = sample_candidate_dist;
+    } else if (sample_candidate_dist < sample_extended_dist) {
       delete extended_world;
       extended_world = candidate_world;
       sample_extended_dist = sample_candidate_dist;
@@ -150,12 +219,55 @@ void RRTNode::reverseBranchTrajectory(vector<World*>& trajectory)
     parent->reverseBranchTrajectory(trajectory);
 }
 
-void RRTNode::drawTree()
+void RRTNode::drawTree(RRTDrawMode mode)
 {
-  world->draw();
-  for (int i = 0; i < children.size(); i++) {
-    children[i]->drawTree();
+  if (mode == NO_DRAW)
+  	return;
+  glColor3f(1.0, 1.0, 1.0);
+  glPushMatrix();
+  if (mode == START_AND_END) {
+  	drawTreeSpheres(START);
+  	drawTreeSpheres(END);
+  } else {
+  	drawTreeSpheres(mode);
   }
+  glBegin(GL_LINES);
+  glLineWidth(10.0);
+  if (mode == START_AND_END) {
+  	drawTreeLines(START);
+  	drawTreeLines(END);
+  } else {
+  	drawTreeLines(mode);
+  }
+  glEnd();
+  glPopMatrix();
+}
+
+void RRTNode::drawTreeSpheres(RRTDrawMode mode)
+{
+	Vector3d pos;
+	if (mode == START)
+		pos = world->objectAtIndex<ThreadConstrained>(0)->start_pos();
+	else
+		pos = world->objectAtIndex<ThreadConstrained>(0)->end_pos();
+  drawSphere(pos, 0.5);
+	for (int i = 0; i < children.size(); i++) {
+    children[i]->drawTreeSpheres(mode);
+  }
+}
+
+Vector3d RRTNode::drawTreeLines(RRTDrawMode mode)
+{
+	Vector3d pos;
+	if (mode == START)
+		pos = world->objectAtIndex<ThreadConstrained>(0)->start_pos();
+	else
+		pos = world->objectAtIndex<ThreadConstrained>(0)->end_pos();
+	for (int i = 0; i < children.size(); i++) {
+    glVertex3f(pos);
+    glVertex3f(children[i]->drawTreeLines(mode));
+  }
+  return pos;
 }
 
 void RRTNode::drawBranch()
@@ -164,8 +276,6 @@ void RRTNode::drawBranch()
   if (parent != NULL)
     parent->drawBranch();
 }
-
-
 
 
 

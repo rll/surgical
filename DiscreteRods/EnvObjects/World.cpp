@@ -336,6 +336,19 @@ double World::distanceMetric(const World* w)
 	return dist;
 }
 
+void World::updateTransformsFromThread()
+{
+	vector<EndEffector*> end_effs;
+  getObjects<EndEffector>(end_effs);
+  for (int ee_ind = 0; ee_ind < end_effs.size(); ee_ind++) {
+    end_effs[ee_ind]->updateTransformFromAttachment(false);
+  }
+
+  for (int i = 0; i < cursors.size(); i++) {
+    cursors[i]->updateTransformFromEndEffector();
+  }
+}
+
 void World::setTransformFromController(const vector<ControllerBase*>& controllers, bool limit_displacement)
 {
 	assert(cursors.size() == controllers.size());
@@ -379,7 +392,7 @@ double normRand(double mean, double sigma)
 	return normal_sampler();
 }
 
-void World::applyRelativeControl(const vector<Control*>& controls, double thresh, bool limit_displacement)
+void World::applyRelativeControl(const vector<Control*>& controls, double thresh, bool limit_displacement, double max_displacement, double max_angle_change)
 {
 	assert(cursors.size() == controls.size());
 	for (int i = 0; i < cursors.size(); i++) {
@@ -397,7 +410,7 @@ void World::applyRelativeControl(const vector<Control*>& controls, double thresh
                                         normRand(0, thresh*trans_norm));
 		const Vector3d cursor_pos = cursor->position + controls[i]->getTranslate() + EndEffector::grab_offset * cursor_rot.col(0) + noise_vec;
 
-		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement);
+		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement, max_displacement, max_angle_change);
 		
 		if (controls[i]->getButton(UP))
 			cursor->openClose(limit_displacement);
@@ -732,8 +745,8 @@ void World::restore()
 	for (int i = 0; i<objs.size(); i++)
 		objs[i]->restore();
 	for (int i = 0; i<cursors.size(); i++) {
-		if(cursors[i]->isAttached())
-			cursors[i]->dettach();
+//		if(cursors[i]->isAttached())
+    cursors[i]->updateTransformFromEndEffector();
 	}
 }
 

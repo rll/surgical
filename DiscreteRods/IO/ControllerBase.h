@@ -21,6 +21,7 @@
 #include <math.h>
 #include <vector>
 
+#include "../EnvObjects/Cursor.h"
 #include "../EnvObjects/EnvObject.h"
 
 using namespace std;
@@ -54,6 +55,12 @@ public:
   {
   	position = control->position;
   	rotation = control->rotation;
+  }
+  
+  void setTransform(Cursor* cursor)
+  {
+  	position = cursor->getPosition();
+  	rotation = cursor->getRotation();
   }
   
   void setTransform(EnvObject* obj)

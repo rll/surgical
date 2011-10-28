@@ -2,8 +2,7 @@
 #define _Cursor_h
 
 #include "EnvObject.h"
-
-class EndEffector;
+#include "EndEffector.h"
 
 class Cursor
 {
@@ -19,7 +18,7 @@ class Cursor
 		void writeToFile(ofstream& file);
 		Cursor(ifstream& file, World* w);
 
-		void setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_displacement = false);
+		void setTransform(const Vector3d& pos, const Matrix3d& rot, bool limit_displacement = false, double max_displacement = MAX_DISPLACEMENT, double max_angle_change = MAX_ANGLE_CHANGE);
 		void updateTransformFromEndEffector();
 		const Vector3d& getPosition() const;
 		const Matrix3d& getRotation() const;
