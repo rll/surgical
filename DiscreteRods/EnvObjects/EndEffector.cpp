@@ -279,9 +279,9 @@ void EndEffector::setTransform(const Vector3d& pos, const Matrix3d& rot, bool li
 		rotation = (Matrix3d) Quaterniond(rotation); // orthonormalizes the rotation matrix due to numerical errors
 		
 		Vector3d disp = old_pos - position;
-		if ((abs(disp(0)) > 0.2000001) || (abs(disp(1)) > 0.2000001) || (abs(disp(2)) > 0.2000001)) {
-			cout << disp.transpose() << endl;
-		}
+		//if ((abs(disp(0)) > 0.2000001) || (abs(disp(1)) > 0.2000001) || (abs(disp(2)) > 0.2000001)) {
+		//	cout << disp.transpose() << endl;
+		//}
 		
 	} else {
 		position = pos;

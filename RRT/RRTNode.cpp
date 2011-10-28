@@ -31,6 +31,7 @@ void RRTNode::planTrajectory(RRTNode*& goal_node, World const * goal)
   // TODO the following while loop is limited by the number of iterations since
   // the taken samples don't converge fast enough
   int iter = 0;
+  int max_iter = 500;
   do {
     if (drand48() < 0.9) { // exploration
 	    sampleRandomWorld(sample_world);
@@ -39,12 +40,12 @@ void RRTNode::planTrajectory(RRTNode*& goal_node, World const * goal)
 	 	}
     nearestNeighbor(nearest_node, sample_world);
     nearest_node->extend(extended_node, sample_world);
-    cout << "distance between extended_node->world and goal " << extended_node->world->distanceMetric(goal) << endl;
+    cout << "iter " << iter << "/" << max_iter-1 << ". distance between extended_node->world and goal " << extended_node->world->distanceMetric(goal) << endl;
     iter++;
     drawFromView(extended_node->world->draw);
-  } while (extended_node->world->distanceMetric(goal) > 10.0 && iter < 2000);
+  } while (extended_node->world->distanceMetric(goal) > 10.0 && iter < max_iter);
   goal_node = extended_node;
-  if (iter == 2000)
+  if (iter == max_iter)
     nearestNeighbor(goal_node, goal);
   cout << "Finished with a distance of " << extended_node->world->distanceMetric(goal) << endl;
   
@@ -86,13 +87,39 @@ void RRTNode::sampleWorldFromWorld(World* sample_world, World* world)
   sample_world->updateTransformsFromThread();
 }
 
-double RRTNode::distanceMetric(RRTNode* node)
+double RRTNode::distanceMetric2(RRTNode* node)
 {
 	VectorXd world_state;
   world->getStateForJacobian(world_state);
+  
   VectorXd node_world_state;
   node->world->getStateForJacobian(node_world_state);
+  
   return (world_state - node_world_state).norm();
+}
+
+// Assumes the world and node->world has only one thread.
+double RRTNode::distanceMetric(RRTNode* node)
+{
+	Vector3d start_position;
+	Vector3d end_position;
+	vector<Matrix3d> material_frames;
+  world->objectAtIndex<ThreadConstrained>(0)->get_thread_data(start_position, end_position, material_frames);
+	
+	Vector3d node_start_position;
+	Vector3d node_end_position;
+	vector<Matrix3d> node_material_frames;
+  node->world->objectAtIndex<ThreadConstrained>(0)->get_thread_data(node_start_position, node_end_position, node_material_frames);
+  
+  VectorXd diff;
+  diff.resize(6+3*(material_frames.size()-1));
+  diff.segment(0, 3) = (node_start_position - start_position);
+  diff.segment(3, 3) =  (node_end_position - end_position);
+  for (int i = 0; i < (material_frames.size()-1); i++) {
+  	diff.segment(6+3*i, 3) = (node_material_frames[i].col(0) - material_frames[i].col(0));
+  }
+  
+  return diff.norm();
 }
 
 double RRTNode::nearestNeighbor(RRTNode*& nearest_node, World const * sample_world)
@@ -119,23 +146,25 @@ void RRTNode::extend(RRTNode*& extended_node, World const * sample_world)
   World* extended_world = NULL;
   double sample_extended_dist = DBL_MAX;
   
-//  // Create a Control such that its translation and rotation would move the Cursor it controls from world's Cursor transform to sample_world's Cursor transform.
-//  for (int control_ind = 0; control_ind < 2; control_ind++) {
-//    translation = sample_world->objectAtIndex<Cursor>(control_ind)->getPosition() - world->objectAtIndex<Cursor>(control_ind)->getPosition();
-//    rotation = world->objectAtIndex<Cursor>(control_ind)->getRotation().transpose() * sample_world->objectAtIndex<Cursor>(control_ind)->getRotation();
-//    controls.push_back(new Control(translation, rotation));
-//  }
-//  
-//  World* extended_world = new World(*world, world->world_manager);
-//  // The 'true' argument in the applyRelativeControl specifies that the translation and rotation should be interpolated (i.e. limited).
-//  extended_world->applyRelativeControl(controls, 0.0, true);
-//  double sample_extended_dist = extended_world->distanceMetric(sample_world);
-//  
-//  for (int control_ind = 0; control_ind < 2; control_ind++) {
-//    delete controls[control_ind];
-//    controls[control_ind] = NULL;
-//  }
-//  controls.clear();
+  /*
+  // Create a Control such that its translation and rotation would move the Cursor it controls from world's Cursor transform to sample_world's Cursor transform.
+  for (int control_ind = 0; control_ind < 2; control_ind++) {
+    translation = sample_world->objectAtIndex<Cursor>(control_ind)->getPosition() - world->objectAtIndex<Cursor>(control_ind)->getPosition();
+    rotation = world->objectAtIndex<Cursor>(control_ind)->getRotation().transpose() * sample_world->objectAtIndex<Cursor>(control_ind)->getRotation();
+    controls.push_back(new Control(translation, rotation));
+  }
+  
+  World* extended_world = new World(*world, world->world_manager);
+  // The 'true' argument in the applyRelativeControl specifies that the translation and rotation should be interpolated (i.e. limited).
+  extended_world->applyRelativeControl(controls, 0.0, true);
+  double sample_extended_dist = extended_world->distanceMetric(sample_world);
+  
+  for (int control_ind = 0; control_ind < 2; control_ind++) {
+    delete controls[control_ind];
+    controls[control_ind] = NULL;
+  }
+  controls.clear();
+  */
   
   World* candidate_world = NULL;
   double sample_candidate_dist;
@@ -150,7 +179,7 @@ void RRTNode::extend(RRTNode*& extended_node, World const * sample_world)
 
     candidate_world = new World(*world, world->world_manager);
     // The 'true' argument in the applyRelativeControl specifies that the translation and rotation should be interpolated (i.e. limited).
-    candidate_world->applyRelativeControl(controls, 0.0, true);
+    candidate_world->applyRelativeControl(controls, 0.0, true, 10.0*MAX_DISPLACEMENT, 50.0*MAX_ANGLE_CHANGE);
     sample_candidate_dist = candidate_world->distanceMetric(sample_world);
     
     if (extended_world == NULL) {
@@ -221,7 +250,7 @@ void RRTNode::drawTreeSpheres(RRTDrawMode mode)
 		pos = world->objectAtIndex<ThreadConstrained>(0)->start_pos();
 	else
 		pos = world->objectAtIndex<ThreadConstrained>(0)->end_pos();
-  drawSphere(pos, 1.0);
+  drawSphere(pos, 0.5);
 	for (int i = 0; i < children.size(); i++) {
     children[i]->drawTreeSpheres(mode);
   }

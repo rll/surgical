@@ -23,6 +23,7 @@ class RRTNode
     void planTrajectory(RRTNode*& goal_node, World const * goal);
 
     double distanceMetric(RRTNode* node);
+    double distanceMetric2(RRTNode* node);
 
     /**
      * sample_world should not be empty. This function takes the sample_world,

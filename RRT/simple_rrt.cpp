@@ -474,7 +474,6 @@ void processNormalKeys(unsigned char key, int x, int y)
   	}
   } else if (key == 'y') {
   	draw_tree_mode = (RRTDrawMode) (((int) draw_tree_mode + 1) % 4);
-  	cout << "draw_tree_mode " << draw_tree_mode << endl;
   //end of rrt options
 	
 	} else if(key == '[') {

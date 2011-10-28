@@ -124,7 +124,7 @@ class World
 		//cursors are used as a handle for controls and the objects in the world
 		// for each control, there is 3 dof for translation, 3 for rotation, 2 for event
 		void setTransformFromController(const vector<ControllerBase*>& controls, bool limit_displacement = false); //applies controli to handle
-		void applyRelativeControl(const vector<Control*>& controls, double thresh=0.0, bool limit_displacement = false);
+		void applyRelativeControl(const vector<Control*>& controls, double thresh=0.0, bool limit_displacement = false, double max_displacement = MAX_DISPLACEMENT, double max_angle_change = MAX_ANGLE_CHANGE);
 		void applyRelativeControl(const vector<Control*>& controls, vector<double>& displacements, double thresh=0.0, bool limit_displacement = false);
 		void applyRelativeControl(const VectorXd& relative_control, double thresh=0.0, bool limit_displacement = false);
     void applyRelativeControlJacobian(const VectorXd& relative_control, double thresh=0.0);

@@ -392,7 +392,7 @@ double normRand(double mean, double sigma)
 	return normal_sampler();
 }
 
-void World::applyRelativeControl(const vector<Control*>& controls, double thresh, bool limit_displacement)
+void World::applyRelativeControl(const vector<Control*>& controls, double thresh, bool limit_displacement, double max_displacement, double max_angle_change)
 {
 	assert(cursors.size() == controls.size());
 	for (int i = 0; i < cursors.size(); i++) {
@@ -410,7 +410,7 @@ void World::applyRelativeControl(const vector<Control*>& controls, double thresh
                                         normRand(0, thresh*trans_norm));
 		const Vector3d cursor_pos = cursor->position + controls[i]->getTranslate() + EndEffector::grab_offset * cursor_rot.col(0) + noise_vec;
 
-		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement);
+		cursor->setTransform(cursor_pos, cursor_rot, limit_displacement, max_displacement, max_angle_change);
 		
 		if (controls[i]->getButton(UP))
 			cursor->openClose(limit_displacement);
