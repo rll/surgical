@@ -257,7 +257,7 @@ double capsuleBoxDistance(const Vector3d& a_start, const Vector3d& a_end, const 
 	btCollisionDispatcher				dispatcher(&collisionConfiguration);
 	btDbvtBroadphase pairCache;
 	btCollisionWorld world (&dispatcher,&pairCache,&collisionConfiguration);
-	world.getDispatchInfo().m_convexMaxDistanceUseCPT = true;
+	//world.getDispatchInfo().m_convexMaxDistanceUseCPT = true;
 	MyContactResultCallback result;
 	btCollisionObject obA;
 	obA.setCollisionShape(shapePtr[0]);
@@ -300,7 +300,7 @@ double sphereBoxDistance(const Vector3d& a_center, const double a_radius, const 
 	btCollisionDispatcher				dispatcher(&collisionConfiguration);
 	btDbvtBroadphase pairCache;
 	btCollisionWorld world (&dispatcher,&pairCache,&collisionConfiguration);
-	world.getDispatchInfo().m_convexMaxDistanceUseCPT = true;
+	//world.getDispatchInfo().m_convexMaxDistanceUseCPT = true;
 	MyContactResultCallback result;
 	btCollisionObject obA;
 	obA.setCollisionShape(shapePtr[0]);

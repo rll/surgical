@@ -353,3 +353,13 @@ void printText(float x, float y, const char *string)
   }
 }
 
+void glVertex3f(const Vector3d& v)
+{
+	glVertex3f(v(0), v(1), v(2));
+}
+
+void glVertex3d(const Vector3d& v)
+{
+	glVertex3f(v(0), v(1), v(2));
+}
+
