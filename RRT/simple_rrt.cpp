@@ -276,7 +276,7 @@ void processNormalKeys(unsigned char key, int x, int y)
     if (state_reader.readWorldFromFile(world)) {
 			vector<World*> vis_data;
 			vis_data.push_back(new World(*world));
-			setVisualizationData(vis_data); 
+			setVisualizationData(vis_data);
 		}
 	} else if (key == 'c') { // records control trajectory and world trajectory
 		if (trajectory_recorder.hasStarted()) {
@@ -434,6 +434,24 @@ void processNormalKeys(unsigned char key, int x, int y)
 		}
 
 	//rrt options
+	} else if (key == 'g') {
+		if ((start_world != NULL) && (goal_world != NULL)) {
+			StateRecorder start_recorder;
+			start_recorder.queryFileName();
+			start_recorder.writeWorldToFile(start_world);
+			StateRecorder goal_recorder;
+			goal_recorder.queryFileName();
+			goal_recorder.writeWorldToFile(goal_world);
+		} else {
+			cout << "Unable to save start and goal world since at least one of them has not been set" << endl;
+		}
+	} else if (key == 'G') {
+		StateReader start_reader;
+		StateReader goal_reader;
+		start_reader.queryFileName();
+		goal_reader.queryFileName();
+		if (!start_reader.readWorldFromFile(start_world) || !goal_reader.readWorldFromFile(goal_world))
+			cout << "Unable to load start and/or goal world" << endl;
 	} else if (key == 'z') {
 		vector<ThreadConstrained*> threads;
 		world->getObjects<ThreadConstrained>(threads);
