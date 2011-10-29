@@ -39,7 +39,7 @@ class StateReader
     void getFileName(char* name);
     void queryFileName();
 		
-		bool readWorldFromFile(World* world);
+		bool readWorldFromFile(World*& world);
 	
 	private:
 		void extension(char* ext, char* full_path);
