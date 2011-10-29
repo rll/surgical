@@ -46,7 +46,7 @@ void StateReader::extension(char* ext, char* full_path)
   }
 }
 
-bool StateReader::readWorldFromFile(World* world)
+bool StateReader::readWorldFromFile(World*& world)
 {
 	char *full_path = new char[256];
   sprintf(full_path, "%s%s", base_name, file_name);
